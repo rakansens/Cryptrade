@@ -6,6 +6,9 @@ import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
 
+import { TokenLimiter, ToolCallFilter } from "@/lib/store/processors";
+import type { MemoryProcessor } from "@/lib/store/processors";
+import type { ConversationMessage } from "@/types/conversation-memory";
 /**
  * Enhanced Conversation Memory Store with Database Integration
  * 
@@ -16,119 +19,7 @@ import { prisma } from '@/lib/db/prisma';
  * - Session and message management
  */
 
-// Memory Processor interfaces (Mastra v2 compatible)
-interface MemoryProcessor {
-  process(messages: ConversationMessage[]): ConversationMessage[];
-  getName(): string;
-}
-
-// TokenLimiter Processor - Context window management
-export class TokenLimiter implements MemoryProcessor {
-  private maxTokens: number;
-  private estimatedTokensPerChar = 0.25; // Rough estimation
-  
-  constructor(maxTokens: number = 127000) { // GPT-4o default
-    this.maxTokens = maxTokens;
-  }
-  
-  process(messages: ConversationMessage[]): ConversationMessage[] {
-    let totalTokens = 0;
-    const filteredMessages: ConversationMessage[] = [];
-    
-    // Process from newest to oldest
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      const estimatedTokens = Math.ceil(message.content.length * this.estimatedTokensPerChar);
-      
-      if (totalTokens + estimatedTokens <= this.maxTokens) {
-        filteredMessages.unshift(message);
-        totalTokens += estimatedTokens;
-      } else {
-        // Token limit reached
-        break;
-      }
-    }
-    
-    if (filteredMessages.length < messages.length) {
-      logger.info('[TokenLimiter] Filtered messages for token limit', {
-        original: messages.length,
-        filtered: filteredMessages.length,
-        estimatedTokens: totalTokens,
-        maxTokens: this.maxTokens,
-      });
-    }
-    
-    return filteredMessages;
-  }
-  
-  getName(): string {
-    return `TokenLimiter(${this.maxTokens})`;
-  }
-}
-
-// ToolCallFilter Processor - Tool call history filtering
-export class ToolCallFilter implements MemoryProcessor {
-  private excludedTools: string[];
-  private includeAllTools: boolean;
-  
-  constructor(options: { exclude?: string[]; includeAll?: boolean } = {}) {
-    this.excludedTools = options.exclude || [];
-    this.includeAllTools = options.includeAll || false;
-  }
-  
-  process(messages: ConversationMessage[]): ConversationMessage[] {
-    return messages.filter(message => {
-      // Keep user messages always
-      if (message.role === 'user') return true;
-      
-      // Check if message contains tool calls
-      if (message.metadata?.isToolCall) {
-        const toolName = message.metadata.toolName;
-        
-        if (this.includeAllTools) {
-          return true; // Keep all tool calls
-        }
-        
-        if (this.excludedTools.length > 0) {
-          return !this.excludedTools.includes(toolName || '');
-        }
-        
-        // Default: remove all tool calls
-        return false;
-      }
-      
-      // Keep non-tool messages
-      return true;
-    });
-  }
-  
-  getName(): string {
-    return `ToolCallFilter(exclude: [${this.excludedTools.join(', ')}])`;
-  }
-}
-
-// Enhanced conversation message with tool metadata
-export interface ConversationMessage {
-  id: string;
-  sessionId: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-  agentId?: string;
-  metadata?: {
-    intent?: string;
-    confidence?: number;
-    symbols?: string[];
-    topics?: string[];
-    embedding?: number[];
-    isToolCall?: boolean;
-    toolName?: string;
-    toolResult?: any;
-    tokenCount?: number;
-  };
-}
-
-// Enhanced session with processor support
+// Enhanced store state with DB integration
 export interface ConversationSession {
   id: string;
   startedAt: Date;
@@ -136,15 +27,10 @@ export interface ConversationSession {
   messages: ConversationMessage[];
   summary?: string;
   processors: MemoryProcessor[];
-  processedMessages?: ConversationMessage[]; // Cached processed messages
-  tokenUsage?: {
-    total: number;
-    input: number;
-    output: number;
-  };
+  processedMessages?: ConversationMessage[];
+  tokenUsage?: { total: number; input: number; output: number };
 }
 
-// Enhanced store state with DB integration
 interface EnhancedConversationMemoryState {
   sessions: Record<string, ConversationSession>;
   currentSessionId: string | null;
@@ -530,7 +416,6 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           const session = get().sessions[sessionId];
           if (!session || session.messages.length === 0) return;
           
-          // TODO: Implement actual summarization using AI
           const summary = `Session with ${session.messages.length} messages. Topics discussed: ${
             [...new Set(session.messages.flatMap(m => m.metadata?.topics || []))]
               .join(', ') || 'General conversation'
