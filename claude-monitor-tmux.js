@@ -1,103 +1,223 @@
 #!/usr/bin/env node
+
 /**
- * claude-monitor-tmux.js - Node.js orchestrator for tmux-based Claude monitor
- * -------------------------------------------------------
- * 2024-06-14  初版
- *   - tmux セッションを生成し 3 pane を自動レイアウト
- *   - 概要 / プロセス詳細 / アクティビティログ を可視化
- *   - ./claude-monitor-tmux.js           新規起動 or 既存へアタッチ
- *   - ./claude-monitor-tmux.js -a|--attach  既存へアタッチ
- *   - ./claude-monitor-tmux.js -k|--kill    セッション kill
+ * Claude Tmux Monitor - tmux内のClaude Codeインスタンス可視化ツール
+ *
+ * 既存の `claude-monitor-multi.js` と同等の UI/機能を tmux pane ベースで実現。
+ * - tmux list-panes で Claude が動作している pane を検出
+ * - tmux capture-pane でリアルタイム出力を取得
+ * - blessed でダッシュボード表示（概要 / インスタンス詳細 / 活動ストリーム）
+ *
+ * 使い方:
+ *   $ node claude-monitor-tmux.js
+ *   (依存: tmux, Node.js, blessed, util.promisify)
  */
 
-const { execSync } = require('child_process');
-const SESSION = 'claude-monitor';
-const LOG_FILE = '/tmp/claude_activity.log';
-const UPDATE_INTERVAL = 2; // sec
+const blessed = require('blessed');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
-function sh(cmd) {
-  execSync(cmd, { stdio: 'inherit', shell: '/bin/bash' });
+// ---- 設定 ----
+const CONFIG = {
+  UPDATE_INTERVAL_MS: 1000,   // 画面更新間隔
+  CAPTURE_LINES: 50,          // pane から取得する行数
+  ACTIVITY_LOG_MAX: 300,      // アクティビティ最大保持
+};
+
+// Claude 判定用コマンド名キーワード
+const CLAUDE_CMD_REGEX = /(claude|cc|Claude|anthropic)/i;
+
+// blessed スクリーン
+const screen = blessed.screen({
+  smartCSR: true,
+  title: 'Claude Tmux Monitor',
+  fullUnicode: true,
+  forceUnicode: true,
+  terminal: 'xterm-256color'
+});
+
+// パネル色
+const colors = {
+  border: 'white',
+  active: 'green',
+  inactive: 'gray'
+};
+
+// UI コンポーネント
+const header = blessed.box({
+  parent: screen,
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: 3,
+  style: { fg: 'cyan', bold: true },
+  border: { type: 'line', fg: 'cyan' },
+  tags: true,
+  align: 'center'
+});
+
+const overview = blessed.box({
+  parent: screen,
+  top: 3,
+  left: 0,
+  width: '100%',
+  height: 5,
+  border: { type: 'line', fg: colors.border },
+  label: ' 📊 Overview ',
+  tags: true
+});
+
+const details = blessed.box({
+  parent: screen,
+  top: 8,
+  left: 0,
+  width: '100%',
+  height: 12,
+  border: { type: 'line', fg: colors.border },
+  label: ' 🖥️  Pane Details ',
+  tags: true,
+  scrollable: true,
+  alwaysScroll: true,
+  keys: true,
+  vi: true
+});
+
+const activity = blessed.box({
+  parent: screen,
+  top: 20,
+  left: 0,
+  width: '100%',
+  height: '100%-20',
+  border: { type: 'line', fg: colors.border },
+  label: ' 📡 Activity Stream ',
+  tags: true,
+  scrollable: true,
+  alwaysScroll: true,
+  keys: true,
+  vi: true
+});
+
+// データ構造
+const panes = new Map(); // paneId -> { pid, command, lastLines, lastActivity, color }
+const activityLog = [];
+const instanceColors = ['magenta', 'cyan', 'yellow', 'green', 'blue', 'red'];
+
+// ---- ヘルパ ----
+function colorForPane(id) {
+  if (!panes.has(id)) return 'white';
+  return panes.get(id).color;
 }
 
-function hasSession() {
+async function listClaudePanes() {
   try {
-    execSync(`tmux has-session -t ${SESSION} 2>/dev/null`);
-    return true;
-  } catch {
-    return false;
+    const { stdout } = await execPromise('tmux list-panes -a -F "#{pane_id} #{pane_pid} #{pane_current_command}"');
+    const lines = stdout.split('\n').filter(Boolean);
+    const seenPaneIds = new Set();
+
+    for (const line of lines) {
+      const [paneId, pid, cmd] = line.split(' ');
+      if (!CLAUDE_CMD_REGEX.test(cmd)) continue;
+
+      seenPaneIds.add(paneId);
+      if (!panes.has(paneId)) {
+        panes.set(paneId, {
+          pid,
+          cmd,
+          color: instanceColors[Math.floor(Math.random()*instanceColors.length)],
+          lastLines: [],
+          lastActivity: Date.now()
+        });
+      } else {
+        const p = panes.get(paneId);
+        p.pid = pid;
+        p.cmd = cmd;
+      }
+    }
+
+    // remove panes that no longer exist
+    for (const id of panes.keys()) {
+      if (!seenPaneIds.has(id)) panes.delete(id);
+    }
+  } catch (err) {
+    // ignore
   }
 }
 
-function killSession() {
-  if (hasSession()) {
-    sh(`tmux kill-session -t ${SESSION}`);
-    console.log(`[OK] session '${SESSION}' killed`);
-  }
+async function updatePaneLogs() {
+  const promises = Array.from(panes.keys()).map(async paneId => {
+    try {
+      const { stdout } = await execPromise(`tmux capture-pane -pJ -E -${CONFIG.CAPTURE_LINES} -t ${paneId}`);
+      const lines = stdout.trim().split('\n');
+      const pane = panes.get(paneId);
+      if (!pane) return;
+      // Detect new lines
+      const newLines = lines.slice(pane.lastLines.length);
+      if (newLines.length > 0) {
+        pane.lastActivity = Date.now();
+        newLines.forEach(l => {
+          activityLog.unshift({ paneId, line: l.slice(0,100) });
+        });
+        while (activityLog.length > CONFIG.ACTIVITY_LOG_MAX) activityLog.pop();
+      }
+      pane.lastLines = lines;
+    } catch {}
+  });
+  await Promise.all(promises);
 }
 
-function attachSession() {
-  sh(`tmux attach -t ${SESSION}`);
+function renderHeader() {
+  const total = panes.size;
+  const active = Array.from(panes.values()).filter(p=>Date.now()-p.lastActivity<30000).length;
+  header.setContent(`{bold}{cyan-fg}Claude Tmux Monitor{/cyan-fg}{/bold}\nアクティブ: {green-fg}${active}{/green-fg}/${total} | ${new Date().toLocaleString('ja-JP')}`);
 }
 
-function createSession() {
-  // PS command for Claude processes
-  const PS_CMD = "ps -u $(whoami) -o pid,tty,%cpu,%mem,command | grep -E '(claude|anthropic)' | grep -v grep";
-
-  // Start session detached
-  sh(`tmux new-session -d -s ${SESSION} -n monitor`);
-
-  // Pane0: overview loop
-  const overviewLoop = [
-    'while :; do',
-    'clear',
-    'echo "========== Claude Monitor (tmux) =========="',
-    'date +"日時        : %F %T"',
-    `mapfile -t LINES < <(${PS_CMD})`,
-    'TOTAL=${#LINES[@]}',
-    'CPU_SUM=0; MEM_SUM=0',
-    'for L in "${LINES[@]}"; do read -r P T C M CMD <<<"$L"; CPU_SUM=$(awk "BEGIN{print $CPU_SUM+$C}"); MEM_SUM=$(awk "BEGIN{print $MEM_SUM+$M}"); done',
-    'echo "インスタンス: $TOTAL"',
-    'printf "CPU合計     : %.1f%%\n" "$CPU_SUM"',
-    'printf "Mem合計     : %.1f%%\n" "$MEM_SUM"',
-    'echo "-------------------------------------------"',
-    'printf "%-6s %-8s %-6s %-6s %s\n" PID TTY CPU MEM COMMAND',
-    'printf "%-6s %-8s %-6s %-6s %s\n" ------ -------- --- --- -----------------------------',
-    'for L in "${LINES[@]}"; do read -r P T C M CMD <<<"$L"; printf "%-6s %-8s %-6s %-6s %.40s\n" "$P" "$T" "$C" "$M" "$CMD"; done',
-    `sleep ${UPDATE_INTERVAL}`,
-    'done'
-  ].join(' ; ');
-  sh(`tmux send-keys -t ${SESSION}:0.0 "bash -c '${overviewLoop}'" C-m`);
-
-  // Pane1: watch detailed ps
-  sh(`tmux split-window -v -t ${SESSION}:0.0 -p 40`);
-  sh(`tmux send-keys -t ${SESSION}:0.1 "watch -n ${UPDATE_INTERVAL} -c \"${PS_CMD}\"" C-m`);
-
-  // Pane2: tail log
-  sh(`tmux split-window -h -t ${SESSION}:0.1 -p 50`);
-  sh(`tmux send-keys -t ${SESSION}:0.2 "touch ${LOG_FILE}; tail -n 200 -f ${LOG_FILE}" C-m`);
-
-  // Layout tidy
-  sh(`tmux select-pane -t ${SESSION}:0.0`);
-  sh(`tmux select-layout -t ${SESSION}:0 tiled >/dev/null`);
-
-  console.log(`[OK] tmux session '${SESSION}' created`);
+function renderOverview() {
+  let content = '';
+  panes.forEach((pane, id) => {
+    const status = Date.now()-pane.lastActivity<30000 ? '●' : '○';
+    content += `{${pane.color}-fg}${status} ${id}{/} `;
+  });
+  overview.setContent(content || 'No Claude pane detected');
 }
 
-const arg = process.argv[2] || '';
-if (arg === '-k' || arg === '--kill') {
-  killSession();
-  process.exit(0);
-}
-if (arg === '-a' || arg === '--attach') {
-  if (hasSession()) attachSession();
-  else console.error(`session '${SESSION}' not found.`);
-  process.exit(0);
+function renderDetails() {
+  let content = '';
+  panes.forEach((pane, id) => {
+    const active = Date.now()-pane.lastActivity<30000;
+    content += `{bold}{${pane.color}-fg}${active?'🟢':'⚫'} Pane ${id}{/}{/bold}\n`;
+    content += `  PID: ${pane.pid} | CMD: ${pane.cmd}\n`;
+    const lastLine = pane.lastLines[pane.lastLines.length-1] || '';
+    content += `  Last: ${lastLine.slice(0,80)}\n`;
+    content += `{gray-fg}${'─'.repeat(40)}{/gray-fg}\n`;
+  });
+  details.setContent(content);
 }
 
-if (hasSession()) {
-  console.log(`[INFO] session '${SESSION}' already exists. Attaching...`);
-  attachSession();
-} else {
-  createSession();
-  attachSession();
-} 
+function renderActivity() {
+  let content = '';
+  activityLog.slice(0,100).forEach(a=>{
+    const col = colorForPane(a.paneId);
+    content += `{${col}-fg}[${a.paneId}]{/} ${a.line}\n`;
+  });
+  activity.setContent(content);
+}
+
+async function tick() {
+  await listClaudePanes();
+  await updatePaneLogs();
+  renderHeader();
+  renderOverview();
+  renderDetails();
+  renderActivity();
+  screen.render();
+}
+
+// 初期化
+(async ()=>{
+  await tick();
+  setInterval(tick, CONFIG.UPDATE_INTERVAL_MS);
+})();
+
+// キーバインド
+screen.key(['escape','q','C-c'], ()=>process.exit(0)); 
