@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Deletion Debug</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #22c55e;
+    }
+    .test-section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    button.danger {
+      background: #ef4444;
+    }
+    button.danger:hover {
+      background: #dc2626;
+    }
+    .log {
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 15px;
+      height: 600px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+    }
+    .log-entry.error { color: #ef4444; }
+    .log-entry.success { color: #22c55e; }
+    .log-entry.warning { color: #f59e0b; }
+    .log-entry.info { color: #3b82f6; }
+    .log-entry.debug { color: #8b5cf6; }
+    .status {
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .status-item label {
+      color: #999;
+    }
+    .status-item value {
+      color: #22c55e;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 パターン削除デバッグツール</h1>
+    
+    <div class="test-section">
+      <h2>1. パターン作成</h2>
+      <button onclick="createTestPattern()">パターン作成（承認付き）</button>
+      <button onclick="createMultiplePatterns()">複数パターン作成</button>
+      <button onclick="clearAllPatterns()" class="danger">全パターンクリア</button>
+    </div>
+    
+    <div class="test-section">
+      <h2>2. 削除テスト</h2>
+      <button onclick="simulateCancelButton()">取り消しボタンシミュレーション</button>
+      <button onclick="deleteLastPattern()">最後のパターンを削除</button>
+      <button onclick="checkPatternRenderer()">PatternRenderer状態を確認</button>
+    </div>
+    
+    <div class="test-section">
+      <h2>3. デバッグ情報</h2>
+      <div class="status" id="statusPanel">
+        <div class="status-item">
+          <label>作成されたパターン数:</label>
+          <value id="patternCount">0</value>
+        </div>
+        <div class="status-item">
+          <label>最後のパターンID:</label>
+          <value id="lastPatternId">-</value>
+        </div>
+        <div class="status-item">
+          <label>PatternRenderer状態:</label>
+          <value id="rendererState">未確認</value>
+        </div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>ログ</h2>
+      <button onclick="clearLog()">ログクリア</button>
+      <div class="log" id="testLog"></div>
+    </div>
+  </div>
+
+  <script>
+    let createdPatterns = [];
+    let patternCounter = 0;
+    
+    // オリジナルのconsoleメソッドを保存
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+    
+    // consoleメソッドをオーバーライド
+    console.log = function(...args) {
+      const message = args.join(' ');
+      if (message.includes('[PatternRenderer]') || 
+          message.includes('[Agent Event]') || 
+          message.includes('[ChatPanel]') ||
+          message.includes('pattern') ||
+          message.includes('metric')) {
+        log(message, 'debug');
+      }
+      originalLog.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+      const message = args.join(' ');
+      log(`ERROR: ${message}`, 'error');
+      originalError.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+      const message = args.join(' ');
+      log(`WARN: ${message}`, 'warning');
+      originalWarn.apply(console, args);
+    };
+    
+    console.info = function(...args) {
+      const message = args.join(' ');
+      if (message.includes('[PatternRenderer]') || 
+          message.includes('[Agent Event]') || 
+          message.includes('pattern')) {
+        log(message, 'info');
+      }
+      originalInfo.apply(console, args);
+    };
+    
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('testLog');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('ja-JP', { hour12: false, fractionalSecondDigits: 3 });
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function updateStatus() {
+      document.getElementById('patternCount').textContent = createdPatterns.length;
+      document.getElementById('lastPatternId').textContent = createdPatterns.length > 0 ? createdPatterns[createdPatterns.length - 1] : '-';
+    }
+    
+    function createTestPattern() {
+      patternCounter++;
+      const timestamp = Date.now();
+      const proposalId = `proposal_${timestamp}`;
+      const patternId = `drawing_pattern_${timestamp}_pattern_${timestamp}_${patternCounter}`;
+      
+      log(`パターン作成開始: ${patternId}`, 'info');
+      
+      // 承認イベントをシミュレート
+      const approveEvent = new CustomEvent('proposal:approve', {
+        detail: {
+          proposalId: proposalId,
+          drawingData: {
+            type: 'pattern',
+            points: [
+              { time: Date.now() / 1000 - 7200, value: 44000 },
+              { time: Date.now() / 1000 - 3600, value: 46000 },
+              { time: Date.now() / 1000, value: 44500 }
+            ],
+            metadata: {
+              patternType: 'head_and_shoulders',
+              metrics: {
+                target_level: 47000,
+                stop_loss: 43000,
+                breakout_level: 45500
+              }
+            }
+          }
+        }
+      });
+      
+      window.dispatchEvent(approveEvent);
+      
+      // パターン追加イベント
+      const pattern = {
+        id: patternId,
+        type: 'head_and_shoulders',
+        visualization: {
+          keyPoints: [
+            { time: Date.now() / 1000 - 7200, value: 44000 },
+            { time: Date.now() / 1000 - 3600, value: 46000 },
+            { time: Date.now() / 1000, value: 44500 }
+          ],
+          lines: [
+            { from: 0, to: 1, style: { color: '#22c55e', lineWidth: 2 } },
+            { from: 1, to: 2, style: { color: '#22c55e', lineWidth: 2 } }
+          ]
+        },
+        metrics: {
+          target_level: 47000,
+          stop_loss: 43000,
+          breakout_level: 45500
+        }
+      };
+      
+      const addEvent = new CustomEvent('chart:addPattern', {
+        detail: { id: patternId, pattern: pattern }
+      });
+      
+      window.dispatchEvent(addEvent);
+      
+      createdPatterns.push(patternId);
+      updateStatus();
+      
+      log(`パターン作成完了: ${patternId}`, 'success');
+      log(`メトリクス: TP=${pattern.metrics.target_level}, SL=${pattern.metrics.stop_loss}, BO=${pattern.metrics.breakout_level}`, 'info');
+    }
+    
+    function createMultiplePatterns() {
+      log('複数パターンを作成中...', 'info');
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => createTestPattern(), i * 500);
+      }
+    }
+    
+    function simulateCancelButton() {
+      if (createdPatterns.length === 0) {
+        log('削除するパターンがありません', 'warning');
+        return;
+      }
+      
+      const patternId = createdPatterns[createdPatterns.length - 1];
+      log(`取り消しボタンシミュレーション: ${patternId}`, 'info');
+      
+      // 削除前の状態を確認
+      log('削除前のPatternRenderer状態を確認...', 'debug');
+      checkPatternRenderer();
+      
+      // ChatPanelのhandleCancelDrawingをシミュレート
+      const deleteEvent = new CustomEvent('chart:deleteDrawing', {
+        detail: { id: patternId }
+      });
+      
+      log(`削除イベント発行: ${patternId}`, 'debug');
+      window.dispatchEvent(deleteEvent);
+      
+      // 削除後の確認
+      setTimeout(() => {
+        log('削除後のPatternRenderer状態を確認...', 'debug');
+        checkPatternRenderer();
+        
+        // チャート上の線の数を確認
+        const lines = document.querySelectorAll('.tv-lightweight-charts path, .tv-lightweight-charts line');
+        log(`チャート上の線の数: ${lines.length}`, lines.length > 0 ? 'warning' : 'success');
+      }, 1500);
+    }
+    
+    function deleteLastPattern() {
+      if (createdPatterns.length === 0) {
+        log('削除するパターンがありません', 'warning');
+        return;
+      }
+      
+      const patternId = createdPatterns.pop();
+      log(`直接削除: ${patternId}`, 'info');
+      
+      const deleteEvent = new CustomEvent('chart:deleteDrawing', {
+        detail: { id: patternId }
+      });
+      
+      window.dispatchEvent(deleteEvent);
+      updateStatus();
+    }
+    
+    function clearAllPatterns() {
+      log('全パターンをクリア中...', 'warning');
+      
+      while (createdPatterns.length > 0) {
+        const patternId = createdPatterns.pop();
+        const deleteEvent = new CustomEvent('chart:deleteDrawing', {
+          detail: { id: patternId }
+        });
+        window.dispatchEvent(deleteEvent);
+      }
+      
+      updateStatus();
+      log('全パターンクリア完了', 'success');
+    }
+    
+    function checkPatternRenderer() {
+      log('PatternRenderer状態を確認中...', 'info');
+      
+      // PatternRendererのdebugGetStateを呼び出すイベント
+      const debugEvent = new CustomEvent('debug:getPatternRendererState');
+      window.dispatchEvent(debugEvent);
+      
+      // storeの状態も確認
+      const storeEvent = new CustomEvent('debug:getStorePatterns');
+      window.dispatchEvent(storeEvent);
+      
+      document.getElementById('rendererState').textContent = '確認済み（ログ参照）';
+    }
+    
+    function clearLog() {
+      document.getElementById('testLog').innerHTML = '';
+      log('ログをクリアしました', 'warning');
+    }
+    
+    // イベントリスナーの追加
+    window.addEventListener('pattern:removed', (event) => {
+      log(`パターン削除確認: ${event.detail.id}`, 'success');
+    });
+    
+    window.addEventListener('pattern:remove:failed', (event) => {
+      log(`パターン削除失敗: ${event.detail.id} - ${event.detail.error}`, 'error');
+    });
+    
+    // 初期化
+    window.addEventListener('load', () => {
+      log('パターン削除デバッグツール初期化完了', 'success');
+      log('パターンを作成してから削除テストを実行してください', 'info');
+      updateStatus();
+    });
+  </script>
+</body>
+</html>

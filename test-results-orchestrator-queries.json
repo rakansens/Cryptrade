@@ -1,0 +1,119 @@
+[
+  {
+    "query": "こんにちは！",
+    "category": "挨拶",
+    "intent": "small_talk",
+    "confidence": 0.75,
+    "response": "こんにちは！今日はどんなことを考えていますか？",
+    "processedBy": "orchestrator-direct",
+    "executionTime": 1542
+  },
+  {
+    "query": "おはようございます！今日も頑張りましょう",
+    "category": "挨拶",
+    "intent": "market_chat",
+    "confidence": 0.8,
+    "response": "おはようございます！今日も素敵な一日になりますように、一緒に頑張りましょう！",
+    "processedBy": "orchestrator-direct",
+    "executionTime": 1109
+  },
+  {
+    "query": "ありがとう、助かりました",
+    "category": "感謝",
+    "intent": "small_talk",
+    "confidence": 0.75,
+    "response": "どういたしまして！お役に立てて嬉しいです。何か他にもあれば、いつでも言ってくださいね！",
+    "processedBy": "orchestrator-direct",
+    "executionTime": 1093
+  },
+  {
+    "query": "疲れたなあ...",
+    "category": "感情表現",
+    "intent": "small_talk",
+    "confidence": 0.75,
+    "response": "お疲れ様です。何かリラックスできることをして、少し休んでみてくださいね。",
+    "processedBy": "orchestrator-direct",
+    "executionTime": 1260
+  },
+  {
+    "query": "最近の市場はどう？",
+    "category": "市場雑談",
+    "intent": "trading_analysis",
+    "confidence": 0.85,
+    "response": "最近の市場動向についてお伝えします。最近のBTCUSDTの価格は比較的安定しており、大きな変動は見られていません。ただし、市場は常に変動するため、投資を検討する際にはリスク管理をしっかりと行うことが重...",
+    "processedBy": "tradingAnalysisAgent",
+    "executionTime": 2599
+  },
+  {
+    "query": "暗号通貨って面白いよね",
+    "category": "市場雑談",
+    "intent": "market_chat",
+    "confidence": 0.8,
+    "response": "本当にそうだね！新しい技術やトレンドがどんどん出てきて、常に変化しているのが魅力的だよね。",
+    "processedBy": "orchestrator-direct",
+    "executionTime": 1142
+  },
+  {
+    "query": "ビットコインの将来性についてどう思う？",
+    "category": "市場雑談",
+    "intent": "trading_analysis",
+    "confidence": 0.85,
+    "response": "ビットコインは暗号通貨市場で最も有名な通貨の1つであり、将来性が非常に高いと言われています。これは、ブロックチェーン技術の普及や市場の成熟による需要増加などが主な要因です。\n\nただし、投資にはリスクが...",
+    "processedBy": "tradingAnalysisAgent",
+    "executionTime": 3113
+  },
+  {
+    "query": "BTCの価格を教えて",
+    "category": "価格照会",
+    "intent": "price_inquiry",
+    "confidence": 0.9,
+    "response": "BTCの現在価格は $104,716.66 です。24時間変化率は -2.117% です。",
+    "processedBy": "priceInquiryAgent",
+    "executionTime": 5732
+  },
+  {
+    "query": "イーサリアムの現在価格は？",
+    "category": "価格照会",
+    "intent": "price_inquiry",
+    "confidence": 0.9,
+    "response": "ETHの現在価格は $2,547.29 です。24時間変化率は -7.216% です。",
+    "processedBy": "priceInquiryAgent",
+    "executionTime": 7452
+  },
+  {
+    "query": "BTCの技術分析をして",
+    "category": "技術分析",
+    "intent": "trading_analysis",
+    "confidence": 0.85,
+    "response": "了解しました。BTC/USDTの1時間足のチャートを分析します。\n\n現在のBTC/USDTの価格はどのように動いていますか？",
+    "processedBy": "tradingAnalysisAgent",
+    "executionTime": 1960
+  },
+  {
+    "query": "エントリーポイントを提案して",
+    "category": "エントリー提案",
+    "intent": "proposal_request",
+    "confidence": 0.95,
+    "response": "理解しました。BTCUSDTの1時間足チャートを分析してエントリーポイントを提案します。\n\n現在のBTCUSDTのチャートを確認することで、エントリーポイントをより具体的に提案できます。少し時間をいた...",
+    "processedBy": "tradingAnalysisAgent",
+    "executionTime": 1973
+  },
+  {
+    "query": "BTCのチャートに切り替えて",
+    "category": "UI操作",
+    "intent": "ui_control",
+    "confidence": 0.95,
+    "response": "BTCのチャートに切り替えました。さらに、下向きトレンドラインを1本引きました。このトレンドラインは、価格が下がる傾向を示す重要な指標ですので、今後の動きに注目してください。\n\nただし、UIの状態を取...",
+    "processedBy": "uiControlAgent",
+    "executionTime": 10871
+  },
+  {
+    "query": "トレンドラインを描いて",
+    "category": "UI操作",
+    "intent": "proposal_request",
+    "confidence": 0.95,
+    "response": "了解しました。トレンドラインを描くことによって、価格の動向やサポート・レジスタンスレベルを視覚化することができます。\n\nまず、BTCUSDTの1時間足のチャートを見てトレンドラインを描いてみましょう。...",
+    "processedBy": "tradingAnalysisAgent",
+    "executionTime": 3538
+  }
+]

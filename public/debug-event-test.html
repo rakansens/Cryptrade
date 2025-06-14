@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UI Event Debug Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      background: #00e676;
+      border: none;
+      color: #000;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #00c853;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 10px;
+      background: #000;
+      border: 1px solid #444;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>UI Event Debug Test</h1>
+  
+  <button onclick="testTrendline()">Test Trendline Event</button>
+  <button onclick="testSSE()">Test SSE Connection</button>
+  <button onclick="clearLog()">Clear Log</button>
+  
+  <div id="log"></div>
+
+  <script>
+    const log = document.getElementById('log');
+    
+    function addLog(message, data = null) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+      if (data) {
+        entry.innerHTML += `<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+      log.insertBefore(entry, log.firstChild);
+    }
+    
+    function clearLog() {
+      log.innerHTML = '';
+    }
+    
+    // グローバルイベントリスナー
+    window.addEventListener('draw:trendline', (e) => {
+      addLog('🎯 draw:trendline event received!', e.detail);
+    });
+    
+    // 手動でトレンドラインイベントを発火
+    function testTrendline() {
+      const testData = {
+        points: [
+          {x: 100, y: 200, price: 105000, time: Date.now()},
+          {x: 300, y: 150, price: 106000, time: Date.now() + 3600000}
+        ],
+        style: {
+          color: '#ff0000',
+          lineWidth: 3,
+          lineStyle: 'solid',
+          showLabels: true
+        }
+      };
+      
+      addLog('📤 Dispatching test draw:trendline event', testData);
+      window.dispatchEvent(new CustomEvent('draw:trendline', { detail: testData }));
+    }
+    
+    // SSE接続テスト
+    function testSSE() {
+      addLog('🔌 Testing SSE connection...');
+      
+      const es = new EventSource('/api/ui-events/stream');
+      
+      es.onopen = () => {
+        addLog('✅ SSE connected!');
+      };
+      
+      es.onerror = (error) => {
+        addLog('❌ SSE error', error);
+      };
+      
+      es.onmessage = (event) => {
+        addLog('📨 SSE message (generic)', event.data);
+      };
+      
+      es.addEventListener('draw:trendline', (event) => {
+        addLog('📨 SSE draw:trendline event', event.data);
+      });
+      
+      es.addEventListener('ping', () => {
+        addLog('🏓 SSE ping received');
+      });
+      
+      setTimeout(() => {
+        es.close();
+        addLog('🔌 SSE connection closed after 30s');
+      }, 30000);
+    }
+    
+    addLog('🚀 Debug page loaded - ready for testing');
+  </script>
+</body>
+</html>

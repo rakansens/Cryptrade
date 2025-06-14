@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2A通信システム ブラウザテスト</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+        }
+        .container {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        .test-case {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #0066cc;
+        }
+        .success { border-left-color: #00cc66; }
+        .error { border-left-color: #cc0066; }
+        .warning { border-left-color: #cc6600; }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #0a0a0a;
+            color: #ffffff;
+            font-family: inherit;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        .log {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 A2A通信システム ブラウザテスト</h1>
+    
+    <div class="container">
+        <h2>📡 リアルタイムテスト</h2>
+        <div>
+            <label>テストクエリ:</label>
+            <input type="text" id="testQuery" placeholder="例: BTCの価格を教えて" 
+                   value="BTCの現在価格を教えて">
+        </div>
+        <br>
+        <button onclick="runSingleTest()">🧪 単体テスト実行</button>
+        <button onclick="runAllTests()">🚀 全自動テスト実行</button>
+        <button onclick="clearLogs()">🗑 ログクリア</button>
+    </div>
+
+    <div class="container">
+        <h2>📊 テスト結果</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>📝 実行ログ</h2>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        const testCases = [
+            {
+                name: '価格照会テスト',
+                query: 'BTCの現在価格を教えて',
+                expectedAgent: 'priceInquiryAgent'
+            },
+            {
+                name: 'UI操作テスト',
+                query: 'チャートを1時間足に変更して',
+                expectedAgent: 'uiControlAgent'
+            },
+            {
+                name: '取引分析テスト',
+                query: 'ETHの投資判断を分析して',
+                expectedAgent: 'tradingAnalysisAgent'
+            },
+            {
+                name: '一般会話テスト',
+                query: 'こんにちは、使い方を教えて',
+                expectedAgent: 'orchestratorAgent'
+            }
+        ];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logs = document.getElementById('logs');
+            const color = type === 'error' ? '#ff6b6b' : 
+                         type === 'success' ? '#51cf66' : 
+                         type === 'warning' ? '#ffd43b' : '#ffffff';
+            
+            logs.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        async function testAgentSelection(query) {
+            log(`🔍 エージェント選択テスト: "${query}"`);
+            
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: `browser-test-${Date.now()}`
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                log(`✅ レスポンス受信: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+                return {
+                    success: true,
+                    response: data,
+                    selectedAgent: data.selectedAgent || '不明',
+                    message: data.message || 'レスポンスなし'
+                };
+
+            } catch (error) {
+                log(`❌ テストエラー: ${error.message}`, 'error');
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        async function runSingleTest() {
+            const query = document.getElementById('testQuery').value;
+            if (!query.trim()) {
+                log('⚠️ クエリを入力してください', 'warning');
+                return;
+            }
+
+            log('🚀 単体テスト開始');
+            const result = await testAgentSelection(query);
+            
+            const resultDiv = document.getElementById('testResults');
+            const resultClass = result.success ? 'success' : 'error';
+            
+            resultDiv.innerHTML += `
+                <div class="test-case ${resultClass}">
+                    <h3>単体テスト結果</h3>
+                    <p><strong>Query:</strong> ${query}</p>
+                    <p><strong>Status:</strong> ${result.success ? '✅ 成功' : '❌ 失敗'}</p>
+                    ${result.success ? 
+                        `<p><strong>Selected Agent:</strong> ${result.selectedAgent}</p>
+                         <p><strong>Message:</strong> ${result.message}</p>` :
+                        `<p><strong>Error:</strong> ${result.error}</p>`
+                    }
+                </div>
+            `;
+        }
+
+        async function runAllTests() {
+            log('🚀 全自動テスト開始');
+            const results = [];
+            
+            for (const testCase of testCases) {
+                log(`\n--- ${testCase.name} ---`);
+                const result = await testAgentSelection(testCase.query);
+                
+                if (result.success) {
+                    const isCorrect = result.selectedAgent === testCase.expectedAgent;
+                    result.isCorrect = isCorrect;
+                    result.expected = testCase.expectedAgent;
+                    
+                    log(`期待: ${testCase.expectedAgent}`, 'info');
+                    log(`実際: ${result.selectedAgent}`, isCorrect ? 'success' : 'warning');
+                    log(`判定: ${isCorrect ? '✅ 正解' : '❌ 不正解'}`, isCorrect ? 'success' : 'warning');
+                } else {
+                    result.isCorrect = false;
+                    result.expected = testCase.expectedAgent;
+                }
+                
+                results.push({ ...testCase, result });
+                
+                // 次のテストまで少し待機
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // 総合結果表示
+            displaySummaryResults(results);
+        }
+
+        function displaySummaryResults(results) {
+            const resultDiv = document.getElementById('testResults');
+            const successCount = results.filter(r => r.result.success && r.result.isCorrect).length;
+            const totalCount = results.length;
+            
+            let summaryHtml = `
+                <div class="test-case ${successCount === totalCount ? 'success' : 'warning'}">
+                    <h3>📊 総合結果: ${successCount}/${totalCount} 正解</h3>
+                    <p>成功率: ${((successCount/totalCount) * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            
+            results.forEach(test => {
+                const resultClass = test.result.success && test.result.isCorrect ? 'success' : 
+                                   test.result.success ? 'warning' : 'error';
+                
+                summaryHtml += `
+                    <div class="test-case ${resultClass}">
+                        <h4>${test.name}</h4>
+                        <p><strong>Query:</strong> ${test.query}</p>
+                        <p><strong>期待:</strong> ${test.expectedAgent}</p>
+                        ${test.result.success ? 
+                            `<p><strong>実際:</strong> ${test.result.selectedAgent}</p>
+                             <p><strong>判定:</strong> ${test.result.isCorrect ? '✅ 正解' : '❌ 不正解'}</p>
+                             <p><strong>Response:</strong> ${test.result.message}</p>` :
+                            `<p><strong>Error:</strong> ${test.result.error}</p>`
+                        }
+                    </div>
+                `;
+            });
+            
+            resultDiv.innerHTML = summaryHtml;
+            
+            log(`\n🎉 全自動テスト完了! 成功率: ${((successCount/totalCount) * 100).toFixed(1)}%`, 
+                successCount === totalCount ? 'success' : 'warning');
+        }
+
+        // 初期化
+        log('🚀 A2A通信システム ブラウザテスト画面を初期化しました');
+        log('💡 テストを実行するにはボタンをクリックしてください');
+    </script>
+</body>
+</html>

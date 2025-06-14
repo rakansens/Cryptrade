@@ -1,0 +1,118 @@
+
+=== Orchestrator会話統合テスト結果 ===
+
+【挨拶】 "こんにちは！"
+  意図: small_talk (信頼度: 0.75)
+  処理: orchestrator-direct
+  応答: こんにちは！今日はどんなことを考えていますか？
+  時間: 1542ms
+
+【挨拶】 "おはようございます！今日も頑張りましょう"
+  意図: market_chat (信頼度: 0.8)
+  処理: orchestrator-direct
+  応答: おはようございます！今日も素敵な一日になりますように、一緒に頑張りましょう！
+  時間: 1109ms
+
+【感謝】 "ありがとう、助かりました"
+  意図: small_talk (信頼度: 0.75)
+  処理: orchestrator-direct
+  応答: どういたしまして！お役に立てて嬉しいです。何か他にもあれば、いつでも言ってくださいね！
+  時間: 1093ms
+
+【感情表現】 "疲れたなあ..."
+  意図: small_talk (信頼度: 0.75)
+  処理: orchestrator-direct
+  応答: お疲れ様です。何かリラックスできることをして、少し休んでみてくださいね。
+  時間: 1260ms
+
+【市場雑談】 "最近の市場はどう？"
+  意図: trading_analysis (信頼度: 0.85)
+  処理: tradingAnalysisAgent
+  応答: 最近の市場動向についてお伝えします。最近のBTCUSDTの価格は比較的安定しており、大きな変動は見られていません。ただし、市場は常に変動するため、投資を検討する際にはリスク管理をしっかりと行うことが重...
+  時間: 2599ms
+
+【市場雑談】 "暗号通貨って面白いよね"
+  意図: market_chat (信頼度: 0.8)
+  処理: orchestrator-direct
+  応答: 本当にそうだね！新しい技術やトレンドがどんどん出てきて、常に変化しているのが魅力的だよね。
+  時間: 1142ms
+
+【市場雑談】 "ビットコインの将来性についてどう思う？"
+  意図: trading_analysis (信頼度: 0.85)
+  処理: tradingAnalysisAgent
+  応答: ビットコインは暗号通貨市場で最も有名な通貨の1つであり、将来性が非常に高いと言われています。これは、ブロックチェーン技術の普及や市場の成熟による需要増加などが主な要因です。
+
+ただし、投資にはリスクが...
+  時間: 3113ms
+
+【価格照会】 "BTCの価格を教えて"
+  意図: price_inquiry (信頼度: 0.9)
+  処理: priceInquiryAgent
+  応答: BTCの現在価格は $104,716.66 です。24時間変化率は -2.117% です。
+  時間: 5732ms
+
+【価格照会】 "イーサリアムの現在価格は？"
+  意図: price_inquiry (信頼度: 0.9)
+  処理: priceInquiryAgent
+  応答: ETHの現在価格は $2,547.29 です。24時間変化率は -7.216% です。
+  時間: 7452ms
+
+【技術分析】 "BTCの技術分析をして"
+  意図: trading_analysis (信頼度: 0.85)
+  処理: tradingAnalysisAgent
+  応答: 了解しました。BTC/USDTの1時間足のチャートを分析します。
+
+現在のBTC/USDTの価格はどのように動いていますか？
+  時間: 1960ms
+
+【エントリー提案】 "エントリーポイントを提案して"
+  意図: proposal_request (信頼度: 0.95)
+  処理: tradingAnalysisAgent
+  応答: 理解しました。BTCUSDTの1時間足チャートを分析してエントリーポイントを提案します。
+
+現在のBTCUSDTのチャートを確認することで、エントリーポイントをより具体的に提案できます。少し時間をいた...
+  時間: 1973ms
+
+【UI操作】 "BTCのチャートに切り替えて"
+  意図: ui_control (信頼度: 0.95)
+  処理: uiControlAgent
+  応答: BTCのチャートに切り替えました。さらに、下向きトレンドラインを1本引きました。このトレンドラインは、価格が下がる傾向を示す重要な指標ですので、今後の動きに注目してください。
+
+ただし、UIの状態を取...
+  時間: 10871ms
+
+【UI操作】 "トレンドラインを描いて"
+  意図: proposal_request (信頼度: 0.95)
+  処理: tradingAnalysisAgent
+  応答: 了解しました。トレンドラインを描くことによって、価格の動向やサポート・レジスタンスレベルを視覚化することができます。
+
+まず、BTCUSDTの1時間足のチャートを見てトレンドラインを描いてみましょう。...
+  時間: 3538ms
+
+
+=== 処理結果サマリー ===
+
+| カテゴリ | クエリ | 意図 | 処理場所 | 実行時間 |
+|---------|--------|------|----------|---------|
+| 挨拶 | こんにちは！ | small_talk | Orchestrator直接 | 1542ms |
+| 挨拶 | おはようございます！今日も頑張りましょう | market_chat | Orchestrator直接 | 1109ms |
+| 感謝 | ありがとう、助かりました | small_talk | Orchestrator直接 | 1093ms |
+| 感情表現 | 疲れたなあ... | small_talk | Orchestrator直接 | 1260ms |
+| 市場雑談 | 最近の市場はどう？ | trading_analysis | tradingAnalysisAgent | 2599ms |
+| 市場雑談 | 暗号通貨って面白いよね | market_chat | Orchestrator直接 | 1142ms |
+| 市場雑談 | ビットコインの将来性についてどう思う？ | trading_analysis | tradingAnalysisAgent | 3113ms |
+| 価格照会 | BTCの価格を教えて | price_inquiry | priceInquiryAgent | 5732ms |
+| 価格照会 | イーサリアムの現在価格は？ | price_inquiry | priceInquiryAgent | 7452ms |
+| 技術分析 | BTCの技術分析をして | trading_analysis | tradingAnalysisAgent | 1960ms |
+| エントリー提案 | エントリーポイントを提案して | proposal_request | tradingAnalysisAgent | 1973ms |
+| UI操作 | BTCのチャートに切り替えて | ui_control | uiControlAgent | 10871ms |
+| UI操作 | トレンドラインを描いて | proposal_request | tradingAnalysisAgent | 3538ms |
+
+=== 統計情報 ===
+Orchestrator直接処理: 5件
+専門エージェント委譲: 8件
+エラー: 0件
+合計: 13件
+平均実行時間: 3337ms
+
+詳細な結果を./test-results-orchestrator-queries.jsonに保存しました。

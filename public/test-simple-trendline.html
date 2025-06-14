@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Trendline Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 5px; cursor: pointer; }
+        #log { background: #000; border: 1px solid #0f0; padding: 10px; margin-top: 20px; white-space: pre-wrap; height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Simple Trendline Test</h1>
+    
+    <button onclick="checkStore()">Check Store</button>
+    <button onclick="sendSimpleTrendline()">Send Simple Trendline</button>
+    <button onclick="clearDrawings()">Clear All Drawings</button>
+    
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `[${time}] ${msg}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function checkStore() {
+            addLog('\n📊 Checking ChartStore...');
+            if (window.chartStore) {
+                const state = window.chartStore.getState();
+                addLog(`✅ ChartStore available`);
+                addLog(`Symbol: ${state.symbol}`);
+                addLog(`Timeframe: ${state.timeframe}`);
+                addLog(`Drawings: ${state.drawings?.length || 0}`);
+                
+                if (state.drawings && state.drawings.length > 0) {
+                    state.drawings.forEach((d, i) => {
+                        addLog(`\nDrawing ${i + 1}: ${d.id}`);
+                        addLog(`  Type: ${d.type}`);
+                        if (d.points && d.points[0]) {
+                            addLog(`  Point 1: time=${d.points[0].time}, value=${d.points[0].value}`);
+                        }
+                        if (d.points && d.points[1]) {
+                            addLog(`  Point 2: time=${d.points[1].time}, value=${d.points[1].value}`);
+                        }
+                    });
+                }
+            } else {
+                addLog('❌ ChartStore not available');
+            }
+        }
+        
+        function sendSimpleTrendline() {
+            addLog('\n📤 Sending simple trendline...');
+            
+            // Use recent timestamps (in seconds for chart)
+            const now = Math.floor(Date.now() / 1000);
+            const oneHour = 3600;
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    points: [
+                        { 
+                            time: (now - 2 * oneHour) * 1000, // Convert back to ms for event
+                            price: 105000
+                        },
+                        { 
+                            time: now * 1000, // Convert back to ms for event
+                            price: 105500
+                        }
+                    ],
+                    style: { 
+                        color: '#00ff00', 
+                        lineWidth: 3, 
+                        lineStyle: 'solid' 
+                    }
+                }
+            });
+            
+            addLog('Event details:');
+            addLog(`  Point 1: ${new Date((now - 2 * oneHour) * 1000).toISOString()}, $105000`);
+            addLog(`  Point 2: ${new Date(now * 1000).toISOString()}, $105500`);
+            
+            window.dispatchEvent(event);
+            addLog('✅ Event dispatched');
+            
+            // Check result after a short delay
+            setTimeout(() => {
+                addLog('\n📊 Checking result...');
+                checkStore();
+            }, 500);
+        }
+        
+        function clearDrawings() {
+            addLog('\n🗑️ Clearing all drawings...');
+            if (window.chartStore) {
+                window.chartStore.getState().clearAllDrawings();
+                addLog('✅ Drawings cleared');
+            } else {
+                addLog('❌ ChartStore not available');
+            }
+        }
+        
+        // Initial log
+        addLog('🚀 Test page ready');
+        
+        // Listen for draw:trendline events
+        window.addEventListener('draw:trendline', (event) => {
+            addLog('\n👂 draw:trendline event heard!');
+            addLog(`Details: ${JSON.stringify(event.detail, null, 2)}`);
+        });
+    </script>
+</body>
+</html>

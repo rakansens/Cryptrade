@@ -1,0 +1,146 @@
+<\!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>A2A Cleanup Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        button { margin: 5px; padding: 10px 20px; cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        .stats { font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>A2A通信システム クリーンアップ後のライブテスト</h1>
+    <p>Workflowを削除してA2A通信に完全移行した後の動作確認</p>
+    
+    <div>
+        <button onclick="runAllTests()">全テスト実行</button>
+        <button onclick="clearResults()">結果クリア</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        const testCases = [
+            { message: "BTCの価格は？", expected: "price_inquiry", description: "価格照会" },
+            { message: "トレンドラインを引いて", expected: "ui_control", description: "UI操作" },
+            { message: "ETHの詳しい分析をして", expected: "trading_analysis", description: "取引分析" },
+            { message: "こんにちは", expected: "greeting", description: "挨拶" },
+            { message: "使い方を教えて", expected: "help_request", description: "ヘルプ" },
+            { message: "フィボナッチリトレースメントを表示", expected: "ui_control", description: "高度なUI操作" },
+            { message: "SOLの投資戦略は？", expected: "trading_analysis", description: "投資戦略" }
+        ];
+        
+        async function testA2A(testCase) {
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: testCase.message,
+                        sessionId: `cleanup-test-${Date.now()}`
+                    })
+                });
+                
+                const data = await response.json();
+                const executionTime = Date.now() - startTime;
+                
+                const success = data.analysis?.intent === testCase.expected;
+                
+                return {
+                    ...testCase,
+                    success,
+                    response: data,
+                    executionTime,
+                    actualIntent: data.analysis?.intent,
+                    confidence: data.analysis?.confidence,
+                    a2aEnabled: data.metadata?.a2aEnabled
+                };
+            } catch (error) {
+                return {
+                    ...testCase,
+                    success: false,
+                    error: error.message,
+                    executionTime: Date.now() - startTime
+                };
+            }
+        }
+        
+        async function runAllTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>テスト実行中...</h2>';
+            
+            const results = [];
+            for (const testCase of testCases) {
+                const result = await testA2A(testCase);
+                results.push(result);
+                displayResult(result);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Rate limiting
+            }
+            
+            displayStats(results);
+        }
+        
+        function displayResult(result) {
+            const resultsDiv = document.getElementById('results');
+            if (resultsDiv.innerHTML.includes('テスト実行中...')) {
+                resultsDiv.innerHTML = '';
+            }
+            
+            const div = document.createElement('div');
+            div.className = `test-case ${result.success ? 'success' : 'error'}`;
+            
+            let html = `
+                <h3>${result.description}</h3>
+                <p><strong>入力:</strong> "${result.message}"</p>
+                <p><strong>期待:</strong> ${result.expected} → <strong>実際:</strong> ${result.actualIntent || 'エラー'}</p>
+            `;
+            
+            if (result.success) {
+                html += `
+                    <p><strong>信頼度:</strong> ${result.confidence}</p>
+                    <p><strong>A2A有効:</strong> ${result.a2aEnabled ? '✅' : '❌'}</p>
+                    <p><strong>実行時間:</strong> ${result.executionTime}ms</p>
+                `;
+            } else {
+                html += `<p><strong>エラー:</strong> ${result.error || '不明なエラー'}</p>`;
+            }
+            
+            if (result.response) {
+                html += `<details><summary>詳細レスポンス</summary><pre>${JSON.stringify(result.response, null, 2)}</pre></details>`;
+            }
+            
+            div.innerHTML = html;
+            resultsDiv.appendChild(div);
+        }
+        
+        function displayStats(results) {
+            const successCount = results.filter(r => r.success).length;
+            const avgTime = results.reduce((sum, r) => sum + r.executionTime, 0) / results.length;
+            const a2aEnabledCount = results.filter(r => r.response?.metadata?.a2aEnabled).length;
+            
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'stats';
+            statsDiv.innerHTML = `
+                <h2>テスト結果サマリー</h2>
+                <p>成功: ${successCount}/${results.length} (${(successCount/results.length*100).toFixed(1)}%)</p>
+                <p>A2A通信使用: ${a2aEnabledCount}/${results.length}</p>
+                <p>平均実行時間: ${avgTime.toFixed(0)}ms</p>
+                <p>クリーンアップ後ステータス: ${successCount === results.length ? '✅ 完全動作' : '⚠️ 一部エラー'}</p>
+            `;
+            
+            document.getElementById('results').appendChild(statsDiv);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

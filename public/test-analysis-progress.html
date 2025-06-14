@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analysis Progress SSE Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0f0f0f;
+      color: #f0f0f0;
+    }
+    
+    .container {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    
+    h1 {
+      margin-top: 0;
+      color: #fff;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    input, select, button {
+      padding: 8px 12px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 14px;
+    }
+    
+    button {
+      background: #0ea5e9;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #0284c7;
+    }
+    
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    
+    .progress-container {
+      margin-top: 20px;
+    }
+    
+    .step {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      transition: all 0.3s;
+    }
+    
+    .step.in-progress {
+      border-color: #0ea5e9;
+      background: rgba(14, 165, 233, 0.1);
+    }
+    
+    .step.completed {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+    }
+    
+    .step.error {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .step-duration {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .step-description {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    
+    .progress-bar {
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: #0ea5e9;
+      transition: width 0.3s;
+    }
+    
+    .step-details {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+      font-family: monospace;
+    }
+    
+    .overall-progress {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .overall-progress-bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    
+    .overall-progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, #0ea5e9, #22c55e);
+      transition: width 0.3s;
+    }
+    
+    .status-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+    }
+    
+    .logs {
+      margin-top: 20px;
+      padding: 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      color: #888;
+    }
+    
+    .log-entry.error {
+      color: #ef4444;
+    }
+    
+    .log-entry.success {
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 Analysis Progress SSE Demo</h1>
+    
+    <div class="controls">
+      <input type="text" id="symbol" placeholder="Symbol (e.g., BTCUSDT)" value="BTCUSDT">
+      <select id="interval">
+        <option value="1m">1m</option>
+        <option value="5m">5m</option>
+        <option value="15m">15m</option>
+        <option value="1h" selected>1h</option>
+        <option value="4h">4h</option>
+        <option value="1d">1d</option>
+      </select>
+      <select id="analysisType">
+        <option value="all">All Analysis</option>
+        <option value="trendline">Trendline</option>
+        <option value="support-resistance">Support/Resistance</option>
+        <option value="fibonacci">Fibonacci</option>
+        <option value="pattern">Pattern</option>
+      </select>
+      <button id="startAnalysis">Start Analysis</button>
+      <button id="clearLogs">Clear Logs</button>
+    </div>
+    
+    <div class="overall-progress" id="overallProgress" style="display: none;">
+      <div class="step-header">
+        <span class="step-title">Overall Progress</span>
+        <span id="overallPercent">0%</span>
+      </div>
+      <div class="overall-progress-bar">
+        <div class="overall-progress-fill" id="overallProgressFill" style="width: 0%"></div>
+      </div>
+    </div>
+    
+    <div class="progress-container" id="progressContainer"></div>
+    
+    <div class="logs" id="logs"></div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let steps = [];
+    let completedSteps = 0;
+    
+    const symbolInput = document.getElementById('symbol');
+    const intervalSelect = document.getElementById('interval');
+    const analysisTypeSelect = document.getElementById('analysisType');
+    const startButton = document.getElementById('startAnalysis');
+    const clearButton = document.getElementById('clearLogs');
+    const progressContainer = document.getElementById('progressContainer');
+    const overallProgress = document.getElementById('overallProgress');
+    const overallPercent = document.getElementById('overallPercent');
+    const overallProgressFill = document.getElementById('overallProgressFill');
+    const logsContainer = document.getElementById('logs');
+    
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logsContainer.appendChild(entry);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+    
+    function clearLogs() {
+      logsContainer.innerHTML = '';
+    }
+    
+    function updateOverallProgress() {
+      const percent = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
+      overallPercent.textContent = `${percent}%`;
+      overallProgressFill.style.width = `${percent}%`;
+    }
+    
+    function createStepElement(step) {
+      const stepEl = document.createElement('div');
+      stepEl.className = `step ${step.status}`;
+      stepEl.id = `step-${step.id}`;
+      
+      stepEl.innerHTML = `
+        <div class="step-header">
+          <div style="display: flex; align-items: center;">
+            <span class="status-icon">${getStatusIcon(step.status)}</span>
+            <span class="step-title">${step.title}</span>
+          </div>
+          <span class="step-duration" id="duration-${step.id}"></span>
+        </div>
+        <div class="step-description">${step.description}</div>
+        ${step.status === 'in-progress' && step.progress !== undefined ? `
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-${step.id}" style="width: ${step.progress}%"></div>
+          </div>
+        ` : ''}
+        <div class="step-details" id="details-${step.id}" style="display: none;"></div>
+      `;
+      
+      return stepEl;
+    }
+    
+    function getStatusIcon(status) {
+      switch (status) {
+        case 'completed':
+          return '✅';
+        case 'in-progress':
+          return '⏳';
+        case 'error':
+          return '❌';
+        default:
+          return '⭕';
+      }
+    }
+    
+    function updateStep(step, index) {
+      let stepEl = document.getElementById(`step-${step.id}`);
+      
+      if (!stepEl) {
+        stepEl = createStepElement(step);
+        progressContainer.appendChild(stepEl);
+      }
+      
+      // Update status
+      stepEl.className = `step ${step.status}`;
+      
+      // Update icon
+      const iconEl = stepEl.querySelector('.status-icon');
+      if (iconEl) {
+        iconEl.textContent = getStatusIcon(step.status);
+      }
+      
+      // Update progress bar
+      if (step.status === 'in-progress' && step.progress !== undefined) {
+        let progressBar = stepEl.querySelector('.progress-bar');
+        if (!progressBar) {
+          progressBar = document.createElement('div');
+          progressBar.className = 'progress-bar';
+          progressBar.innerHTML = `<div class="progress-fill" id="progress-${step.id}" style="width: 0%"></div>`;
+          stepEl.querySelector('.step-description').after(progressBar);
+        }
+        const progressFill = document.getElementById(`progress-${step.id}`);
+        if (progressFill) {
+          progressFill.style.width = `${step.progress}%`;
+        }
+      }
+      
+      // Update duration
+      if (step.status === 'completed' && step.startTime && step.endTime) {
+        const duration = ((step.endTime - step.startTime) / 1000).toFixed(1);
+        const durationEl = document.getElementById(`duration-${step.id}`);
+        if (durationEl) {
+          durationEl.textContent = `${duration}s`;
+        }
+      }
+      
+      // Update details
+      if (step.details) {
+        const detailsEl = document.getElementById(`details-${step.id}`);
+        if (detailsEl) {
+          detailsEl.style.display = 'block';
+          detailsEl.textContent = JSON.stringify(step.details, null, 2);
+        }
+      }
+    }
+    
+    async function startAnalysis() {
+      // Reset state
+      steps = [];
+      completedSteps = 0;
+      progressContainer.innerHTML = '';
+      overallProgress.style.display = 'block';
+      updateOverallProgress();
+      
+      // Close existing connection
+      if (eventSource) {
+        eventSource.close();
+      }
+      
+      const params = {
+        symbol: symbolInput.value || 'BTCUSDT',
+        interval: intervalSelect.value,
+        analysisType: analysisTypeSelect.value,
+        maxProposals: 5,
+        sessionId: `demo_${Date.now()}`
+      };
+      
+      log(`Starting analysis: ${params.symbol} ${params.interval} (${params.analysisType})`, 'info');
+      
+      try {
+        const response = await fetch('/api/ai/analysis-stream', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        startButton.disabled = true;
+        startButton.textContent = 'Analyzing...';
+        
+        const processStream = async () => {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const event = JSON.parse(line.slice(6));
+                    handleEvent(event);
+                  } catch (e) {
+                    console.error('Failed to parse event:', e);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            log(`Stream error: ${error.message}`, 'error');
+          } finally {
+            startButton.disabled = false;
+            startButton.textContent = 'Start Analysis';
+          }
+        };
+        
+        processStream();
+        
+      } catch (error) {
+        log(`Failed to start analysis: ${error.message}`, 'error');
+        startButton.disabled = false;
+        startButton.textContent = 'Start Analysis';
+      }
+    }
+    
+    function handleEvent(event) {
+      console.log('Received event:', event);
+      
+      switch (event.type) {
+        case 'analysis:start':
+          log(`Analysis started: ${event.data.totalSteps} steps`, 'success');
+          break;
+          
+        case 'analysis:step-start':
+          const { step, currentStepIndex } = event.data;
+          steps[currentStepIndex] = step;
+          updateStep(step, currentStepIndex);
+          log(`Step started: ${step.title}`);
+          break;
+          
+        case 'analysis:step-progress':
+          const progressStep = event.data.step;
+          const progressIndex = event.data.currentStepIndex;
+          steps[progressIndex] = progressStep;
+          updateStep(progressStep, progressIndex);
+          break;
+          
+        case 'analysis:step-complete':
+          const completeStep = event.data.step;
+          const completeIndex = event.data.currentStepIndex;
+          steps[completeIndex] = completeStep;
+          updateStep(completeStep, completeIndex);
+          completedSteps++;
+          updateOverallProgress();
+          log(`Step completed: ${completeStep.title}`, 'success');
+          break;
+          
+        case 'analysis:complete':
+          log(`Analysis completed! Created ${event.data.proposalCount} proposals in ${(event.data.duration / 1000).toFixed(1)}s`, 'success');
+          log(`Proposal Group ID: ${event.data.proposalGroupId}`, 'info');
+          break;
+          
+        case 'analysis:error':
+          log(`Analysis error: ${event.data.error}`, 'error');
+          break;
+      }
+    }
+    
+    // Event listeners
+    startButton.addEventListener('click', startAnalysis);
+    clearButton.addEventListener('click', clearLogs);
+    
+    // Initialize
+    log('Analysis Progress SSE Demo ready', 'info');
+  </script>
+</body>
+</html>

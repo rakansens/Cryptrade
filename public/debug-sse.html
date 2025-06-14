@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Debug Console</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #fff; padding: 20px; }
+        #output { background: #2a2a2a; padding: 15px; margin: 10px 0; height: 400px; overflow-y: auto; }
+        button { margin: 5px; padding: 10px 20px; background: #00e676; color: black; border: none; cursor: pointer; }
+        .log { margin: 2px 0; }
+        .success { color: #00e676; }
+        .error { color: #ff5252; }
+        .info { color: #64b5f6; }
+    </style>
+</head>
+<body>
+    <h1>SSE Event Flow Debug</h1>
+    <div>
+        <button onclick="testSSEConnection()">Test SSE Connection</button>
+        <button onclick="sendTestEvent()">Send Test Event</button>
+        <button onclick="clearOutput()">Clear</button>
+    </div>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        let eventSource = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${timestamp}] ${message}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function testSSEConnection() {
+            log('Testing SSE connection...', 'info');
+            
+            // 既存の接続をクローズ
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            // 新しいSSE接続を作成（統合ルート使用）
+            eventSource = new EventSource('/api/ui-events');
+
+            eventSource.onopen = () => {
+                log('✅ SSE connection opened', 'success');
+            };
+
+            eventSource.onerror = (error) => {
+                log('❌ SSE connection error: ' + error, 'error');
+            };
+
+            eventSource.onmessage = (event) => {
+                log('📩 Generic message: ' + event.data, 'info');
+            };
+
+            // 特定のイベントリスナー
+            eventSource.addEventListener('draw:trendline', (event) => {
+                log('🎯 draw:trendline event received: ' + event.data, 'success');
+            });
+
+            eventSource.addEventListener('ping', (event) => {
+                log('📡 Ping received', 'info');
+            });
+        }
+
+        function sendTestEvent() {
+            log('Sending test trendline event...', 'info');
+            
+            const testData = {
+                event: 'draw:trendline',
+                data: {
+                    points: [
+                        { price: 104000, time: Date.now() - 3600000 },
+                        { price: 107000, time: Date.now() }
+                    ],
+                    style: { color: '#ff5722', lineWidth: 3 }
+                }
+            };
+
+            fetch('/api/ui-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(testData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                log('✅ API Response: ' + JSON.stringify(data), 'success');
+            })
+            .catch(error => {
+                log('❌ API Error: ' + error.message, 'error');
+            });
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        // 初期化
+        log('SSE Debug Console ready', 'success');
+        log('Click "Test SSE Connection" to start', 'info');
+    </script>
+</body>
+</html>

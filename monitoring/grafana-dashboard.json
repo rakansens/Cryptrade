@@ -1,0 +1,349 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "WebSocket Manager Monitoring",
+    "tags": ["websocket", "ws-manager", "binance", "realtime"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active WebSocket Connections",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "ws_manager_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": [
+              "lastNotNull"
+            ]
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Retry Attempts Over Time",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(ws_manager_retry_count_total[5m])",
+            "legendFormat": "Retries per second",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Stream Lifecycle Metrics",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(ws_manager_stream_creations_total[5m])",
+            "legendFormat": "Stream Creations/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(ws_manager_stream_cleanups_total[5m])",
+            "legendFormat": "Stream Cleanups/sec",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["last", "max"]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Connection High Water Mark",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "ws_manager_active_connections_hwm",
+            "legendFormat": "Peak Connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "blue",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": [
+              "max"
+            ]
+          },
+          "textMode": "auto",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 5,
+        "title": "WebSocket Health Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"cryptrade-api\"}",
+            "legendFormat": "Service Health",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "color": "red",
+                    "text": "DOWN"
+                  },
+                  "1": {
+                    "color": "green",
+                    "text": "UP"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": [
+              "lastNotNull"
+            ]
+          },
+          "textMode": "auto",
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Error Rate & Retry Frequency",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "increase(ws_manager_retry_count_total[1m])",
+            "legendFormat": "Retries per minute",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short",
+            "custom": {
+              "axisLabel": "Retries",
+              "axisPlacement": "auto"
+            }
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom",
+            "values": ["last", "max", "mean"]
+          }
+        },
+        "alert": {
+          "conditions": [
+            {
+              "query": {
+                "params": ["A", "1m", "now"]
+              },
+              "reducer": {
+                "type": "avg",
+                "params": []
+              },
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              }
+            }
+          ],
+          "executionErrorState": "alerting",
+          "noDataState": "no_data",
+          "frequency": "10s",
+          "handler": 1,
+          "name": "High Retry Rate Alert",
+          "message": "WebSocket retry rate is unusually high (>10/min). Check connection stability."
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "custom",
+          "options": [
+            {
+              "value": "staging",
+              "text": "Staging"
+            },
+            {
+              "value": "production",
+              "text": "Production"
+            }
+          ],
+          "current": {
+            "value": "staging",
+            "text": "Staging"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "increase(deployment_timestamp[1m])",
+          "iconColor": "blue",
+          "textFormat": "Deployment: {{version}}"
+        }
+      ]
+    }
+  }
+}

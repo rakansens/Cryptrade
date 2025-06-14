@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal Approval Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #111;
+      color: #fff;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    #log {
+      background: #222;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 5px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      background: #333;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .event-detail {
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <h1>提案承認テスト</h1>
+  <p>chart:addDrawingイベントのリスナーテスト</p>
+  
+  <button onclick="testSingleApproval()">単一提案を承認</button>
+  <button onclick="testMultipleApprovals()">複数提案を承認</button>
+  <button onclick="clearLog()">ログクリア</button>
+  
+  <div id="log"></div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+    
+    // イベントリスナーを設定
+    window.addEventListener('chart:addDrawing', (event) => {
+      const detail = event.detail;
+      addLog('chart:addDrawing received', detail);
+    });
+    
+    function addLog(message, detail) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      
+      const timestamp = new Date().toLocaleTimeString();
+      let html = `[${timestamp}] ${message}`;
+      
+      if (detail) {
+        html += '<div class="event-detail">' + JSON.stringify(detail, null, 2) + '</div>';
+      }
+      
+      entry.innerHTML = html;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function testSingleApproval() {
+      // ChatPanelと同じ形式でイベントを発行
+      const drawingEvent = new CustomEvent('chart:addDrawing', {
+        detail: {
+          id: `drawing_${Date.now()}_test1`,
+          type: 'trendline',
+          points: [
+            { time: 1748872800000, price: 103659.88 },
+            { time: 1749153600000, price: 100372.26 }
+          ],
+          style: {
+            color: '#22c55e',
+            lineWidth: 2,
+            lineStyle: 'solid',
+            showLabels: true
+          }
+        }
+      });
+      
+      window.dispatchEvent(drawingEvent);
+      addLog('Single drawing event dispatched');
+    }
+    
+    function testMultipleApprovals() {
+      const proposals = [
+        {
+          id: 'test1',
+          type: 'trendline',
+          points: [
+            { time: 1748872800000, price: 103659.88 },
+            { time: 1749153600000, price: 100372.26 }
+          ]
+        },
+        {
+          id: 'test2',
+          type: 'trendline',
+          points: [
+            { time: 1748937600000, price: 104872.5 },
+            { time: 1749153600000, price: 100372.26 }
+          ]
+        },
+        {
+          id: 'test3',
+          type: 'horizontalLine',
+          points: [
+            { time: 1749153600000, price: 102000 }
+          ]
+        }
+      ];
+      
+      proposals.forEach((proposal, index) => {
+        setTimeout(() => {
+          const drawingEvent = new CustomEvent('chart:addDrawing', {
+            detail: {
+              id: `drawing_${Date.now()}_${proposal.id}`,
+              type: proposal.type,
+              points: proposal.points,
+              style: {
+                color: '#22c55e',
+                lineWidth: 2,
+                lineStyle: 'solid',
+                showLabels: true
+              }
+            }
+          });
+          
+          window.dispatchEvent(drawingEvent);
+          addLog(`Drawing ${index + 1} of ${proposals.length} dispatched`);
+        }, index * 100);
+      });
+    }
+    
+    function clearLog() {
+      logDiv.innerHTML = '';
+      addLog('Log cleared');
+    }
+    
+    // 初期ログ
+    addLog('Event listener registered for chart:addDrawing');
+  </script>
+</body>
+</html>

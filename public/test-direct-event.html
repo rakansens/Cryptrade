@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Event Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 5px; cursor: pointer; }
+        #log { background: #000; border: 1px solid #0f0; padding: 10px; margin-top: 20px; white-space: pre-wrap; height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Direct Event Test</h1>
+    
+    <button onclick="sendViaPost()">Send via POST API</button>
+    <button onclick="sendViaWindow()">Send via window.dispatchEvent</button>
+    <button onclick="checkStore()">Check ChartStore</button>
+    <button onclick="clearLog()">Clear</button>
+    
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `[${time}] ${msg}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        // Listen for SSE events
+        const eventSource = new EventSource('/api/ui-events');
+        
+        eventSource.addEventListener('ui-event', (event) => {
+            const data = JSON.parse(event.data);
+            addLog(`📨 SSE Event: ${data.event}`);
+            console.log('SSE ui-event:', data);
+        });
+        
+        eventSource.onerror = (error) => {
+            addLog(`❌ SSE Error: ${error.type}`);
+        };
+        
+        // Listen for window events
+        window.addEventListener('draw:trendline', (event) => {
+            addLog(`🪟 Window Event: draw:trendline`);
+            console.log('Window event:', event.detail);
+        });
+        
+        async function sendViaPost() {
+            addLog('\n📤 Sending via POST API...');
+            
+            const payload = {
+                event: 'draw:trendline',
+                data: {
+                    points: [
+                        { time: 1748563200000, price: 104600.5 },
+                        { time: 1748588400000, price: 104727.72 }
+                    ],
+                    style: { color: '#00ff00', lineWidth: 3, lineStyle: 'solid' }
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/ui-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                addLog(`✅ POST Response: ${JSON.stringify(result)}`);
+            } catch (error) {
+                addLog(`❌ POST Error: ${error.message}`);
+            }
+        }
+        
+        function sendViaWindow() {
+            addLog('\n🪟 Sending via window.dispatchEvent...');
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    points: [
+                        { time: 1748563200000, price: 105000 },
+                        { time: 1748588400000, price: 105500 }
+                    ],
+                    style: { color: '#ff0000', lineWidth: 3, lineStyle: 'solid' }
+                }
+            });
+            
+            window.dispatchEvent(event);
+            addLog('✅ Event dispatched to window');
+        }
+        
+        function checkStore() {
+            addLog('\n🔍 Checking ChartStore...');
+            if (window.chartStore) {
+                const state = window.chartStore.getState();
+                addLog(`✅ ChartStore available`);
+                addLog(`Drawings: ${state.drawings?.length || 0}`);
+                if (state.drawings?.length > 0) {
+                    state.drawings.forEach((d, i) => {
+                        addLog(`  ${i+1}. ${d.id} - ${d.type}`);
+                    });
+                }
+            } else {
+                addLog('❌ ChartStore not available');
+            }
+        }
+        
+        // Initial log
+        addLog('🚀 Test page ready');
+        addLog('SSE EventSource connected');
+    </script>
+</body>
+</html>

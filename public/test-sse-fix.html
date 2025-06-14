@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Drawing Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #00e676;
+            color: black;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #00c853;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #00e676; }
+        .error { color: #ff5252; }
+        .info { color: #64b5f6; }
+        .warning { color: #ffb74d; }
+    </style>
+</head>
+<body>
+    <h1>SSE Drawing Fix Test</h1>
+    <p>This test verifies that SSE events are properly processed and drawings are rendered with correct coordinates.</p>
+    
+    <div>
+        <button onclick="testTrendlineWithPriceTime()">Test Trendline (Price/Time)</button>
+        <button onclick="testTrendlineWithXY()">Test Trendline (X/Y + Price/Time)</button>
+        <button onclick="testInvalidData()">Test Invalid Data</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            log.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Listen for draw events
+        window.addEventListener('draw:trendline', (event) => {
+            addLog('Received draw:trendline event', 'success');
+            addLog('Event detail: ' + JSON.stringify(event.detail, null, 2), 'info');
+            
+            // Try to check ChartStore state if available
+            addLog('Checking if useChartStore is available...', 'info');
+            
+            // Check in various possible locations
+            const possibleStores = [
+                window.useChartStore,
+                window.useChartStoreBase,
+                window.__stores__?.chart,
+                window.__chartStore__
+            ];
+            
+            let storeFound = false;
+            for (const store of possibleStores) {
+                if (store && typeof store.getState === 'function') {
+                    const state = store.getState();
+                    addLog('Found ChartStore! Drawings count: ' + state.drawings.length, 'success');
+                    addLog('Drawings: ' + JSON.stringify(state.drawings, null, 2), 'info');
+                    storeFound = true;
+                    break;
+                }
+            }
+            
+            if (!storeFound) {
+                addLog('ChartStore not found in global scope', 'warning');
+            }
+        });
+
+        // Test with price/time only (correct format)
+        async function testTrendlineWithPriceTime() {
+            addLog('Testing trendline with price/time coordinates...', 'info');
+            
+            const testData = {
+                points: [
+                    { price: 43850.5, time: Date.now() - 3600000 }, // 1 hour ago
+                    { price: 44150.3, time: Date.now() }           // now
+                ],
+                style: {
+                    color: '#00e676',
+                    lineWidth: 2,
+                    lineStyle: 'solid',
+                    showLabels: true
+                }
+            };
+
+            try {
+                const response = await fetch('/api/ui-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event: 'draw:trendline',
+                        data: testData
+                    })
+                });
+
+                if (response.ok) {
+                    addLog('Successfully sent trendline event', 'success');
+                } else {
+                    addLog('Failed to send event: ' + response.statusText, 'error');
+                }
+            } catch (error) {
+                addLog('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Test with x/y coordinates (should be filtered out)
+        async function testTrendlineWithXY() {
+            addLog('Testing trendline with x/y + price/time coordinates...', 'info');
+            
+            const testData = {
+                points: [
+                    { x: 100, y: 200, price: 43850.5, time: Date.now() - 3600000 },
+                    { x: 400, y: 150, price: 44150.3, time: Date.now() }
+                ],
+                style: {
+                    color: '#ff9800',
+                    lineWidth: 2,
+                    lineStyle: 'dashed',
+                    showLabels: true
+                }
+            };
+
+            try {
+                const response = await fetch('/api/ui-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event: 'draw:trendline',
+                        data: testData
+                    })
+                });
+
+                if (response.ok) {
+                    addLog('Successfully sent trendline event (x/y should be filtered)', 'success');
+                } else {
+                    addLog('Failed to send event: ' + response.statusText, 'error');
+                }
+            } catch (error) {
+                addLog('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Test with invalid data
+        async function testInvalidData() {
+            addLog('Testing with invalid data...', 'info');
+            
+            const testData = {
+                points: [
+                    { price: 'invalid', time: 'not-a-number' },
+                    { x: 400, y: 150 } // missing price/time
+                ]
+            };
+
+            try {
+                const response = await fetch('/api/ui-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event: 'draw:trendline',
+                        data: testData
+                    })
+                });
+
+                if (response.ok) {
+                    addLog('Sent invalid data - check console for warnings', 'warning');
+                } else {
+                    addLog('Failed to send event: ' + response.statusText, 'error');
+                }
+            } catch (error) {
+                addLog('Error: ' + error.message, 'error');
+            }
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+            addLog('Log cleared', 'info');
+        }
+
+        // Initial message
+        addLog('SSE Drawing Fix Test ready', 'success');
+        addLog('Open the browser console to see detailed debug logs', 'info');
+        
+        // Add console log for all UI events
+        console.log('[Test] Setting up debug logging for all UI events...');
+        const originalDispatchEvent = window.dispatchEvent;
+        window.dispatchEvent = function(event) {
+            if (event.type && event.type.includes(':')) {
+                console.log('[UI-Event Debug] dispatchEvent called:', event.type, event);
+            }
+            return originalDispatchEvent.call(this, event);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Deletion Fix Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .primary { background: #007bff; color: white; }
+    .success { background: #28a745; color: white; }
+    .danger { background: #dc3545; color: white; }
+    .warning { background: #ffc107; color: black; }
+    
+    button:hover { opacity: 0.9; }
+    
+    .log-container {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .log-info { color: #0066cc; }
+    .log-success { color: #28a745; }
+    .log-warning { color: #ff8800; }
+    .log-error { color: #dc3545; }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    
+    .pattern-info {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e9ecef;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>パターン削除修正テスト</h1>
+    
+    <div class="controls">
+      <h3>テスト操作</h3>
+      <button class="primary" onclick="createPatternWithMetrics()">1. パターン作成（メトリクスライン付き）</button>
+      <button class="warning" onclick="checkPatternState()">2. 状態確認</button>
+      <button class="danger" onclick="deletePattern()">3. パターン削除</button>
+      <button class="success" onclick="verifyDeletion()">4. 削除確認</button>
+      <button onclick="clearLog()">ログクリア</button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="patternInfo" class="pattern-info" style="display:none;"></div>
+    
+    <h3>ログ</h3>
+    <div id="log" class="log-container"></div>
+  </div>
+
+  <script>
+    let currentPatternId = null;
+    
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+    
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('status').innerHTML = '';
+      document.getElementById('patternInfo').style.display = 'none';
+    }
+    
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = `status ${type}`;
+      statusDiv.textContent = message;
+    }
+    
+    function createPatternWithMetrics() {
+      const proposalId = `test_${Date.now()}`;
+      currentPatternId = `drawing_pattern_${Date.now()}_${proposalId}`;
+      
+      log('パターン作成開始...', 'info');
+      log(`Pattern ID: ${currentPatternId}`, 'info');
+      
+      const patternEvent = new CustomEvent('chart:addPattern', {
+        detail: {
+          id: currentPatternId,
+          pattern: {
+            type: 'head_and_shoulders',
+            visualization: {
+              keyPoints: [
+                { time: Date.now() / 1000 - 3600, value: 100, type: 'trough', label: '左肩' },
+                { time: Date.now() / 1000 - 2700, value: 110, type: 'peak', label: '頭' },
+                { time: Date.now() / 1000 - 1800, value: 105, type: 'trough', label: '谷' },
+                { time: Date.now() / 1000 - 900, value: 115, type: 'peak', label: '最高点' },
+                { time: Date.now() / 1000, value: 102, type: 'trough', label: '右肩' }
+              ],
+              lines: [
+                { from: 0, to: 1, type: 'outline', style: { color: '#888888', lineWidth: 2, lineStyle: 'solid' } },
+                { from: 1, to: 2, type: 'outline', style: { color: '#888888', lineWidth: 2, lineStyle: 'solid' } },
+                { from: 2, to: 3, type: 'outline', style: { color: '#888888', lineWidth: 2, lineStyle: 'solid' } },
+                { from: 3, to: 4, type: 'outline', style: { color: '#888888', lineWidth: 2, lineStyle: 'solid' } }
+              ]
+            },
+            metrics: {
+              target_level: 125,
+              stop_loss: 95,
+              breakout_level: 108
+            },
+            trading_implication: 'bullish',
+            confidence: 0.85
+          }
+        }
+      });
+      
+      window.dispatchEvent(patternEvent);
+      
+      log('パターン作成イベント送信完了', 'success');
+      log('メトリクスライン: 目標価格=$125, ストップロス=$95, ブレイクアウト=$108', 'info');
+      showStatus('パターンとメトリクスラインを作成しました', 'success');
+    }
+    
+    function checkPatternState() {
+      if (!window.__debugPatternRenderer) {
+        log('PatternRendererが見つかりません', 'error');
+        showStatus('PatternRendererが初期化されていません', 'error');
+        return;
+      }
+      
+      const state = window.__debugPatternRenderer.debugGetState();
+      log('PatternRenderer状態:', 'info');
+      log(JSON.stringify(state, null, 2), 'info');
+      
+      const patternInfo = document.getElementById('patternInfo');
+      patternInfo.style.display = 'block';
+      patternInfo.innerHTML = `
+        <strong>PatternRenderer State:</strong><br>
+        Instance ID: ${state.instanceId}<br>
+        Patterns: ${state.patternSeries.length}<br>
+        Metric Lines (Instance): ${state.metricLines.length}<br>
+        Metric Lines (Global): ${state.globalMetricLines.length}<br>
+        All Series (Global): ${state.globalAllSeries.length}<br>
+        <br>
+        <strong>Details:</strong><br>
+        ${JSON.stringify(state, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}
+      `;
+      
+      // Check if our pattern exists
+      if (currentPatternId) {
+        const hasPattern = state.patternSeries.includes(currentPatternId) || 
+                          state.metricLines.includes(currentPatternId) ||
+                          state.globalMetricLines.includes(currentPatternId);
+        
+        if (hasPattern) {
+          log(`パターン ${currentPatternId} が存在します`, 'success');
+        } else {
+          log(`パターン ${currentPatternId} が見つかりません`, 'warning');
+        }
+      }
+    }
+    
+    function deletePattern() {
+      if (!currentPatternId) {
+        log('削除するパターンがありません', 'error');
+        showStatus('先にパターンを作成してください', 'error');
+        return;
+      }
+      
+      log(`パターン削除開始: ${currentPatternId}`, 'warning');
+      
+      const deleteEvent = new CustomEvent('chart:deleteDrawing', {
+        detail: {
+          id: currentPatternId
+        }
+      });
+      
+      window.dispatchEvent(deleteEvent);
+      
+      log('削除イベント送信完了', 'success');
+      showStatus('パターン削除コマンドを送信しました', 'success');
+    }
+    
+    function verifyDeletion() {
+      setTimeout(() => {
+        if (!window.__debugPatternRenderer) {
+          log('PatternRendererが見つかりません', 'error');
+          return;
+        }
+        
+        const state = window.__debugPatternRenderer.debugGetState();
+        log('削除後の状態確認:', 'info');
+        
+        let allClear = true;
+        const issues = [];
+        
+        // Check if pattern still exists anywhere
+        if (currentPatternId) {
+          // Check pattern series
+          const hasPatternSeries = state.patternSeries.some(id => 
+            id === currentPatternId || id.includes(currentPatternId.split('_').pop())
+          );
+          if (hasPatternSeries) {
+            issues.push('Pattern series still exists');
+            allClear = false;
+          }
+          
+          // Check metric lines (instance)
+          const hasMetricLines = state.metricLines.some(id => 
+            id === currentPatternId || id.includes(currentPatternId.split('_').pop())
+          );
+          if (hasMetricLines) {
+            issues.push('Metric lines still exist in instance map');
+            allClear = false;
+          }
+          
+          // Check metric lines (global)
+          const hasGlobalMetricLines = state.globalMetricLines.some(id => 
+            id === currentPatternId || id.includes(currentPatternId.split('_').pop())
+          );
+          if (hasGlobalMetricLines) {
+            issues.push('Metric lines still exist in global map');
+            allClear = false;
+          }
+          
+          // Check all series (global)
+          const timestamp = currentPatternId.match(/\d{13}/)?.[0];
+          const hasGlobalSeries = state.globalAllSeriesDetails.some(entry => 
+            entry.patternId === currentPatternId || 
+            (timestamp && entry.patternId.includes(timestamp))
+          );
+          if (hasGlobalSeries) {
+            issues.push('Series still exist in globalAllSeries map');
+            allClear = false;
+          }
+        }
+        
+        if (allClear) {
+          log('✅ すべてのパターン要素が正常に削除されました！', 'success');
+          showStatus('削除成功: すべてのラインが削除されました', 'success');
+        } else {
+          log('❌ 一部の要素が削除されていません:', 'error');
+          issues.forEach(issue => log(`  - ${issue}`, 'error'));
+          showStatus(`削除失敗: ${issues.join(', ')}`, 'error');
+        }
+        
+        // Show detailed state
+        const patternInfo = document.getElementById('patternInfo');
+        patternInfo.style.display = 'block';
+        patternInfo.innerHTML = `
+          <strong>削除後の状態:</strong><br>
+          ${allClear ? '✅ すべてクリア' : '❌ 問題あり'}<br>
+          <br>
+          <strong>Details:</strong><br>
+          ${JSON.stringify(state, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}
+        `;
+      }, 1000);
+    }
+    
+    // Listen for console messages
+    const originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      const message = args.join(' ');
+      if (message.includes('[PatternRenderer]') || 
+          message.includes('[Agent Event]') || 
+          message.includes('[ChatPanel]')) {
+        log(message, 'info');
+      }
+    };
+    
+    // Initial log
+    log('テストページ準備完了', 'success');
+    log('手順: 1. パターン作成 → 2. 状態確認 → 3. パターン削除 → 4. 削除確認', 'info');
+  </script>
+</body>
+</html>

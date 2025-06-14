@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeframe Persistence Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #0a0f14;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    .controls {
+      margin: 20px 0;
+      padding: 20px;
+      background: #1a1a1a;
+      border-radius: 8px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      background: #2a2a2a;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .test-step {
+      margin: 10px 0;
+      padding: 10px;
+      background: #252525;
+      border-left: 3px solid #4CAF50;
+      border-radius: 4px;
+    }
+    .error {
+      color: #ff5252;
+      background: #2a1a1a;
+      border-left-color: #ff5252;
+    }
+    .success {
+      color: #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <h1>🕐 Timeframe Persistence Test</h1>
+  
+  <div class="controls">
+    <h2>Test Controls</h2>
+    <button onclick="runFullTest()">Run Full Test</button>
+    <button onclick="addTestDrawings()">Add Test Drawings</button>
+    <button onclick="addTestPattern()">Add Test Pattern</button>
+    <button onclick="changeTimeframe('5m')">Switch to 5m</button>
+    <button onclick="changeTimeframe('15m')">Switch to 15m</button>
+    <button onclick="changeTimeframe('1h')">Switch to 1h</button>
+    <button onclick="checkPersistence()">Check Persistence</button>
+    <button onclick="clearAll()">Clear All</button>
+  </div>
+
+  <div id="status" class="status">Ready to test...</div>
+
+  <script>
+    const status = document.getElementById('status');
+    
+    function log(message, isError = false) {
+      console.log(message);
+      status.innerHTML += `<div class="${isError ? 'error' : ''}">${new Date().toLocaleTimeString()}: ${message}</div>`;
+      status.scrollTop = status.scrollHeight;
+    }
+
+    function waitForStore() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (window.chartStore) {
+            resolve(window.chartStore);
+          } else {
+            setTimeout(check, 100);
+          }
+        };
+        check();
+      });
+    }
+
+    async function addTestDrawings() {
+      try {
+        const store = await waitForStore();
+        const state = store.getState();
+        
+        // Add a trendline
+        const trendline = {
+          id: 'test-trendline-' + Date.now(),
+          type: 'trendline',
+          points: [
+            { time: Date.now() / 1000 - 3600, value: 50000 },
+            { time: Date.now() / 1000, value: 52000 }
+          ],
+          style: {
+            color: '#4CAF50',
+            lineWidth: 2,
+            lineStyle: 'solid',
+            showLabels: true
+          },
+          visible: true,
+          interactive: true
+        };
+        
+        // Add a horizontal line
+        const horizontal = {
+          id: 'test-horizontal-' + Date.now(),
+          type: 'horizontal',
+          points: [{ time: Date.now() / 1000, value: 51000 }],
+          style: {
+            color: '#FF9800',
+            lineWidth: 2,
+            lineStyle: 'dashed',
+            showLabels: true
+          },
+          visible: true,
+          interactive: true
+        };
+        
+        state.addDrawing(trendline);
+        state.addDrawing(horizontal);
+        
+        log(`✅ Added test drawings. Total drawings: ${store.getState().drawings.length}`);
+      } catch (error) {
+        log(`❌ Error adding drawings: ${error.message}`, true);
+      }
+    }
+
+    async function addTestPattern() {
+      try {
+        const store = await waitForStore();
+        const state = store.getState();
+        
+        const patternId = 'test-pattern-' + Date.now();
+        const pattern = {
+          type: 'headAndShoulders',
+          visualization: {
+            keyPoints: [
+              { time: Date.now() / 1000 - 7200, value: 49000, type: 'trough', label: 'Left Shoulder' },
+              { time: Date.now() / 1000 - 3600, value: 52000, type: 'peak', label: 'Head' },
+              { time: Date.now() / 1000, value: 49500, type: 'trough', label: 'Right Shoulder' }
+            ],
+            lines: [
+              { from: 0, to: 1, type: 'outline' },
+              { from: 1, to: 2, type: 'outline' }
+            ]
+          },
+          metrics: {
+            formation_period: 100,
+            confidence: 0.85
+          },
+          tradingImplication: 'bearish',
+          confidence: 0.85
+        };
+        
+        state.addPattern(patternId, pattern);
+        
+        log(`✅ Added test pattern. Total patterns: ${store.getState().patterns.size}`);
+      } catch (error) {
+        log(`❌ Error adding pattern: ${error.message}`, true);
+      }
+    }
+
+    async function changeTimeframe(tf) {
+      try {
+        const store = await waitForStore();
+        const stateBefore = store.getState();
+        const drawingsBefore = stateBefore.drawings.length;
+        const patternsBefore = stateBefore.patterns.size;
+        
+        log(`🔄 Changing timeframe from ${stateBefore.timeframe} to ${tf}...`);
+        log(`   Before: ${drawingsBefore} drawings, ${patternsBefore} patterns`);
+        
+        stateBefore.setTimeframe(tf);
+        
+        // Wait a bit for any async operations
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const stateAfter = store.getState();
+        const drawingsAfter = stateAfter.drawings.length;
+        const patternsAfter = stateAfter.patterns.size;
+        
+        log(`   After: ${drawingsAfter} drawings, ${patternsAfter} patterns`);
+        
+        if (drawingsBefore === drawingsAfter && patternsBefore === patternsAfter) {
+          log(`✅ Timeframe changed successfully. Data preserved!`, false);
+        } else {
+          log(`⚠️ Data mismatch after timeframe change!`, true);
+        }
+      } catch (error) {
+        log(`❌ Error changing timeframe: ${error.message}`, true);
+      }
+    }
+
+    async function checkPersistence() {
+      try {
+        const store = await waitForStore();
+        const state = store.getState();
+        
+        log(`📊 Current State:`);
+        log(`   Timeframe: ${state.timeframe}`);
+        log(`   Drawings: ${state.drawings.length}`);
+        log(`   Patterns: ${state.patterns.size}`);
+        
+        if (state.drawings.length > 0) {
+          log(`   Drawing types: ${state.drawings.map(d => d.type).join(', ')}`);
+        }
+        
+        if (state.patterns.size > 0) {
+          const patternTypes = Array.from(state.patterns.values()).map(p => p.type);
+          log(`   Pattern types: ${patternTypes.join(', ')}`);
+        }
+      } catch (error) {
+        log(`❌ Error checking persistence: ${error.message}`, true);
+      }
+    }
+
+    async function clearAll() {
+      try {
+        const store = await waitForStore();
+        const state = store.getState();
+        
+        state.clearAllDrawings();
+        state.clearPatterns();
+        
+        log(`🧹 Cleared all drawings and patterns`);
+      } catch (error) {
+        log(`❌ Error clearing: ${error.message}`, true);
+      }
+    }
+
+    async function runFullTest() {
+      log(`\n🚀 Starting full persistence test...`);
+      
+      // Step 1: Clear everything
+      await clearAll();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 2: Add test data
+      log(`\n📝 Step 1: Adding test data...`);
+      await addTestDrawings();
+      await addTestPattern();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 3: Check initial state
+      log(`\n🔍 Step 2: Checking initial state...`);
+      await checkPersistence();
+      
+      // Step 4: Change timeframes multiple times
+      log(`\n🔄 Step 3: Testing timeframe changes...`);
+      const timeframes = ['5m', '15m', '1h', '4h', '1d', '1h'];
+      
+      for (const tf of timeframes) {
+        await changeTimeframe(tf);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Step 5: Final check
+      log(`\n✅ Step 4: Final persistence check...`);
+      await checkPersistence();
+      
+      log(`\n✨ Test complete!`);
+    }
+
+    // Initialize
+    window.addEventListener('load', async () => {
+      log('🔌 Waiting for chart store...');
+      await waitForStore();
+      log('✅ Chart store ready!');
+    });
+  </script>
+</body>
+</html>

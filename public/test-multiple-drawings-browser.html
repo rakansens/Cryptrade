@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiple Drawings Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #0f0;
+        }
+        button {
+            background-color: #333;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+        #log {
+            background-color: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .event {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-left: 3px solid #0f0;
+            padding-left: 10px;
+        }
+        .drawing {
+            margin-left: 20px;
+            color: #ff0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Multiple Drawings Test</h1>
+    
+    <div>
+        <button onclick="testMultipleDrawings()">5本のトレンドラインを引いて</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="log"></div>
+    
+    <script>
+        const log = document.getElementById('log');
+        let eventSource = null;
+        
+        function addLog(message, isEvent = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = isEvent ? 'event' : '';
+            div.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        // Set up SSE listener
+        function setupEventSource() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/ui-events');
+            
+            eventSource.addEventListener('ui-event', (event) => {
+                const payload = JSON.parse(event.data);
+                
+                if (payload.event === 'draw:trendline') {
+                    addLog(`🎨 DRAWING EVENT RECEIVED!`, true);
+                    addLog(`Event: ${payload.event}`);
+                    addLog(`Multiple: ${payload.data?.multiple || false}`);
+                    addLog(`Drawing count: ${payload.data?.drawings?.length || 1}`);
+                    
+                    if (payload.data?.multiple && payload.data?.drawings) {
+                        payload.data.drawings.forEach((drawing, idx) => {
+                            addLog(`  ${idx + 1}. ${drawing.id} - ${drawing.description || 'N/A'} (${drawing.style?.color})`, false);
+                        });
+                    }
+                } else if (payload.event === 'ping') {
+                    addLog('📡 Ping received');
+                }
+            });
+            
+            eventSource.onerror = (error) => {
+                addLog(`❌ EventSource error: ${error.type}`);
+            };
+            
+            addLog('👂 SSE listener started');
+        }
+        
+        // Test function
+        async function testMultipleDrawings() {
+            addLog('\n🧪 STARTING TEST: 5本のトレンドラインを引いて\n');
+            
+            try {
+                const startTime = Date.now();
+                addLog('📤 Sending request to /api/ai/chat...');
+                
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: '5本のトレンドラインを引いて',
+                        sessionId: 'browser-test-' + Date.now(),
+                    }),
+                });
+                
+                const elapsedTime = Date.now() - startTime;
+                addLog(`⏱️  Response time: ${elapsedTime}ms`);
+                
+                if (!response.ok) {
+                    addLog(`❌ HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    addLog(`Error: ${errorText}`);
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                addLog('✅ Response received:');
+                addLog(`Message: ${data.message?.substring(0, 100)}...`);
+                addLog(`Intent: ${data.analysis?.intent} (confidence: ${data.analysis?.confidence})`);
+                
+                // Check for operations
+                if (data.data?.operations) {
+                    addLog(`\n📊 Operations found: ${data.data.operations.length}`);
+                    data.data.operations.forEach((op, idx) => {
+                        addLog(`  ${idx + 1}. ${op.type} - ${op.action}`);
+                        if (op.parameters?.drawings) {
+                            addLog(`     Multiple drawings: ${op.parameters.drawings.length}`);
+                        }
+                    });
+                } else {
+                    addLog('⚠️  No operations found in response');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        // Listen for drawing events on window
+        window.addEventListener('draw:trendline', (event) => {
+            addLog('🎯 WINDOW EVENT: draw:trendline', true);
+            const detail = event.detail;
+            if (detail?.multiple && detail?.drawings) {
+                addLog(`Window event has ${detail.drawings.length} drawings`);
+            }
+        });
+        
+        // Initialize
+        setupEventSource();
+        addLog('🚀 Test page ready!');
+    </script>
+</body>
+</html>

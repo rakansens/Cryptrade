@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Streaming Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+        }
+        .analysis-step {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            padding: 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .analysis-step.in-progress {
+            background-color: #1a2a3a;
+            border-color: #4a6a8a;
+        }
+        .analysis-step.completed {
+            background-color: #1a3a1a;
+            border-color: #4a8a4a;
+        }
+        .streaming-text {
+            font-family: monospace;
+            font-size: 12px;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            white-space: pre-wrap;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background-color: #4a9eff;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .progress-bar {
+            height: 4px;
+            background-color: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #4a9eff, #4a8a4a);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-8">Analysis Progress Streaming Test</h1>
+    
+    <div class="mb-8">
+        <label class="block mb-2">Analysis Type:</label>
+        <select id="analysisType" class="bg-gray-800 text-white p-2 rounded">
+            <option value="all">All (Default)</option>
+            <option value="pattern">Pattern Recognition</option>
+            <option value="trendline">Trendline Analysis</option>
+            <option value="support-resistance">Support/Resistance</option>
+        </select>
+        <button onclick="startAnalysis()" class="ml-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+            Start Analysis
+        </button>
+        <button onclick="resetAnalysis()" class="ml-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+            Reset
+        </button>
+    </div>
+    
+    <div id="analysis-container"></div>
+    
+    <div id="output" class="mt-8 p-4 bg-gray-900 rounded">
+        <h2 class="text-lg font-semibold mb-2">Event Log:</h2>
+        <pre id="eventLog" class="text-xs text-gray-400"></pre>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let analysisSteps = [];
+        let eventLog = [];
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            eventLog.push(`[${timestamp}] ${message}`);
+            document.getElementById('eventLog').textContent = eventLog.slice(-20).join('\n');
+        }
+
+        function renderAnalysisSteps() {
+            const container = document.getElementById('analysis-container');
+            container.innerHTML = analysisSteps.map((step, index) => `
+                <div class="analysis-step ${step.status}">
+                    <div class="flex items-start">
+                        <div class="mr-3">
+                            ${getStatusIcon(step.status)}
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold">${step.title}</h3>
+                            <p class="text-sm text-gray-400">${step.description}</p>
+                            ${step.streamingText ? `
+                                <div class="streaming-text">
+                                    ${step.streamingText}${step.status === 'in-progress' ? '<span class="cursor"></span>' : ''}
+                                </div>
+                            ` : ''}
+                            ${step.status === 'in-progress' && step.progress !== undefined && !step.streamingText ? `
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${step.progress}%"></div>
+                                </div>
+                            ` : ''}
+                            ${step.status === 'completed' && step.details && !step.finalText ? `
+                                <div class="text-xs text-gray-400 mt-2">
+                                    ${JSON.stringify(step.details)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'completed':
+                    return '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                case 'in-progress':
+                    return '<svg class="w-5 h-5 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>';
+                default:
+                    return '<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"></circle></svg>';
+            }
+        }
+
+        async function startAnalysis() {
+            resetAnalysis();
+            
+            const analysisType = document.getElementById('analysisType').value;
+            log(`Starting ${analysisType} analysis...`);
+
+            try {
+                const response = await fetch('/api/ai/analysis-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: 'BTCUSDT',
+                        interval: '1h',
+                        analysisType: analysisType,
+                        maxProposals: 3
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const event = JSON.parse(line.slice(6));
+                                handleEvent(event);
+                            } catch (e) {
+                                console.error('Failed to parse event:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                console.error('Analysis error:', error);
+            }
+        }
+
+        function handleEvent(event) {
+            log(`Event: ${event.type}`);
+
+            switch (event.type) {
+                case 'analysis:start':
+                    log(`Analysis started with ${event.data.totalSteps} steps`);
+                    analysisSteps = [];
+                    renderAnalysisSteps();
+                    break;
+
+                case 'analysis:step-start':
+                    const newStep = event.data.step;
+                    analysisSteps[event.data.currentStepIndex] = newStep;
+                    renderAnalysisSteps();
+                    break;
+
+                case 'analysis:step-progress':
+                    const progressStep = event.data.step;
+                    analysisSteps[event.data.currentStepIndex] = progressStep;
+                    renderAnalysisSteps();
+                    break;
+
+                case 'analysis:step-complete':
+                    const completedStep = event.data.step;
+                    analysisSteps[event.data.currentStepIndex] = completedStep;
+                    renderAnalysisSteps();
+                    break;
+
+                case 'analysis:complete':
+                    log(`Analysis completed! Proposals: ${event.data.proposalCount}, Duration: ${(event.data.duration / 1000).toFixed(1)}s`);
+                    break;
+
+                case 'analysis:error':
+                    log(`Error: ${event.data.error}`);
+                    break;
+            }
+        }
+
+        function resetAnalysis() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            analysisSteps = [];
+            eventLog = [];
+            renderAnalysisSteps();
+            document.getElementById('eventLog').textContent = '';
+        }
+    </script>
+</body>
+</html>

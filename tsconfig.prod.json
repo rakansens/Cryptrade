@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": false,
+    "removeComments": true,
+    "incremental": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib/mastra/mastra-v2.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/__tests__/**/*",
+    "**/__mocks__/**/*",
+    "**/*.stories.ts",
+    "**/*.stories.tsx",
+    "scripts/**/*",
+    "coverage/**/*",
+    ".next/**/*",
+    "out/**/*"
+  ]
+}

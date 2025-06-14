@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Chart Store</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: #0f0; 
+        }
+        button { 
+            background: #333; 
+            color: #0f0; 
+            border: 1px solid #0f0; 
+            padding: 10px; 
+            margin: 5px;
+            cursor: pointer;
+        }
+        #output { 
+            background: #000; 
+            border: 1px solid #0f0; 
+            padding: 10px; 
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Chart Store</h1>
+    
+    <button onclick="checkChartStore()">Check Chart Store</button>
+    <button onclick="checkDrawings()">Check Drawings</button>
+    <button onclick="testSingleDrawing()">Test Single Drawing</button>
+    <button onclick="testMultipleDrawings()">Test Multiple Drawings (window event)</button>
+    <button onclick="clearOutput()">Clear</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg) {
+            output.innerHTML += msg + '\n';
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+        
+        function checkChartStore() {
+            log('=== Chart Store Check ===');
+            if (window.chartStore) {
+                const state = window.chartStore.getState();
+                log('✅ chartStore is available');
+                log(`Drawings count: ${state.drawings?.length || 0}`);
+                if (state.drawings?.length > 0) {
+                    state.drawings.forEach((d, i) => {
+                        log(`  ${i+1}. ${d.id} - ${d.type} - visible: ${d.visible}`);
+                    });
+                }
+            } else {
+                log('❌ chartStore is not available on window');
+            }
+        }
+        
+        function checkDrawings() {
+            log('\n=== Drawing Actions Check ===');
+            if (window.chartStore) {
+                const { addDrawing, getDrawings } = window.chartStore.getState();
+                log(`addDrawing function: ${typeof addDrawing}`);
+                log(`Current drawings: ${getDrawings().length}`);
+            }
+        }
+        
+        function testSingleDrawing() {
+            log('\n=== Test Single Drawing ===');
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    id: 'test-single-' + Date.now(),
+                    points: [
+                        { time: Date.now() / 1000 - 3600, price: 100000 },
+                        { time: Date.now() / 1000, price: 101000 }
+                    ],
+                    style: { color: '#00ff00', lineWidth: 2, lineStyle: 'solid' }
+                }
+            });
+            window.dispatchEvent(event);
+            log('✅ Single drawing event dispatched');
+            
+            setTimeout(() => {
+                checkChartStore();
+            }, 100);
+        }
+        
+        function testMultipleDrawings() {
+            log('\n=== Test Multiple Drawings ===');
+            const drawings = [];
+            for (let i = 0; i < 5; i++) {
+                drawings.push({
+                    id: `test-multi-${Date.now()}-${i}`,
+                    points: [
+                        { time: Date.now() / 1000 - 3600, price: 100000 + i * 1000 },
+                        { time: Date.now() / 1000, price: 101000 + i * 1000 }
+                    ],
+                    style: { 
+                        color: ['#00ff00', '#ff0000', '#0000ff', '#ffff00', '#ff00ff'][i], 
+                        lineWidth: 2, 
+                        lineStyle: 'solid' 
+                    },
+                    description: `Test line ${i + 1}`
+                });
+            }
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    multiple: true,
+                    drawings: drawings
+                }
+            });
+            window.dispatchEvent(event);
+            log(`✅ Multiple drawing event dispatched (${drawings.length} drawings)`);
+            
+            setTimeout(() => {
+                checkChartStore();
+            }, 100);
+        }
+        
+        // Initial check
+        setTimeout(() => {
+            log('🚀 Debug tool ready\n');
+            checkChartStore();
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing Persistence Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        h2 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+        pre {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            color: #ff5252;
+        }
+        .warning {
+            color: #ffc107;
+        }
+        .success {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Drawing Persistence Debug</h1>
+        
+        <div class="section">
+            <h2>LocalStorage Data</h2>
+            <button onclick="loadData()">Refresh Data</button>
+            <button onclick="clearDrawings()">Clear Drawings</button>
+            <button onclick="clearPatterns()">Clear Patterns</button>
+            <button onclick="clearAll()">Clear All</button>
+            
+            <h3>Drawings</h3>
+            <pre id="drawings">Loading...</pre>
+            
+            <h3>Patterns</h3>
+            <pre id="patterns">Loading...</pre>
+            
+            <h3>Timeframe State</h3>
+            <pre id="timeframe">Loading...</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Validation Results</h2>
+            <div id="validation">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Add Test Drawing</h2>
+            <button onclick="addTestTrendline()">Add Test Trendline</button>
+            <button onclick="addTestHorizontal()">Add Test Horizontal</button>
+            <button onclick="addInvalidDrawing()">Add Invalid Drawing (Test Validation)</button>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEYS = {
+            DRAWINGS: 'cryptrade_chart_drawings',
+            PATTERNS: 'cryptrade_chart_patterns',
+            TIMEFRAME_STATE: 'cryptrade_timeframe_state'
+        };
+
+        function loadData() {
+            // Load drawings
+            const drawingsData = localStorage.getItem(STORAGE_KEYS.DRAWINGS);
+            const drawingsEl = document.getElementById('drawings');
+            if (drawingsData) {
+                try {
+                    const parsed = JSON.parse(drawingsData);
+                    drawingsEl.textContent = JSON.stringify(parsed, null, 2);
+                    drawingsEl.className = '';
+                } catch (e) {
+                    drawingsEl.textContent = 'Error parsing drawings: ' + e.message;
+                    drawingsEl.className = 'error';
+                }
+            } else {
+                drawingsEl.textContent = 'No drawings found';
+                drawingsEl.className = 'warning';
+            }
+
+            // Load patterns
+            const patternsData = localStorage.getItem(STORAGE_KEYS.PATTERNS);
+            const patternsEl = document.getElementById('patterns');
+            if (patternsData) {
+                try {
+                    const parsed = JSON.parse(patternsData);
+                    patternsEl.textContent = JSON.stringify(parsed, null, 2);
+                    patternsEl.className = '';
+                } catch (e) {
+                    patternsEl.textContent = 'Error parsing patterns: ' + e.message;
+                    patternsEl.className = 'error';
+                }
+            } else {
+                patternsEl.textContent = 'No patterns found';
+                patternsEl.className = 'warning';
+            }
+
+            // Load timeframe state
+            const timeframeData = localStorage.getItem(STORAGE_KEYS.TIMEFRAME_STATE);
+            const timeframeEl = document.getElementById('timeframe');
+            if (timeframeData) {
+                try {
+                    const parsed = JSON.parse(timeframeData);
+                    timeframeEl.textContent = JSON.stringify(parsed, null, 2);
+                    timeframeEl.className = '';
+                } catch (e) {
+                    timeframeEl.textContent = 'Error parsing timeframe: ' + e.message;
+                    timeframeEl.className = 'error';
+                }
+            } else {
+                timeframeEl.textContent = 'No timeframe state found';
+                timeframeEl.className = 'warning';
+            }
+
+            validateData();
+        }
+
+        function validateData() {
+            const validationEl = document.getElementById('validation');
+            let html = '';
+
+            // Validate drawings
+            const drawingsData = localStorage.getItem(STORAGE_KEYS.DRAWINGS);
+            if (drawingsData) {
+                try {
+                    const drawings = JSON.parse(drawingsData);
+                    html += '<h3>Drawing Validation</h3>';
+                    
+                    drawings.forEach((drawing, index) => {
+                        const issues = [];
+                        
+                        if (!drawing.id) issues.push('Missing id');
+                        if (!drawing.type) issues.push('Missing type');
+                        if (!Array.isArray(drawing.points)) issues.push('Points is not an array');
+                        else {
+                            drawing.points.forEach((point, pIndex) => {
+                                if (typeof point.time !== 'number') {
+                                    issues.push(`Point ${pIndex}: time is not a number (${typeof point.time})`);
+                                }
+                                if (typeof point.value !== 'number') {
+                                    issues.push(`Point ${pIndex}: value is not a number (${typeof point.value})`);
+                                }
+                            });
+                        }
+                        
+                        if (!drawing.style) issues.push('Missing style');
+                        else {
+                            if (!drawing.style.color || !drawing.style.color.match(/^#[0-9A-Fa-f]{6}$/)) {
+                                issues.push('Invalid color format');
+                            }
+                        }
+                        
+                        if (issues.length > 0) {
+                            html += `<div class="error">Drawing ${index} (${drawing.id || 'no-id'}): ${issues.join(', ')}</div>`;
+                        } else {
+                            html += `<div class="success">Drawing ${index} (${drawing.id}): Valid ✓</div>`;
+                        }
+                    });
+                } catch (e) {
+                    html += '<div class="error">Failed to validate drawings: ' + e.message + '</div>';
+                }
+            }
+
+            validationEl.innerHTML = html || '<div class="warning">No data to validate</div>';
+        }
+
+        function clearDrawings() {
+            localStorage.removeItem(STORAGE_KEYS.DRAWINGS);
+            loadData();
+        }
+
+        function clearPatterns() {
+            localStorage.removeItem(STORAGE_KEYS.PATTERNS);
+            loadData();
+        }
+
+        function clearAll() {
+            Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+            loadData();
+        }
+
+        function addTestTrendline() {
+            const drawings = JSON.parse(localStorage.getItem(STORAGE_KEYS.DRAWINGS) || '[]');
+            drawings.push({
+                id: `test_trendline_${Date.now()}`,
+                type: 'trendline',
+                points: [
+                    { time: Math.floor(Date.now() / 1000) - 3600, value: 45000 },
+                    { time: Math.floor(Date.now() / 1000), value: 46000 }
+                ],
+                style: {
+                    color: '#2962ff',
+                    lineWidth: 2,
+                    lineStyle: 'solid',
+                    showLabels: true
+                },
+                visible: true,
+                interactive: true
+            });
+            localStorage.setItem(STORAGE_KEYS.DRAWINGS, JSON.stringify(drawings));
+            loadData();
+        }
+
+        function addTestHorizontal() {
+            const drawings = JSON.parse(localStorage.getItem(STORAGE_KEYS.DRAWINGS) || '[]');
+            drawings.push({
+                id: `test_horizontal_${Date.now()}`,
+                type: 'horizontal',
+                points: [
+                    { time: Math.floor(Date.now() / 1000), value: 45500 }
+                ],
+                style: {
+                    color: '#ff6d00',
+                    lineWidth: 2,
+                    lineStyle: 'dashed',
+                    showLabels: true
+                },
+                visible: true,
+                interactive: true
+            });
+            localStorage.setItem(STORAGE_KEYS.DRAWINGS, JSON.stringify(drawings));
+            loadData();
+        }
+
+        function addInvalidDrawing() {
+            const drawings = JSON.parse(localStorage.getItem(STORAGE_KEYS.DRAWINGS) || '[]');
+            drawings.push({
+                id: `invalid_${Date.now()}`,
+                type: 'invalid-type',
+                points: [
+                    { time: 'not-a-number', value: 'also-not-a-number' }
+                ],
+                style: {
+                    color: 'not-a-hex-color',
+                    lineWidth: 'not-a-number'
+                }
+            });
+            localStorage.setItem(STORAGE_KEYS.DRAWINGS, JSON.stringify(drawings));
+            loadData();
+        }
+
+        // Load data on page load
+        window.onload = loadData;
+    </script>
+</body>
+</html>

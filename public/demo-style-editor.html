@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Style Editor Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #22c55e;
+      margin-bottom: 30px;
+    }
+    .demo-section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .demo-section h2 {
+      color: #3b82f6;
+      margin-bottom: 15px;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #16a34a;
+      transform: translateY(-1px);
+    }
+    button.secondary {
+      background: #3b82f6;
+    }
+    button.secondary:hover {
+      background: #2563eb;
+    }
+    button.danger {
+      background: #ef4444;
+    }
+    button.danger:hover {
+      background: #dc2626;
+    }
+    .style-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .control-group {
+      background: #262626;
+      padding: 15px;
+      border-radius: 6px;
+    }
+    .control-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="color"],
+    input[type="range"],
+    select {
+      width: 100%;
+      padding: 8px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+    }
+    input[type="color"] {
+      height: 40px;
+      cursor: pointer;
+    }
+    .range-value {
+      text-align: center;
+      margin-top: 5px;
+      font-size: 14px;
+      color: #22c55e;
+    }
+    .log {
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 15px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+    .log-entry.info { color: #3b82f6; }
+    .log-entry.success { color: #22c55e; }
+    .log-entry.error { color: #ef4444; }
+    .log-entry.warning { color: #f59e0b; }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .preset-card {
+      background: #262626;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .preset-card:hover {
+      border-color: #22c55e;
+      transform: translateY(-2px);
+    }
+    .preset-preview {
+      width: 60px;
+      height: 4px;
+      margin: 10px auto;
+      border-radius: 2px;
+    }
+    .status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #22c55e;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Style Editor Demo</h1>
+    
+    <div class="demo-section">
+      <h2>Quick Actions</h2>
+      <button onclick="createTestDrawing()">Create Test Drawing</button>
+      <button onclick="createTestPattern()" class="secondary">Create Test Pattern</button>
+      <button onclick="clearAll()" class="danger">Clear All</button>
+    </div>
+
+    <div class="demo-section">
+      <h2>Style Controls</h2>
+      <div class="style-controls">
+        <div class="control-group">
+          <label>Color</label>
+          <input type="color" id="colorPicker" value="#22c55e" onchange="updateStyle()">
+        </div>
+        <div class="control-group">
+          <label>Line Width</label>
+          <input type="range" id="lineWidth" min="1" max="10" value="2" oninput="updateStyle()">
+          <div class="range-value" id="lineWidthValue">2</div>
+        </div>
+        <div class="control-group">
+          <label>Line Style</label>
+          <select id="lineStyle" onchange="updateStyle()">
+            <option value="solid">Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+            <option value="dashdot">Dash-Dot</option>
+            <option value="longdash">Long Dash</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Show Labels</label>
+          <select id="showLabels" onchange="updateStyle()">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Style Presets</h2>
+      <div class="preset-grid">
+        <div class="preset-card" onclick="applyPreset('default')">
+          <strong>Default</strong>
+          <div class="preset-preview" style="background: #22c55e;"></div>
+        </div>
+        <div class="preset-card" onclick="applyPreset('professional')">
+          <strong>Professional</strong>
+          <div class="preset-preview" style="background: #3b82f6;"></div>
+        </div>
+        <div class="preset-card" onclick="applyPreset('minimal')">
+          <strong>Minimal</strong>
+          <div class="preset-preview" style="background: #6b7280; height: 2px;"></div>
+        </div>
+        <div class="preset-card" onclick="applyPreset('colorful')">
+          <strong>Colorful</strong>
+          <div class="preset-preview" style="background: #f59e0b; height: 6px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Pattern Style Controls</h2>
+      <div class="style-controls">
+        <div class="control-group">
+          <label>Pattern Fill Opacity</label>
+          <input type="range" id="patternOpacity" min="0" max="1" step="0.1" value="0.1" oninput="updatePatternStyle()">
+          <div class="range-value" id="patternOpacityValue">10%</div>
+        </div>
+        <div class="control-group">
+          <label>Metric Label Position</label>
+          <select id="metricPosition" onchange="updatePatternStyle()">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Event Log</h2>
+      <div class="log" id="eventLog"></div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    let currentDrawingId = null;
+    let currentPatternId = null;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('eventLog');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('ja-JP');
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function showStatus(message, duration = 2000) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.style.display = 'block';
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, duration);
+    }
+
+    function createTestDrawing() {
+      currentDrawingId = `drawing_${Date.now()}`;
+      const event = new CustomEvent('chart:addDrawing', {
+        detail: {
+          id: currentDrawingId,
+          type: 'trendline',
+          points: [
+            { time: Date.now() / 1000 - 3600, value: 45000 },
+            { time: Date.now() / 1000, value: 46000 }
+          ],
+          style: {
+            color: document.getElementById('colorPicker').value,
+            lineWidth: parseInt(document.getElementById('lineWidth').value),
+            lineStyle: document.getElementById('lineStyle').value,
+            showLabels: document.getElementById('showLabels').value === 'true'
+          }
+        }
+      });
+      window.dispatchEvent(event);
+      log(`Created drawing: ${currentDrawingId}`, 'success');
+      showStatus('Drawing created!');
+    }
+
+    function createTestPattern() {
+      currentPatternId = `pattern_${Date.now()}`;
+      const event = new CustomEvent('chart:addPattern', {
+        detail: {
+          id: currentPatternId,
+          pattern: {
+            type: 'head_and_shoulders',
+            visualization: {
+              keyPoints: [
+                { time: Date.now() / 1000 - 7200, value: 44000 },
+                { time: Date.now() / 1000 - 3600, value: 46000 },
+                { time: Date.now() / 1000, value: 44500 }
+              ],
+              lines: [],
+              markers: []
+            },
+            metrics: {
+              target_level: 42000,
+              stop_loss: 47000,
+              breakout_level: 44000
+            }
+          }
+        }
+      });
+      window.dispatchEvent(event);
+      log(`Created pattern: ${currentPatternId}`, 'success');
+      showStatus('Pattern created!');
+    }
+
+    function updateStyle() {
+      if (!currentDrawingId) {
+        log('No drawing selected. Create a drawing first.', 'warning');
+        return;
+      }
+
+      const lineWidthValue = document.getElementById('lineWidth').value;
+      document.getElementById('lineWidthValue').textContent = lineWidthValue;
+
+      const styleUpdate = {
+        drawingId: currentDrawingId,
+        style: {
+          color: document.getElementById('colorPicker').value,
+          lineWidth: parseInt(lineWidthValue),
+          lineStyle: document.getElementById('lineStyle').value,
+          showLabels: document.getElementById('showLabels').value === 'true'
+        },
+        immediate: true
+      };
+
+      const event = new CustomEvent('chart:updateDrawingStyle', {
+        detail: styleUpdate
+      });
+      window.dispatchEvent(event);
+      
+      log(`Updated drawing style: ${JSON.stringify(styleUpdate.style)}`, 'info');
+      showStatus('Style updated!');
+    }
+
+    function updatePatternStyle() {
+      if (!currentPatternId) {
+        log('No pattern selected. Create a pattern first.', 'warning');
+        return;
+      }
+
+      const opacity = parseFloat(document.getElementById('patternOpacity').value);
+      document.getElementById('patternOpacityValue').textContent = `${Math.round(opacity * 100)}%`;
+
+      const patternStyleUpdate = {
+        patternId: currentPatternId,
+        patternStyle: {
+          patternFillOpacity: opacity,
+          metricLabelPosition: document.getElementById('metricPosition').value
+        },
+        immediate: true
+      };
+
+      const event = new CustomEvent('chart:updatePatternStyle', {
+        detail: patternStyleUpdate
+      });
+      window.dispatchEvent(event);
+      
+      log(`Updated pattern style: ${JSON.stringify(patternStyleUpdate.patternStyle)}`, 'info');
+      showStatus('Pattern style updated!');
+    }
+
+    function applyPreset(presetName) {
+      const presets = {
+        default: {
+          color: '#22c55e',
+          lineWidth: 2,
+          lineStyle: 'solid',
+          showLabels: true
+        },
+        professional: {
+          color: '#3b82f6',
+          lineWidth: 2,
+          lineStyle: 'solid',
+          showLabels: true
+        },
+        minimal: {
+          color: '#6b7280',
+          lineWidth: 1,
+          lineStyle: 'solid',
+          showLabels: false
+        },
+        colorful: {
+          color: '#f59e0b',
+          lineWidth: 3,
+          lineStyle: 'solid',
+          showLabels: true
+        }
+      };
+
+      const preset = presets[presetName];
+      if (!preset) return;
+
+      // Update UI controls
+      document.getElementById('colorPicker').value = preset.color;
+      document.getElementById('lineWidth').value = preset.lineWidth;
+      document.getElementById('lineWidthValue').textContent = preset.lineWidth;
+      document.getElementById('lineStyle').value = preset.lineStyle;
+      document.getElementById('showLabels').value = preset.showLabels.toString();
+
+      // Apply style if drawing exists
+      if (currentDrawingId) {
+        updateStyle();
+      }
+
+      log(`Applied preset: ${presetName}`, 'success');
+      showStatus(`Preset "${presetName}" applied!`);
+    }
+
+    function clearAll() {
+      // Clear all drawings
+      const clearEvent = new CustomEvent('chart:clearAllDrawings');
+      window.dispatchEvent(clearEvent);
+      
+      currentDrawingId = null;
+      currentPatternId = null;
+      
+      log('Cleared all drawings and patterns', 'warning');
+      showStatus('All cleared!');
+    }
+
+    // Listen for events
+    window.addEventListener('chart:updateDrawingStyle', (event) => {
+      log(`Style update event fired: ${JSON.stringify(event.detail)}`, 'info');
+    });
+
+    window.addEventListener('chart:updatePatternStyle', (event) => {
+      log(`Pattern style update event fired: ${JSON.stringify(event.detail)}`, 'info');
+    });
+
+    // Initial log
+    log('Style Editor Demo loaded. Create a drawing or pattern to start!', 'success');
+
+    // Update range display
+    document.getElementById('lineWidth').addEventListener('input', (e) => {
+      document.getElementById('lineWidthValue').textContent = e.target.value;
+    });
+
+    document.getElementById('patternOpacity').addEventListener('input', (e) => {
+      const percent = Math.round(parseFloat(e.target.value) * 100);
+      document.getElementById('patternOpacityValue').textContent = `${percent}%`;
+    });
+  </script>
+</body>
+</html>

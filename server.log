@@ -1,0 +1,16 @@
+
+> cryptrade@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, using available port 3001 instead.
+   ▲ Next.js 15.3.3
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.68.57:3001
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · esmExternals
+
+ ✓ Starting...
+ ⚠ The "experimental.esmExternals" option has been modified. experimental.esmExternals is not recommended to be modified as it may disrupt module resolution. It should be removed from your next.config.js.
+ ✓ Ready in 1682ms
+[?25h

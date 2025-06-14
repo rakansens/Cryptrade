@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Drawing Visibility</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 5px; cursor: pointer; }
+        #output { background: #000; border: 1px solid #0f0; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Drawing Visibility</h1>
+    
+    <button onclick="checkTimeRange()">Check Time Range</button>
+    <button onclick="addDrawingInCurrentRange()">Add Drawing in Current Range</button>
+    <button onclick="checkDrawingSeries()">Check Drawing Series</button>
+    <button onclick="forceRedraw()">Force Redraw</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg) {
+            output.innerHTML += msg + '\n';
+        }
+        
+        function checkTimeRange() {
+            log('\n=== Checking Time Range ===');
+            
+            // Get chart instance
+            const chartInstances = window.chartInstances;
+            if (!chartInstances || !chartInstances['main-chart']) {
+                log('❌ Chart instance not found');
+                return;
+            }
+            
+            const chart = chartInstances['main-chart'].chart;
+            const timeScale = chart.timeScale();
+            const visibleRange = timeScale.getVisibleRange();
+            
+            log('📊 Visible time range:');
+            if (visibleRange) {
+                log(`  From: ${new Date(visibleRange.from * 1000).toISOString()}`);
+                log(`  To: ${new Date(visibleRange.to * 1000).toISOString()}`);
+            } else {
+                log('  No visible range set');
+            }
+            
+            // Check existing drawings
+            const drawings = window.chartStore?.getState().drawings || [];
+            log(`\n📐 Drawings (${drawings.length}):`);
+            
+            drawings.forEach((d, i) => {
+                const start = new Date(d.points[0].time * 1000);
+                const end = new Date(d.points[1].time * 1000);
+                const inRange = visibleRange && 
+                    d.points[0].time >= visibleRange.from && 
+                    d.points[1].time <= visibleRange.to;
+                
+                log(`  ${i+1}. ${d.id}:`);
+                log(`     Start: ${start.toISOString()} (${d.points[0].time})`);
+                log(`     End: ${end.toISOString()} (${d.points[1].time})`);
+                log(`     In visible range: ${inRange ? '✅' : '❌'}`);
+            });
+        }
+        
+        function addDrawingInCurrentRange() {
+            log('\n=== Adding Drawing in Current Range ===');
+            
+            const chartInstances = window.chartInstances;
+            if (!chartInstances || !chartInstances['main-chart']) {
+                log('❌ Chart instance not found');
+                return;
+            }
+            
+            const chart = chartInstances['main-chart'].chart;
+            const timeScale = chart.timeScale();
+            const visibleRange = timeScale.getVisibleRange();
+            
+            if (!visibleRange) {
+                log('❌ No visible range');
+                return;
+            }
+            
+            // Create drawing in the middle of visible range
+            const midTime = (visibleRange.from + visibleRange.to) / 2;
+            const quarterRange = (visibleRange.to - visibleRange.from) / 4;
+            
+            // Get price range
+            const series = chartInstances['main-chart'].candlestickSeries;
+            const priceScale = series.priceScale();
+            const priceRange = priceScale.getVisiblePriceRange();
+            
+            if (!priceRange) {
+                log('❌ No price range');
+                return;
+            }
+            
+            const midPrice = (priceRange.minValue + priceRange.maxValue) / 2;
+            const priceOffset = (priceRange.maxValue - priceRange.minValue) / 10;
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    points: [
+                        { 
+                            time: midTime - quarterRange, 
+                            price: midPrice - priceOffset 
+                        },
+                        { 
+                            time: midTime + quarterRange, 
+                            price: midPrice + priceOffset 
+                        }
+                    ],
+                    style: { 
+                        color: '#ff0000', 
+                        lineWidth: 3, 
+                        lineStyle: 'solid' 
+                    }
+                }
+            });
+            
+            window.dispatchEvent(event);
+            
+            log('✅ Drawing event dispatched with:');
+            log(`  Start: ${new Date((midTime - quarterRange) * 1000).toISOString()}`);
+            log(`  End: ${new Date((midTime + quarterRange) * 1000).toISOString()}`);
+            log(`  Price range: ${midPrice - priceOffset} to ${midPrice + priceOffset}`);
+        }
+        
+        function checkDrawingSeries() {
+            log('\n=== Checking Drawing Series ===');
+            
+            const chartInstances = window.chartInstances;
+            if (!chartInstances || !chartInstances['main-chart']) {
+                log('❌ Chart instance not found');
+                return;
+            }
+            
+            const drawingRenderer = chartInstances['main-chart'].drawingRenderer;
+            if (!drawingRenderer) {
+                log('❌ DrawingRenderer not found');
+                return;
+            }
+            
+            log('✅ DrawingRenderer found');
+            log(`Series Map size: ${drawingRenderer.seriesMap?.size || 0}`);
+            
+            if (drawingRenderer.seriesMap) {
+                drawingRenderer.seriesMap.forEach((series, id) => {
+                    log(`\n📈 Series: ${id}`);
+                    try {
+                        const options = series.options();
+                        log(`  Visible: ${options.visible}`);
+                        log(`  Color: ${options.color}`);
+                        log(`  Line width: ${options.lineWidth}`);
+                    } catch (e) {
+                        log(`  Error getting options: ${e.message}`);
+                    }
+                });
+            }
+        }
+        
+        function forceRedraw() {
+            log('\n=== Forcing Redraw ===');
+            
+            const drawings = window.chartStore?.getState().drawings || [];
+            const chartInstances = window.chartInstances;
+            
+            if (!chartInstances || !chartInstances['main-chart']) {
+                log('❌ Chart instance not found');
+                return;
+            }
+            
+            const drawingRenderer = chartInstances['main-chart'].drawingRenderer;
+            if (!drawingRenderer) {
+                log('❌ DrawingRenderer not found');
+                return;
+            }
+            
+            // Force re-render
+            drawingRenderer.renderDrawings(drawings);
+            log('✅ Called renderDrawings with ' + drawings.length + ' drawings');
+        }
+        
+        // Initial check
+        setTimeout(() => {
+            log('🚀 Debug tool ready\n');
+            checkTimeRange();
+        }, 1000);
+    </script>
+</body>
+</html>

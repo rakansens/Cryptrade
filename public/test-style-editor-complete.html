@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Style Editor Complete Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1, h2 {
+      color: #22c55e;
+    }
+    .test-section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    button.secondary {
+      background: #3b82f6;
+    }
+    button.danger {
+      background: #ef4444;
+    }
+    .log {
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 15px;
+      height: 400px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+    .log-entry.info { color: #3b82f6; }
+    .log-entry.success { color: #22c55e; }
+    .log-entry.error { color: #ef4444; }
+    .log-entry.warning { color: #f59e0b; }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      background: #262626;
+      border: 1px solid #444;
+    }
+    .status.success {
+      background: #16a34a33;
+      border-color: #16a34a;
+    }
+    .status.error {
+      background: #ef444433;
+      border-color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Style Editor Complete Test</h1>
+    <p>このページでスタイルエディター機能の包括的なテストを行います。</p>
+    
+    <div class="test-section">
+      <h2>1. 基本的な描画スタイル更新テスト</h2>
+      <button onclick="runBasicDrawingTests()">基本描画テストを実行</button>
+      <button onclick="runTrendlineTest()" class="secondary">トレンドラインテスト</button>
+      <button onclick="runHorizontalTest()" class="secondary">水平線テスト</button>
+      <div id="basic-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>2. パターン認識スタイル更新テスト</h2>
+      <button onclick="runPatternTests()">パターンテストを実行</button>
+      <button onclick="runHeadAndShouldersTest()" class="secondary">Head & Shoulders</button>
+      <button onclick="runDoubleTopTest()" class="secondary">Double Top</button>
+      <div id="pattern-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>3. スタイルエディターUI統合テスト</h2>
+      <button onclick="testStyleEditorEvents()">イベントハンドラーテスト</button>
+      <button onclick="testValidation()" class="secondary">バリデーションテスト</button>
+      <button onclick="testProposalIntegration()" class="secondary">提案UI統合テスト</button>
+      <div id="ui-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>4. パフォーマンステスト</h2>
+      <button onclick="runPerformanceTest()">連続更新テスト</button>
+      <button onclick="runBulkUpdateTest()" class="secondary">一括更新テスト</button>
+      <div id="perf-status" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>イベントログ</h2>
+      <button onclick="clearLog()" class="danger">ログをクリア</button>
+      <div class="log" id="eventLog"></div>
+    </div>
+  </div>
+
+  <script>
+    let drawingCounter = 0;
+    let patternCounter = 0;
+    
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('eventLog');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('ja-JP');
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function updateStatus(elementId, message, isSuccess = true) {
+      const status = document.getElementById(elementId);
+      status.className = `status ${isSuccess ? 'success' : 'error'}`;
+      status.textContent = message;
+    }
+    
+    function clearLog() {
+      document.getElementById('eventLog').innerHTML = '';
+      log('ログをクリアしました', 'warning');
+    }
+    
+    // Listen for all style update events
+    window.addEventListener('chart:updateDrawingStyle', (event) => {
+      log(`[Drawing Style Update] ID: ${event.detail.drawingId}, Style: ${JSON.stringify(event.detail.style)}`, 'info');
+    });
+    
+    window.addEventListener('chart:updatePatternStyle', (event) => {
+      log(`[Pattern Style Update] ID: ${event.detail.patternId}, Style: ${JSON.stringify(event.detail.patternStyle)}`, 'info');
+    });
+    
+    // 1. Basic Drawing Tests
+    async function runBasicDrawingTests() {
+      log('=== 基本描画テスト開始 ===', 'success');
+      
+      await runTrendlineTest();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await runHorizontalTest();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      updateStatus('basic-status', '✅ 基本描画テスト完了');
+      log('=== 基本描画テスト終了 ===', 'success');
+    }
+    
+    async function runTrendlineTest() {
+      const id = `trendline-${++drawingCounter}`;
+      
+      // Create trendline
+      const createEvent = new CustomEvent('chart:addDrawing', {
+        detail: {
+          id,
+          type: 'trendline',
+          points: [
+            { time: Date.now() / 1000 - 3600, value: 45000 },
+            { time: Date.now() / 1000, value: 46000 }
+          ],
+          style: {
+            color: '#22c55e',
+            lineWidth: 2,
+            lineStyle: 'solid',
+            showLabels: true
+          }
+        }
+      });
+      window.dispatchEvent(createEvent);
+      log(`Created trendline: ${id}`, 'success');
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Update style
+      const updateEvent = new CustomEvent('chart:updateDrawingStyle', {
+        detail: {
+          drawingId: id,
+          style: {
+            color: '#3b82f6',
+            lineWidth: 4,
+            lineStyle: 'dashed',
+            showLabels: false
+          },
+          immediate: true
+        }
+      });
+      window.dispatchEvent(updateEvent);
+      log(`Updated trendline style: ${id}`, 'info');
+    }
+    
+    async function runHorizontalTest() {
+      const id = `horizontal-${++drawingCounter}`;
+      
+      // Create horizontal line
+      const createEvent = new CustomEvent('chart:addDrawing', {
+        detail: {
+          id,
+          type: 'horizontal',
+          points: [{ time: Date.now() / 1000, value: 45500 }],
+          price: 45500,
+          style: {
+            color: '#ef4444',
+            lineWidth: 3,
+            lineStyle: 'solid',
+            showLabels: true
+          }
+        }
+      });
+      window.dispatchEvent(createEvent);
+      log(`Created horizontal line: ${id}`, 'success');
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Update with extended styles
+      const updateEvent = new CustomEvent('chart:updateDrawingStyle', {
+        detail: {
+          drawingId: id,
+          style: {
+            color: '#f59e0b',
+            lineWidth: 2,
+            lineStyle: 'dotted'
+          },
+          immediate: true
+        }
+      });
+      window.dispatchEvent(updateEvent);
+      log(`Updated horizontal line style: ${id}`, 'info');
+    }
+    
+    // 2. Pattern Tests
+    async function runPatternTests() {
+      log('=== パターンテスト開始 ===', 'success');
+      
+      await runHeadAndShouldersTest();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await runDoubleTopTest();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      updateStatus('pattern-status', '✅ パターンテスト完了');
+      log('=== パターンテスト終了 ===', 'success');
+    }
+    
+    async function runHeadAndShouldersTest() {
+      const id = `hs-pattern-${++patternCounter}`;
+      
+      // Create pattern
+      const createEvent = new CustomEvent('chart:addPattern', {
+        detail: {
+          id,
+          pattern: {
+            type: 'head_and_shoulders',
+            visualization: {
+              keyPoints: [
+                { time: Date.now() / 1000 - 7200, value: 44000, label: 'LS' },
+                { time: Date.now() / 1000 - 5400, value: 46000, label: 'H' },
+                { time: Date.now() / 1000 - 3600, value: 44500, label: 'RS' }
+              ],
+              lines: [],
+              markers: []
+            },
+            metrics: {
+              target_level: 42000,
+              stop_loss: 47000,
+              breakout_level: 44000
+            }
+          }
+        }
+      });
+      window.dispatchEvent(createEvent);
+      log(`Created H&S pattern: ${id}`, 'success');
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Update pattern style
+      const updateEvent = new CustomEvent('chart:updatePatternStyle', {
+        detail: {
+          patternId: id,
+          patternStyle: {
+            patternFillOpacity: 0.3,
+            metricLabelPosition: 'left',
+            showMetricLabels: true,
+            highlightKeyPoints: true
+          },
+          lineStyles: {
+            target: { color: '#10b981', lineWidth: 3 },
+            stopLoss: { color: '#ef4444', lineWidth: 4 },
+            breakout: { color: '#3b82f6', lineWidth: 2 }
+          },
+          immediate: true
+        }
+      });
+      window.dispatchEvent(updateEvent);
+      log(`Updated H&S pattern style: ${id}`, 'info');
+    }
+    
+    async function runDoubleTopTest() {
+      const id = `dt-pattern-${++patternCounter}`;
+      
+      // Create pattern
+      const createEvent = new CustomEvent('chart:addPattern', {
+        detail: {
+          id,
+          pattern: {
+            type: 'double_top',
+            visualization: {
+              keyPoints: [
+                { time: Date.now() / 1000 - 5000, value: 46500, label: 'T1' },
+                { time: Date.now() / 1000 - 3000, value: 45000, label: 'V' },
+                { time: Date.now() / 1000 - 1000, value: 46400, label: 'T2' }
+              ],
+              lines: [],
+              markers: []
+            },
+            metrics: {
+              target_level: 43500,
+              stop_loss: 47000,
+              breakout_level: 45000
+            }
+          }
+        }
+      });
+      window.dispatchEvent(createEvent);
+      log(`Created Double Top pattern: ${id}`, 'success');
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Test label visibility toggle
+      const updateEvent = new CustomEvent('chart:updatePatternStyle', {
+        detail: {
+          patternId: id,
+          patternStyle: {
+            showMetricLabels: false,
+            patternFillOpacity: 0.1
+          },
+          immediate: true
+        }
+      });
+      window.dispatchEvent(updateEvent);
+      log(`Updated Double Top pattern style: ${id}`, 'info');
+    }
+    
+    // 3. UI Integration Tests
+    async function testStyleEditorEvents() {
+      log('=== イベントハンドラーテスト開始 ===', 'success');
+      
+      // Test immediate vs non-immediate updates
+      const id = `test-drawing-${++drawingCounter}`;
+      
+      // Create test drawing
+      window.dispatchEvent(new CustomEvent('chart:addDrawing', {
+        detail: {
+          id,
+          type: 'trendline',
+          points: [
+            { time: Date.now() / 1000 - 1800, value: 45200 },
+            { time: Date.now() / 1000, value: 45800 }
+          ],
+          style: { color: '#22c55e', lineWidth: 2, lineStyle: 'solid' }
+        }
+      }));
+      
+      // Test immediate update
+      window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+        detail: {
+          drawingId: id,
+          style: { color: '#8b5cf6' },
+          immediate: true
+        }
+      }));
+      log('Tested immediate update', 'info');
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Test non-immediate update
+      window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+        detail: {
+          drawingId: id,
+          style: { lineWidth: 5 },
+          immediate: false
+        }
+      }));
+      log('Tested non-immediate update', 'info');
+      
+      updateStatus('ui-status', '✅ イベントハンドラーテスト完了');
+      log('=== イベントハンドラーテスト終了 ===', 'success');
+    }
+    
+    async function testValidation() {
+      log('=== バリデーションテスト開始 ===', 'warning');
+      
+      // Test invalid color
+      try {
+        window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+          detail: {
+            drawingId: 'test-invalid',
+            style: { color: 'invalid-color' }
+          }
+        }));
+        log('Invalid color test dispatched', 'warning');
+      } catch (e) {
+        log(`Validation error caught: ${e.message}`, 'error');
+      }
+      
+      // Test invalid line width
+      try {
+        window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+          detail: {
+            drawingId: 'test-invalid',
+            style: { lineWidth: 20 } // Max is 10
+          }
+        }));
+        log('Invalid line width test dispatched', 'warning');
+      } catch (e) {
+        log(`Validation error caught: ${e.message}`, 'error');
+      }
+      
+      // Test invalid pattern opacity
+      try {
+        window.dispatchEvent(new CustomEvent('chart:updatePatternStyle', {
+          detail: {
+            patternId: 'test-invalid',
+            patternStyle: { patternFillOpacity: 1.5 } // Max is 1
+          }
+        }));
+        log('Invalid opacity test dispatched', 'warning');
+      } catch (e) {
+        log(`Validation error caught: ${e.message}`, 'error');
+      }
+      
+      updateStatus('ui-status', '✅ バリデーションテスト完了');
+      log('=== バリデーションテスト終了 ===', 'warning');
+    }
+    
+    async function testProposalIntegration() {
+      log('=== 提案UI統合テスト開始 ===', 'success');
+      
+      // Simulate proposal approval and style editing
+      const proposalData = {
+        id: 'test-proposal-001',
+        type: 'drawing',
+        drawingData: {
+          type: 'trendline',
+          style: { color: '#22c55e', lineWidth: 2, lineStyle: 'solid' }
+        }
+      };
+      
+      log(`Simulated proposal: ${JSON.stringify(proposalData)}`, 'info');
+      
+      // Simulate approval creating a drawing
+      const drawingId = `approved-${++drawingCounter}`;
+      window.dispatchEvent(new CustomEvent('chart:addDrawing', {
+        detail: {
+          id: drawingId,
+          ...proposalData.drawingData,
+          points: [
+            { time: Date.now() / 1000 - 2400, value: 45300 },
+            { time: Date.now() / 1000, value: 46200 }
+          ]
+        }
+      }));
+      log(`Proposal approved, drawing created: ${drawingId}`, 'success');
+      
+      // Simulate style editor interaction
+      await new Promise(r => setTimeout(r, 500));
+      
+      window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+        detail: {
+          drawingId,
+          style: {
+            color: '#3b82f6',
+            lineWidth: 3,
+            lineStyle: 'dashed',
+            showLabels: false
+          },
+          immediate: true
+        }
+      }));
+      log('Style updated via proposal UI', 'info');
+      
+      updateStatus('ui-status', '✅ 提案UI統合テスト完了');
+      log('=== 提案UI統合テスト終了 ===', 'success');
+    }
+    
+    // 4. Performance Tests
+    async function runPerformanceTest() {
+      log('=== パフォーマンステスト開始 ===', 'warning');
+      const id = `perf-test-${++drawingCounter}`;
+      
+      // Create test drawing
+      window.dispatchEvent(new CustomEvent('chart:addDrawing', {
+        detail: {
+          id,
+          type: 'horizontal',
+          points: [{ time: Date.now() / 1000, value: 45700 }],
+          price: 45700,
+          style: { color: '#22c55e', lineWidth: 2, lineStyle: 'solid' }
+        }
+      }));
+      
+      const startTime = performance.now();
+      const updateCount = 20;
+      
+      // Rapid style updates
+      for (let i = 0; i < updateCount; i++) {
+        const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6'];
+        window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+          detail: {
+            drawingId: id,
+            style: {
+              color: colors[i % colors.length],
+              lineWidth: (i % 5) + 1
+            },
+            immediate: true
+          }
+        }));
+        await new Promise(r => setTimeout(r, 100));
+      }
+      
+      const endTime = performance.now();
+      const totalTime = endTime - startTime;
+      const avgTime = totalTime / updateCount;
+      
+      log(`Performance test completed: ${updateCount} updates in ${totalTime.toFixed(2)}ms`, 'success');
+      log(`Average update time: ${avgTime.toFixed(2)}ms`, 'info');
+      
+      updateStatus('perf-status', `✅ ${updateCount}回の更新完了 (平均: ${avgTime.toFixed(2)}ms)`);
+      log('=== パフォーマンステスト終了 ===', 'warning');
+    }
+    
+    async function runBulkUpdateTest() {
+      log('=== 一括更新テスト開始 ===', 'warning');
+      
+      const drawingIds = [];
+      
+      // Create multiple drawings
+      for (let i = 0; i < 5; i++) {
+        const id = `bulk-${++drawingCounter}`;
+        drawingIds.push(id);
+        
+        window.dispatchEvent(new CustomEvent('chart:addDrawing', {
+          detail: {
+            id,
+            type: i % 2 === 0 ? 'trendline' : 'horizontal',
+            points: i % 2 === 0 
+              ? [
+                  { time: Date.now() / 1000 - 3600, value: 45000 + i * 100 },
+                  { time: Date.now() / 1000, value: 45500 + i * 100 }
+                ]
+              : [{ time: Date.now() / 1000, value: 45250 + i * 100 }],
+            price: i % 2 === 1 ? 45250 + i * 100 : undefined,
+            style: { color: '#22c55e', lineWidth: 2, lineStyle: 'solid' }
+          }
+        }));
+      }
+      
+      log(`Created ${drawingIds.length} drawings for bulk update`, 'info');
+      await new Promise(r => setTimeout(r, 1000));
+      
+      // Update all at once
+      const startTime = performance.now();
+      
+      drawingIds.forEach((id, index) => {
+        window.dispatchEvent(new CustomEvent('chart:updateDrawingStyle', {
+          detail: {
+            drawingId: id,
+            style: {
+              color: index % 2 === 0 ? '#3b82f6' : '#ef4444',
+              lineWidth: 3,
+              lineStyle: 'dashed'
+            },
+            immediate: true
+          }
+        }));
+      });
+      
+      const endTime = performance.now();
+      const totalTime = endTime - startTime;
+      
+      log(`Bulk update completed: ${drawingIds.length} drawings in ${totalTime.toFixed(2)}ms`, 'success');
+      
+      updateStatus('perf-status', `✅ 一括更新完了: ${drawingIds.length}個 (${totalTime.toFixed(2)}ms)`);
+      log('=== 一括更新テスト終了 ===', 'warning');
+    }
+    
+    // Initialize
+    log('Style Editor Test Page Loaded', 'success');
+    log('Click the buttons above to run various tests', 'info');
+  </script>
+</body>
+</html>

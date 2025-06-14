@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Events Test - Cryptrade</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #111;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            background: #00e676;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #00c853;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        h2 {
+            color: #00e676;
+            margin-top: 0;
+        }
+        .log {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Cryptrade UI Events Test</h1>
+        <p>FloatingChatPanelのイベントハンドラをテストします</p>
+
+        <div class="section">
+            <h2>通貨ペア変更</h2>
+            <button onclick="changeSymbol('BTCUSDT')">BTC/USDT</button>
+            <button onclick="changeSymbol('ETHUSDT')">ETH/USDT</button>
+            <button onclick="changeSymbol('SOLUSDT')">SOL/USDT</button>
+            <button onclick="changeSymbol('ADAUSDT')">ADA/USDT</button>
+        </div>
+
+        <div class="section">
+            <h2>時間足変更</h2>
+            <button onclick="changeTimeframe('1m')">1分</button>
+            <button onclick="changeTimeframe('5m')">5分</button>
+            <button onclick="changeTimeframe('15m')">15分</button>
+            <button onclick="changeTimeframe('1h')">1時間</button>
+            <button onclick="changeTimeframe('4h')">4時間</button>
+            <button onclick="changeTimeframe('1d')">日足</button>
+        </div>
+
+        <div class="section">
+            <h2>インジケーター制御</h2>
+            <button onclick="toggleIndicator('ma', true)">MA表示</button>
+            <button onclick="toggleIndicator('ma', false)">MA非表示</button>
+            <button onclick="toggleIndicator('rsi', true)">RSI表示</button>
+            <button onclick="toggleIndicator('rsi', false)">RSI非表示</button>
+            <button onclick="toggleIndicator('macd', true)">MACD表示</button>
+            <button onclick="toggleIndicator('macd', false)">MACD非表示</button>
+        </div>
+
+        <div class="section">
+            <h2>描画ツール</h2>
+            <button onclick="drawTrendline()">トレンドライン描画</button>
+            <button onclick="drawFibonacci()">フィボナッチ描画</button>
+            <button onclick="fitChart()">チャートフィット</button>
+        </div>
+
+        <div class="section">
+            <h2>イベントログ</h2>
+            <div id="log" class="log">
+                <div class="log-entry">イベントログがここに表示されます...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ログ表示
+        const logElement = document.getElementById('log');
+        
+        function addLog(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.insertBefore(entry, logElement.firstChild);
+            
+            // 最大50件まで
+            while (logElement.children.length > 50) {
+                logElement.removeChild(logElement.lastChild);
+            }
+        }
+
+        // イベントリスナー（動作確認用）
+        window.addEventListener('ui:changeSymbol', (e) => {
+            addLog(`✅ Symbol Changed: ${e.detail.symbol}`);
+        });
+        
+        window.addEventListener('ui:changeTimeframe', (e) => {
+            addLog(`✅ Timeframe Changed: ${e.detail.timeframe}`);
+        });
+        
+        window.addEventListener('ui:toggleIndicator', (e) => {
+            addLog(`✅ Indicator Toggle: ${e.detail.indicator} = ${e.detail.enabled}`);
+        });
+        
+        window.addEventListener('draw:trendline', (e) => {
+            addLog(`✅ Trendline Drawn: ${JSON.stringify(e.detail.points)}`);
+        });
+        
+        window.addEventListener('draw:fibonacci', (e) => {
+            addLog(`✅ Fibonacci Drawn: ${JSON.stringify(e.detail.points)}`);
+        });
+        
+        window.addEventListener('chart:fitContent', () => {
+            addLog(`✅ Chart Fit Requested`);
+        });
+
+        // テスト関数
+        function changeSymbol(symbol) {
+            const event = new CustomEvent('ui:changeSymbol', {
+                detail: { symbol }
+            });
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: ui:changeSymbol - ${symbol}`);
+        }
+
+        function changeTimeframe(timeframe) {
+            const event = new CustomEvent('ui:changeTimeframe', {
+                detail: { timeframe }
+            });
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: ui:changeTimeframe - ${timeframe}`);
+        }
+
+        function toggleIndicator(indicator, enabled) {
+            const event = new CustomEvent('ui:toggleIndicator', {
+                detail: { indicator, enabled }
+            });
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: ui:toggleIndicator - ${indicator} = ${enabled}`);
+        }
+
+        function drawTrendline() {
+            // サンプルポイント（実際のチャートから取得されるべき）
+            const points = [
+                { x: 100, y: 200, price: 105000, time: Date.now() - 3600000 },
+                { x: 300, y: 150, price: 106000, time: Date.now() }
+            ];
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: { 
+                    points,
+                    style: {
+                        color: '#00e676',
+                        lineWidth: 2,
+                        lineStyle: 'solid',
+                        showLabels: true
+                    }
+                }
+            });
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: draw:trendline`);
+        }
+
+        function drawFibonacci() {
+            // サンプルポイント
+            const points = [
+                { x: 50, y: 250, price: 104000, time: Date.now() - 7200000 },
+                { x: 350, y: 100, price: 107000, time: Date.now() }
+            ];
+            
+            const event = new CustomEvent('draw:fibonacci', {
+                detail: { 
+                    points,
+                    style: {
+                        color: '#ff9800',
+                        lineWidth: 1,
+                        lineStyle: 'solid',
+                        showLabels: true
+                    }
+                }
+            });
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: draw:fibonacci`);
+        }
+
+        function fitChart() {
+            const event = new CustomEvent('chart:fitContent', {});
+            window.dispatchEvent(event);
+            addLog(`📤 Dispatched: chart:fitContent`);
+        }
+
+        // 初期ログ
+        addLog('🚀 UI Events Test Ready');
+        addLog('ℹ️ ボタンをクリックしてイベントをディスパッチしてください');
+    </script>
+</body>
+</html>

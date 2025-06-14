@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Trendline Time</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 5px; cursor: pointer; }
+        #output { background: #000; border: 1px solid #0f0; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Trendline Time Issue</h1>
+    
+    <button onclick="checkChartTimeRange()">Check Chart Time Range</button>
+    <button onclick="checkLastDrawing()">Check Last Drawing</button>
+    <button onclick="sendTestTrendline()">Send Test Trendline (Current Time)</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg) {
+            output.innerHTML += msg + '\n';
+        }
+        
+        function checkChartTimeRange() {
+            log('\n=== Checking Chart Time Range ===');
+            
+            // Check chartStore data
+            if (window.chartStore) {
+                const state = window.chartStore.getState();
+                log('📊 ChartStore state:');
+                log(`  Symbol: ${state.symbol}`);
+                log(`  Timeframe: ${state.timeframe}`);
+                log(`  Drawings: ${state.drawings?.length || 0}`);
+                
+                // Log recent event if available
+                const recentDrawing = state.drawings?.[state.drawings.length - 1];
+                if (recentDrawing && recentDrawing.points) {
+                    log(`\n📐 Most recent drawing:`);
+                    log(`  Type: ${recentDrawing.type}`);
+                    if (recentDrawing.points[0]) {
+                        const p1Time = recentDrawing.points[0].time;
+                        log(`  Point 1 time: ${p1Time} (${new Date(p1Time * 1000).toISOString()})`);
+                    }
+                    if (recentDrawing.points[1]) {
+                        const p2Time = recentDrawing.points[1].time;
+                        log(`  Point 2 time: ${p2Time} (${new Date(p2Time * 1000).toISOString()})`);
+                    }
+                }
+            } else {
+                log('❌ ChartStore not found');
+            }
+            
+            // Try to find chart through DOM
+            const chartContainer = document.querySelector('.tv-lightweight-charts');
+            if (chartContainer) {
+                log('\n✅ Chart container found in DOM');
+                log('  (Chart instance is private, cannot access time range directly)');
+            } else {
+                log('\n❌ Chart container not found in DOM');
+            }
+        }
+        
+        function checkLastDrawing() {
+            log('\n=== Checking Last Drawing ===');
+            
+            const drawings = window.chartStore?.getState().drawings || [];
+            if (drawings.length === 0) {
+                log('❌ No drawings found');
+                return;
+            }
+            
+            const lastDrawing = drawings[drawings.length - 1];
+            log(`📐 Last drawing: ${lastDrawing.id}`);
+            log(`  Type: ${lastDrawing.type}`);
+            
+            if (lastDrawing.points && lastDrawing.points.length >= 2) {
+                const p1 = lastDrawing.points[0];
+                const p2 = lastDrawing.points[1];
+                
+                log(`\n  Point 1:`);
+                log(`    Time: ${p1.time} (${new Date(p1.time * 1000).toISOString()})`);
+                log(`    Value: ${p1.value || p1.price}`);
+                
+                log(`\n  Point 2:`);
+                log(`    Time: ${p2.time} (${new Date(p2.time * 1000).toISOString()})`);
+                log(`    Value: ${p2.value || p2.price}`);
+                
+                // Check if points are within visible range
+                const chartInstances = window.chartInstances;
+                if (chartInstances && chartInstances['main-chart']) {
+                    const timeScale = chartInstances['main-chart'].chart.timeScale();
+                    const visibleRange = timeScale.getVisibleRange();
+                    
+                    if (visibleRange) {
+                        const inRange1 = p1.time >= visibleRange.from && p1.time <= visibleRange.to;
+                        const inRange2 = p2.time >= visibleRange.from && p2.time <= visibleRange.to;
+                        
+                        log(`\n  Visibility:`);
+                        log(`    Point 1 in range: ${inRange1 ? '✅' : '❌'}`);
+                        log(`    Point 2 in range: ${inRange2 ? '✅' : '❌'}`);
+                    }
+                }
+            }
+        }
+        
+        function sendTestTrendline() {
+            log('\n=== Sending Test Trendline ===');
+            
+            // Use current time as reference (since we can't access chart's visible range)
+            const currentTime = Date.now();
+            const oneHour = 3600 * 1000; // 1 hour in milliseconds
+            
+            // Create a trendline from 2 hours ago to now
+            const startTime = currentTime - (2 * oneHour);
+            const endTime = currentTime;
+            
+            // Use a reasonable price range for BTC
+            const basePrice = 105000; // Approximate BTC price
+            const priceRange = 1000; // $1000 range
+            
+            const event = new CustomEvent('draw:trendline', {
+                detail: {
+                    points: [
+                        { 
+                            time: startTime,
+                            price: basePrice - priceRange/2
+                        },
+                        { 
+                            time: endTime,
+                            price: basePrice + priceRange/2
+                        }
+                    ],
+                    style: { 
+                        color: '#00ff00', 
+                        lineWidth: 3, 
+                        lineStyle: 'solid' 
+                    }
+                }
+            });
+            
+            window.dispatchEvent(event);
+            
+            log('✅ Test trendline event dispatched');
+            log(`  Start: ${new Date(startTime).toISOString()}`);
+            log(`  End: ${new Date(endTime).toISOString()}`);
+            log(`  Price range: $${basePrice - priceRange/2} to $${basePrice + priceRange/2}`);
+            
+            // Check if it was added
+            setTimeout(() => {
+                if (window.chartStore) {
+                    const drawings = window.chartStore.getState().drawings;
+                    log(`\n📊 Drawings after dispatch: ${drawings?.length || 0}`);
+                }
+            }, 500);
+        }
+        
+        // Initial check
+        setTimeout(() => {
+            log('🚀 Debug tool ready\n');
+            checkChartTimeRange();
+        }, 1000);
+    </script>
+</body>
+</html>

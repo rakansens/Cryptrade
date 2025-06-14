@@ -1,0 +1,18 @@
+{
+  // 変更履歴: 冗長な compilerOptions (esModuleInterop, allowSyntheticDefaultImports) を削除し、必要なテスト固有設定のみを保持
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest", "@types/jest"],
+    "jsx": "react",
+    // Temporarily disable these options for ts-jest compatibility
+    "resolvePackageJsonExports": false,
+    "resolvePackageJsonImports": false
+  },
+  "include": [
+    "**/__tests__/**/*.ts",
+    "**/__tests__/**/*.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "jest.setup.js"
+  ]
+}

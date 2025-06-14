@@ -1,0 +1,506 @@
+{
+  "timestamp": "2025-06-11T15:34:35.361Z",
+  "summary": {
+    "totalSuites": 37,
+    "totalTests": 0,
+    "totalTime": 43146,
+    "averageTimePerSuite": 1166.1081081081081,
+    "averageTimePerTest": 0
+  },
+  "results": {
+    "lib/utils": [
+      {
+        "suite": "lib/utils/__tests__/compose.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 826,
+        "memoryUsage": "0.07 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/logger.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 694,
+        "memoryUsage": "0.15 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/drawing-queue-retry.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 9172,
+        "memoryUsage": "0.06 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/retry-wrapper.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 1150,
+        "memoryUsage": "0.20 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/stream-utils.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 1026,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/zustand-helpers.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 593,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/parse-analysis.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 610,
+        "memoryUsage": "0.01 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/validation.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 635,
+        "memoryUsage": "-0.71 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/drawing-reliability.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 5099,
+        "memoryUsage": "0.05 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/utils/__tests__/retry-with-circuit-breaker.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 1911,
+        "memoryUsage": "0.14 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/services": [
+      {
+        "suite": "lib/services/__tests__/enhanced-market-data.service.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 649,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/services/__tests__/semantic-embedding.service.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 837,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/binance": [
+      {
+        "suite": "lib/binance/__tests__/api-service.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 619,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/binance/__tests__/websocket-manager.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 784,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/binance/__tests__/connection-manager.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 1001,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/api": [
+      {
+        "suite": "lib/api/__tests__/middleware.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 3416,
+        "memoryUsage": "0.20 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/api/__tests__/create-api-handler.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/api/__tests__/create-api-handler.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/api/__tests__/error-boundary.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 685,
+        "memoryUsage": "0.05 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/api/__tests__/streaming.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/api/__tests__/streaming.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "lib/api/helpers": [
+      {
+        "suite": "lib/api/helpers/__tests__/error-handler.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 632,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/api/helpers/__tests__/proposal-extractor.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 599,
+        "memoryUsage": "-0.84 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/api/helpers/__tests__/response-builder.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 628,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/api/helpers/__tests__/request-validator.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 669,
+        "memoryUsage": "0.05 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/errors": [
+      {
+        "suite": "lib/errors/__tests__/base-error.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 624,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/errors/__tests__/error-tracker.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 824,
+        "memoryUsage": "0.05 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/indicators": [
+      {
+        "suite": "lib/indicators/__tests__/moving-average.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 604,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/indicators/__tests__/bollinger-bands.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 606,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/indicators/__tests__/macd.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 619,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/indicators/__tests__/rsi.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/indicators/__tests__/rsi.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "lib/logging": [
+      {
+        "suite": "lib/logging/__tests__/unified-logger.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/logging/__tests__/unified-logger.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "lib/mastra": [
+      {
+        "suite": "lib/mastra/__tests__/a2a-communication.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/mastra/__tests__/a2a-communication.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/mastra/__tests__/agent-ui-integration.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/mastra/__tests__/agent-ui-integration.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/mastra/__tests__/e2e-agent-ui.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 625,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/mastra/__tests__/enhanced-fallback.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 608,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/mastra/__tests__/improved-orchestrator.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/mastra/__tests__/improved-orchestrator.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "lib/mastra/utils": [
+      {
+        "suite": "lib/mastra/utils/__tests__/intent-symbol-extraction.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 602,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      }
+    ],
+    "lib/ml": [
+      {
+        "suite": "lib/ml/__tests__/feature-extractor.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ml/__tests__/feature-extractor.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/ml/__tests__/line-predictor.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ml/__tests__/line-predictor.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/ml/__tests__/streaming-ml-analyzer.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ml/__tests__/streaming-ml-analyzer.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "lib/ws": [
+      {
+        "suite": "lib/ws/__tests__/compat-shim.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 671,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/WSManager.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 680,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/WSManager.coverage.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 679,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/index.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 749,
+        "memoryUsage": "0.15 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/e2e-simple.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 677,
+        "memoryUsage": "0.05 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/migration.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 743,
+        "memoryUsage": "-0.59 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/e2e.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ws/__tests__/e2e.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/ws/__tests__/e2e-advanced.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ws/__tests__/e2e-advanced.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/ws/__tests__/websocket-coverage.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ws/__tests__/websocket-coverage.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "lib/ws/__tests__/ws-basic.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 669,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "lib/ws/__tests__/ws-error-handling.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest lib/ws/__tests__/ws-error-handling.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "hooks/base": [
+      {
+        "suite": "hooks/base/__tests__/use-streaming.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest hooks/base/__tests__/use-streaming.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ],
+    "store": [
+      {
+        "suite": "store/__tests__/market.store.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest store/__tests__/market.store.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "store/__tests__/chart.store.test.ts",
+        "totalTests": 0,
+        "passedTests": 0,
+        "executionTime": 931,
+        "memoryUsage": "0.04 MB",
+        "averageTimePerTest": 0,
+        "testTimes": [],
+        "status": "success"
+      },
+      {
+        "suite": "store/__tests__/chat.store.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest store/__tests__/chat.store.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "store/__tests__/ui-event.store.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest store/__tests__/ui-event.store.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      },
+      {
+        "suite": "store/__tests__/store-integration.test.ts",
+        "status": "error",
+        "error": "Command failed: npx jest store/__tests__/store-integration.test.ts --verbose --no-coverage --detectOpenHandles=false --forceExit --maxWorkers=1"
+      }
+    ]
+  },
+  "slowTests": []
+}

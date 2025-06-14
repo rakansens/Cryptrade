@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Line Validation Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #f0f0f0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #10b981;
+      margin-bottom: 30px;
+    }
+
+    .controls {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+
+    select, button {
+      padding: 8px 16px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #f0f0f0;
+      font-size: 14px;
+    }
+
+    button {
+      background: #10b981;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #059669;
+    }
+
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      color: #60a5fa;
+      font-size: 18px;
+    }
+
+    .ml-progress {
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, #3b82f6, #8b5cf6);
+      transition: width 0.5s ease;
+    }
+
+    .stage-info {
+      font-size: 14px;
+      color: #9ca3af;
+      margin: 10px 0;
+    }
+
+    .features {
+      background: #2a2a2a;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .feature-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+
+    .feature-name {
+      color: #9ca3af;
+    }
+
+    .feature-value {
+      color: #f0f0f0;
+      font-weight: 500;
+    }
+
+    .prediction {
+      background: #2a2a2a;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .success-rate {
+      font-size: 36px;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .high { color: #10b981; }
+    .medium { color: #f59e0b; }
+    .low { color: #ef4444; }
+
+    .reasoning {
+      margin-top: 15px;
+    }
+
+    .reason-item {
+      display: flex;
+      align-items: start;
+      gap: 10px;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .reason-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .positive { background: #10b981; }
+    .negative { background: #ef4444; }
+    .neutral { background: #6b7280; }
+
+    .console {
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      height: 200px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .log-entry {
+      margin: 2px 0;
+      color: #9ca3af;
+    }
+
+    .log-time {
+      color: #6b7280;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 ML Line Validation Test</h1>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="symbol">通貨ペア</label>
+        <select id="symbol">
+          <option value="BTCUSDT">BTC/USDT</option>
+          <option value="ETHUSDT">ETH/USDT</option>
+          <option value="BNBUSDT">BNB/USDT</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="lineType">ラインタイプ</label>
+        <select id="lineType">
+          <option value="support">サポートライン</option>
+          <option value="resistance">レジスタンスライン</option>
+          <option value="trendline">トレンドライン</option>
+        </select>
+      </div>
+      <button id="analyzeBtn" onclick="runMLAnalysis()">ML分析を実行</button>
+    </div>
+
+    <div class="results">
+      <div class="panel">
+        <h2>📊 Line Features</h2>
+        <div id="featuresPanel">
+          <p style="color: #6b7280;">分析を実行してください...</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🧠 ML Analysis Progress</h2>
+        <div id="mlProgress" class="ml-progress">
+          <div class="stage-info">待機中...</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div id="progressDetails"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 20px;">
+      <h2>🎯 Prediction Results</h2>
+      <div id="predictionPanel">
+        <p style="color: #6b7280;">分析結果がここに表示されます...</p>
+      </div>
+    </div>
+
+    <div class="console">
+      <div id="console"></div>
+    </div>
+  </div>
+
+  <script>
+    let isAnalyzing = false;
+
+    function log(message) {
+      const console = document.getElementById('console');
+      const time = new Date().toLocaleTimeString('ja-JP');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${time}</span>${message}`;
+      console.appendChild(entry);
+      console.scrollTop = console.scrollHeight;
+    }
+
+    function generateMockLine(type) {
+      const now = Date.now() / 1000;
+      const touchCount = 3 + Math.floor(Math.random() * 5);
+      const touchPoints = [];
+      
+      for (let i = 0; i < touchCount; i++) {
+        touchPoints.push({
+          time: now - (touchCount - i) * 86400,
+          value: 50000 + Math.random() * 1000
+        });
+      }
+
+      return {
+        type,
+        price: type === 'trendline' ? null : 50000,
+        touchPoints,
+        confidence: 0.7 + Math.random() * 0.2,
+        rSquared: 0.8 + Math.random() * 0.15,
+        timeframe: '1h'
+      };
+    }
+
+    async function runMLAnalysis() {
+      if (isAnalyzing) return;
+      
+      isAnalyzing = true;
+      const btn = document.getElementById('analyzeBtn');
+      btn.disabled = true;
+      btn.textContent = '分析中...';
+
+      const symbol = document.getElementById('symbol').value;
+      const lineType = document.getElementById('lineType').value;
+      
+      log(`Starting ML analysis for ${symbol} ${lineType}...`);
+      
+      // Reset panels
+      document.getElementById('featuresPanel').innerHTML = '<p style="color: #6b7280;">特徴量を抽出中...</p>';
+      document.getElementById('predictionPanel').innerHTML = '<p style="color: #6b7280;">分析中...</p>';
+      
+      // Generate mock data
+      const line = generateMockLine(lineType);
+      const features = extractFeatures(line);
+      
+      // Simulate ML analysis stages
+      await simulateMLProgress(features, symbol);
+      
+      isAnalyzing = false;
+      btn.disabled = false;
+      btn.textContent = 'ML分析を実行';
+    }
+
+    function extractFeatures(line) {
+      return {
+        touchCount: line.touchPoints.length,
+        rSquared: line.rSquared,
+        confidence: line.confidence,
+        wickTouchRatio: 0.3 + Math.random() * 0.4,
+        bodyTouchRatio: 0.4 + Math.random() * 0.3,
+        volumeStrength: 0.8 + Math.random() * 0.7,
+        recentTouchCount: Math.min(3, line.touchPoints.length),
+        timeframeConfluence: 0.6 + Math.random() * 0.3,
+        nearPsychological: Math.random() > 0.6,
+        marketCondition: ['trending', 'ranging', 'volatile'][Math.floor(Math.random() * 3)]
+      };
+    }
+
+    async function simulateMLProgress(features, symbol) {
+      const stages = [
+        { stage: 'collecting', progress: 20, step: 'データ収集中...', duration: 800 },
+        { stage: 'extracting', progress: 40, step: '特徴量を抽出中...', duration: 1000 },
+        { stage: 'predicting', progress: 70, step: 'MLモデルで予測中...', duration: 1200 },
+        { stage: 'analyzing', progress: 90, step: '分析結果をまとめています...', duration: 800 },
+        { stage: 'complete', progress: 100, step: 'ML分析完了', duration: 500 }
+      ];
+
+      for (const stage of stages) {
+        updateProgress(stage.stage, stage.progress, stage.step);
+        
+        if (stage.stage === 'extracting') {
+          displayFeatures(features);
+        }
+        
+        if (stage.stage === 'predicting') {
+          log(`Running ${symbol} ML model...`);
+        }
+        
+        await sleep(stage.duration);
+      }
+
+      // Display final prediction
+      const prediction = generatePrediction(features, symbol);
+      displayPrediction(prediction);
+    }
+
+    function updateProgress(stage, progress, step) {
+      document.querySelector('.stage-info').textContent = step;
+      document.querySelector('.progress-fill').style.width = `${progress}%`;
+      
+      const details = document.getElementById('progressDetails');
+      if (stage === 'extracting') {
+        details.innerHTML = '<div style="color: #9ca3af; font-size: 13px; margin-top: 10px;">重要な特徴: タッチ回数, R²値, ボリューム強度</div>';
+      } else if (stage === 'predicting') {
+        details.innerHTML = '<div style="color: #9ca3af; font-size: 13px; margin-top: 10px;">ニューラルネットワークで処理中...</div>';
+      }
+    }
+
+    function displayFeatures(features) {
+      const panel = document.getElementById('featuresPanel');
+      let html = '<div class="features">';
+      
+      const displayFeatures = [
+        { name: 'タッチ回数', value: features.touchCount },
+        { name: 'R²値', value: features.rSquared.toFixed(3) },
+        { name: '信頼度', value: (features.confidence * 100).toFixed(1) + '%' },
+        { name: 'ヒゲタッチ率', value: (features.wickTouchRatio * 100).toFixed(0) + '%' },
+        { name: '実体タッチ率', value: (features.bodyTouchRatio * 100).toFixed(0) + '%' },
+        { name: 'ボリューム強度', value: features.volumeStrength.toFixed(2) + 'x' },
+        { name: '直近タッチ数', value: features.recentTouchCount },
+        { name: 'TF整合性', value: (features.timeframeConfluence * 100).toFixed(0) + '%' },
+        { name: '市場状態', value: features.marketCondition },
+        { name: '心理的価格', value: features.nearPsychological ? 'Yes' : 'No' }
+      ];
+
+      displayFeatures.forEach(f => {
+        html += `
+          <div class="feature-item">
+            <span class="feature-name">${f.name}</span>
+            <span class="feature-value">${f.value}</span>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      panel.innerHTML = html;
+      log(`Extracted ${displayFeatures.length} features`);
+    }
+
+    function generatePrediction(features, symbol) {
+      // Simulate ML prediction based on features
+      let baseScore = 0.5;
+      
+      if (features.touchCount >= 5) baseScore += 0.15;
+      if (features.rSquared > 0.9) baseScore += 0.1;
+      if (features.volumeStrength > 1.2) baseScore += 0.1;
+      if (features.bodyTouchRatio > 0.6) baseScore += 0.05;
+      if (features.nearPsychological) baseScore += 0.05;
+      if (features.marketCondition === 'trending') baseScore += 0.05;
+      
+      // Currency-specific adjustments
+      if (symbol === 'BTCUSDT' && features.nearPsychological) {
+        baseScore += 0.05;
+      }
+      
+      const successProbability = Math.min(0.95, Math.max(0.1, baseScore));
+      const expectedBounces = Math.round(1 + successProbability * 4);
+      
+      const reasoning = [];
+      
+      if (features.touchCount >= 5) {
+        reasoning.push({
+          factor: 'タッチ回数',
+          impact: 'positive',
+          description: `${features.touchCount}回のタッチで強固なサポート/レジスタンス`
+        });
+      }
+      
+      if (features.rSquared > 0.9) {
+        reasoning.push({
+          factor: '線形性',
+          impact: 'positive',
+          description: `R²値 ${features.rSquared.toFixed(2)} - 非常に正確なライン`
+        });
+      }
+      
+      if (features.volumeStrength > 1.5) {
+        reasoning.push({
+          factor: 'ボリューム',
+          impact: 'positive',
+          description: '高ボリュームでの反発 - 機関投資家の関心'
+        });
+      }
+      
+      if (features.wickTouchRatio > 0.8) {
+        reasoning.push({
+          factor: 'タッチ品質',
+          impact: 'negative',
+          description: 'ヒゲでのタッチが多く、不安定な可能性'
+        });
+      }
+      
+      return {
+        successProbability,
+        expectedBounces,
+        reasoning
+      };
+    }
+
+    function displayPrediction(prediction) {
+      const panel = document.getElementById('predictionPanel');
+      const successRate = Math.round(prediction.successProbability * 100);
+      const rateClass = successRate >= 70 ? 'high' : successRate >= 50 ? 'medium' : 'low';
+      
+      let html = '<div class="prediction">';
+      html += `<div class="success-rate ${rateClass}">${successRate}%</div>`;
+      html += `<p style="text-align: center; color: #9ca3af;">予想反発回数: ${prediction.expectedBounces}回</p>`;
+      
+      if (prediction.reasoning.length > 0) {
+        html += '<div class="reasoning"><h3 style="font-size: 14px; margin-bottom: 10px;">分析根拠</h3>';
+        
+        prediction.reasoning.forEach(reason => {
+          html += `
+            <div class="reason-item">
+              <div class="reason-indicator ${reason.impact}"></div>
+              <div>
+                <strong>${reason.factor}</strong><br>
+                ${reason.description}
+              </div>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+      }
+      
+      html += '</div>';
+      panel.innerHTML = html;
+      
+      log(`ML Prediction: ${successRate}% success probability, ${prediction.expectedBounces} expected bounces`);
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Initialize
+    log('ML Line Validation Test initialized');
+    log('Select currency pair and line type, then click "Run ML Analysis"');
+  </script>
+</body>
+</html>

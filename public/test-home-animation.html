@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home Animation Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    }
+    
+    button:hover {
+      background: #0056b3;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background: #e9ecef;
+    }
+    
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ホームアニメーションテスト</h1>
+    
+    <div class="test-section">
+      <h3>アニメーション機能テスト</h3>
+      <p>以下の機能をテストできます：</p>
+      <ul>
+        <li>ホーム画面からチャット画面への遷移</li>
+        <li>チャット画面からホーム画面への戻り</li>
+        <li>入力欄のアニメーション</li>
+        <li>サジェスチョンボタンの動作</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>テスト手順</h3>
+      <ol>
+        <li>下のアプリケーションでホーム画面が表示されることを確認</li>
+        <li>中央の入力欄に何か入力してEnterキーを押す</li>
+        <li>スムーズなアニメーションでチャット画面に遷移することを確認</li>
+        <li>左サイドバーの「ホームに戻る」ボタンをクリック</li>
+        <li>ホーム画面に戻ることを確認</li>
+      </ol>
+    </div>
+    
+    <div class="test-section">
+      <h3>アニメーションチェックリスト</h3>
+      <ul>
+        <li>□ ホーム画面のフェードイン</li>
+        <li>□ 背景グラデーションのアニメーション</li>
+        <li>□ 入力欄のスケールアニメーション</li>
+        <li>□ サジェスチョンボタンの順次表示</li>
+        <li>□ ホーム→チャットの遷移（フェード＋スケール）</li>
+        <li>□ チャットサイドバーのスライドイン</li>
+        <li>□ 遷移エフェクトレイヤーの動き</li>
+      </ul>
+    </div>
+    
+    <div class="status">
+      <h3>アプリケーション</h3>
+      <iframe src="http://localhost:3002" frameborder="0"></iframe>
+    </div>
+  </div>
+</body>
+</html>
