@@ -95,3 +95,18 @@ export function registerAgentsSafely(): void {
     });
   }
 }
+
+/**
+ * 汎用バリデーションユーティリティ
+ *
+ * create-sse-handler などがクエリパラメータを検証するために利用する。
+ * helpers/request-validator.ts にはチャット専用の validateChatRequest しか無かったため、
+ * import エラーが発生していた。
+ */
+export function validateRequest<T>(data: unknown, schema: z.ZodSchema<T>): T {
+  const validation = schema.safeParse(data);
+  if (!validation.success) {
+    throw new ValidationError('Invalid request parameters', validation.error.format());
+  }
+  return validation.data;
+}
