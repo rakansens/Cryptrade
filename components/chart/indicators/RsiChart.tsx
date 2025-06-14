@@ -41,6 +41,13 @@ export default function RsiChart({ height }: RsiChartProps) {
     calculateRSI,
   })
 
+  // Ensure RSI data updates whenever new price data arrives
+  useEffect(() => {
+    if (isInitialized && hasData) {
+      updateChartData()
+    }
+  }, [priceData, isInitialized, hasData, updateChartData])
+
 
   // Initialize chart when symbol changes AND when we have sufficient data
   useEffect(() => {

@@ -96,7 +96,6 @@ export type {
   ConversationalContext,
   PriceInquiryContext,
   // Response types
-  AgentResponse,
   AgentTextResponse,
   AgentToolResponse,
   AgentGenerateOptions,
@@ -110,12 +109,7 @@ export type {
   EntryProposalGenerationResult,
   // Symbol types
   SupportedSymbol,
-  // Type guards
-  isToolResponse,
-  isTextResponse,
-  isProposalContext,
-  isConversationalContext,
-  isPriceInquiryContext,
+  // Type guards (types onlyは除外)
   // Utility types
   DeepPartial,
   AsyncResult
@@ -173,3 +167,12 @@ export {
   MAX_RETRY_ATTEMPTS,
   HANDLER_TIMEOUT_MS
 } from './orchestrator.types';
+
+// ランタイムで利用する type guard 関数は値として re-export する
+export {
+  isToolResponse,
+  isTextResponse,
+  isProposalContext,
+  isConversationalContext,
+  isPriceInquiryContext,
+} from './agent-network.types';
