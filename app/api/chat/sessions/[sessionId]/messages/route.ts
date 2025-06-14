@@ -34,7 +34,10 @@ export async function POST(
       sessionId: params.sessionId 
     });
     return NextResponse.json(
-      { error: 'Failed to add message' },
+      { 
+        error: 'Failed to add message',
+        ...(process.env.NODE_ENV === 'development' && typeof error === 'object' ? { detail: (error as Error).message, stack: (error as Error).stack } : {})
+      },
       { status: 500 }
     );
   }
