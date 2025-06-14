@@ -1,7 +1,7 @@
 // Drawing related types with Zod schemas for runtime validation
 // 更新: 2025-06-11 - showLabels を必須から任意 (default false) に変更し、ChartDrawing バリデーションの "Required" エラーを修正
 
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 
 // =============================================================================
 // ZOD SCHEMAS - Single source of truth for drawing types
@@ -122,18 +122,20 @@ export function validateDrawingData(data: unknown): DrawingData {
     const result = DrawingDataSchema.parse(data);
     console.log('[Drawing Validation] Success - type:', result.type, 'points:', result.points?.length);
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Drawing Validation] Failed:', {
         inputDataType: typeof data,
         inputDataKeys: data && typeof data === 'object' ? Object.keys(data) : 'N/A',
-        errors: error.errors.map(e => ({ 
-          path: e.path, 
-          message: e.message, 
-          received: 'received' in e ? e.received : 'unknown' 
+        errors: error.errors.map((e: ZodIssue) => ({
+          path: e.path,
+          message: e.message,
+          received: 'received' in e ? e.received : 'unknown'
         }))
       });
-      throw new Error(`Invalid drawing data: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid drawing data: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }
@@ -145,11 +147,13 @@ export function validateDrawingData(data: unknown): DrawingData {
 export function validateChartDrawing(data: unknown): ChartDrawing {
   try {
     return ChartDrawingSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Chart Drawing Validation] Failed:', error.errors);
       console.error('[Chart Drawing Validation] Input data:', data);
-      const errorMessages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const errorMessages = error.errors
+        .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+        .join(', ');
       throw new Error(`Invalid chart drawing: ${errorMessages}`);
     }
     throw error;

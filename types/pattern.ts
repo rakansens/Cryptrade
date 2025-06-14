@@ -112,10 +112,12 @@ export type PatternDetectionParams = z.infer<typeof PatternDetectionParamsSchema
 export function validatePatternAnalysis(data: unknown): PatternAnalysis {
   try {
     return PatternAnalysisSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Pattern Validation] Failed:', error.errors);
-      throw new Error(`Invalid pattern data: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid pattern data: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }

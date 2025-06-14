@@ -474,18 +474,25 @@ export function extractUnifiedProposals(response: unknown): UnifiedProposal[] {
   const responseObj = response as Record<string, unknown>;
 
   // Check for proposalGroup (drawing proposals)
-  if (responseObj.proposalGroup) {
-    proposals.push(toUnifiedProposal(responseObj.proposalGroup as DrawingProposalGroup));
+  if (responseObj['proposalGroup']) {
+    proposals.push(
+      toUnifiedProposal(responseObj['proposalGroup'] as DrawingProposalGroup)
+    );
   }
 
   // Check for entryProposalGroup
-  if (responseObj.entryProposalGroup) {
-    proposals.push(toUnifiedProposal(responseObj.entryProposalGroup as EntryProposalGroup, ProposalType.ENTRY));
+  if (responseObj['entryProposalGroup']) {
+    proposals.push(
+      toUnifiedProposal(
+        responseObj['entryProposalGroup'] as EntryProposalGroup,
+        ProposalType.ENTRY
+      )
+    );
   }
 
   // Check for unified proposals array
-  if (responseObj.proposals && Array.isArray(responseObj.proposals)) {
-    (responseObj.proposals as UnifiedProposal[]).forEach((p: UnifiedProposal) => {
+  if (responseObj['proposals'] && Array.isArray(responseObj['proposals'])) {
+    (responseObj['proposals'] as UnifiedProposal[]).forEach((p: UnifiedProposal) => {
       if (p.data) {
         proposals.push(p);
       }

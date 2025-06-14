@@ -5,7 +5,7 @@
  * and trading strategies used in the Cryptrade platform.
  */
 
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 
 // =============================================================================
 // ZOD SCHEMAS - Trading types
@@ -225,10 +225,12 @@ export function calculateRiskReward(entry: number, stopLoss: number, takeProfit:
 export function validateEntryProposal(data: unknown): EntryProposal {
   try {
     return EntryProposalSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Entry Proposal Validation] Failed:', error.errors);
-      throw new Error(`Invalid entry proposal: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid entry proposal: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }
@@ -238,7 +240,9 @@ export function validateEntryProposal(data: unknown): EntryProposal {
  * Create a simple trade setup from entry proposal
  */
 export function createTradeSetup(proposal: EntryProposal): TradeSetup {
-  const takeProfitPrices = proposal.riskParameters.takeProfitTargets.map(tp => tp.price);
+  const takeProfitPrices = proposal.riskParameters.takeProfitTargets.map(
+    (tp: RiskParameters['takeProfitTargets'][number]) => tp.price
+  );
   
   return {
     entry: proposal.entryPrice,

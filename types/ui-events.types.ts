@@ -106,9 +106,9 @@ export function isDrawingPoint(value: unknown): value is DrawingPoint {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.time === 'number' &&
-    (obj.value === undefined || typeof obj.value === 'number') &&
-    (obj.price === undefined || typeof obj.price === 'number')
+    typeof obj['time'] === 'number' &&
+    (obj['value'] === undefined || typeof obj['value'] === 'number') &&
+    (obj['price'] === undefined || typeof obj['price'] === 'number')
   );
 }
 
@@ -117,8 +117,8 @@ export function isDrawingData(value: unknown): value is DrawingData {
   const obj = value as Record<string, unknown>;
   
   return (
-    Array.isArray(obj.points) &&
-    obj.points.every(isDrawingPoint)
+    Array.isArray(obj['points']) &&
+    (obj['points'] as unknown[]).every(isDrawingPoint)
   );
 }
 

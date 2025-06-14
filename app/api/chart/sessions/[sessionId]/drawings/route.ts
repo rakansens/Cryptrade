@@ -14,10 +14,9 @@ const saveDrawingsSchema = z.object({
   drawings: z.array(ChartDrawingSchema),
 });
 
-export async function GET(request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await context.params;
   try {
-    const { sessionId } = params;
-
     const drawings = await prisma.chartDrawing.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
@@ -48,9 +47,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await context.params;
   try {
-    const { sessionId } = params;
     const body = await request.json();
     const data = saveDrawingsSchema.parse(body);
 

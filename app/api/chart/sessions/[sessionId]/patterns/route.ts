@@ -14,10 +14,10 @@ const savePatternsSchema = z.object({
   patterns: z.array(PatternDataSchema),
 });
 
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const { sessionId } = params;
+export async function GET(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await context.params;
 
+  try {
     const patterns = await prisma.patternAnalysis.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
@@ -55,9 +55,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await context.params;
   try {
-    const { sessionId } = params;
     const body = await request.json();
     const data = savePatternsSchema.parse(body);
 

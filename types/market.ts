@@ -349,7 +349,7 @@ export function validateBinanceKlines(data: unknown): ProcessedKline[] {
         };
       }).filter(Boolean) as ProcessedKline[];
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[validateBinanceKlines] Validation failed:', error);
     throw error; // Re-throw to let caller handle appropriately
   }
@@ -372,7 +372,7 @@ export function validateBinanceTradeMessage(data: unknown): BinanceTradeMessage 
       // Fast validation in production
       return fastValidateTradeMessage(data);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.debug('[validateBinanceTradeMessage] Validation error:', error);
     return null;
   }
@@ -395,7 +395,7 @@ export function validateBinanceKlineMessage(data: unknown): BinanceKlineMessage 
       // Fast validation in production
       return fastValidateKlineMessage(data);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.debug('[validateBinanceKlineMessage] Validation error:', error);
     return null;
   }
