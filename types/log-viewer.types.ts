@@ -2,7 +2,7 @@
  * Type definitions for log viewer
  */
 
-import type { LogLevel } from '@/lib/logs/types';
+import type { LogLevel } from '@/lib/logging';
 
 export interface LogEntry {
   id: string;

@@ -85,7 +85,7 @@
 
 ### 4.1 解決済みの問題
 - ✅ ConversationSessionのmetadataフィールド不足 → スキーマに追加
-- ✅ chart-persistence-db.tsファイル不在 → wrapper経由で解決
+- ✅ chart-persistence-wrapper.ts への移行完了
 - ✅ 環境変数検証エラー → 環境変数設定完了
 
 ### 4.2 軽微な警告

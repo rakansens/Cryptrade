@@ -4,7 +4,7 @@
  * Drop-in replacement for existing logger with enhanced features
  */
 
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
+import { enhancedLogger } from '@/lib/logging';
 import { logger as originalLogger } from './logger';
 
 /**
