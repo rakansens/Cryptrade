@@ -1,5 +1,5 @@
 # tmuxを使った相互通信によるClaude Code Company管理方法 - 改善版
-<!-- 2024-06-15 更新: 自動承認改良 & リアルタイムモニタリング機能を追加 -->
+<!-- 2024-06-16 更新: KeepAliveハートビート機能を追加 -->
 
 ## 概要
 tmuxの複数paneでClaude Codeインスタンスを並列実行し、効率的にタスクを分散処理する方法。実践経験に基づく改善版。
@@ -14,6 +14,8 @@ PANES=(%27 %28 %25 %29 %26)
 SLEEP_AFTER_APPROVE=5
 # cc コマンドが無い場合はエイリアスを自動設定
 command -v cc >/dev/null || alias cc="claude"
+# ハートビート間隔（秒）
+KEEPALIVE_INTERVAL=300
 ```
 
 ### 1. tmux pane構成作成
@@ -302,45 +304,22 @@ for pane in %27 %28 %25 %29 %26; do
 done
 ```
 
-### 9. リアルタイムモニタリング (NEW)
-プロマネpaneが部下paneの最新ログを定期取得して1行サマリを受け取る。
+### 9. KeepAliveハートビート (NEW)
+プロマネAIがフリーズしないよう、5分ごとに各部下paneへ `/ping` を送信し、部下は状況をワンライナーで返信する仕組み。
 
 ```bash
-# 60秒ごとに各paneの直近3行を1行に圧縮してメインpaneに送信
+# 部下AIへの指示例:
+#   /ping を受信したら [paneX] 現在の進捗 をメイン(%22)に送信
+
+# プロマネpane(%22)でバックグラウンド実行
 while true; do
   for pane in "${PANES[@]}"; do
-    summary=$(tmux capture-pane -t $pane -p | tail -3 | tr "\n" " " | sed -E 's/ {2,}/ /g' | cut -c -280)
-    tmux send-keys -t %22 "[Log $pane] $summary" Enter
+    tmux send-keys -t $pane "/ping" Enter
   done
-  sleep 60
+  sleep ${KEEPALIVE_INTERVAL}
 done &
 ```
 
-ポイント:
-- `tail -3` で最新状況を取得し `tr` で改行→スペースへ変換、一行にまとめる。
-- `cut -c -280` で長過ぎるログをカットしトークン節約。
-- main pane `%22` に `[Log %ID]` プレフィックス付きで流すので、プロマネAIは通知として認識しやすい。
-
-> 必要に応じて `sleep` を変更して頻度を調整。
+> ポイント: `/ping` の文面は自由。子AIが応答することでプロマネAIへの入力が発生し、無操作によるタイムアウトを防ぐ。
 
 このシステムにより、複数のClaude Codeインスタンスを効率的に管理し、大規模タスクの並列処理が可能になります。実践を通じて得られた知見を活用することで、より効率的なチーム運営が実現できます。
-
-<!-- 2024-06-15 更新: 自動承認スクリプトを改良（不要な"2"入力の解消 & Yes/Always-Yes を自動判定） -->
-```bash
-# 定期的な承認チェックスクリプト（バックグラウンド実行、Yes/Always-Yesを自動判定）
-while true; do
-    for pane in "${PANES[@]}"; do
-        recent="$(tmux capture-pane -t $pane -p | tail -5)"
-        if echo "$recent" | grep -q "approve"; then
-            if echo "$recent" | grep -q "(2)"; then
-                key=2
-            else
-                key=1
-            fi
-            tmux send-keys -t $pane C-u  # 入力欄クリア
-            tmux send-keys -t $pane "$key" Enter
-        fi
-    done
-    sleep 30
-done &
-```
