@@ -9,8 +9,8 @@ import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { PatternVisualization, PatternRenderer as IPatternRenderer, PatternMetrics, PatternRendererState } from '@/types/pattern';
 import { PatternRendererCore } from './PatternRendererCore';
 import { PatternRenderer } from './pattern-renderer';
-import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * アダプタークラス - 既存のAPIを維持しながら内部で新しいCoreを使用
@@ -262,12 +262,12 @@ export class PatternRendererAdapter implements IPatternRenderer {
  * 環境変数やフィーチャーフラグに基づいて自動的にレンダラーを選択するファクトリー
  */
 export function createPatternRendererWithAutoSelection(
-  chart: IChartApi, 
+  chart: IChartApi,
   mainSeries: ISeriesApi<SeriesType>
 ): PatternRendererAdapter {
   // 環境変数またはフィーチャーフラグでの制御
   const useNewCore = env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER === 'true' ||
-                     (typeof window !== 'undefined' && 
+                     (typeof window !== 'undefined' &&
                       (window as unknown as { __debugUseNewPatternRenderer?: boolean }).__debugUseNewPatternRenderer === true);
   
   const adapter = new PatternRendererAdapter(chart, mainSeries, {

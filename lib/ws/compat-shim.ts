@@ -6,6 +6,7 @@
 import { Subscription } from 'rxjs';
 import { WSManager } from './WSManager';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 import type { MessageHandler, UnsubscribeFunction, DebugInfo, ExtendedMetrics } from './types';
 
 // Re-export for backward compatibility
@@ -41,7 +42,7 @@ export class BinanceConnectionManagerShim {
 
     this.isInitialized = true;
     
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment()) {
       logger.info('[BinanceWS-Shim] Initialized with WSManager backend');
     }
   }
@@ -78,7 +79,7 @@ export class BinanceConnectionManagerShim {
         });
       },
       complete: () => {
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           logger.debug('[BinanceWS-Shim] Stream completed', { streamName, subscriptionId });
         }
       }

@@ -1,7 +1,7 @@
 // Updated: Prismaデータベース設定にて環境変数の型安全なアクセスを実装
 import { PrismaClient, Prisma } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
-import { env } from '@/config/env'
+import { env, isDevelopment } from '@/config/env'
 
 // Prismaイベントの型定義
 type PrismaQueryEvent = {
@@ -46,11 +46,11 @@ function createPrismaClient() {
         level: 'warn',
       },
     ],
-    errorFormat: env.NODE_ENV === 'development' ? 'pretty' : 'minimal',
+    errorFormat: isDevelopment() ? 'pretty' : 'minimal',
   })
 
   // Log queries in development
-  if (env.NODE_ENV === 'development') {
+  if (isDevelopment()) {
     client.$on('query' as never, (e: PrismaQueryEvent) => {
       logger.debug('[Prisma Query]', {
         query: e.query,

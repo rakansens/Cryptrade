@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
-import { env } from '@/config/env';
+import { isDevelopment } from '@/config/env';
 
 export async function GET(
   request: NextRequest,
@@ -40,7 +40,9 @@ export async function POST(
     return NextResponse.json(
       { 
         error: 'Failed to add message',
-        ...(env.NODE_ENV === 'development' && typeof error === 'object' ? { detail: (error as Error).message, stack: (error as Error).stack } : {})
+        ...(isDevelopment() && typeof error === 'object'
+          ? { detail: (error as Error).message, stack: (error as Error).stack }
+          : {})
       },
       { status: 500 }
     );

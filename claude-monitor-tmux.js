@@ -226,8 +226,28 @@ function renderActivity() {
 async function tick() {
   await listClaudePanes();
   await updatePaneLogs();
-  // sparkline update
-  sparklineBox.setData([cpuTrend, memTrend], ['CPU','Mem']);
+  // CPU/Mem計測
+  const pids = Array.from(panes.values()).map(p=>p.pid).join(',');
+  if(pids){
+    try{
+      const { stdout } = await execPromise(`ps -o pid,%cpu,%mem -p ${pids}`);
+      stdout.split('\n').slice(1).forEach(line=>{
+        const parts=line.trim().split(/\s+/);
+        if(parts.length>=3){
+          const pid=parts[0];
+          const cpu=parseFloat(parts[1]);
+          const mem=parseFloat(parts[2]);
+          for(const pane of panes.values()) if(pane.pid===pid){pane.cpu=cpu;pane.mem=mem;}
+        }
+      });
+    }catch{}
+  }
+
+  // sparkline update (swap args order)
+  if(cpuTrend.length>1){
+    sparklineBox.setData(['CPU','Mem'], [cpuTrend, memTrend]);
+  }
+
   renderHeader();
   renderOverview();
   renderDetails();

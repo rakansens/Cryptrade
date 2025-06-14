@@ -10,6 +10,7 @@ import ChatPanel from './ChatPanel'
 import ChatSidebar from './ChatSidebar'
 import { useChat } from '@/store/chat.store'
 import { useChartActions, useDrawingActions, useChartStore, useChartStoreBase } from '@/store/chart.store'
+import { isDevelopment } from '@/config/env'
 import type { DrawingData, DrawingPoint, DrawTrendlineEventDetail } from '@/types/ui-events.types'
 import { env } from '@/config/env'
 
@@ -36,7 +37,7 @@ export default function FloatingChatPanel({ isVisible, onToggleVisibility }: Flo
   // UI操作と自動描画のイベントハンドラ
   useEffect(() => {
     // 開発環境でデバッグ用にwindowに露出
-    if (typeof window !== 'undefined' && env.NODE_ENV === 'development') {
+    if (typeof window !== 'undefined' && isDevelopment()) {
       interface WindowWithChartStore extends Window {
         chartStore?: typeof useChartStoreBase;
       }

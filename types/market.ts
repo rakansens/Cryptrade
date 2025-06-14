@@ -245,9 +245,9 @@ export interface BollingerBandsDataLightweight {
 // VALIDATION HELPERS
 // =============================================================================
 
+import { env } from '@/config/env';
 // Environment-aware validation helpers
-/* eslint-disable no-restricted-syntax */
-const shouldValidate = process.env['NODE_ENV'] !== 'production' || process.env['FORCE_VALIDATION'] === 'true';
+const shouldValidate = env.NODE_ENV !== 'production' || env.FORCE_VALIDATION === true;
 
 // Fast validation for production (basic type checks)
 function fastValidateTradeMessage(data: unknown): BinanceTradeMessage | null {

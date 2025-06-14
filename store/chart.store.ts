@@ -11,9 +11,10 @@
 
 // Re-export everything from the new modular structure
 export * from './chart';
+import { isDevelopment } from '@/config/env';
 
 // Display deprecation warning in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (typeof window !== 'undefined' && isDevelopment()) {
   console.warn(
     '[ChartStore] Direct imports from chart.store.ts are deprecated. ' +
     'Please import from @/store/chart instead.'

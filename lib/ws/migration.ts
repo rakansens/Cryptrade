@@ -7,25 +7,10 @@ import { binanceConnectionManager } from '@/lib/binance/connection-manager';
 import { binanceConnectionManagerShim } from './compat-shim';
 import { logger } from '@/lib/utils/logger';
 import type { MessageHandler } from './types';
-
-// Safe environment access for client/server compatibility
-function getFeatureFlag(): boolean {
-  if (typeof window !== 'undefined') {
-    // Browser environment - use process.env directly (safer)
-    return process.env['USE_NEW_WS_MANAGER'] === 'true' || false;
-  } else {
-    // Server environment - can safely use centralized env
-    try {
-      const { env } = require('@/config/env');
-      return env.USE_NEW_WS_MANAGER === 'true' || false;
-    } catch {
-      return process.env['USE_NEW_WS_MANAGER'] === 'true' || false;
-    }
-  }
-}
+import { env } from '@/config/env';
 
 // Feature flag for WSManager migration
-const USE_WS_MANAGER = getFeatureFlag();
+const USE_WS_MANAGER = env.USE_NEW_WS_MANAGER === true;
 
 /**
  * Migration wrapper that switches between old and new implementations

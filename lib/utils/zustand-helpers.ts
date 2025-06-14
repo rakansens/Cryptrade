@@ -1,8 +1,9 @@
 // Zustand debug helpers
+import { isDevelopment } from '@/config/env';
+
 export const createStoreDebugger = (storeName: string) => {
   return (action: string) => {
-    // Use process.env directly for client-side code (safe for NODE_ENV)
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment()) {
       try {
         console.debug(`[${storeName}] ${action}`);
       } catch (error) {

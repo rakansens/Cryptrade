@@ -10,6 +10,7 @@ import { useIndicatorStore } from './stores/indicator.store';
 import { useDrawingStore } from './stores/drawing.store';
 import { usePatternStore } from './stores/pattern.store';
 import type { ChartStore } from './types';
+import { isDevelopment } from '@/config/env';
 
 // Re-export types
 export * from './types';
@@ -213,7 +214,7 @@ export { usePatternStore } from './stores/pattern.store';
 // ========================================
 
 /* eslint-disable no-restricted-syntax */
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (typeof window !== 'undefined' && isDevelopment()) {
   // Expose stores for debugging
   // @ts-ignore
   window.__CHART_STORE = useChartStore;

@@ -149,7 +149,7 @@ export function migrateLogEntry(oldEntry: LegacyLogEntry): UnifiedLogEntry {
     timestamp,
     level: oldEntry.level,
     message: oldEntry.message,
-    environment: oldEntry.environment || env.NODE_ENV || 'development',
+    environment: oldEntry.environment || env.NODE_ENV,
     source: oldEntry.source || 'cryptrade',
     meta: oldEntry.meta || oldEntry.metadata || {},
   };

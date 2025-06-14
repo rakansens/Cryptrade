@@ -245,6 +245,8 @@ export class DrawingRenderer {
 }
 
 // Feature flag check
+import { env } from '@/config/env';
+
 export function isDrawingRendererEnabled(): boolean {
   return env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === 'true';
 }

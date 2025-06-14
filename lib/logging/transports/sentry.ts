@@ -65,10 +65,8 @@ export class SentryTransport implements IUnifiedTransport {
   }
 
   private checkSentryAvailability(): boolean {
-    /* eslint-disable no-restricted-syntax */
-    const sentryDsn = process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'];
-    return !!sentryDsn && process.env['ENABLE_SENTRY'] !== 'false';
-    /* eslint-enable no-restricted-syntax */
+    const sentryDsn = env.SENTRY_DSN || env.NEXT_PUBLIC_SENTRY_DSN;
+    return !!sentryDsn && env.ENABLE_SENTRY !== false;
   }
 
   private async getSentry(): Promise<SentrySDK | null> {

@@ -206,9 +206,10 @@ export class BrowserNotificationManager {
 export const notifications = new BrowserNotificationManager();
 
 // Auto-request permission on first import (optional)
+
 if (typeof window !== 'undefined') {
   // Only auto-request in production or when explicitly enabled
-  const autoRequest = env.NODE_ENV === 'production' || 
+  const autoRequest = env.NODE_ENV === 'production' ||
                      localStorage.getItem('auto-request-notifications') === 'true';
   
   if (autoRequest) {
