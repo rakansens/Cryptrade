@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { logger } from '@/lib/logging';
+import { logger } from '@/lib/utils/logger';
 import { validateRequest } from './helpers/request-validator';
 import { errorHandler } from './helpers/error-handler';
 import type { StreamEvent } from '@/lib/api/types';
@@ -133,9 +133,17 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
             
             // Call disconnect handler
             if (config.handler.onDisconnect) {
-              config.handler.onDisconnect({ request, data, reason }).catch(error => {
+              try {
+                const result = config.handler.onDisconnect({ request, data, reason });
+                // Check if the result is a Promise
+                if (result && typeof result === 'object' && 'then' in result && typeof result.then === 'function') {
+                  result.catch(error => {
+                    logger.error('[SSE] Disconnect handler error', { error, reason });
+                  });
+                }
+              } catch (error) {
                 logger.error('[SSE] Disconnect handler error', { error, reason });
-              });
+              }
             }
             
             logger.debug('[SSE] Connection closed', { reason });
@@ -188,9 +196,17 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
               .catch(error => {
                 logger.error('[SSE] Connect handler error', { error });
                 if (config.handler.onError) {
-                  config.handler.onError({ request, data, error }).catch(err => {
+                  try {
+                    const errorResult = config.handler.onError({ request, data, error });
+                    // Check if the result is a Promise
+                    if (errorResult && typeof errorResult.catch === 'function') {
+                      errorResult.catch((err: any) => {
+                        logger.error('[SSE] Error handler failed', { err });
+                      });
+                    }
+                  } catch (err) {
                     logger.error('[SSE] Error handler failed', { err });
-                  });
+                  }
                 }
                 cleanup('connect_error');
               });

@@ -1,3 +1,5 @@
+import { NextRequest } from 'next/server';
+
 // API Response Types
 export interface ApiResponse<T = unknown> {
   success: boolean;
