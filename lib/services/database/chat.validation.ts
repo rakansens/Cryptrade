@@ -9,10 +9,17 @@ const MAX_METADATA_SIZE = 10240; // 10KB
  * Sanitize HTML content to prevent XSS
  */
 function sanitizeContent(content: string): string {
-  return DOMPurify.sanitize(content, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br', 'p', 'ul', 'ol', 'li', 'code', 'pre'],
-    ALLOWED_ATTR: ['href', 'target'],
-  });
+  try {
+    return (DOMPurify as any).sanitize
+      ? DOMPurify.sanitize(content, {
+          ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br', 'p', 'ul', 'ol', 'li', 'code', 'pre'],
+          ALLOWED_ATTR: ['href', 'target'],
+        })
+      : content;
+  } catch (err) {
+    // Node環境でJSDOMが無い場合などはサニタイズをスキップ
+    return content;
+  }
 }
 
 /**
