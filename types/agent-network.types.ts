@@ -278,6 +278,3 @@ export type DeepPartial<T> = {
 };
 
 export type AsyncResult<T> = Promise<T | null>;
-
-// Re-export A2AMessageSchema for use in agent-network.ts
-export { A2AMessageSchema };
