@@ -29,6 +29,10 @@ const CONFIG = {
 // Claude 判定用コマンド名キーワード
 const CLAUDE_CMD_REGEX = /(claude|cc|Claude|anthropic)/i;
 
+// ファイル操作種別 → 絵文字
+const OP_EMOJI = { 'create':'✨','edit':'✏️','delete':'��️','read':'👁️' };
+const OP_JA = { '作成':'create','編集':'edit','削除':'delete','読み込み':'read' };
+
 // blessed スクリーン & grid
 const screen = blessed.screen({
   smartCSR: true,
@@ -111,6 +115,16 @@ const instanceColors = ['magenta', 'cyan', 'yellow', 'green', 'blue', 'red'];
 const cpuTrend = [];
 const memTrend = [];
 
+// ヘルパ: ファイル操作記録
+function recordFileOp(paneId,filePath,op){
+  if(!fileOpsPane.has(paneId)) fileOpsPane.set(paneId,new Map());
+  const map=fileOpsPane.get(paneId);
+  if(!map.has(filePath)) map.set(filePath,[]);
+  map.get(filePath).push({op,time:new Date().toLocaleTimeString('ja-JP')});
+  // truncate
+  if(map.get(filePath).length>50) map.get(filePath).shift();
+}
+
 // ---- ヘルパ ----
 function colorForPane(id) {
   if (!panes.has(id)) return 'white';
@@ -164,7 +178,17 @@ async function updatePaneLogs() {
       if (newLines.length > 0) {
         pane.lastActivity = Date.now();
         newLines.forEach(l => {
-          activityLog.unshift({ paneId, line: l.slice(0,100) });
+          // ファイル操作検出
+          const m = l.match(/file_operation:\s*(作成|編集|削除|読み込み)\s+(.*)/);
+          if(m){
+            const opJa=m[1];
+            const op=OP_JA[opJa]||'read';
+            const filePath=m[2].trim();
+            recordFileOp(paneId,filePath,op);
+            pushActivity(paneId,`${OP_EMOJI[op]} ${opJa}: ${filePath}`);
+          } else {
+            pushActivity(paneId,l);
+          }
         });
         while (activityLog.length > CONFIG.ACTIVITY_LOG_MAX) activityLog.pop();
       }
@@ -202,8 +226,16 @@ function renderDetails() {
   const items=[];
   panes.forEach((pane,id)=>{
     const inactiveMs=Date.now()-pane.lastActivity;
-    const status=inactiveMs<30000?'🟢':(inactiveMs<120000?'��':'🔴');
-    items.push(`${status} ${id} PID:${pane.pid}`);
+    const status=inactiveMs<30000?'🟢':(inactiveMs<120000?'🟡':'🔴');
+    const counts=fileOpsPane.get(id);
+    let summary='';
+    if(counts){
+      const flat=[...counts.values()].flat();
+      const c = {'create':0,'edit':0,'delete':0,'read':0};
+      flat.forEach(o=>c[o.op]++);
+      summary=` ✨${c.create} ✏️${c.edit} 🗑️${c.delete} 👁️${c.read}`;
+    }
+    items.push(`${status} ${id} PID:${pane.pid}${summary}`);
   });
   detailsList.setItems(items);
 }
@@ -264,7 +296,7 @@ async function tick() {
 // キーバインド
 screen.key(['escape','q','C-c'], ()=>process.exit(0));
 
-// list enter to open detail modal
+// list enter to open log modal,  f key for file ops
 detailsList.on('select', (_,index)=>{
   const paneId = Array.from(panes.keys())[index];
   if(!paneId) return;
@@ -281,5 +313,31 @@ detailsList.on('select', (_,index)=>{
   screen.render();
 });
 
-// override renderDetails to populate list items
-screen.key(['escape','q','C-c'], ()=>process.exit(0)); 
+detailsList.key('f',()=>{
+  const index=detailsList.selected;
+  const paneId = Array.from(panes.keys())[index];
+  if(!paneId) return;
+  const map=fileOpsPane.get(paneId);
+  const box = blessed.box({parent:screen,top:'center',left:'center',width:'80%',height:'70%',border:{type:'line',fg:'yellow'},label:` FileOps ${paneId} `,tags:true,scrollable:true,keys:true,vi:true,alwaysScroll:true});
+  if(!map){box.setContent('No operations');}
+  else{
+    let content='';
+    map.forEach((ops,file)=>{
+      content+=`{bold}${file}{/bold}\n`;
+      ops.forEach(o=>{content+=`  ${OP_EMOJI[o.op]} ${o.op} ${o.time}\n`;});
+    });
+    box.setContent(content);
+  }
+  box.focus();
+  box.key(['escape','q','C-c','enter'],()=>{box.detach();screen.render();});
+  screen.render();
+});
+
+function pushActivity(paneId,line){
+  activityLog.unshift({paneId,line:line.slice(0,100)});
+  while(activityLog.length>CONFIG.ACTIVITY_LOG_MAX)activityLog.pop();
+  if(/approve|error|failed|Error|Re-approving|file_operation/i.test(line)){
+    importantLog.unshift(line.slice(0,80));
+    if(importantLog.length>CONFIG.ACTIVITY_LOG_MAX)importantLog.pop();
+  }
+} 
