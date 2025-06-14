@@ -100,7 +100,7 @@ export const useConversationMemory = create<ConversationMemoryState>()(
               };
             }
             
-            const currentSession = state.sessions[message.sessionId];
+            const currentSession = state.sessions[message.sessionId]!;
             currentSession.messages.push(fullMessage);
             currentSession.lastActiveAt = timestamp;
             
@@ -113,7 +113,7 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           // Save to database if enabled
           if (state.isDbEnabled) {
             try {
-              const dbMessage = await ConversationMemoryAPI.addMessage(message);
+              const dbMessage = await ConversationMemoryAPI.addMessage(message as any);
               
               // Update message ID to match DB
               set((state) => {
@@ -146,16 +146,16 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const session = get().sessions[sessionId];
           if (!session) return [];
           
-          return session.messages.slice(-limit);
+          return session.messages?.slice(-limit) ?? [];
         },
 
         getSessionContext: (sessionId) => {
           const session = get().sessions[sessionId];
-          if (!session || session.messages.length === 0) {
+          if (!session || (session.messages?.length ?? 0) === 0) {
             return 'No previous context available.';
           }
           
-          const recentMessages = session.messages.slice(-5);
+          const recentMessages = session.messages!.slice(-5);
           const context = recentMessages
             .map(msg => `${msg.role}: ${msg.content}`)
             .join('\n');
@@ -167,8 +167,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const state = get();
           
           set((state) => {
-            for (const session of Object.values(state.sessions)) {
-              const message = session.messages.find(m => m.id === messageId);
+            for (const session of Object.values(state.sessions) as ConversationSession[]) {
+              const message = session!.messages.find(m => m.id === messageId);
               if (message) {
                 message.metadata = { ...message.metadata, ...metadata };
                 break;
@@ -176,9 +176,25 @@ export const useConversationMemory = create<ConversationMemoryState>()(
             }
           });
           
-          // Update in database if enabled
-            messageId, 
-            metadata 
+          // DB 連携が有効な場合はメタデータを永続化
+          if (state.isDbEnabled) {
+            try {
+              await fetch(`/api/memory/messages/${messageId}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ metadata }),
+              });
+              logger.info('[ConversationMemory] Message metadata updated in DB', { messageId });
+            } catch (error) {
+              logger.error('[ConversationMemory] Failed to update metadata in DB', { error });
+            }
+          }
+          
+          logger.info('[ConversationMemory] Message metadata updated', {
+            messageId,
+            metadata,
           });
         },
 
@@ -202,10 +218,10 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const results: ConversationMessage[] = [];
           const queryLower = query.toLowerCase();
           
-          for (const session of Object.values(sessions)) {
+          for (const session of Object.values(sessions) as ConversationSession[]) {
             if (!session) continue;
             
-            for (const message of session.messages) {
+            for (const message of session!.messages) {
               if (message.content.toLowerCase().includes(queryLower) ||
                   message.metadata?.topics?.some(t => t.toLowerCase().includes(queryLower)) ||
                   message.metadata?.symbols?.some(s => s.toLowerCase().includes(queryLower))) {
@@ -221,6 +237,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const session = get().sessions[sessionId];
           if (!session || session.messages.length === 0) return;
           
+          const summary = `Session with ${session!.messages.length} messages. Topics discussed: ${
+            [...new Set(session!.messages.flatMap(m => m.metadata?.topics || []))]
               .join(', ') || 'General conversation'
           }`;
           
@@ -229,7 +247,6 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           });
           
           logger.info('[ConversationMemory] Session summarized', { sessionId, summary });
-
         },
           ...createDbSyncHandlers(set, get),
         
