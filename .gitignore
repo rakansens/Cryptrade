@@ -57,3 +57,6 @@ test-proposal-*.html
 /test-results*.json
 /test-results*.txt
 /test-performance*.json
+
+# internal worktree staging
+/Cryptrade-worktree/
