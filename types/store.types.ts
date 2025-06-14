@@ -170,8 +170,8 @@ export function isPatternVisualization(value: unknown): value is PatternVisualiz
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.type === 'string' &&
-    Array.isArray(obj.lines)
+    typeof obj['type'] === 'string' &&
+    Array.isArray(obj['lines'])
   );
 }
 
@@ -180,9 +180,9 @@ export function isProposalGroup(value: unknown): value is ProposalGroup {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.id === 'string' &&
-    Array.isArray(obj.proposals) &&
-    typeof obj.timestamp === 'number'
+    typeof obj['id'] === 'string' &&
+    Array.isArray(obj['proposals']) &&
+    typeof obj['timestamp'] === 'number'
   );
 }
 
@@ -191,8 +191,8 @@ export function isEntryProposalGroup(value: unknown): value is EntryProposalGrou
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.id === 'string' &&
-    Array.isArray(obj.entries) &&
-    typeof obj.timestamp === 'number'
+    typeof obj['id'] === 'string' &&
+    Array.isArray(obj['entries']) &&
+    typeof obj['timestamp'] === 'number'
   );
 }

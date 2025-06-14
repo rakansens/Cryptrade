@@ -1,6 +1,6 @@
 // Style editor types with enhanced Zod schemas for runtime validation
 
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 import { DrawingStyleSchema } from './drawing';
 
 // =============================================================================
@@ -222,10 +222,12 @@ export const DEFAULT_STYLE_PRESETS: StylePreset[] = [
 export function validateStyleUpdate(data: unknown): StyleUpdateEvent {
   try {
     return StyleUpdateEventSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Style Update Validation] Failed:', error.errors);
-      throw new Error(`Invalid style update: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid style update: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }
@@ -234,10 +236,12 @@ export function validateStyleUpdate(data: unknown): StyleUpdateEvent {
 export function validatePatternStyleUpdate(data: unknown): PatternStyleUpdateEvent {
   try {
     return PatternStyleUpdateEventSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Pattern Style Update Validation] Failed:', error.errors);
-      throw new Error(`Invalid pattern style update: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid pattern style update: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }

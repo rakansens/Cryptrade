@@ -51,7 +51,7 @@ export async function tryCatch<T>(
   try {
     const data = await fn();
     return createSuccess(data);
-  } catch (error) {
+  } catch (error: unknown) {
     const err = errorHandler ? errorHandler(error) : 
       error instanceof Error ? error : new Error(String(error));
     return createError(err);

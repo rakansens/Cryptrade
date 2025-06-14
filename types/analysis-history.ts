@@ -1,6 +1,6 @@
 // Analysis history types for tracking proposal performance
 
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 import { DrawingDataSchema } from './drawing';
 
 // =============================================================================
@@ -125,10 +125,12 @@ export interface PerformanceMetrics {
 export function validateAnalysisRecord(data: unknown): AnalysisRecord {
   try {
     return AnalysisRecordSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Analysis History] Validation failed:', error.errors);
-      throw new Error(`Invalid analysis record: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid analysis record: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }
@@ -137,10 +139,12 @@ export function validateAnalysisRecord(data: unknown): AnalysisRecord {
 export function validateTouchEvent(data: unknown): TouchEvent {
   try {
     return TouchEventSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Touch Event] Validation failed:', error.errors);
-      throw new Error(`Invalid touch event: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid touch event: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      );
     }
     throw error;
   }

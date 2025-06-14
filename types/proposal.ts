@@ -8,7 +8,7 @@
  */
 
 import { DrawingData, DrawingDataSchema } from './drawing';
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 
 // =============================================================================
 // ZOD SCHEMAS - Single source of truth for proposal types
@@ -217,10 +217,12 @@ export type EnhancedProposalActionEvent = z.infer<typeof EnhancedProposalActionE
 export function validateDrawingProposal(data: unknown): DrawingProposal {
   try {
     return DrawingProposalSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[Proposal Validation] Failed:', error.errors);
-      throw new Error(`Invalid proposal data: ${error.errors.map(e => e.message).join(', ')}`)
+      throw new Error(
+        `Invalid proposal data: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      )
     }
     throw error;
   }
@@ -232,10 +234,12 @@ export function validateDrawingProposal(data: unknown): DrawingProposal {
 export function validateProposalGroup(data: unknown): ProposalGroup {
   try {
     return ProposalGroupSchema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       console.error('[ProposalGroup Validation] Failed:', error.errors);
-      throw new Error(`Invalid proposal group: ${error.errors.map(e => e.message).join(', ')}`)
+      throw new Error(
+        `Invalid proposal group: ${error.errors.map((e: ZodIssue) => e.message).join(', ')}`
+      )
     }
     throw error;
   }
