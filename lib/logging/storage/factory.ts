@@ -10,9 +10,14 @@
  *   error and falls back to in-memory storage to keep the application
  *   running in environments where `better-sqlite3` binaries are
  *   unavailable (e.g., Node.js v23+).
+ * - Introduced `sqliteUnavailable` flag and mutated logger config to
+ *   prevent再試行 and spammy error logs on subsequent storage creations.
  */
 
 import type { IUnifiedStorage, UnifiedLoggerConfig } from '../unified-logger';
+
+// Track whether SQLite storage is unavailable to avoid repeated costly attempts
+let sqliteUnavailable = false;
 
 export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise<IUnifiedStorage> {
   // Browser environment always uses memory storage
@@ -28,6 +33,10 @@ export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise
       return new UnifiedMemoryStorage(config);
       
     case 'sqlite':
+      if (sqliteUnavailable) {
+        const { UnifiedMemoryStorage: FallbackCached } = await import('./memory');
+        return new FallbackCached(config);
+      }
       try {
         const { UnifiedSQLiteStorage } = await import('./sqlite');
         // Immediately attempt initialization to catch native binding errors
@@ -37,10 +46,14 @@ export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise
           return sqliteStorage;
         } catch (initError) {
           console.error('[UnifiedStorage] SQLite init failed, falling back to memory:', initError);
+          sqliteUnavailable = true;
         }
       } catch (importError) {
         console.error('[UnifiedStorage] SQLite module load failed, falling back to memory:', importError);
+        sqliteUnavailable = true;
       }
+      // Mutate config so subsequent calls default to memory storage
+      config.storage = 'memory';
       const { UnifiedMemoryStorage: MemoryFallback } = await import('./memory');
       return new MemoryFallback(config);
       
