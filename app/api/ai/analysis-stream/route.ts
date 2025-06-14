@@ -184,12 +184,12 @@ async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
     try {
       const { proposalGenerationTool } = await import('@/lib/mastra/tools/proposal-generation.tool');
       type ProposalGenerationOutput = import('@/lib/mastra/tools/proposal-generation.tool').ProposalGenerationOutput;
-      const toolResult = await (proposalGenerationTool.execute({
+      const toolResult = await ((proposalGenerationTool as any).execute({
         symbol: validatedInput.symbol,
         interval: validatedInput.interval,
         analysisType: validatedInput.analysisType,
         maxProposals: validatedInput.maxProposals,
-      }) as Promise<ProposalGenerationOutput>);
+      } as any) as Promise<ProposalGenerationOutput>);
       if (toolResult.success && toolResult.proposalGroup) {
         result = {
           proposalGroup: {
@@ -277,7 +277,7 @@ async function simulateStepProgress(
       for (let i = 0; i < indicators.length; i++) {
         step.progress = ((i + 1) / indicators.length) * 100;
         step.details = {
-          currentIndicator: indicators[i],
+          currentIndicator: indicators[i]!,
           completedIndicators: indicators.slice(0, i + 1),
         };
         sendEvent({
@@ -299,7 +299,7 @@ async function simulateStepProgress(
       for (let i = 0; i < patterns.length; i++) {
         step.progress = ((i + 1) / patterns.length) * 100;
         step.details = {
-          scanning: patterns[i],
+          scanning: patterns[i]!,
           found: Math.floor(Math.random() * 3),
         };
         sendEvent({
@@ -325,7 +325,7 @@ async function simulateStepProgress(
       for (let i = 0; i < lineTypes.length; i++) {
         step.progress = ((i + 1) / lineTypes.length) * 100;
         step.details = {
-          calculating: lineTypes[i],
+          calculating: lineTypes[i]!,
           calculated: i + 1,
         };
         sendEvent({
