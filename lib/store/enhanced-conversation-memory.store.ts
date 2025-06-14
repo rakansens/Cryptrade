@@ -842,7 +842,17 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           }
           return parsed;
         },
-        storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : undefined))
+        storage: createJSONStorage(() => {
+          if (typeof window !== 'undefined') {
+            return localStorage;
+          }
+          // SSR/Edge: return noop storage compatible with Storage interface
+          return {
+            getItem: (_key: string) => null,
+            setItem: (_key: string, _value: string) => {},
+            removeItem: (_key: string) => {},
+          } as unknown as Storage;
+        })
       }
     )
   )
