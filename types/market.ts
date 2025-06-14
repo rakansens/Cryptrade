@@ -252,30 +252,29 @@ const shouldValidate = env.NODE_ENV !== 'production' || env.FORCE_VALIDATION ===
 // Fast validation for production (basic type checks)
 function fastValidateTradeMessage(data: unknown): BinanceTradeMessage | null {
   if (!data || typeof data !== 'object') return null;
-  const msg = data as any;
-  if (msg.e !== 'trade') return null;
-  if (typeof msg.E !== 'number' || typeof msg.s !== 'string') return null;
-  if (typeof msg.t !== 'number' || typeof msg.p !== 'string') return null;
-  if (typeof msg.q !== 'string' || typeof msg.T !== 'number') return null;
-  if (typeof msg.m !== 'boolean') return null;
-  // Optional fields don't need validation
+  const obj = data as Record<string, unknown>;
+  if (obj['e'] !== 'trade') return null;
+  if (typeof obj['E'] !== 'number' || typeof obj['s'] !== 'string') return null;
+  if (typeof obj['t'] !== 'number' || typeof obj['p'] !== 'string') return null;
+  if (typeof obj['q'] !== 'string' || typeof obj['T'] !== 'number') return null;
+  if (typeof obj['m'] !== 'boolean') return null;
   
-  return msg as BinanceTradeMessage;
+  return obj as BinanceTradeMessage;
 }
 
 function fastValidateKlineMessage(data: unknown): BinanceKlineMessage | null {
   if (!data || typeof data !== 'object') return null;
-  const msg = data as any;
-  if (msg.e !== 'kline') return null;
-  if (typeof msg.E !== 'number' || typeof msg.s !== 'string') return null;
-  if (!msg.k || typeof msg.k !== 'object') return null;
+  const obj = data as Record<string, unknown>;
+  if (obj['e'] !== 'kline') return null;
+  if (typeof obj['E'] !== 'number' || typeof obj['s'] !== 'string') return null;
+  if (!obj['k'] || typeof obj['k'] !== 'object') return null;
   
-  const k = msg.k;
-  if (typeof k.t !== 'number' || typeof k.T !== 'number') return null;
-  if (typeof k.s !== 'string' || typeof k.i !== 'string') return null;
-  if (typeof k.o !== 'string' || typeof k.c !== 'string') return null;
-  if (typeof k.h !== 'string' || typeof k.l !== 'string') return null;
-  if (typeof k.v !== 'string' || typeof k.x !== 'boolean') return null;
+  const k = obj['k'] as Record<string, unknown>;
+  if (typeof k['t'] !== 'number' || typeof k['T'] !== 'number') return null;
+  if (typeof k['s'] !== 'string' || typeof k['i'] !== 'string') return null;
+  if (typeof k['o'] !== 'string' || typeof k['c'] !== 'string') return null;
+  if (typeof k['h'] !== 'string' || typeof k['l'] !== 'string') return null;
+  if (typeof k['v'] !== 'string' || typeof k['x'] !== 'boolean') return null;
   
   return data as BinanceKlineMessage;
 }

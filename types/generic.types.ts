@@ -242,7 +242,7 @@ export function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${value}`);
 }
 
-export function exhaustiveCheck(value: never): void {
+export function exhaustiveCheck(_value: never): void {
   // This function is used for exhaustive checks in switch statements
   // If this function is reached, it means a case was not handled
 }

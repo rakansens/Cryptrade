@@ -1,6 +1,6 @@
 // Pattern recognition types with Zod schemas
 
-import { z } from 'zod';
+import { z, ZodIssue } from 'zod';
 
 // =============================================================================
 // ZOD SCHEMAS - Pattern recognition types

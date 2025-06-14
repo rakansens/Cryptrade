@@ -57,7 +57,10 @@ export const DrawingDataSchema = BaseDrawingDataSchema.refine((data) => {
   if (data.type === 'vertical' && !data.time && (!data.points[0] || data.points[0].time === undefined)) {
     return false;
   }
-  if (data.type === 'pattern' && (!data.metadata || !data.metadata['patternType'])) {
+  if (
+    data.type === 'pattern' &&
+    (!data.metadata || !(data.metadata as Record<string, unknown>)['patternType'])
+  ) {
     return false;
   }
   return true;
@@ -85,7 +88,10 @@ export const ChartDrawingSchema = BaseDrawingDataSchema.extend({
   if (data.type === 'vertical' && !data.time && (!data.points[0] || data.points[0].time === undefined)) {
     return false;
   }
-  if (data.type === 'pattern' && (!data.metadata || !data.metadata['patternType'])) {
+  if (
+    data.type === 'pattern' &&
+    (!data.metadata || !(data.metadata as Record<string, unknown>)['patternType'])
+  ) {
     return false;
   }
   return true;

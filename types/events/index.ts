@@ -170,7 +170,7 @@ export function createSystemEvent(
     severity,
     component,
     message,
-    metadata,
+    ...(metadata ? { metadata } : {}),
   };
 }
 

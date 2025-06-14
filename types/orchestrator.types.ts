@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import type { A2AMessage, AgentContext, ProposalGroup } from './agent-network.types';
+import type { A2AMessage, BaseAgentContext, ProposalGroup } from './agent-network.types';
 
 // Intent types
 export const IntentTypeSchema = z.enum([
@@ -136,10 +136,10 @@ export interface TypedAgentResponse<T extends AgentResponseData = AgentResponseD
 }
 
 // Orchestrator context
-export interface OrchestratorContext extends AgentContext {
+export interface OrchestratorContext extends BaseAgentContext {
   sessionId?: string;
   userId?: string;
-  memoryContext?: string;
+  memoryContext?: Record<string, unknown>;
   previousIntent?: IntentType;
   conversationMode?: 'casual' | 'professional' | 'technical';
   emotionalTone?: 'positive' | 'neutral' | 'negative';

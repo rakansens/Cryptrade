@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { validateChartEvent, createChartEvent, ChartEventSchemas } from '../chart-events';
+import { validateChartEvent, createChartEvent } from '../chart-events';
 
 describe('Chart Events Validation', () => {
   describe('addDrawing event', () => {
@@ -190,8 +190,8 @@ describe('Chart Events Validation', () => {
       const result = validateChartEvent('unknownEvent' as any, {});
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.errors[0].message).toContain('Unknown event type');
+        expect(result.error?.errors[0].message).toContain('Unknown event type');
       }
-    });
+      });
   });
 });

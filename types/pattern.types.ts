@@ -112,7 +112,7 @@ export function isPatternVisualization(value: unknown): value is PatternVisualiz
   
   return (
     typeof obj['type'] === 'string' &&
-    ['triangle', 'channel', 'wedge', 'pennant', 'flag'].includes(obj['type']) &&
+    ['triangle', 'channel', 'wedge', 'pennant', 'flag'].includes(obj['type'] as string) &&
     Array.isArray(obj['points'])
   );
 }

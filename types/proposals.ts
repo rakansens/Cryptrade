@@ -380,22 +380,22 @@ export interface ProposalMessage {
  * Check if proposal is a drawing proposal
  */
 export function isDrawingProposal(proposal: unknown): proposal is DrawingProposal {
-  return proposal && 
-    typeof proposal === 'object' && 
-    'coordinates' in proposal &&
-    'analysisType' in proposal;
+  if (typeof proposal !== 'object' || proposal === null) return false;
+  const obj = proposal as Record<string, unknown>;
+  return 'coordinates' in obj && 'analysisType' in obj;
 }
 
 /**
  * Check if proposal is an entry proposal
  */
 export function isEntryProposal(proposal: unknown): proposal is EntryProposal {
-  return proposal && 
-    typeof proposal === 'object' && 
-    'type' in proposal &&
-    (proposal as any).type === 'entry' &&
-    'direction' in proposal &&
-    'entryPrice' in proposal;
+  if (typeof proposal !== 'object' || proposal === null) return false;
+  const obj = proposal as Record<string, unknown>;
+  return (
+    obj['type'] === 'entry' &&
+    'direction' in obj &&
+    'entryPrice' in obj
+  );
 }
 
 /**
