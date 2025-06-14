@@ -1,4 +1,4 @@
-// Barrel export for all types
+// Barrel export for all types (merge conflict resolved: added runtime type guards and conversation-memory type exports)
 export type { 
   ApiMiddleware, 
   RequestCtx, 
@@ -168,11 +168,18 @@ export {
   HANDLER_TIMEOUT_MS
 } from './orchestrator.types';
 
-// ランタイムで利用する type guard 関数は値として re-export する
+// ランタイムで利用する type guard 関数は値として再エクスポート
 export {
   isToolResponse,
   isTextResponse,
   isProposalContext,
   isConversationalContext,
-  isPriceInquiryContext,
+  isPriceInquiryContext
 } from './agent-network.types';
+
+// Conversation Memory types
+export type {
+  ConversationMessage,
+  ConversationSession,
+  ConversationMessageMetadata
+} from './conversation-memory';

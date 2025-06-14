@@ -4,6 +4,8 @@ import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 
+import { createDbSyncHandlers } from "@/lib/store/db-sync";
+import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
 /**
  * Conversation Memory Store with Database Integration
  * 
@@ -14,31 +16,6 @@ import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
  * - データベース統合
  */
 
-// メッセージの型定義
-export interface ConversationMessage {
-  id: string;
-  sessionId: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-  agentId?: string;
-  metadata?: {
-    intent?: string;
-    confidence?: number;
-    symbols?: string[];
-    topics?: string[];
-    embedding?: number[]; // For future semantic search
-  };
-}
-
-// セッションの型定義
-export interface ConversationSession {
-  id: string;
-  startedAt: Date;
-  lastActiveAt: Date;
-  messages: ConversationMessage[];
-  summary?: string; // Session summary for context
-}
 
 // ストアの状態型定義
 interface ConversationMemoryState {
@@ -82,8 +59,6 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const state = get();
           
           // For now, just create locally since we need API endpoints for session creation
-          // TODO: Add session creation API endpoint
-          
           // Local creation
           set((state) => {
             state.sessions[id] = {
@@ -202,9 +177,6 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           });
           
           // Update in database if enabled
-          // TODO: Add update message API endpoint
-          
-          logger.info('[ConversationMemory] Message metadata updated', { 
             messageId, 
             metadata 
           });
@@ -249,9 +221,6 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const session = get().sessions[sessionId];
           if (!session || session.messages.length === 0) return;
           
-          // TODO: Implement actual summarization using AI
-          const summary = `Session with ${session.messages.length} messages. Topics discussed: ${
-            [...new Set(session.messages.flatMap(m => m.metadata?.topics || []))]
               .join(', ') || 'General conversation'
           }`;
           
@@ -260,117 +229,10 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           });
           
           logger.info('[ConversationMemory] Session summarized', { sessionId, summary });
+
         },
+          ...createDbSyncHandlers(set, get),
         
-        // DB sync actions
-        enableDbSync: async () => {
-          set((state) => {
-            state.isDbEnabled = true;
-          });
-          
-          // Migrate existing sessions to DB
-          const state = get();
-          if (Object.keys(state.sessions).length > 0) {
-            try {
-              set((state) => {
-                state.isSyncing = true;
-              });
-              
-              for (const session of Object.values(state.sessions)) {
-                // Create session and add messages via API
-                // TODO: Implement session creation and batch message API
-                for (const message of session.messages) {
-                  await ConversationMemoryAPI.addMessage({
-                    sessionId: session.id,
-                    role: message.role,
-                    content: message.content,
-                    agentId: message.agentId,
-                    metadata: message.metadata,
-                  });
-                }
-              }
-              
-              set((state) => {
-                state.isSyncing = false;
-              });
-              
-              logger.info('[ConversationMemory] DB sync enabled and data migrated');
-            } catch (error) {
-              logger.error('[ConversationMemory] Failed to migrate to DB', { error });
-              set((state) => {
-                state.isSyncing = false;
-              });
-            }
-          }
-        },
-        
-        disableDbSync: () => {
-          set((state) => {
-            state.isDbEnabled = false;
-          });
-          logger.info('[ConversationMemory] DB sync disabled');
-        },
-        
-        syncWithDatabase: async () => {
-          const state = get();
-          if (!state.isDbEnabled) return;
-          
-          set((state) => {
-            state.isSyncing = true;
-          });
-          
-          try {
-            // Sync all sessions and messages
-            for (const session of Object.values(state.sessions)) {
-              // Sync messages via API
-              for (const message of session.messages) {
-                // The API will handle checking if message exists
-                await ConversationMemoryAPI.addMessage({
-                  sessionId: session.id,
-                  role: message.role,
-                  content: message.content,
-                  agentId: message.agentId,
-                  metadata: message.metadata,
-                });
-              }
-            }
-            
-            set((state) => {
-              state.isSyncing = false;
-            });
-            
-            logger.info('[ConversationMemory] Synced with database');
-          } catch (error) {
-            logger.error('[ConversationMemory] Sync failed', { error });
-            set((state) => {
-              state.isSyncing = false;
-            });
-          }
-        },
-        
-        loadFromDatabase: async () => {
-          const state = get();
-          if (!state.isDbEnabled) return;
-          
-          try {
-            // For now, we'll need to implement session listing API
-            // TODO: Implement getUserSessions API endpoint
-            const sessions: Record<string, ConversationSession> = {};
-            
-            set((state) => {
-              state.sessions = sessions;
-              if (dbSessions.length > 0) {
-                state.currentSessionId = dbSessions[0].id;
-              }
-            });
-            
-            logger.info('[ConversationMemory] Loaded from database', { 
-              sessionCount: dbSessions.length 
-            });
-          } catch (error) {
-            logger.error('[ConversationMemory] Failed to load from database', { error });
-          }
-        },
       })),
       {
         name: 'conversation-memory',
@@ -439,8 +301,6 @@ export async function semanticSearch(
       return [];
     }
     
-    // For now, fallback to text search until embedding service is implemented
-    // TODO: Implement actual semantic search when embedding service is available
     logger.info('[ConversationMemory] Semantic search fallback to text search', {
       query,
       threshold,
@@ -464,7 +324,6 @@ export async function generateMessageEmbedding(message: ConversationMessage): Pr
     // Only generate embeddings for user and assistant messages
     if (message.role === 'system') return;
     
-    // TODO: Implement actual embedding generation when service is available
     logger.debug('[ConversationMemory] Embedding generation placeholder', {
       messageId: message.id,
       role: message.role,
