@@ -17,6 +17,7 @@ const blessed = require('blessed');
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const contrib = require('blessed-contrib');
 
 // ---- 設定 ----
 const CONFIG = {
@@ -28,7 +29,7 @@ const CONFIG = {
 // Claude 判定用コマンド名キーワード
 const CLAUDE_CMD_REGEX = /(claude|cc|Claude|anthropic)/i;
 
-// blessed スクリーン
+// blessed スクリーン & grid
 const screen = blessed.screen({
   smartCSR: true,
   title: 'Claude Tmux Monitor',
@@ -37,6 +38,8 @@ const screen = blessed.screen({
   terminal: 'xterm-256color'
 });
 
+const grid = new contrib.grid({ rows: 12, cols: 12, screen });
+
 // パネル色
 const colors = {
   border: 'white',
@@ -44,38 +47,43 @@ const colors = {
   inactive: 'gray'
 };
 
-// UI コンポーネント
-const header = blessed.box({
-  parent: screen,
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: 3,
+// UI コンポーネント (grid)
+const header = grid.set(0, 0, 1, 12, blessed.box, {
   style: { fg: 'cyan', bold: true },
   border: { type: 'line', fg: 'cyan' },
   tags: true,
   align: 'center'
 });
 
-const overview = blessed.box({
-  parent: screen,
-  top: 3,
-  left: 0,
-  width: '100%',
-  height: 5,
+// sparkline CPU/Mem
+const sparklineBox = grid.set(1, 0, 2, 12, contrib.sparkline, {
+  label: 'CPU / Mem Trend',
+  tags: true,
+  style: { fg: 'yellow', titleFg: 'white', border: { fg: colors.border } }
+});
+
+// Overview summary line (under sparkline)
+const overview = grid.set(3, 0, 1, 12, blessed.box, {
   border: { type: 'line', fg: colors.border },
   label: ' 📊 Overview ',
   tags: true
 });
 
-const details = blessed.box({
-  parent: screen,
-  top: 8,
-  left: 0,
-  width: '100%',
-  height: 12,
+// Pane list (collapsible)
+const detailsList = grid.set(4, 0, 4, 12, blessed.list, {
+  label: ' 🖥️  Pane List (Enterで詳細) ',
   border: { type: 'line', fg: colors.border },
-  label: ' 🖥️  Pane Details ',
+  keys: true,
+  vi: true,
+  mouse: true,
+  tags: true,
+  scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { inverse: true } }
+});
+
+// Activity stream split columns
+const activityLeft = grid.set(8, 0, 4, 6, blessed.box, {
+  label: ' ⏳ Timeline ',
+  border: { type: 'line', fg: colors.border },
   tags: true,
   scrollable: true,
   alwaysScroll: true,
@@ -83,14 +91,9 @@ const details = blessed.box({
   vi: true
 });
 
-const activity = blessed.box({
-  parent: screen,
-  top: 20,
-  left: 0,
-  width: '100%',
-  height: '100%-20',
+const activityRight = grid.set(8, 6, 4, 6, blessed.box, {
+  label: ' ⚠️  Important ',
   border: { type: 'line', fg: colors.border },
-  label: ' 📡 Activity Stream ',
   tags: true,
   scrollable: true,
   alwaysScroll: true,
@@ -101,7 +104,12 @@ const activity = blessed.box({
 // データ構造
 const panes = new Map(); // paneId -> { pid, command, lastLines, lastActivity, color }
 const activityLog = [];
+const importantLog = [];
 const instanceColors = ['magenta', 'cyan', 'yellow', 'green', 'blue', 'red'];
+
+// --- CPU/Mem Trend arrays ---
+const cpuTrend = [];
+const memTrend = [];
 
 // ---- ヘルパ ----
 function colorForPane(id) {
@@ -161,6 +169,12 @@ async function updatePaneLogs() {
         while (activityLog.length > CONFIG.ACTIVITY_LOG_MAX) activityLog.pop();
       }
       pane.lastLines = lines;
+      // 推移取得（合計CPU/Memをsimple取得）
+      const totalCpu = Array.from(panes.values()).reduce((s,p)=>s+parseFloat(p.cpu||0),0);
+      const totalMem = Array.from(panes.values()).reduce((s,p)=>s+parseFloat(p.mem||0),0);
+      cpuTrend.push(totalCpu);
+      memTrend.push(totalMem);
+      if(cpuTrend.length>30){cpuTrend.shift();memTrend.shift();}
     } catch {}
   });
   await Promise.all(promises);
@@ -175,23 +189,23 @@ function renderHeader() {
 function renderOverview() {
   let content = '';
   panes.forEach((pane, id) => {
-    const status = Date.now()-pane.lastActivity<30000 ? '●' : '○';
-    content += `{${pane.color}-fg}${status} ${id}{/} `;
+    const inactiveMs = Date.now()-pane.lastActivity;
+    let statusColor = 'green';
+    if(inactiveMs>120000) statusColor='red';
+    else if(inactiveMs>30000) statusColor='yellow';
+    content += `{${statusColor}-fg}●{/} {${pane.color}-fg}${id}{/} `;
   });
   overview.setContent(content || 'No Claude pane detected');
 }
 
 function renderDetails() {
-  let content = '';
-  panes.forEach((pane, id) => {
-    const active = Date.now()-pane.lastActivity<30000;
-    content += `{bold}{${pane.color}-fg}${active?'🟢':'⚫'} Pane ${id}{/}{/bold}\n`;
-    content += `  PID: ${pane.pid} | CMD: ${pane.cmd}\n`;
-    const lastLine = pane.lastLines[pane.lastLines.length-1] || '';
-    content += `  Last: ${lastLine.slice(0,80)}\n`;
-    content += `{gray-fg}${'─'.repeat(40)}{/gray-fg}\n`;
+  const items=[];
+  panes.forEach((pane,id)=>{
+    const inactiveMs=Date.now()-pane.lastActivity;
+    const status=inactiveMs<30000?'🟢':(inactiveMs<120000?'��':'🔴');
+    items.push(`${status} ${id} PID:${pane.pid}`);
   });
-  details.setContent(content);
+  detailsList.setItems(items);
 }
 
 function renderActivity() {
@@ -200,12 +214,20 @@ function renderActivity() {
     const col = colorForPane(a.paneId);
     content += `{${col}-fg}[${a.paneId}]{/} ${a.line}\n`;
   });
-  activity.setContent(content);
+  activityLeft.setContent(content);
+
+  let imp='';
+  importantLog.slice(0,100).forEach(a=>{
+    imp+=a+'\n';
+  });
+  activityRight.setContent(imp);
 }
 
 async function tick() {
   await listClaudePanes();
   await updatePaneLogs();
+  // sparkline update
+  sparklineBox.setData([cpuTrend, memTrend], ['CPU','Mem']);
   renderHeader();
   renderOverview();
   renderDetails();
@@ -220,4 +242,24 @@ async function tick() {
 })();
 
 // キーバインド
+screen.key(['escape','q','C-c'], ()=>process.exit(0));
+
+// list enter to open detail modal
+detailsList.on('select', (_,index)=>{
+  const paneId = Array.from(panes.keys())[index];
+  if(!paneId) return;
+  const pane = panes.get(paneId);
+  const box = blessed.box({
+    parent: screen,
+    top: 'center',left:'center',width:'80%',height:'70%',
+    border:{type:'line',fg:pane.color},
+    label:` Details ${paneId} `,tags:true,scrollable:true,keys:true,vi:true,alwaysScroll:true
+  });
+  box.setContent(pane.lastLines.join('\n'));
+  box.focus();
+  box.key(['escape','q','C-c','enter'], ()=>{box.detach();screen.render();});
+  screen.render();
+});
+
+// override renderDetails to populate list items
 screen.key(['escape','q','C-c'], ()=>process.exit(0)); 
