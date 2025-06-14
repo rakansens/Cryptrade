@@ -41,7 +41,7 @@ function attachSession() {
 
 function createSession() {
   // PS command for Claude processes
-  const PS_CMD = "ps -u \"$USER\" -o pid,tty,%cpu,%mem,command | grep -E '(claude|anthropic)' | grep -v grep";
+  const PS_CMD = "ps -u $(whoami) -o pid,tty,%cpu,%mem,command | grep -E '(claude|anthropic)' | grep -v grep";
 
   // Start session detached
   sh(`tmux new-session -d -s ${SESSION} -n monitor`);
@@ -52,7 +52,7 @@ function createSession() {
     'clear',
     'echo "========== Claude Monitor (tmux) =========="',
     'date +"日時        : %F %T"',
-    `mapfile -t LINES < <(eval "${PS_CMD}")`,
+    `mapfile -t LINES < <(${PS_CMD})`,
     'TOTAL=${#LINES[@]}',
     'CPU_SUM=0; MEM_SUM=0',
     'for L in "${LINES[@]}"; do read -r P T C M CMD <<<"$L"; CPU_SUM=$(awk "BEGIN{print $CPU_SUM+$C}"); MEM_SUM=$(awk "BEGIN{print $MEM_SUM+$M}"); done',
