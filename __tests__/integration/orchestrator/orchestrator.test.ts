@@ -14,7 +14,7 @@ describe('Orchestrator Agent Integration Tests', () => {
 
   beforeAll(() => {
     // Suppress logs during tests unless debugging
-    if (process.env.DEBUG !== 'true') {
+    if (process.env['DEBUG'] !== 'true') {
       jest.spyOn(logger, 'info').mockImplementation();
       jest.spyOn(logger, 'debug').mockImplementation();
     }
@@ -35,7 +35,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         expect(result.analysis.intent).toBe(expectedIntent);
         expect(result.analysis.confidence).toBeGreaterThan(0.7);
         expect(result.executionResult).toBeDefined();
-        expect(result.executionResult.response).toBeDefined();
+        expect(result.executionResult!.response).toBeDefined();
       });
     });
 
@@ -68,7 +68,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         expect(result.analysis.intent).toBe('price_inquiry');
         expect(result.analysis.confidence).toBeGreaterThan(0.7);
         expect(result.executionResult).toBeDefined();
-        expect(result.executionResult.metadata?.processedBy).toContain('trading');
+        expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
       });
     });
 
@@ -85,7 +85,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         expect(['analysis', 'entry_proposal']).toContain(result.analysis.intent);
         expect(result.analysis.confidence).toBeGreaterThan(0.7);
         expect(result.executionResult).toBeDefined();
-        expect(result.executionResult.metadata?.processedBy).toContain('trading');
+        expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
       });
     });
 
@@ -102,7 +102,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         expect(result.analysis.intent).toBe('ui_control');
         expect(result.analysis.confidence).toBeGreaterThan(0.7);
         expect(result.executionResult).toBeDefined();
-        expect(result.executionResult.metadata?.processedBy).toContain('chart');
+        expect(result.executionResult!.metadata?.['processedBy']).toContain('chart');
       });
     });
   });
@@ -125,10 +125,10 @@ describe('Orchestrator Agent Integration Tests', () => {
         { userLevel: 'expert', marketStatus: 'open' }
       );
       
-      expect(beginnerResult.executionResult.response).toBeDefined();
-      expect(expertResult.executionResult.response).toBeDefined();
+      expect(beginnerResult.executionResult!.response).toBeDefined();
+      expect(expertResult.executionResult!.response).toBeDefined();
       // Responses should be different based on user level
-      expect(beginnerResult.executionResult.response).not.toBe(expertResult.executionResult.response);
+      expect(beginnerResult.executionResult!.response).not.toBe(expertResult.executionResult!.response);
     });
   });
 
@@ -188,7 +188,7 @@ describe('Orchestrator Agent Integration Tests', () => {
       expect(query1.executionResult).toBeDefined();
       expect(query2.executionResult).toBeDefined();
       // Second query should understand context from first
-      expect(query2.executionResult.response).toContain('BTC');
+      expect(query2.executionResult!.response).toContain('BTC');
     });
   });
 });
@@ -228,7 +228,7 @@ describe('Intent Analysis Accuracy', () => {
 
 // Export test results if needed
 afterAll(() => {
-  if (process.env.SAVE_TEST_RESULTS === 'true') {
+  if (process.env['SAVE_TEST_RESULTS'] === 'true') {
     const resultsDir = path.join(__dirname, '../../../test-results');
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });

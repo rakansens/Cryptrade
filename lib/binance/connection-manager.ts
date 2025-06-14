@@ -112,7 +112,7 @@ class BinanceConnectionManager {
   }
 
   private handleMessage(data: Record<string, unknown>): void {
-    if (!data || !data.stream) {
+    if (!data || !data['stream']) {
       // Handle single stream format
       const streamName = this.getStreamNameFromData(data);
       if (streamName) {
@@ -122,21 +122,21 @@ class BinanceConnectionManager {
     }
 
     // Handle multi-stream format
-    const stream = data.stream as string;
-    const streamData = data.data as Record<string, unknown>;
+    const stream = data['stream'] as string;
+    const streamData = data['data'] as Record<string, unknown>;
     this.notifySubscribers(stream, streamData);
   }
 
   private getStreamNameFromData(data: Record<string, unknown>): string | null {
-    const eventType = data.e as string | undefined;
-    const symbol = data.s as string | undefined;
+    const eventType = data['e'] as string | undefined;
+    const symbol = data['s'] as string | undefined;
     
     if (!eventType || !symbol) return null;
     if (eventType === 'trade') {
       return `${symbol.toLowerCase()}@trade`;
     }
     if (eventType === 'kline') {
-      const klineData = data.k as { i?: string } | undefined;
+      const klineData = data['k'] as { i?: string } | undefined;
       if (klineData?.i) {
         return `${symbol.toLowerCase()}@kline_${klineData.i}`;
       }

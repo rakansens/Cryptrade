@@ -12,8 +12,7 @@ import {
   createMockChartEvent,
   createMockDrawingEvent,
   createMockProposal,
-  createMockPatternEvent,
-  waitFor
+  createMockPatternEvent
 } from '../../helpers/test-factory';
 
 // Load environment variables

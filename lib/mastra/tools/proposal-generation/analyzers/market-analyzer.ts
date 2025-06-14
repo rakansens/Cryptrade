@@ -133,7 +133,7 @@ function analyzeVolatility(data: CandlestickData[]): {
   }
 
   return {
-    absolute: currentATR,
+    absolute: currentATR || 0,
     normalized: normalizedATR,
     trend,
   };

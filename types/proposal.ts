@@ -7,7 +7,7 @@
  * This file is kept for backward compatibility but will be removed in a future version.
  */
 
-import { DrawingData, DrawingDataSchema } from './drawing';
+import { DrawingDataSchema } from './drawing';
 import { z, ZodIssue } from 'zod';
 
 // =============================================================================

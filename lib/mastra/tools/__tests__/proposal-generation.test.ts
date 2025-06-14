@@ -31,7 +31,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate proposals successfully with all analysis types', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -49,7 +49,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate trendline proposals only', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '15m',
@@ -70,7 +70,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate support-resistance proposals only', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'ETHUSDT',
           interval: '5m',
@@ -91,7 +91,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate fibonacci proposals only', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -112,7 +112,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate pattern proposals only', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '30m',
@@ -129,7 +129,7 @@ describe('ProposalGenerationTool', () => {
       const sinceTimestamp = Math.floor(Date.now() / 1000) - 86400; // 1 day ago
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -152,7 +152,7 @@ describe('ProposalGenerationTool', () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
       const excludeIds = ['proposal1', 'proposal2'];
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -172,7 +172,7 @@ describe('ProposalGenerationTool', () => {
     it('should sort proposals by confidence', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -186,14 +186,14 @@ describe('ProposalGenerationTool', () => {
       // Check that proposals are sorted by confidence (descending)
       const proposals = result.proposalGroup?.proposals || [];
       for (let i = 1; i < proposals.length; i++) {
-        expect(proposals[i - 1].confidence).toBeGreaterThanOrEqual(proposals[i].confidence);
+        expect(proposals[i - 1]?.confidence ?? 0).toBeGreaterThanOrEqual(proposals[i]?.confidence ?? 0);
       }
     });
 
     it('should handle API errors gracefully', async () => {
       mockBinanceAPI.fetchKlines.mockRejectedValue(new Error('API Error'));
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -209,7 +209,7 @@ describe('ProposalGenerationTool', () => {
     it('should handle insufficient data', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue([]);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -228,7 +228,7 @@ describe('ProposalGenerationTool', () => {
       const badData = mockMarketData.map(d => ({ ...d, close: NaN }));
       mockBinanceAPI.fetchKlines.mockResolvedValue(badData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -244,7 +244,7 @@ describe('ProposalGenerationTool', () => {
     it('should include proper metadata in proposals', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -256,7 +256,7 @@ describe('ProposalGenerationTool', () => {
       expect(result.success).toBe(true);
       const proposal = result.proposalGroup?.proposals[0];
       
-      expect(proposal).toMatchObject({
+      expect(proposal!).toMatchObject({
         id: expect.stringMatching(/^[a-zA-Z0-9_]+$/),
         type: expect.any(String),
         confidence: expect.any(Number),
@@ -274,7 +274,7 @@ describe('ProposalGenerationTool', () => {
     it('should generate proper group metadata', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -297,7 +297,7 @@ describe('ProposalGenerationTool', () => {
     it('should perform multi-timeframe analysis when available', async () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '15m',
@@ -322,7 +322,7 @@ describe('ProposalGenerationTool', () => {
 
       for (const input of invalidInputs) {
         await expect(
-          ProposalGenerationTool.execute({ context: input })
+          ProposalGenerationTool.execute!({ context: input })
         ).rejects.toThrow();
       }
     });
@@ -331,7 +331,7 @@ describe('ProposalGenerationTool', () => {
       mockBinanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
       const maxProposals = 2;
-      const result = await ProposalGenerationTool.execute({
+      const result = await ProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',

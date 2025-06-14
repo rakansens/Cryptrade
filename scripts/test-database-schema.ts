@@ -72,7 +72,7 @@ async function testDatabaseSchema() {
       const testSession = await prisma.conversationSession.create({
         data: {
           summary: 'Test Session',
-          metadata: { test: true, timestamp: new Date().toISOString() }
+          metadata: { test: true, timestamp: new Date().toISOString() } as any
         }
       });
       

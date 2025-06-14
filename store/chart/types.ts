@@ -29,13 +29,16 @@ export interface ChartDrawing {
   id: string;
   type: 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | 'pattern';
   points: DrawingPoint[];
-  style: DrawingStyle;
+  style?: DrawingStyle;
   visible: boolean;
   interactive: boolean;
+  time?: number;
+  price?: number;
+  levels?: number[];
   metadata?: Record<string, unknown>;
 }
 
-export type DrawingMode = 'none' | 'trendline' | 'fibonacci' | 'horizontal' | 'vertical';
+export type DrawingMode = 'none' | 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | null;
 
 // ========================================
 // Pattern Types

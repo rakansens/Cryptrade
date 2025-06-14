@@ -1,3 +1,4 @@
+// Updated: テレメトリーAPIにて環境変数の型安全なアクセスを実装
 import { createApiHandler, createOptionsHandler } from '@/lib/api/create-api-handler';
 import { getMastraStats } from '@/lib/mastra/mastra';
 import { env } from '@/config/env';
@@ -19,7 +20,7 @@ export const GET = createApiHandler({
   handler: async () => {
     const stats = getMastraStats();
     const samplingRate = env.TELEMETRY_SAMPLING_RATE || 0.001;
-    const environment = process.env.NODE_ENV || 'development';
+    const environment = env.NODE_ENV;
     
     return {
       success: true,

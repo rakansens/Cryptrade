@@ -17,9 +17,9 @@ async function testEnhancedProposals() {
     console.log('📊 Parameters:', params);
     console.log('\n⏳ Generating proposals...\n');
 
-    const result = await proposalGenerationTool.execute(params);
+    const result = await proposalGenerationTool.execute?.(params);
 
-    if (result.success && result.proposalGroup) {
+    if (result?.success && result.proposalGroup) {
       console.log('✅ Proposal Group Generated:', {
         id: result.proposalGroup.id,
         title: result.proposalGroup.title,
@@ -54,13 +54,13 @@ async function testEnhancedProposals() {
         if (proposal.volumeAnalysis) {
           console.log('\n   📊 Volume Analysis:');
           console.log('      - Average Volume:', proposal.volumeAnalysis.averageVolume.toFixed(0));
-          console.log('      - Volume at Touches:', proposal.volumeAnalysis.volumeAtTouches.map(v => v.toFixed(0)).join(', '));
+          console.log('      - Volume at Touches:', proposal.volumeAnalysis.volumeAtTouches.map((v: number) => v.toFixed(0)).join(', '));
           console.log('      - Volume Weighted Score:', proposal.volumeAnalysis.volumeWeightedScore.toFixed(3));
         }
 
         if (proposal.patterns && proposal.patterns.length > 0) {
           console.log('\n   🕯️ Patterns Detected:');
-          proposal.patterns.forEach(pattern => {
+          proposal.patterns.forEach((pattern: any) => {
             console.log(`      - ${pattern.type} at ${pattern.location} (strength: ${pattern.strength})`);
           });
         }
@@ -85,9 +85,9 @@ async function testEnhancedProposals() {
         maxProposals: 3,
       };
 
-      const srResult = await proposalGenerationTool.execute(srParams);
+      const srResult = await proposalGenerationTool.execute?.(srParams);
       
-      if (srResult.success && srResult.proposalGroup) {
+      if (srResult?.success && srResult.proposalGroup) {
         console.log('✅ Support/Resistance Proposals Generated:', srResult.proposalGroup.proposals.length);
         
         srResult.proposalGroup.proposals.forEach((proposal, index) => {

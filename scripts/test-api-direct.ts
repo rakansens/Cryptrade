@@ -112,14 +112,18 @@ async function runDirectTests() {
       visualization: {
         lines: [
           {
-            start: { time: Date.now() - 7200000, value: 100 },
-            end: { time: Date.now(), value: 105 }
+            id: 'line1',
+            points: [
+              { time: Date.now() - 7200000, value: 100 },
+              { time: Date.now(), value: 105 }
+            ]
           }
         ]
       },
       metrics: {
-        height: 5,
-        duration: 7200000
+        confidence: 0.85,
+        targetPrice: 110,
+        stopLoss: 95
       },
       description: 'Test ascending triangle pattern',
       tradingImplication: 'bullish'

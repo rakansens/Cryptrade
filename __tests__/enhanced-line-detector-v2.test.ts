@@ -1,4 +1,4 @@
-import { EnhancedLineDetectorV2, type EnhancedLineV2 } from '@/lib/analysis/enhanced-line-detector-v2';
+import { EnhancedLineDetectorV2 } from '@/lib/analysis/enhanced-line-detector-v2';
 import type { MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 import type { ProcessedKline } from '@/types/market';
 
@@ -248,8 +248,8 @@ describe('EnhancedLineDetectorV2', () => {
 
       if (allLines.length > 1) {
         for (let i = 0; i < allLines.length - 1; i++) {
-          const currentScore = allLines[i].confidence * allLines[i].strength;
-          const nextScore = allLines[i + 1].confidence * allLines[i + 1].strength;
+          const currentScore = allLines[i]!.confidence * allLines[i]!.strength;
+          const nextScore = allLines[i + 1]!.confidence * allLines[i + 1]!.strength;
           expect(currentScore).toBeGreaterThanOrEqual(nextScore);
         }
       }

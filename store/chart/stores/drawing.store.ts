@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { logger } from '@/lib/utils/logger';
 import { showToast } from '@/components/ui/toast';
-import { ChartPersistenceManager, chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
+import { chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
 import { validateDrawing } from '@/lib/validation/chart-drawing.schema';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import type { 
@@ -153,7 +153,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
             return drawing;
           });
           
-          ChartPersistenceManager.saveDrawings(newDrawings);
+          chartPersistence.saveDrawings(newDrawings);
           return { drawings: newDrawings };
         });
         logger.info('[DrawingStore] Drawing updated', { id, updates });
@@ -163,7 +163,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
         debug('deleteDrawing');
         set((state) => {
           const newDrawings = state.drawings.filter((drawing) => drawing.id !== id);
-          ChartPersistenceManager.saveDrawings(newDrawings);
+          chartPersistence.saveDrawings(newDrawings);
           
           return {
             drawings: newDrawings,
@@ -253,7 +253,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
           redoStack: [...state.redoStack, drawings]
         }));
         
-        ChartPersistenceManager.saveDrawings(previousDrawings);
+        chartPersistence.saveDrawings(previousDrawings);
         showToast('Undo successful', 'info');
         logger.info('[DrawingStore] Undo performed');
       },
@@ -272,7 +272,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
           undoStack: [...state.undoStack, drawings]
         }));
         
-        ChartPersistenceManager.saveDrawings(nextDrawings);
+        chartPersistence.saveDrawings(nextDrawings);
         showToast('Redo successful', 'info');
         logger.info('[DrawingStore] Redo performed');
       },
@@ -295,5 +295,5 @@ export const useDrawingStore = create<DrawingStoreState>()(
 
 // Initialize drawings on store creation
 if (typeof window !== 'undefined') {
-  useDrawingStore.getState().initializeDrawings();
+  (useDrawingStore.getState() as any).initializeDrawings();
 }

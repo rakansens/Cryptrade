@@ -1,5 +1,5 @@
 import { logger } from '@/lib/utils/logger';
-import { advancedTouchDetector, type TouchAnalysis, type AdvancedTouchConfig } from './advanced-touch-detector';
+import { AdvancedTouchDetector, type TouchAnalysis, type AdvancedTouchConfig } from './advanced-touch-detector';
 import type { MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 import type { ProcessedKline } from '@/types/market';
 
@@ -104,7 +104,7 @@ export class EnhancedLineDetectorV2 {
   
   constructor(config: Partial<LineDetectionV2Config> = {}) {
     this.config = { ...DEFAULT_V2_CONFIG, ...config };
-    this.touchDetector = new advancedTouchDetector.constructor(this.config.touchConfig);
+    this.touchDetector = new AdvancedTouchDetector(this.config.touchConfig);
   }
   
   /**
@@ -201,7 +201,7 @@ export class EnhancedLineDetectorV2 {
     }
     
     // Analyze each candidate level with advanced touch detection
-    for (const [basePrice, candidate] of candidateLevels.entries()) {
+    for (const [, candidate] of candidateLevels.entries()) {
       if (candidate.timeframes.length < this.config.minTimeframes) continue;
       
       const avgPrice = candidate.prices.reduce((sum, p) => sum + p, 0) / candidate.prices.length;
@@ -222,10 +222,12 @@ export class EnhancedLineDetectorV2 {
       // Analyze touches in each supporting timeframe
       for (const interval of candidate.timeframes) {
         const timeframeData = multiTimeframeData.timeframes[interval];
-        const levelType = this.determineLevelType(timeframeData.data, avgPrice);
+        const timeframeDat = timeframeData;
+        if (!timeframeDat) continue;
+        const levelType = this.determineLevelType(timeframeDat.data, avgPrice);
         
         const touchAnalysis = this.touchDetector.analyzeTouchPoints(
-          timeframeData.data,
+          timeframeDat.data,
           avgPrice,
           levelType
         );
@@ -237,8 +239,8 @@ export class EnhancedLineDetectorV2 {
         combinedTouchAnalysis.exactTouchCount += touchAnalysis.exactTouchCount;
         combinedTouchAnalysis.strongBounceCount += touchAnalysis.strongBounceCount;
         
-        totalVolume += touchAnalysis.averageVolume * timeframeData.data.length;
-        totalCandles += timeframeData.data.length;
+        totalVolume += touchAnalysis.averageVolume * timeframeDat.data.length;
+        totalCandles += timeframeDat.data.length;
       }
       
       // Calculate combined metrics
@@ -258,7 +260,7 @@ export class EnhancedLineDetectorV2 {
       // Apply volume confirmation if required
       if (this.config.requireVolumeConfirmation) {
         const volumeConfirmationRatio = combinedTouchAnalysis.touchPoints.filter(tp => 
-          tp.volumeRatio > this.config.touchConfig.volumeThresholdMultiplier!
+          tp.volumeRatio > (this.config.touchConfig.volumeThresholdMultiplier ?? 1.3)
         ).length / combinedTouchAnalysis.touchPoints.length;
         
         if (volumeConfirmationRatio < this.config.volumeConfirmationThreshold) continue;
@@ -275,8 +277,10 @@ export class EnhancedLineDetectorV2 {
       if (confidence < this.config.minConfidence) continue;
       
       const strength = this.calculateLineStrength(combinedTouchAnalysis, candidate.timeframes.length);
+      const firstTimeframe = Object.values(multiTimeframeData.timeframes)[0];
+      if (!firstTimeframe) continue;
       const levelType = this.determineLevelType(
-        Object.values(multiTimeframeData.timeframes)[0].data, 
+        firstTimeframe.data, 
         avgPrice
       );
       
@@ -377,10 +381,10 @@ export class EnhancedLineDetectorV2 {
               touchAnalysis,
               qualityMetrics,
               coordinates: {
-                startTime: points[0].time,
-                endTime: points[points.length - 1].time,
-                startPrice: regression.intercept + regression.slope * points[0].time,
-                endPrice: regression.intercept + regression.slope * points[points.length - 1].time,
+                startTime: points[0]!.time,
+                endTime: points[points.length - 1]!.time,
+                startPrice: regression.intercept + regression.slope * (points[0]?.time ?? 0),
+                endPrice: regression.intercept + regression.slope * (points[points.length - 1]?.time ?? 0),
                 slope: regression.slope
               },
               description: this.generateTrendlineDescription(regression, touchAnalysis),
@@ -415,27 +419,31 @@ export class EnhancedLineDetectorV2 {
       // Check for swing high (resistance)
       let isSwingHigh = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].high >= current.high) {
+        const compareCandle = data[j];
+        if (!compareCandle || !current) continue;
+        if (j !== i && compareCandle.high >= current.high) {
           isSwingHigh = false;
           break;
         }
       }
       
-      if (isSwingHigh) {
-        levels.push({ price: current.high, type: 'resistance' });
+      if (isSwingHigh && current) {
+        levels.push({ price: current.high, type: 'resistance' as const });
       }
       
       // Check for swing low (support)
       let isSwingLow = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].low <= current.low) {
+        const compareCandle = data[j];
+        if (!compareCandle || !current) continue;
+        if (j !== i && compareCandle.low <= current.low) {
           isSwingLow = false;
           break;
         }
       }
       
-      if (isSwingLow) {
-        levels.push({ price: current.low, type: 'support' });
+      if (isSwingLow && current) {
+        levels.push({ price: current.low, type: 'support' as const });
       }
     }
     
@@ -455,26 +463,30 @@ export class EnhancedLineDetectorV2 {
       // Check for swing high
       let isSwingHigh = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].high >= current.high) {
+        const compareCandle = data[j];
+        if (!compareCandle || !current) continue;
+        if (j !== i && compareCandle.high >= current.high) {
           isSwingHigh = false;
           break;
         }
       }
       
-      if (isSwingHigh) {
+      if (isSwingHigh && current) {
         points.push({ time: current.time, price: current.high, index: i });
       }
       
       // Check for swing low
       let isSwingLow = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].low <= current.low) {
+        const compareCandle = data[j];
+        if (!compareCandle || !current) continue;
+        if (j !== i && compareCandle.low <= current.low) {
           isSwingLow = false;
           break;
         }
       }
       
-      if (isSwingLow) {
+      if (isSwingLow && current) {
         points.push({ time: current.time, price: current.low, index: i });
       }
     }
@@ -495,7 +507,6 @@ export class EnhancedLineDetectorV2 {
     const sumY = points.reduce((sum, p) => sum + p.price, 0);
     const sumXY = points.reduce((sum, p) => sum + p.time * p.price, 0);
     const sumXX = points.reduce((sum, p) => sum + p.time * p.time, 0);
-    const sumYY = points.reduce((sum, p) => sum + p.price * p.price, 0);
     
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
@@ -527,6 +538,7 @@ export class EnhancedLineDetectorV2 {
     
     for (let i = 0; i < data.length; i++) {
       const candle = data[i];
+      if (!candle) continue;
       const expectedPrice = regression.slope * candle.time + regression.intercept;
       const actualPrice = levelType === 'support' ? candle.low : candle.high;
       
@@ -566,7 +578,7 @@ export class EnhancedLineDetectorV2 {
     // Simplified validation - in practice would check if the trendline
     // also appears in other timeframes
     return {
-      supportingTimeframes: [Object.keys(multiTimeframeData.timeframes)[0]],
+      supportingTimeframes: [Object.keys(multiTimeframeData.timeframes)[0] ?? ''],
       confidence: trendlineDetection.line.confidence
     };
   }

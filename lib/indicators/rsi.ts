@@ -44,6 +44,8 @@ export function calculateRSI(
     const currentGain = gains[i - 1];
     const currentLoss = losses[i - 1];
 
+    if (currentGain === undefined || currentLoss === undefined) continue;
+
     // Wilder's smoothing
     avgGain = ((avgGain * (period - 1)) + currentGain) / period;
     avgLoss = ((avgLoss * (period - 1)) + currentLoss) / period;

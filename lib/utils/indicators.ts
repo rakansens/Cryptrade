@@ -87,6 +87,11 @@ export function computeMACD(
   const signalLine = ema(macdLine.slice(-slowPeriod), signalPeriod)
   const lastMacd = macdLine[macdLine.length - 1]
   const lastSignal = signalLine[signalLine.length - 1]
+  
+  if (lastMacd === undefined || lastSignal === undefined) {
+    return { macd: 0, signal: 0, histogram: 0, trend: 'neutral' }
+  }
+  
   const histogram = lastMacd - lastSignal
   const trend: 'bullish' | 'bearish' | 'neutral' = histogram > 0 ? 'bullish' : histogram < 0 ? 'bearish' : 'neutral'
 

@@ -219,7 +219,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
       // Subscribe to BTC
       const btcSub = manager.subscribe('btcusdt@trade').subscribe({
         next: (data) => {
-          if (data.p === '55000') {
+          if (data['p'] === '55000') {
             btcReconnected = true;
             btcSub.unsubscribe();
             checkComplete();
@@ -230,7 +230,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
       // Subscribe to ETH
       const ethSub = manager.subscribe('ethusdt@trade').subscribe({
         next: (data) => {
-          if (data.p === '3500') {
+          if (data['p'] === '3500') {
             ethReconnected = true;
             ethSub.unsubscribe();
             checkComplete();

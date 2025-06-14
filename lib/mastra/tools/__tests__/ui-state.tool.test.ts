@@ -361,7 +361,10 @@ describe('uiStateTool', () => {
       ];
 
       for (const context of actions) {
-        const result = await uiStateTool.execute({ context });
+        const result = await uiStateTool.execute({ 
+          context,
+          runtimeContext: { sessionId: 'test-session' }
+        });
         
         if (result.success) {
           expect(result.currentState).toBeDefined();

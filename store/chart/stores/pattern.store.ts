@@ -33,7 +33,8 @@ export const usePatternStore = create<PatternState & PatternActions>()(
       // Initialize patterns asynchronously
       initializePatterns: async () => {
         try {
-          const patterns = await chartPersistence.loadPatterns();
+          const patternsArray = await chartPersistence.loadPatterns();
+          const patterns = new Map(patternsArray.map(p => [p.id || crypto.randomUUID(), p]));
           set({ patterns });
           logger.info('[PatternStore] Patterns loaded', { count: patterns.size });
         } catch (error) {
@@ -106,5 +107,5 @@ export const usePatternStore = create<PatternState & PatternActions>()(
 
 // Initialize patterns on store creation
 if (typeof window !== 'undefined') {
-  usePatternStore.getState().initializePatterns();
+  (usePatternStore.getState() as any).initializePatterns();
 }

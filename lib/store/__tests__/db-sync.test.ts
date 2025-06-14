@@ -1,5 +1,4 @@
 import { createDbSyncHandlers } from '../db-sync';
-import type { ConversationSession } from '@/types/conversation-memory';
 
 describe('db sync handlers', () => {
   it('disableDbSync toggles flag', () => {

@@ -68,10 +68,10 @@ export class BinanceAPIService extends BaseService {
 
       // 追加クエリ（Binance は ms 指定）
       if (startTime !== undefined) {
-        params.startTime = startTime.toString();
+        params['startTime'] = startTime.toString();
       }
       if (endTime !== undefined) {
-        params.endTime = endTime.toString();
+        params['endTime'] = endTime.toString();
       }
 
       const response = await this.get<KlinesResponse>('/klines', params);

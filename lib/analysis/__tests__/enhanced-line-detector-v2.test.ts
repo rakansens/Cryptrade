@@ -231,7 +231,7 @@ describe('EnhancedLineDetectorV2', () => {
       
       if (result.horizontalLines.length > 0) {
         const line = result.horizontalLines[0];
-        expect(line.supportingTimeframes.length).toBeGreaterThanOrEqual(1);
+        expect(line!.supportingTimeframes.length).toBeGreaterThanOrEqual(1);
       }
     });
 
@@ -241,7 +241,7 @@ describe('EnhancedLineDetectorV2', () => {
       
       if (result.horizontalLines.length > 0) {
         const line = result.horizontalLines[0];
-        expect(line.qualityMetrics).toMatchObject({
+        expect(line!.qualityMetrics).toMatchObject({
           wickBodyRatio: expect.any(Number),
           volumeConfirmation: expect.any(Number),
           bounceConfirmation: expect.any(Number),
@@ -249,8 +249,8 @@ describe('EnhancedLineDetectorV2', () => {
         });
         
         // All metrics should be between 0 and 100
-        expect(line.qualityMetrics.overallQuality).toBeGreaterThanOrEqual(0);
-        expect(line.qualityMetrics.overallQuality).toBeLessThanOrEqual(100);
+        expect(line!.qualityMetrics.overallQuality).toBeGreaterThanOrEqual(0);
+        expect(line!.qualityMetrics.overallQuality).toBeLessThanOrEqual(100);
       }
     });
 
@@ -268,8 +268,8 @@ describe('EnhancedLineDetectorV2', () => {
       
       if (result.horizontalLines.length > 1) {
         for (let i = 1; i < result.horizontalLines.length; i++) {
-          const prevScore = result.horizontalLines[i - 1].confidence * result.horizontalLines[i - 1].strength;
-          const currScore = result.horizontalLines[i].confidence * result.horizontalLines[i].strength;
+          const prevScore = result.horizontalLines[i - 1]!.confidence * result.horizontalLines[i - 1]!.strength;
+          const currScore = result.horizontalLines[i]!.confidence * result.horizontalLines[i]!.strength;
           expect(prevScore).toBeGreaterThanOrEqual(currScore);
         }
       }
@@ -290,7 +290,7 @@ describe('EnhancedLineDetectorV2', () => {
         volume: 1000,
       }));
       
-      multiTimeframeData.timeframes['1h'].data = trendData;
+      multiTimeframeData.timeframes['1h']!.data = trendData;
       
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
@@ -304,9 +304,9 @@ describe('EnhancedLineDetectorV2', () => {
       
       if (result.trendlines.length > 0) {
         const trendline = result.trendlines[0];
-        expect(trendline.type).toBe('trendline');
-        expect(trendline.coordinates).toBeDefined();
-        expect(trendline.coordinates?.slope).toBeDefined();
+        expect(trendline!.type).toBe('trendline');
+        expect(trendline!.coordinates).toBeDefined();
+        expect(trendline!.coordinates?.slope).toBeDefined();
       }
     });
 
@@ -316,7 +316,7 @@ describe('EnhancedLineDetectorV2', () => {
       
       if (result.trendlines.length > 0) {
         const trendline = result.trendlines[0];
-        expect(trendline.coordinates).toMatchObject({
+        expect(trendline!.coordinates).toMatchObject({
           startTime: expect.any(Number),
           endTime: expect.any(Number),
           startPrice: expect.any(Number),

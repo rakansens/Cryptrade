@@ -30,7 +30,7 @@ jest.mock('@/lib/utils', () => ({
 }))
 
 jest.mock('@/lib/utils/parse-analysis', () => ({
-  parseAnalysisText: (text: string) => ({
+  parseAnalysisText: (_text: string) => ({
     symbol: 'BTCUSDT',
     interval: '1h',
     analyses: []
@@ -148,7 +148,7 @@ describe('MessageItem', () => {
   })
 
   describe('Proposal Messages', () => {
-    const proposalMessage: ProposalMessage = {
+    const proposalMessage = {
       id: 'msg-3',
       role: 'assistant',
       type: 'proposal',
@@ -158,20 +158,21 @@ describe('MessageItem', () => {
         id: 'group-1',
         title: 'Trend Analysis',
         description: 'Based on current market trends',
-        proposals: [],
-        timestamp: Date.now()
+        status: 'pending' as const,
+        createdAt: Date.now(),
+        proposals: []
       }
     }
 
     it('renders ProposalCard for proposal messages', () => {
-      render(<MessageItem {...defaultProps} message={proposalMessage} />)
+      render(<MessageItem {...defaultProps} message={proposalMessage as ChatMessage} />)
       
       expect(screen.getByTestId('proposal-card')).toBeInTheDocument()
       expect(screen.getByText('Proposal Card - Trend Analysis')).toBeInTheDocument()
     })
 
     it('passes handlers to ProposalCard', () => {
-      render(<MessageItem {...defaultProps} message={proposalMessage} />)
+      render(<MessageItem {...defaultProps} message={proposalMessage as ChatMessage} />)
       
       const approveButton = screen.getByText('Approve Proposal')
       fireEvent.click(approveButton)
@@ -188,7 +189,7 @@ describe('MessageItem', () => {
       render(
         <MessageItem
           {...defaultProps}
-          message={proposalMessage}
+          message={proposalMessage as ChatMessage}
           approvedDrawingIds={approvedIds}
         />
       )

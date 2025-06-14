@@ -1,5 +1,5 @@
 /**
- * Unified Storage Factory
+ * Updated: Unified Storage Factory - 環境変数の型安全なアクセスを実装
  * 
  * Creates appropriate storage implementation based on configuration.
  *
@@ -15,6 +15,7 @@
  */
 
 import type { IUnifiedStorage, UnifiedLoggerConfig } from '../unified-logger';
+import { env } from '@/config/env';
 
 // Track whether SQLite storage is unavailable to avoid repeated costly attempts
 let sqliteUnavailable = false;
@@ -65,7 +66,7 @@ export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise
       
     default:
       // Default based on environment
-      if (process.env.NODE_ENV === 'test') {
+      if (env.NODE_ENV === 'test') {
         const { UnifiedMemoryStorage: TestMemory } = await import('./memory');
         return new TestMemory(config);
       } else {

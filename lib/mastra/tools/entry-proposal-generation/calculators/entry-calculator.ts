@@ -187,6 +187,8 @@ function calculateSRBasedEntries(
 ): EntryPoint[] {
   const entries: EntryPoint[] = [];
   const levelPrice = level.price || level.value;
+  if (!levelPrice) return entries;
+  
   const priceDistance = Math.abs(currentPrice - levelPrice) / currentPrice;
 
   // レベルに近い場合（3%以内）

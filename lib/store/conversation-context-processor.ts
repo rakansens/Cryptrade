@@ -1,4 +1,4 @@
-import { ConversationMessage } from './enhanced-conversation-memory.store.db';
+import { ConversationMessage } from './enhanced-conversation-memory.store';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -73,7 +73,7 @@ export class ConversationContextProcessor {
       
       // メタデータから追加
       if (msg.metadata?.topics) {
-        msg.metadata.topics.forEach(topic => topics.add(topic));
+        msg.metadata.topics.forEach((topic: string) => topics.add(topic));
       }
     });
     
@@ -180,7 +180,7 @@ export class ConversationContextProcessor {
       
       // メタデータからも抽出
       if (msg.metadata?.symbols) {
-        msg.metadata.symbols.forEach(s => symbols.add(s));
+        msg.metadata.symbols.forEach((s: string) => symbols.add(s));
       }
     });
     

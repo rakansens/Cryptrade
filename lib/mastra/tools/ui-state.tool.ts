@@ -89,7 +89,7 @@ export const uiStateTool = createTool({
               symbol: baseStore.symbol,
               timeframe: baseStore.timeframe,
               indicators: indicatorStore.indicators,
-              settings: indicatorStore.settings,
+              settings: indicatorStore.settings as Record<string, unknown>,
             },
             message,
           };
@@ -145,7 +145,7 @@ export const uiStateTool = createTool({
               symbol: baseStore.symbol,
               timeframe: baseStore.timeframe,
               indicators: indicatorStore.indicators,
-              settings: indicatorStore.settings,
+              settings: indicatorStore.settings as Record<string, unknown>,
             },
             message,
           };
@@ -180,7 +180,7 @@ export const uiStateTool = createTool({
           symbol: updatedBaseStore.symbol,
           timeframe: updatedBaseStore.timeframe,
           indicators: updatedIndicatorStore.indicators,
-          settings: updatedIndicatorStore.settings,
+          settings: updatedIndicatorStore.settings as Record<string, unknown>,
         },
         changes,
         message,

@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { createTool } from '@/lib/tools/base-tool';
+import { createTool } from '@mastra/core';
 import { ApiError, ToolError } from '@/lib/errors/base-error';
 import { trackToolError, trackException } from '@/lib/errors/error-tracker';
 import { createCompatibleTool } from '@/lib/tools/compatibility/tool-compatibility';

@@ -214,7 +214,8 @@ const benchmarks: BenchmarkConfig[] = [
           userRequest: 'トレンドラインを描いて',
           conversationHistory: [],
           currentState: { symbol: 'BTCUSDT', timeframe: '1h' }
-        }
+        },
+        runtimeContext: { sessionId: 'test-session' }
       });
     },
     iterations: 50,

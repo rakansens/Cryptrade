@@ -111,9 +111,9 @@ export function isPatternVisualization(value: unknown): value is PatternVisualiz
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.type === 'string' &&
-    ['triangle', 'channel', 'wedge', 'pennant', 'flag'].includes(obj.type) &&
-    Array.isArray(obj.points)
+    typeof obj['type'] === 'string' &&
+    ['triangle', 'channel', 'wedge', 'pennant', 'flag'].includes(obj['type']) &&
+    Array.isArray(obj['points'])
   );
 }
 
@@ -122,8 +122,8 @@ export function isPatternMetrics(value: unknown): value is PatternMetrics {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.confidence === 'number' &&
-    typeof obj.strength === 'number'
+    typeof obj['confidence'] === 'number' &&
+    typeof obj['strength'] === 'number'
   );
 }
 
@@ -132,8 +132,8 @@ export function isPatternRenderer(value: unknown): value is PatternRenderer {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.renderPattern === 'function' &&
-    typeof obj.removePattern === 'function' &&
-    typeof obj.removeAllPatterns === 'function'
+    typeof obj['renderPattern'] === 'function' &&
+    typeof obj['removePattern'] === 'function' &&
+    typeof obj['removeAllPatterns'] === 'function'
   );
 }

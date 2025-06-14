@@ -4,13 +4,39 @@
  * Factory functions for creating test data consistently across tests
  */
 
-import type { 
-  ProposalData, 
-  ChartEventData, 
-  DrawingEventData,
-  PatternEventData 
-} from '@/types/events/all-event-types';
-import type { CandlestickData } from '@/types/market';
+import type { EventPayload } from '@/types/events/all-event-types';
+import type { ProcessedKline } from '@/types/market';
+
+// Define custom types for test data
+interface ProposalData {
+  id: string;
+  type: string;
+  symbol: string;
+  direction: string;
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  confidence: number;
+  reasoning: string;
+  timeframe: string;
+  timestamp: string;
+}
+
+interface ChartEventData {
+  type: string;
+  symbol?: string;
+  interval?: string;
+  data?: ProcessedKline[];
+  previousSymbol?: string;
+  timeframe?: string;
+  previousTimeframe?: string;
+  indicator?: any;
+  timestamp?: string;
+  [key: string]: any;
+}
+
+type DrawingEventData = EventPayload<'draw:trendline'>;
+type PatternEventData = EventPayload<'chart:addPattern'>;
 
 /**
  * Creates a mock proposal for testing
@@ -35,7 +61,7 @@ export function createMockProposal(overrides?: Partial<ProposalData>): ProposalD
 /**
  * Creates mock candlestick data for testing
  */
-export function createMockCandlestickData(count: number = 100): CandlestickData[] {
+export function createMockCandlestickData(count: number = 100): ProcessedKline[] {
   const baseTime = Date.now() - count * 60 * 60 * 1000; // Start from count hours ago
   const basePrice = 45000;
   
@@ -114,101 +140,50 @@ export function createMockChartEvent(
  * Creates a mock drawing event
  */
 export function createMockDrawingEvent(
-  type: DrawingEventData['type'],
-  drawingType: string = 'trendline'
+  overrides?: Partial<DrawingEventData>
 ): DrawingEventData {
-  const drawingId = `drawing-${Date.now()}`;
-  
-  switch (type) {
-    case 'drawing.created':
-      return {
-        type,
-        drawing: {
-          id: drawingId,
-          type: drawingType,
-          points: [
-            { time: Date.now() / 1000 - 3600, price: 45000 },
-            { time: Date.now() / 1000, price: 46000 },
-          ],
-          style: {
-            color: '#2196F3',
-            lineWidth: 2,
-          },
-        },
-      };
-      
-    case 'drawing.updated':
-      return {
-        type,
-        drawingId,
-        updates: {
-          points: [
-            { time: Date.now() / 1000 - 3600, price: 45500 },
-            { time: Date.now() / 1000, price: 46500 },
-          ],
-        },
-      };
-      
-    case 'drawing.deleted':
-      return {
-        type,
-        drawingId,
-      };
-      
-    default:
-      return { type } as DrawingEventData;
-  }
+  return {
+    points: [
+      { time: Date.now() / 1000 - 3600, value: 45000 },
+      { time: Date.now() / 1000, value: 46000 },
+    ],
+    style: {
+      color: '#2196F3',
+      lineWidth: 2,
+      lineStyle: 'solid',
+    },
+    ...overrides,
+  };
 }
 
 /**
  * Creates a mock pattern event
  */
 export function createMockPatternEvent(
-  type: PatternEventData['type'],
-  patternType: string = 'flag'
+  patternType: string = 'flag',
+  overrides?: Partial<PatternEventData>
 ): PatternEventData {
   const patternId = `pattern-${Date.now()}`;
   
-  switch (type) {
-    case 'pattern.detected':
-      return {
-        type,
-        pattern: {
-          id: patternId,
-          type: patternType,
-          confidence: 0.85,
-          points: [
-            { time: Date.now() / 1000 - 7200, price: 44000 },
-            { time: Date.now() / 1000 - 3600, price: 45000 },
-            { time: Date.now() / 1000, price: 44500 },
-          ],
-          prediction: {
-            targetPrice: 46000,
-            timeframe: '4h',
-            confidence: 0.75,
-          },
-        },
-      };
-      
-    case 'pattern.confirmed':
-      return {
-        type,
-        patternId,
-        confirmationPrice: 45500,
-        confirmationTime: Date.now() / 1000,
-      };
-      
-    case 'pattern.invalidated':
-      return {
-        type,
-        patternId,
-        reason: 'Price broke below support',
-        invalidationPrice: 43500,
-      };
-      
-    default:
-      return { type } as PatternEventData;
-  }
+  return {
+    id: patternId,
+    pattern: {
+      type: patternType,
+      visualization: {
+        lines: [
+          { time: Date.now() / 1000 - 7200, value: 44000 },
+          { time: Date.now() / 1000 - 3600, value: 45000 },
+          { time: Date.now() / 1000, value: 44500 },
+        ],
+      },
+      metrics: {
+        target_level: 46000,
+        stop_loss: 43000,
+        breakout_level: 45500,
+      },
+    },
+    ...overrides,
+  };
 }
 
 /**
@@ -365,16 +340,26 @@ export function createMockFetchResponse(
     headers?: Record<string, string>;
     ok?: boolean;
   }
-) {
-  return Promise.resolve({
+): Promise<Response> {
+  const response = {
     ok: options?.ok ?? true,
     status: options?.status ?? 200,
+    statusText: options?.status === 200 ? 'OK' : 'Error',
     headers: new Headers(options?.headers ?? { 'content-type': 'application/json' }),
     json: async () => data,
     text: async () => JSON.stringify(data),
     blob: async () => new Blob([JSON.stringify(data)], { type: 'application/json' }),
     arrayBuffer: async () => new ArrayBuffer(0),
     formData: async () => new FormData(),
-    clone: () => createMockFetchResponse(data, options),
-  } as Response);
+    clone: function(): Response {
+      return { ...response } as Response;
+    },
+    body: null,
+    bodyUsed: false,
+    redirected: false,
+    type: 'basic' as ResponseType,
+    url: '',
+  } as Response;
+  
+  return Promise.resolve(response);
 }

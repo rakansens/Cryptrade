@@ -202,14 +202,14 @@ describe('error-handler', () => {
     it('should use default session ID when not provided', () => {
       const response = createOrchestratorErrorResponse('Error');
 
-      expect(response.metadata.sessionId).toBe('error-session');
+      expect(response.metadata?.sessionId).toBe('error-session');
     });
 
     it('should preserve error details in metadata', () => {
       const error = new ValidationError('Invalid request', { field: 'message' });
       const response = createOrchestratorErrorResponse(error);
 
-      expect(response.metadata.error).toBe('ValidationError: Invalid request');
+      expect(response.metadata?.error).toBe('ValidationError: Invalid request');
     });
   });
 });

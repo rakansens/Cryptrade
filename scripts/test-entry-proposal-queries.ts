@@ -9,7 +9,7 @@ import * as path from 'path';
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
 
 // Set the API key directly in process.env before any imports
-process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'your-openai-api-key-here';
+process.env['OPENAI_API_KEY'] = process.env['OPENAI_API_KEY'] || 'your-openai-api-key-here';
 
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
 import { entryProposalGenerationTool } from '../lib/mastra/tools/entry-proposal-generation';
@@ -133,7 +133,7 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
             log(`    ポジションサイズ: ${proposal.riskParameters.positionSize || 'N/A'}`, colors.cyan);
           }
           
-          log(`    信頼度: ${(proposal.confidence * 100).toFixed(1)}%`, colors.cyan);
+          log(`    信頼度: ${proposal.confidence ? (proposal.confidence * 100).toFixed(1) : 'N/A'}%`, colors.cyan);
           log(`    優先度: ${proposal.priority || 'N/A'}`, colors.cyan);
           log(`    戦略: ${proposal.strategy || 'N/A'}`, colors.cyan);
           
@@ -167,7 +167,21 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
       proposalType: analysis.proposalType,
       hasProposalGroup,
       proposalCount,
-      proposalDetails: proposalGroup,
+      proposalDetails: proposalGroup ? {
+        id: proposalGroup.id,
+        title: proposalGroup.title || '',
+        description: proposalGroup.description || '',
+        proposals: proposalGroup.proposals.map(p => ({
+          id: p.id,
+          direction: (p as any).direction,
+          entryPrice: (p as any).entryPrice,
+          entryZone: (p as any).entryZone,
+          riskParameters: (p as any).riskParameters,
+          confidence: p.confidence,
+          priority: (p as any).priority,
+          marketContext: (p as any).marketContext
+        }))
+      } : undefined,
       executionTime,
     };
     

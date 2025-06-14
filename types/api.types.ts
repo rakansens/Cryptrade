@@ -439,8 +439,8 @@ export function isPaginationParams(params: unknown): params is PaginationParams 
   const p = params as Record<string, unknown>;
   
   return (
-    (p.page === undefined || typeof p.page === 'number') &&
-    (p.limit === undefined || typeof p.limit === 'number') &&
-    (p.cursor === undefined || typeof p.cursor === 'string')
+    (p['page'] === undefined || typeof p['page'] === 'number') &&
+    (p['limit'] === undefined || typeof p['limit'] === 'number') &&
+    (p['cursor'] === undefined || typeof p['cursor'] === 'string')
   );
 }

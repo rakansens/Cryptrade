@@ -57,14 +57,14 @@ describe('MetricsCollector', () => {
       metricsCollector.increment('drawing_success_total');
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_success_total.value).toBe(1);
+      expect(json['drawing_success_total'].value).toBe(1);
     });
 
     it('should increment counter by custom value', () => {
       metricsCollector.increment('drawing_retry_total', 5);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_retry_total.value).toBe(5);
+      expect(json['drawing_retry_total'].value).toBe(5);
     });
 
     it('should accumulate increments', () => {
@@ -73,7 +73,7 @@ describe('MetricsCollector', () => {
       metricsCollector.increment('market_data_requests');
       
       const json = metricsCollector.toJSON();
-      expect(json.market_data_requests.value).toBe(6);
+      expect(json['market_data_requests'].value).toBe(6);
     });
 
     it('should warn when incrementing unknown metric', () => {
@@ -100,7 +100,7 @@ describe('MetricsCollector', () => {
       metricsCollector.set('drawing_queue_size', 10);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_queue_size.value).toBe(10);
+      expect(json['drawing_queue_size'].value).toBe(10);
     });
 
     it('should overwrite gauge value', () => {
@@ -108,7 +108,7 @@ describe('MetricsCollector', () => {
       metricsCollector.set('drawing_queue_size', 5);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_queue_size.value).toBe(5);
+      expect(json['drawing_queue_size'].value).toBe(5);
     });
 
     it('should warn when setting unknown metric', () => {
@@ -124,7 +124,7 @@ describe('MetricsCollector', () => {
       metricsCollector.set('drawing_success_total', 42);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_success_total.value).toBe(42);
+      expect(json['drawing_success_total'].value).toBe(42);
     });
   });
 
@@ -133,7 +133,7 @@ describe('MetricsCollector', () => {
       metricsCollector.observe('drawing_operation_duration_ms', 125);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_operation_duration_ms.value).toBe(125);
+      expect(json['drawing_operation_duration_ms'].value).toBe(125);
     });
 
     it('should update histogram with latest observation', () => {
@@ -141,7 +141,7 @@ describe('MetricsCollector', () => {
       metricsCollector.observe('drawing_operation_duration_ms', 200);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_operation_duration_ms.value).toBe(200);
+      expect(json['drawing_operation_duration_ms'].value).toBe(200);
     });
 
     it('should warn when observing unknown metric', () => {
@@ -225,14 +225,14 @@ describe('MetricsCollector', () => {
       const json = metricsCollector.toJSON();
       
       expect(json).toHaveProperty('drawing_success_total');
-      expect(json.drawing_success_total).toEqual({
+      expect(json['drawing_success_total']).toEqual({
         value: 20,
         type: 'counter',
         help: 'Total number of successful drawing operations'
       });
       
       expect(json).toHaveProperty('drawing_queue_size');
-      expect(json.drawing_queue_size).toEqual({
+      expect(json['drawing_queue_size']).toEqual({
         value: 3,
         type: 'gauge',
         help: 'Current size of the drawing operation queue'
@@ -263,11 +263,11 @@ describe('MetricsCollector', () => {
       const json = metricsCollector.toJSON();
       
       // Counters should be reset
-      expect(json.drawing_success_total.value).toBe(0);
-      expect(json.drawing_failed_total.value).toBe(0);
+      expect(json['drawing_success_total'].value).toBe(0);
+      expect(json['drawing_failed_total'].value).toBe(0);
       
       // Gauges should not be reset
-      expect(json.drawing_queue_size.value).toBe(8);
+      expect(json['drawing_queue_size'].value).toBe(8);
     });
 
     it('should log reset action', () => {
@@ -283,21 +283,21 @@ describe('MetricsCollector', () => {
       incrementMetric('drawing_success_total', 2);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_success_total.value).toBe(3);
+      expect(json['drawing_success_total'].value).toBe(3);
     });
 
     it('should set metric using helper', () => {
       setMetric('drawing_queue_size', 15);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_queue_size.value).toBe(15);
+      expect(json['drawing_queue_size'].value).toBe(15);
     });
 
     it('should observe metric using helper', () => {
       observeMetric('drawing_operation_duration_ms', 300);
       
       const json = metricsCollector.toJSON();
-      expect(json.drawing_operation_duration_ms.value).toBe(300);
+      expect(json['drawing_operation_duration_ms'].value).toBe(300);
     });
   });
 
@@ -316,11 +316,11 @@ describe('MetricsCollector', () => {
       
       const json = metricsCollector.toJSON();
       
-      expect(json.drawing_success_total.value).toBe(5);
-      expect(json.drawing_failed_total.value).toBe(1);
-      expect(json.drawing_retry_total.value).toBe(3);
-      expect(json.drawing_queue_size.value).toBe(2);
-      expect(json.drawing_operation_duration_ms.value).toBe(150);
+      expect(json['drawing_success_total'].value).toBe(5);
+      expect(json['drawing_failed_total'].value).toBe(1);
+      expect(json['drawing_retry_total'].value).toBe(3);
+      expect(json['drawing_queue_size'].value).toBe(2);
+      expect(json['drawing_operation_duration_ms'].value).toBe(150);
     });
 
     it('should track market data operations', () => {
@@ -336,12 +336,12 @@ describe('MetricsCollector', () => {
       
       const json = metricsCollector.toJSON();
       
-      expect(json.market_data_requests.value).toBe(100);
-      expect(json.market_data_success.value).toBe(95);
-      expect(json.market_data_failures.value).toBe(3);
-      expect(json.market_data_circuit_open.value).toBe(2);
-      expect(json.market_data_cache_hits.value).toBe(50);
-      expect(json.market_data_fallback.value).toBe(5);
+      expect(json['market_data_requests'].value).toBe(100);
+      expect(json['market_data_success'].value).toBe(95);
+      expect(json['market_data_failures'].value).toBe(3);
+      expect(json['market_data_circuit_open'].value).toBe(2);
+      expect(json['market_data_cache_hits'].value).toBe(50);
+      expect(json['market_data_fallback'].value).toBe(5);
     });
 
     it('should handle high-frequency metric updates', () => {
@@ -358,9 +358,9 @@ describe('MetricsCollector', () => {
       
       const json = metricsCollector.toJSON();
       
-      expect(json.drawing_success_total.value).toBe(1000);
-      expect(json.drawing_retry_total.value).toBe(100);
-      expect(json.drawing_failed_total.value).toBe(20);
+      expect(json['drawing_success_total'].value).toBe(1000);
+      expect(json['drawing_retry_total'].value).toBe(100);
+      expect(json['drawing_failed_total'].value).toBe(20);
     });
   });
 
@@ -374,7 +374,7 @@ describe('MetricsCollector', () => {
       
       // In this simple implementation, only the last value is kept
       const json = metricsCollector.toJSON();
-      expect(json.drawing_operation_duration_ms.value).toBe(300);
+      expect(json['drawing_operation_duration_ms'].value).toBe(300);
     });
 
     it('should handle concurrent metric updates', () => {
@@ -389,8 +389,8 @@ describe('MetricsCollector', () => {
       
       return Promise.all(promises).then(() => {
         const json = metricsCollector.toJSON();
-        expect(json.market_data_requests.value).toBe(100);
-        expect(json.market_data_success.value).toBe(50);
+        expect(json['market_data_requests'].value).toBe(100);
+        expect(json['market_data_success'].value).toBe(50);
       });
     });
   });

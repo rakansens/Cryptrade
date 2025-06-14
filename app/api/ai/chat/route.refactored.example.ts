@@ -80,7 +80,7 @@ export const POST = createApiHandler<ChatRequest>({
       const response = buildChatResponse({
         message: proposalGroup && !message.includes('提案') ? 'トレンドラインの提案を生成しました。' : message,
         orchestratorResult,
-        proposalGroup,
+        proposalGroup: proposalGroup || undefined,
         sessionId,
       });
 

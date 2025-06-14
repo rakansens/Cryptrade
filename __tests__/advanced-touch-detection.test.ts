@@ -1,4 +1,4 @@
-import { AdvancedTouchDetector, type TouchPoint, type TouchAnalysis } from '@/lib/analysis/advanced-touch-detector';
+import { AdvancedTouchDetector } from '@/lib/analysis/advanced-touch-detector';
 import type { ProcessedKline } from '@/types/market';
 
 describe('AdvancedTouchDetector', () => {
@@ -203,9 +203,9 @@ describe('AdvancedTouchDetector', () => {
       expect(details).toHaveProperty('volumeWeightedStrength');
       expect(details).toHaveProperty('averageStrength');
 
-      expect(details.touchTypes).toHaveProperty('wick');
-      expect(details.touchTypes).toHaveProperty('body');
-      expect(details.touchTypes).toHaveProperty('exact');
+      expect(details['touchTypes']).toHaveProperty('wick');
+      expect(details['touchTypes']).toHaveProperty('body');
+      expect(details['touchTypes']).toHaveProperty('exact');
     });
   });
 

@@ -191,7 +191,7 @@ export class StreamingResponseBuilder {
         event: 'connected',
         data: {
           timestamp: Date.now(),
-          sessionId: context.sessionId,
+          sessionId: context['sessionId'],
         },
       };
       

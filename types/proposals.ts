@@ -392,7 +392,8 @@ export function isDrawingProposal(proposal: unknown): proposal is DrawingProposa
 export function isEntryProposal(proposal: unknown): proposal is EntryProposal {
   return proposal && 
     typeof proposal === 'object' && 
-    proposal.type === 'entry' &&
+    'type' in proposal &&
+    (proposal as any).type === 'entry' &&
     'direction' in proposal &&
     'entryPrice' in proposal;
 }

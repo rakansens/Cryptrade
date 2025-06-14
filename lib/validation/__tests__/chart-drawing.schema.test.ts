@@ -799,13 +799,13 @@ describe('Edge cases and complex scenarios', () => {
     
     const result = ChartDrawingSchema.parse(drawingWithMetadata);
     
-    expect(result.metadata?.string).toBe('test');
-    expect(result.metadata?.number).toBe(123);
-    expect(result.metadata?.boolean).toBe(true);
-    expect(result.metadata?.array).toEqual([1, 2, 3]);
-    expect(result.metadata?.object).toEqual({ nested: 'value' });
-    expect(result.metadata?.null).toBeNull();
-    expect(result.metadata?.undefined).toBeUndefined();
+    expect(result.metadata?.['string']).toBe('test');
+    expect(result.metadata?.['number']).toBe(123);
+    expect(result.metadata?.['boolean']).toBe(true);
+    expect(result.metadata?.['array']).toEqual([1, 2, 3]);
+    expect(result.metadata?.['object']).toEqual({ nested: 'value' });
+    expect(result.metadata?.['null']).toBeNull();
+    expect(result.metadata?.['undefined']).toBeUndefined();
   });
 
   it('should handle validation errors with useful information', () => {

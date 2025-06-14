@@ -77,7 +77,7 @@ describe('memoryRecallTool', () => {
 
       mockMemoryStore.getRecentMessages.mockReturnValue(mockMessages);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
@@ -121,7 +121,7 @@ describe('memoryRecallTool', () => {
     it('should handle empty message history', async () => {
       mockMemoryStore.getRecentMessages.mockReturnValue([]);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-456',
           operation: 'getRecent',
@@ -138,7 +138,7 @@ describe('memoryRecallTool', () => {
     it('should use default limit when not specified', async () => {
       mockMemoryStore.getRecentMessages.mockReturnValue([]);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-789',
           operation: 'getRecent',
@@ -150,7 +150,7 @@ describe('memoryRecallTool', () => {
       // The limit should be applied by zod when parsing the input
       expect(mockMemoryStore.getRecentMessages).toHaveBeenCalled();
       // Check that the function was called with the session ID at least
-      expect(mockMemoryStore.getRecentMessages.mock.calls[0][0]).toBe('session-789');
+      expect(mockMemoryStore.getRecentMessages.mock.calls[0]?.[0]).toBe('session-789');
     });
   });
 
@@ -177,7 +177,7 @@ describe('memoryRecallTool', () => {
 
       mockMemoryStore.searchMessages.mockReturnValue(mockSearchResults);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'search',
@@ -205,7 +205,7 @@ describe('memoryRecallTool', () => {
     });
 
     it('should return error when query is missing', async () => {
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'search',
@@ -231,7 +231,7 @@ describe('memoryRecallTool', () => {
 
       mockMemoryStore.searchMessages.mockReturnValue(manyResults);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'search',
@@ -252,7 +252,7 @@ describe('memoryRecallTool', () => {
         summary: 'Trading analysis session focused on BTC',
       };
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'getContext',
@@ -272,7 +272,7 @@ describe('memoryRecallTool', () => {
       mockMemoryStore.getSessionContext.mockReturnValue('Basic context');
       mockMemoryStore.sessions['session-456'] = undefined;
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-456',
           operation: 'getContext',
@@ -299,7 +299,7 @@ describe('memoryRecallTool', () => {
         },
       };
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
@@ -319,7 +319,7 @@ describe('memoryRecallTool', () => {
     });
 
     it('should return error when message is missing', async () => {
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
@@ -341,7 +341,7 @@ describe('memoryRecallTool', () => {
       };
 
       // The zod schema should catch this, but if it doesn't, the tool should handle it
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
@@ -358,7 +358,7 @@ describe('memoryRecallTool', () => {
 
   describe('execute - error handling', () => {
     it('should handle unknown operations', async () => {
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'unknownOp' as any,
@@ -376,7 +376,7 @@ describe('memoryRecallTool', () => {
         throw new Error('Database connection failed');
       });
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
@@ -401,7 +401,7 @@ describe('memoryRecallTool', () => {
         throw new Error('Test error');
       });
 
-      await memoryRecallTool.execute({
+      await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
@@ -537,7 +537,7 @@ describe('memoryRecallTool', () => {
       const longSessionId = 'session-' + 'x'.repeat(1000);
       mockMemoryStore.getRecentMessages.mockReturnValue([]);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: longSessionId,
           operation: 'getRecent',
@@ -546,7 +546,7 @@ describe('memoryRecallTool', () => {
 
       expect(result.success).toBe(true);
       expect(mockMemoryStore.getRecentMessages).toHaveBeenCalled();
-      expect(mockMemoryStore.getRecentMessages.mock.calls[0][0]).toBe(longSessionId);
+      expect(mockMemoryStore.getRecentMessages.mock.calls[0]?.[0]).toBe(longSessionId);
     });
 
     it('should handle messages with undefined metadata', async () => {
@@ -563,7 +563,7 @@ describe('memoryRecallTool', () => {
 
       mockMemoryStore.getRecentMessages.mockReturnValue(messagesWithoutMetadata);
 
-      const result = await memoryRecallTool.execute({
+      const result = await memoryRecallTool.execute!({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
@@ -581,7 +581,7 @@ describe('memoryRecallTool', () => {
       mockMemoryStore.getRecentMessages.mockReturnValue([]);
 
       const operations = Array(10).fill(null).map((_, i) => 
-        memoryRecallTool.execute({
+        memoryRecallTool.execute!({
           context: {
             sessionId: `session-${i}`,
             operation: 'getRecent',

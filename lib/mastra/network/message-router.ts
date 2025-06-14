@@ -247,11 +247,11 @@ Respond with ONLY the agent ID, no explanation:`;
       };
 
       if (targetId === 'priceInquiryAgent' && message.method === 'process_query') {
-        generateOptions.toolChoice = 'required';
+        generateOptions['toolChoice'] = 'required';
       }
 
       if (targetId === 'tradingAnalysisAgent' && (agentContext as AgentContext).isProposalMode) {
-        generateOptions.toolChoice = 'required';
+        generateOptions['toolChoice'] = 'required';
         logger.info('[AgentNetwork] Forcing tool usage for proposal mode', {
           targetId,
           isProposalMode: true,
@@ -350,8 +350,8 @@ Respond with ONLY the agent ID, no explanation:`;
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           });
-          const changePrefix = priceChangePercent24h >= 0 ? '+' : '';
-          responseText = `${currencyName}の現在価格は $${formattedPrice} です。24時間変化率は ${changePrefix}${priceChangePercent24h}% です。`;
+          const changePrefix = priceChangePercent24h !== undefined && priceChangePercent24h >= 0 ? '+' : '';
+          responseText = `${currencyName}の現在価格は $${formattedPrice} です。24時間変化率は ${changePrefix}${priceChangePercent24h ?? 0}% です。`;
           logger.info('[AgentNetwork] Generated price response from tool data', {
             originalText: (response as { text?: string }).text,
             generatedText: responseText,

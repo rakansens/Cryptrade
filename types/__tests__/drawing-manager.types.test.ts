@@ -43,12 +43,12 @@ describe('drawing-manager.types', () => {
         }
       };
 
-      expect(metadata.author).toBe('user123');
-      expect(metadata.source).toBe('manual');
-      expect(metadata.confidence).toBe(0.85);
-      expect(metadata.validated).toBe(true);
-      expect(metadata.tags).toEqual(['important', 'support']);
-      expect(metadata.customData).toBeDefined();
+      expect(metadata['author']).toBe('user123');
+      expect(metadata['source']).toBe('manual');
+      expect(metadata['confidence']).toBe(0.85);
+      expect(metadata['validated']).toBe(true);
+      expect(metadata['tags']).toEqual(['important', 'support']);
+      expect(metadata['customData']).toBeDefined();
     });
 
     it('should handle various data types in dynamic properties', () => {
@@ -64,13 +64,13 @@ describe('drawing-manager.types', () => {
         functionProp: () => 'test' // functions are allowed as unknown type
       };
 
-      expect(typeof metadata.stringProp).toBe('string');
-      expect(typeof metadata.numberProp).toBe('number');
-      expect(typeof metadata.booleanProp).toBe('boolean');
-      expect(metadata.nullProp).toBeNull();
-      expect(metadata.undefinedProp).toBeUndefined();
-      expect(Array.isArray(metadata.arrayProp)).toBe(true);
-      expect(typeof metadata.objectProp).toBe('object');
+      expect(typeof metadata['stringProp']).toBe('string');
+      expect(typeof metadata['numberProp']).toBe('number');
+      expect(typeof metadata['booleanProp']).toBe('boolean');
+      expect(metadata['nullProp']).toBeNull();
+      expect(metadata['undefinedProp']).toBeUndefined();
+      expect(Array.isArray(metadata['arrayProp'])).toBe(true);
+      expect(typeof metadata['objectProp']).toBe('object');
     });
   });
 
@@ -103,10 +103,10 @@ describe('drawing-manager.types', () => {
         createdAt: createdAt
       };
 
-      expect(item.isPattern).toBe(true);
-      expect(item.idx).toBe(5);
-      expect(item.direction).toBe('up');
-      expect(item.createdAt).toBe(createdAt);
+      expect(item['isPattern']).toBe(true);
+      expect(item['idx']).toBe(5);
+      expect(item['direction']).toBe('up');
+      expect(item['createdAt']).toBe(createdAt);
     });
 
     it('should accept all valid direction values', () => {
@@ -134,9 +134,9 @@ describe('drawing-manager.types', () => {
         direction: null
       };
 
-      expect(upItem.direction).toBe('up');
-      expect(downItem.direction).toBe('down');
-      expect(nullItem.direction).toBeNull();
+      expect(upItem['direction']).toBe('up');
+      expect(downItem['direction']).toBe('down');
+      expect(nullItem['direction']).toBeNull();
     });
 
     it('should handle negative and zero indices', () => {
@@ -185,9 +185,9 @@ describe('drawing-manager.types', () => {
         direction: null
       };
 
-      expect(hexColor.color).toBe('#abc123');
-      expect(rgbColor.color).toBe('rgb(255, 0, 0)');
-      expect(namedColor.color).toBe('red');
+      expect(hexColor['color']).toBe('#abc123');
+      expect(rgbColor['color']).toBe('rgb(255, 0, 0)');
+      expect(namedColor['color']).toBe('red');
     });
   });
 
@@ -234,7 +234,7 @@ describe('drawing-manager.types', () => {
       expect(drawing.style).toBeDefined();
       expect(drawing.style?.color).toBe('#00ff00');
       expect(drawing.metadata).toBeDefined();
-      expect(drawing.metadata?.confidence).toBe(0.92);
+      expect(drawing.metadata?.['confidence']).toBe(0.92);
     });
 
     it('should handle empty points array', () => {
@@ -281,7 +281,7 @@ describe('drawing-manager.types', () => {
         style: style
       };
 
-      expect(drawing.style).toEqual(style);
+      expect(drawing['style']).toEqual(style);
     });
   });
 
@@ -322,8 +322,8 @@ describe('drawing-manager.types', () => {
         }
       };
 
-      expect(pattern.metrics).toBeDefined();
-      expect(pattern.metrics).toHaveProperty('confidence', 0.85);
+      expect(pattern['metrics']).toBeDefined();
+      expect(pattern['metrics']).toHaveProperty('confidence', 0.85);
     });
 
     it('should handle various visualization structures', () => {
@@ -361,9 +361,9 @@ describe('drawing-manager.types', () => {
         }
       };
 
-      expect(simpleVisualization.visualization).toBe('simple-viz');
-      expect(Array.isArray(arrayVisualization.visualization)).toBe(true);
-      expect(complexVisualization.visualization).toHaveProperty('nested');
+      expect(simpleVisualization['visualization']).toBe('simple-viz');
+      expect(Array.isArray(arrayVisualization['visualization'])).toBe(true);
+      expect(complexVisualization['visualization']).toHaveProperty('nested');
     });
 
     it('should handle various metrics structures', () => {
@@ -395,9 +395,9 @@ describe('drawing-manager.types', () => {
         }
       };
 
-      expect(numberMetrics.metrics).toBe(0.95);
-      expect(stringMetrics.metrics).toBe('high-confidence');
-      expect(objectMetrics.metrics).toHaveProperty('average', 0.85);
+      expect(numberMetrics['metrics']).toBe(0.95);
+      expect(stringMetrics['metrics']).toBe('high-confidence');
+      expect(objectMetrics['metrics']).toHaveProperty('average', 0.85);
     });
 
     it('should handle undefined metrics', () => {
@@ -408,7 +408,7 @@ describe('drawing-manager.types', () => {
         // metrics is optional and not provided
       };
 
-      expect(pattern.metrics).toBeUndefined();
+      expect(pattern['metrics']).toBeUndefined();
     });
   });
 
@@ -448,8 +448,8 @@ describe('drawing-manager.types', () => {
         }
       };
 
-      expect(drawing.points).toHaveLength(100);
-      expect(drawing.metadata?.analysis).toBeDefined();
+      expect(drawing['points']).toHaveLength(100);
+      expect(drawing['metadata']?.['analysis']).toBeDefined();
     });
 
     it('should handle relationships between types', () => {
@@ -463,31 +463,31 @@ describe('drawing-manager.types', () => {
       };
 
       const drawing: DrawingWithMetadata = {
-        id: item.id, // Same ID as DrawingItem
+        id: item['id'], // Same ID as DrawingItem
         type: 'pattern',
         points: [
           { time: Date.now(), value: 100 }
         ],
         metadata: {
-          createdAt: item.createdAt,
-          isPattern: item.isPattern,
-          direction: item.direction
+          createdAt: item['createdAt'],
+          isPattern: item['isPattern'],
+          direction: item['direction']
         }
       };
 
       const pattern: PatternItem = {
-        id: item.id, // Same ID
+        id: item['id'], // Same ID
         type: 'triangle',
         visualization: drawing,
         metrics: {
           fromDrawing: true,
-          originalColor: item.color
+          originalColor: item['color']
         }
       };
 
-      expect(pattern.id).toBe(item.id);
-      expect(pattern.id).toBe(drawing.id);
-      expect(drawing.metadata?.createdAt).toBe(item.createdAt);
+      expect(pattern['id']).toBe(item['id']);
+      expect(pattern['id']).toBe(drawing['id']);
+      expect(drawing['metadata']?.createdAt).toBe(item['createdAt']);
     });
 
     it('should handle large datasets', () => {
@@ -500,8 +500,8 @@ describe('drawing-manager.types', () => {
         }))
       };
 
-      expect(largeDrawing.points).toHaveLength(10000);
-      expect(largeDrawing.points[0].time).toBeLessThan(largeDrawing.points[9999].time);
+      expect(largeDrawing['points']).toHaveLength(10000);
+      expect(largeDrawing['points'][0].time).toBeLessThan(largeDrawing['points'][9999].time);
     });
   });
 });

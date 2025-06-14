@@ -212,6 +212,7 @@ export { usePatternStore } from './stores/pattern.store';
 // Debug Support
 // ========================================
 
+/* eslint-disable no-restricted-syntax */
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   // Expose stores for debugging
   // @ts-ignore

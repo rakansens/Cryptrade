@@ -86,7 +86,7 @@ describe('entryProposalGenerationTool', () => {
 
   describe('Basic Functionality', () => {
     it('should execute successfully with valid input', async () => {
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -107,7 +107,7 @@ describe('entryProposalGenerationTool', () => {
     it('should handle market data fetch failure', async () => {
       (binanceAPI.fetchKlines as jest.Mock).mockRejectedValue(new Error('API Error'));
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -128,7 +128,7 @@ describe('entryProposalGenerationTool', () => {
     it('should handle insufficient market data', async () => {
       (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue([mockPriceData[0]]);
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -148,7 +148,7 @@ describe('entryProposalGenerationTool', () => {
 
     strategies.forEach(strategy => {
       it(`should handle ${strategy} strategy preference`, async () => {
-        const result = await entryProposalGenerationTool.execute({
+        const result = await entryProposalGenerationTool.execute!({
           context: {
             symbol: 'BTCUSDT',
             interval: '1h',
@@ -170,7 +170,7 @@ describe('entryProposalGenerationTool', () => {
       const validRisks = [0.1, 1, 2.5, 5];
       
       for (const risk of validRisks) {
-        const result = await entryProposalGenerationTool.execute({
+        const result = await entryProposalGenerationTool.execute!({
           context: {
             symbol: 'BTCUSDT',
             interval: '1h',
@@ -188,7 +188,7 @@ describe('entryProposalGenerationTool', () => {
     it('should handle invalid risk percentages', async () => {
       // Test risk too low (< 0.1)
       try {
-        await entryProposalGenerationTool.execute({
+        await entryProposalGenerationTool.execute!({
           context: {
             symbol: 'BTCUSDT',
             interval: '1h',
@@ -205,7 +205,7 @@ describe('entryProposalGenerationTool', () => {
 
       // Test risk too high (> 5)
       try {
-        await entryProposalGenerationTool.execute({
+        await entryProposalGenerationTool.execute!({
           context: {
             symbol: 'BTCUSDT',
             interval: '1h',
@@ -234,7 +234,7 @@ describe('entryProposalGenerationTool', () => {
         { price: 104000, direction: 'long', strategy: 'dayTrading', confidence: 0.6, zone: { start: 103500, end: 104500 }, reasoning: { factors: [] }, relatedPatterns: [], relatedDrawings: [] },
       ]);
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -249,7 +249,7 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should generate proper proposal group structure', async () => {
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -287,7 +287,7 @@ describe('entryProposalGenerationTool', () => {
       // Then mock the analyzer to throw an error
       analyzeMarketContext.mockRejectedValueOnce(new Error('Unexpected error'));
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -322,7 +322,7 @@ describe('entryProposalGenerationTool', () => {
       // Mock empty entry points
       calculateEntryPoints.mockResolvedValueOnce([]);
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -353,7 +353,7 @@ describe('entryProposalGenerationTool', () => {
         ],
       };
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -380,7 +380,7 @@ describe('entryProposalGenerationTool', () => {
     it('should complete execution within reasonable time', async () => {
       const startTime = Date.now();
       
-      const result = await entryProposalGenerationTool.execute({
+      const result = await entryProposalGenerationTool.execute!({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',

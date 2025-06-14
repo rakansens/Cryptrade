@@ -68,8 +68,8 @@ async function testOrchestratorComplete() {
         logger.info('Response:', response);
         
         // どこで処理されたかチェック
-        if (result.executionResult.metadata?.processedBy) {
-          logger.info('Processed by:', result.executionResult.metadata.processedBy);
+        if (result.executionResult.metadata?.['processedBy']) {
+          logger.info('Processed by:', result.executionResult.metadata['processedBy']);
         }
       }
       
@@ -117,10 +117,10 @@ async function testOrchestratorComplete() {
       logger.info('Intent:', result.analysis.intent);
       logger.info('Is handled directly by Orchestrator?', isConversational);
       
-      if (result.executionResult?.metadata?.processedBy === 'orchestrator-direct') {
+      if (result.executionResult?.metadata?.['processedBy'] === 'orchestrator-direct') {
         logger.info('✅ Successfully handled by Orchestrator directly');
       } else {
-        logger.info('❌ Delegated to:', result.executionResult?.metadata?.processedBy || 'unknown');
+        logger.info('❌ Delegated to:', result.executionResult?.metadata?.['processedBy'] || 'unknown');
       }
       
     } catch (error) {

@@ -338,7 +338,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         const drawings = getState().drawings;
         if (drawings.length > 0) {
           const lastDrawing = drawings[drawings.length - 1];
-          deleteDrawing(lastDrawing.id);
+          deleteDrawing(lastDrawing!.id);
           
           showAgentSuccess({
             eventType: 'chart:undoLastDrawing',

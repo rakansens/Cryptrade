@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
 import {
-  useChatStore,
   useChatSessions,
   useChatCurrentSession,
   useChatMessages,
@@ -15,8 +14,6 @@ import {
   useChatError,
   useChatActions,
   useChat,
-  type ChatMessage,
-  type ChatSession,
 } from '@/store/chat.store';
 
 // Import the base store for direct access
@@ -170,12 +167,11 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId1: string = '';
-      let sessionId2: string = '';
       let sessionId3: string = '';
 
       act(() => {
         sessionId1 = result.current.createSession();
-        sessionId2 = result.current.createSession();
+        result.current.createSession(); // Create intermediate session
         sessionId3 = result.current.createSession();
       });
 

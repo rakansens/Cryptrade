@@ -68,6 +68,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    return errorHandler(error as Error, request);
+    return errorHandler(error as Error, request as any);
   }
 }

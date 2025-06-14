@@ -78,13 +78,13 @@ describe('ML Analysis Performance Tests', () => {
 
   describe('Feature Extraction Performance', () => {
     it('should extract features within threshold', () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const line = createMockLine();
       const times: number[] = [];
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const features = extractor.extractFeatures(line, 'BTCUSDT');
+        const _features = extractor.extractFeatures(line, 'BTCUSDT');
         const end = performance.now();
         times.push(end - start);
       }
@@ -96,14 +96,14 @@ describe('ML Analysis Performance Tests', () => {
     });
 
     it('should normalize features efficiently', () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const line = createMockLine();
       const features = extractor.extractFeatures(line, 'BTCUSDT');
       const times: number[] = [];
 
       for (let i = 0; i < 1000; i++) {
         const start = performance.now();
-        const normalized = extractor.normalizeFeatures(features);
+        const _normalized = extractor.normalizeFeatures(features);
         const end = performance.now();
         times.push(end - start);
       }
@@ -117,7 +117,7 @@ describe('ML Analysis Performance Tests', () => {
 
   describe('Model Prediction Performance', () => {
     it('should predict line success within threshold', async () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const line = createMockLine();
       const features = extractor.extractFeatures(line, 'BTCUSDT');
       const normalized = extractor.normalizeFeatures(features);
@@ -128,7 +128,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 50; i++) {
         const start = performance.now();
-        const prediction = await predictor.predictLineSuccess(features, normalized);
+        const _prediction = await predictor.predictLineSuccess(features, normalized);
         const end = performance.now();
         times.push(end - start);
       }
@@ -140,7 +140,7 @@ describe('ML Analysis Performance Tests', () => {
     });
 
     it('should handle batch predictions efficiently', async () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const lines = Array.from({ length: 20 }, () => createMockLine());
       
       // Force model ready state
@@ -281,7 +281,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        const tempPredictor = new LineQualityPredictor();
+        const _tempPredictor = new LineQualityPredictor();
         
         // Wait for initialization
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -304,7 +304,7 @@ describe('ML Analysis Performance Tests', () => {
       // Perform many ML analyses
       for (let cycle = 0; cycle < 50; cycle++) {
         const line = createMockLine();
-        const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+        const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
         
         const features = extractor.extractFeatures(line, 'BTCUSDT');
         const normalized = extractor.normalizeFeatures(features);
@@ -359,7 +359,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const importance = predictor.getFeatureImportance();
+        const _importance = predictor.getFeatureImportance();
         const end = performance.now();
         times.push(end - start);
       }
@@ -375,7 +375,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const metrics = predictor.getModelMetrics();
+        const _metrics = predictor.getModelMetrics();
         const end = performance.now();
         times.push(end - start);
       }
@@ -397,7 +397,7 @@ describe('ML Analysis Performance Tests', () => {
       
       // Simulate multiple symbols and timeframes
       for (const symbol of symbols) {
-        for (const timeframe of timeframes) {
+        for (const _timeframe of timeframes) {
           // Generate lines for each timeframe
           const lines = Array.from({ length: 3 }, () => createMockLine());
           
@@ -407,7 +407,7 @@ describe('ML Analysis Performance Tests', () => {
               line,
               mockPriceData,
               symbol,
-              mockPriceData[mockPriceData.length - 1].close
+              mockPriceData[mockPriceData.length - 1]!.close
             )) {
               updates.push(update);
             }

@@ -87,7 +87,7 @@ describe('marketDataResilientTool', () => {
     it('should fetch market data successfully', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -119,13 +119,13 @@ describe('marketDataResilientTool', () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
       // First call - fetch from API
-      const result1 = await marketDataResilientTool.execute({
+      const result1 = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
       expect(result1.metadata?.fromCache).toBe(false);
 
       // Second call - should return from cache
-      const result2 = await marketDataResilientTool.execute({
+      const result2 = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
       
@@ -143,7 +143,7 @@ describe('marketDataResilientTool', () => {
       // we'll test the fallback behavior instead when API fails
       mockGet.mockRejectedValueOnce(new Error('Circuit breaker is OPEN'));
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -183,7 +183,7 @@ describe('marketDataResilientTool', () => {
     it('should handle API errors and return fallback data', async () => {
       mockGet.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'ETHUSDT' }
       });
 
@@ -224,7 +224,7 @@ describe('marketDataResilientTool', () => {
       for (const symbol of validSymbols) {
         mockGet.mockResolvedValueOnce(mockMarketData);
         
-        const result = await marketDataResilientTool.execute({
+        const result = await marketDataResilientTool.execute!({
           context: { symbol }
         });
         
@@ -270,7 +270,7 @@ describe('marketDataResilientTool', () => {
         mockGet.mockResolvedValueOnce({ data: testCase.data });
         clearMarketDataCache(); // Clear cache between tests
         
-        const result = await marketDataResilientTool.execute({
+        const result = await marketDataResilientTool.execute!({
           context: { symbol: 'BTCUSDT' }
         });
         
@@ -295,7 +295,7 @@ describe('marketDataResilientTool', () => {
     it('should include metadata in response', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -364,7 +364,7 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -383,7 +383,7 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -399,7 +399,7 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 
@@ -415,7 +415,7 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute({
+      const result = await marketDataResilientTool.execute!({
         context: { symbol: 'BTCUSDT' }
       });
 

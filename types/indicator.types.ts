@@ -149,8 +149,8 @@ export function isPriceDataPoint(value: unknown): value is PriceDataPoint {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.time === 'number' &&
-    typeof obj.close === 'number'
+    typeof obj['time'] === 'number' &&
+    typeof obj['close'] === 'number'
   );
 }
 
@@ -159,10 +159,10 @@ export function isMACDDataPoint(value: unknown): value is MACDDataPoint {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.time === 'number' &&
-    typeof obj.macd === 'number' &&
-    typeof obj.signal === 'number' &&
-    typeof obj.histogram === 'number'
+    typeof obj['time'] === 'number' &&
+    typeof obj['macd'] === 'number' &&
+    typeof obj['signal'] === 'number' &&
+    typeof obj['histogram'] === 'number'
   );
 }
 
@@ -171,7 +171,7 @@ export function isRSIDataPoint(value: unknown): value is RSIDataPoint {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.time === 'number' &&
-    typeof obj.rsi === 'number'
+    typeof obj['time'] === 'number' &&
+    typeof obj['rsi'] === 'number'
   );
 }

@@ -73,7 +73,7 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
         try {
           data = await validateRequest(queryData, config.schema);
         } catch (error) {
-          return errorHandler(error as Error, request);
+          return errorHandler(error as Error, 500);
         }
       }
 
@@ -170,7 +170,7 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
                 sseStream.write({
                   ...heartbeatMessage,
                   data: { 
-                    ...heartbeatMessage.data,
+                    ...(typeof heartbeatMessage.data === 'object' && heartbeatMessage.data !== null ? heartbeatMessage.data : {}),
                     timestamp: Date.now()
                   }
                 });
@@ -233,7 +233,7 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
 
     } catch (error) {
       logger.error('[SSE] Handler error', { error });
-      return errorHandler(error as Error, request);
+      return errorHandler(error as Error, 500);
     }
   };
 }

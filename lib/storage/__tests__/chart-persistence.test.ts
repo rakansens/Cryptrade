@@ -69,18 +69,22 @@ describe('ChartPersistenceManager', () => {
   };
 
   const validPattern: PatternData = {
-    type: 'head-and-shoulders',
+    id: 'pattern-1',
+    type: 'headAndShoulders',
+    symbol: 'BTCUSDT',
+    interval: '1h',
+    startTime: 1704067200,
+    endTime: 1704070800,
     visualization: {
-      keyPoints: [
-        { time: 1704067200, value: 45000, type: 'peak' }
-      ],
-      lines: []
+      lines: [],
+      zones: [],
+      markers: []
     },
     metrics: {
-      target: 48000,
+      targetPrice: 48000,
       stopLoss: 44000
     },
-    tradingImplication: 'Bearish reversal pattern',
+    tradingImplication: 'bearish',
     confidence: 0.85
   };
 
@@ -605,22 +609,33 @@ describe('ChartPersistenceManager', () => {
 
     it('handles patterns with complex visualization data', () => {
       const complexPattern: PatternData = {
-        type: 'complex-pattern',
+        id: 'complex-pattern-1',
+        type: 'headAndShoulders',
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        startTime: 1704067200,
+        endTime: 1704070800,
         visualization: {
-          keyPoints: Array(100).fill(null).map((_, i) => ({
-            time: 1704067200 + i * 3600,
-            value: 45000 + Math.random() * 1000,
-            type: 'point'
-          })),
           lines: Array(50).fill(null).map((_, i) => ({
-            from: i,
-            to: i + 1,
+            id: `line-${i}`,
+            points: [
+              { time: 1704067200 + i * 3600, value: 45000 },
+              { time: 1704067200 + (i + 1) * 3600, value: 45100 }
+            ],
             style: { color: '#000000' }
           })),
-          areas: [
-            { points: [0, 1, 2, 3], fillColor: 'rgba(0,0,0,0.1)' }
+          zones: [
+            {
+              id: 'zone-1',
+              points: [
+                { time: 1704067200, value: 45000 },
+                { time: 1704070800, value: 45500 }
+              ],
+              style: { fillColor: 'rgba(0,0,0,0.1)' }
+            }
           ]
         },
+        tradingImplication: 'bearish',
         confidence: 0.95
       };
       
@@ -630,7 +645,7 @@ describe('ChartPersistenceManager', () => {
       const loaded = ChartPersistenceManager.loadPatterns();
       expect(loaded.size).toBe(1);
       expect(loaded.get('complex')).toMatchObject({
-        type: 'complex-pattern',
+        type: 'headAndShoulders',
         confidence: 0.95
       });
     });
@@ -638,9 +653,9 @@ describe('ChartPersistenceManager', () => {
     it('handles localStorage access errors', () => {
       // Mock localStorage to throw error
       const originalGetItem = localStorageMock.getItem;
-      localStorageMock.getItem = jest.fn(() => {
+      localStorageMock.getItem = jest.fn((_key: string) => {
         throw new Error('SecurityError: localStorage access denied');
-      });
+      }) as any;
       
       // Should handle error gracefully
       const loaded = ChartPersistenceManager.loadDrawings();

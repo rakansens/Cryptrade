@@ -14,8 +14,8 @@ if (result.error) {
   console.error('Error loading .env.local:', result.error);
 } else {
   console.log('✅ Environment loaded successfully');
-  console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-  console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length);
+  console.log('OPENAI_API_KEY exists:', !!process.env['OPENAI_API_KEY']);
+  console.log('OPENAI_API_KEY length:', process.env['OPENAI_API_KEY']?.length);
 }
 
 // Now run the actual test

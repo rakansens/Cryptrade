@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { uiControlAgent } from '../network/agent-registry';
+// import { uiControlAgent } from '../network/agent-registry'; // not used directly
 import { chartControlTool } from '../tools/chart-control.tool';
 import { uiStateTool } from '../tools/ui-state.tool';
 
@@ -87,12 +87,18 @@ describe('Agent UI Integration', () => {
     it('should dispatch fitContent event', async () => {
       const result = await chartControlTool.execute({
         context: {
-          action: 'fit_content',
+          userRequest: 'fit content',
+          conversationHistory: [],
+          currentState: {
+            symbol: 'BTCUSDT',
+            timeframe: '1h',
+          },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
-      expect(result.message).toBe('Chart fitted to content');
+      expect(result.operations[0]?.action).toBe('fit_content');
       expect(mockDispatchEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'chart:fitContent',
@@ -103,26 +109,36 @@ describe('Agent UI Integration', () => {
     it('should dispatch symbol change event and update store', async () => {
       const result = await chartControlTool.execute({
         context: {
-          action: 'change_symbol',
-          symbol: 'ETHUSDT',
+          userRequest: 'change to ETHUSDT',
+          conversationHistory: [],
+          currentState: {
+            symbol: 'BTCUSDT',
+            timeframe: '1h',
+          },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Symbol changed from BTCUSDT to ETHUSDT');
+      expect(result.operations[0]?.parameters).toHaveProperty('symbol', 'ETHUSDT');
       expect(mockSetSymbol).toHaveBeenCalledWith('ETHUSDT');
     });
 
     it('should dispatch timeframe change event and update store', async () => {
       const result = await chartControlTool.execute({
         context: {
-          action: 'change_timeframe',
-          timeframe: '4h',
+          userRequest: 'switch to 4 hour timeframe',
+          conversationHistory: [],
+          currentState: {
+            symbol: 'BTCUSDT',
+            timeframe: '1h',
+          },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Timeframe changed from 1h to 4h');
+      expect(result.operations[0]?.parameters).toHaveProperty('timeframe', '4h');
       expect(mockSetTimeframe).toHaveBeenCalledWith('4h');
     });
 
@@ -130,9 +146,14 @@ describe('Agent UI Integration', () => {
       // Test zoom in
       const zoomInResult = await chartControlTool.execute({
         context: {
-          action: 'zoom_in',
-          params: { factor: 1.5 },
+          userRequest: 'zoom in 1.5x',
+          conversationHistory: [],
+          currentState: {
+            symbol: 'BTCUSDT',
+            timeframe: '1h',
+          },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(zoomInResult.success).toBe(true);
@@ -146,9 +167,14 @@ describe('Agent UI Integration', () => {
       // Test zoom out
       const zoomOutResult = await chartControlTool.execute({
         context: {
-          action: 'zoom_out',
-          params: { factor: 0.5 },
+          userRequest: 'zoom out 50%',
+          conversationHistory: [],
+          currentState: {
+            symbol: 'BTCUSDT',
+            timeframe: '1h',
+          },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(zoomOutResult.success).toBe(true);
@@ -169,6 +195,7 @@ describe('Agent UI Integration', () => {
           indicator: 'rsi',
           enabled: true,
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -177,12 +204,13 @@ describe('Agent UI Integration', () => {
     });
 
     it('should update indicator settings and update store', async () => {
-      const result = await uiStateTool.execute({
+      const result = await (uiStateTool as any).execute({
         context: {
           action: 'update_indicator_settings',
           indicator: 'rsi',
           settings: { period: 21, upper: 80, lower: 20 },
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
@@ -193,10 +221,11 @@ describe('Agent UI Integration', () => {
     });
 
     it('should get current state', async () => {
-      const result = await uiStateTool.execute({
+      const result = await (uiStateTool as any).execute({
         context: {
           action: 'get_state',
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
@@ -206,10 +235,11 @@ describe('Agent UI Integration', () => {
     });
 
     it('should reset all indicators', async () => {
-      const result = await uiStateTool.execute({
+      const result = await (uiStateTool as any).execute({
         context: {
           action: 'reset_indicators',
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
@@ -227,6 +257,7 @@ describe('Agent UI Integration', () => {
         context: {
           action: 'fit_content',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true); // Should now succeed with deferred execution
@@ -244,6 +275,7 @@ describe('Agent UI Integration', () => {
           action: 'change_symbol',
           symbol: 'INVALID',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(false);

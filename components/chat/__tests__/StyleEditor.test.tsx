@@ -40,7 +40,7 @@ jest.mock('@/components/ui/select', () => ({
   },
   SelectTrigger: ({ children }: any) => <button data-testid="select-trigger">{children}</button>,
   SelectContent: ({ children }: any) => <div data-testid="select-content">{children}</div>,
-  SelectItem: ({ children, value, onClick }: any) => (
+  SelectItem: ({ children, value }: any) => (
     <button 
       data-testid={`select-item-${value}`} 
       onClick={() => (window as any).__selectOnValueChange?.(value)}

@@ -19,9 +19,12 @@ describe('Agent Performance Optimization', () => {
       
       try {
         // タイムアウトするシナリオをシミュレート
-        await agentNetwork.sendMessage('nonExistentAgent', 'test', {
-          query: 'test query',
-        });
+        await agentNetwork.sendMessage(
+          'orchestratorAgent',
+          'nonExistentAgent',
+          'test',
+          { query: 'test query' }
+        );
       } catch (error) {
         const duration = Date.now() - startTime;
         // 現在は30秒だが、10秒以内であるべき
@@ -44,19 +47,28 @@ describe('Agent Performance Optimization', () => {
 
   describe('Cache Optimization', () => {
     it('should cache market data for at least 30 seconds', async () => {
-      const fetchSpy = jest.spyOn(marketDataResilientTool, 'execute');
+      const fetchSpy = jest.spyOn(marketDataResilientTool as any, 'execute');
       
       // 初回呼び出し
-      await marketDataResilientTool.execute({ symbol: 'BTCUSDT' });
+      await (marketDataResilientTool as any).execute({
+        context: { symbol: 'BTCUSDT' },
+        runtimeContext: { sessionId: 'test-session' },
+      });
       const firstCallCount = fetchSpy.mock.calls.length;
       
       // 即座に再呼び出し（キャッシュヒットするはず）
-      await marketDataResilientTool.execute({ symbol: 'BTCUSDT' });
+      await (marketDataResilientTool as any).execute({
+        context: { symbol: 'BTCUSDT' },
+        runtimeContext: { sessionId: 'test-session' },
+      });
       expect(fetchSpy).toHaveBeenCalledTimes(firstCallCount); // キャッシュから返される
       
       // 25秒後（まだキャッシュ有効なはず）
       await new Promise(resolve => setTimeout(resolve, 25000));
-      await marketDataResilientTool.execute({ symbol: 'BTCUSDT' });
+      await (marketDataResilientTool as any).execute({
+        context: { symbol: 'BTCUSDT' },
+        runtimeContext: { sessionId: 'test-session' },
+      });
       expect(fetchSpy).toHaveBeenCalledTimes(firstCallCount); // まだキャッシュから
     }, 35000);
 
@@ -135,8 +147,8 @@ describe('Agent Performance Optimization', () => {
         await executeImprovedOrchestrator('', 'test-session', {});
       } catch (error) {
         expect(error).toBeInstanceOf(AgentError);
-        expect(error.code).toBeDefined();
-        expect(error.agent).toBeDefined();
+        expect((error as any).code).toBeDefined();
+        expect((error as any).agent).toBeDefined();
       }
     });
   });

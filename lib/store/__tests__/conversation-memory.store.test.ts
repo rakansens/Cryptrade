@@ -1,4 +1,4 @@
-import { useConversationMemory, semanticSearch, calculateSimilarity } from '../conversation-memory.store';
+import { useConversationMemory, calculateSimilarity } from '../conversation-memory.store';
 
 describe('ConversationMemory Store', () => {
   beforeEach(() => {

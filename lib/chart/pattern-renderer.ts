@@ -216,10 +216,10 @@ export class PatternRenderer {
       if (points.length < 3) return;
       
       // Find min/max values for the area
-      const minValue = Math.min(...points.map(p => p.value));
-      const maxValue = Math.max(...points.map(p => p.value));
-      const minTime = Math.min(...points.map(p => p.time));
-      const maxTime = Math.max(...points.map(p => p.time));
+      const minValue = Math.min(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
+      const maxValue = Math.max(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
+      const minTime = Math.min(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
+      const maxTime = Math.max(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
       
       // Skip area rendering for now to avoid the red vertical bar issue
       // TODO: Implement proper area highlighting using a different approach

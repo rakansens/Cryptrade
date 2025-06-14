@@ -179,6 +179,8 @@ const useMarketStoreBase = createBaseStore<MarketState, MarketActions>(
         // Process all pending updates
         symbols.forEach(symbol => {
           const tradeData = pendingUpdates[symbol];
+          if (!tradeData) return;
+          
           const currentPrice = parseFloat(tradeData.p);
           const existing = state.currentPrices[symbol];
           const previousPrice = existing?.price || currentPrice;

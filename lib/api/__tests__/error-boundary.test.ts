@@ -45,7 +45,7 @@ describe('Error Boundary', () => {
 
   describe('withErrorBoundary', () => {
     it('should handle successful requests', async () => {
-      const handler: ApiHandler = async (request) => {
+      const handler: ApiHandler = async (request: NextRequest) => {
         return NextResponse.json({ success: true, data: 'test' });
       };
 

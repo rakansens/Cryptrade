@@ -11,7 +11,7 @@ import { MockAPIResponseBuilder } from '../../helpers/mock-builders';
 config({ path: '.env.local' });
 
 describe('Memory API Integration Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const baseUrl = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000';
   let fetchMock: jest.Mock;
 
   beforeEach(() => {

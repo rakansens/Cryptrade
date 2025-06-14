@@ -14,13 +14,13 @@ import { registerAllAgents } from '../lib/mastra/network/agent-registry';
 
 // Set debug environment
 process.env.NODE_ENV = 'development';
-process.env.DEBUG = 'true';
+process.env['DEBUG'] = 'true';
 
 async function testDirectProposalGeneration() {
   console.log('\n=== Test 1: Direct Proposal Generation Tool ===');
   
   try {
-    const result = await proposalGenerationTool.execute({
+    const result = await proposalGenerationTool.execute?.({
       symbol: 'BTCUSDT',
       interval: '1h',
       analysisType: 'trendline',
@@ -84,7 +84,7 @@ async function testProposalGenerationWithUndefined() {
   
   try {
     // Test with undefined symbol
-    const result1 = await proposalGenerationTool.execute({
+    const result1 = await proposalGenerationTool.execute?.({
       symbol: undefined as unknown as string,
       interval: '1h',
       analysisType: 'trendline',
@@ -94,7 +94,7 @@ async function testProposalGenerationWithUndefined() {
     console.log('Result:', JSON.stringify(result1, null, 2));
     
     // Test with null symbol
-    const result2 = await proposalGenerationTool.execute({
+    const result2 = await proposalGenerationTool.execute?.({
       symbol: null as unknown as string,
       interval: '1h',
       analysisType: 'trendline',

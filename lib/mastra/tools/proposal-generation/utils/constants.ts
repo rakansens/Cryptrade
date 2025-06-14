@@ -255,7 +255,7 @@ export const MESSAGE_TEMPLATES = {
     DESCRIPTION: (touches: number, confidence: number) => 
       `${touches}回のタッチポイントを持つトレンドライン (信頼度: ${Math.round(confidence * 100)}%)`,
     REASONING: (factors: Record<string, unknown>) => 
-      `ボリューム分析と価格アクションに基づく${factors.pattern ? 'パターン認識あり' : ''}`,
+      `ボリューム分析と価格アクションに基づく${factors['pattern'] ? 'パターン認識あり' : ''}`,
   },
   
   /**

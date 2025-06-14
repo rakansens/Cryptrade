@@ -35,7 +35,9 @@ describe('agentSelectionTool', () => {
     it('should execute price inquiry agent successfully', async () => {
       const mockA2AResponse = {
         id: 'msg-123',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Current BTC price is $50,000',
         metadata: {
           model: 'claude-3',
@@ -51,6 +53,7 @@ describe('agentSelectionTool', () => {
           query: 'What is the current BTC price?',
           correlationId: 'test-123',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -89,7 +92,9 @@ describe('agentSelectionTool', () => {
 
       const mockA2AResponse = {
         id: 'msg-456',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Chart updated to BTCUSDT 1h and RSI enabled',
         toolResults: [
           {
@@ -108,6 +113,7 @@ describe('agentSelectionTool', () => {
           query: 'Show me BTCUSDT 1h chart with RSI',
           context: { currentState: { symbol: 'ETHUSDT' } },
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -138,7 +144,9 @@ describe('agentSelectionTool', () => {
 
       const mockA2AResponse = {
         id: 'msg-789',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Generated 2 trading proposals',
         proposalGroup: mockProposalGroup,
       };
@@ -150,6 +158,7 @@ describe('agentSelectionTool', () => {
           agentType: 'trading_analysis',
           query: 'Analyze BTC chart patterns',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -163,7 +172,9 @@ describe('agentSelectionTool', () => {
     it('should handle agent type without mapping', async () => {
       const mockA2AResponse = {
         id: 'msg-999',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Custom agent response',
       };
 
@@ -174,6 +185,7 @@ describe('agentSelectionTool', () => {
           agentType: 'custom_agent' as any,
           query: 'Custom query',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -205,6 +217,7 @@ describe('agentSelectionTool', () => {
           agentType: 'price_inquiry',
           query: 'What is BTC price?',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -236,6 +249,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Update chart',
         },
+        runtimeContext: { sessionId: 'test-session' }
       });
 
       expect(result.success).toBe(true);
@@ -334,6 +348,7 @@ describe('agentSelectionTool', () => {
             agentType: 'ui_control',
             query: 'Change timeframe',
           },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(mockEmitUIEvent).toHaveBeenCalledWith({
@@ -345,7 +360,9 @@ describe('agentSelectionTool', () => {
 
     it('should not broadcast for non-UI agents', async () => {
       const mockResponse = {
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Price data',
         operations: [
           {
@@ -371,7 +388,9 @@ describe('agentSelectionTool', () => {
 
     it('should not broadcast when proposal group exists', async () => {
       const mockResponse = {
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Proposals generated',
         proposalGroup: { id: 'pg_123' },
         operations: [
@@ -398,7 +417,9 @@ describe('agentSelectionTool', () => {
 
     it('should handle operations without clientEvent', async () => {
       const mockResponse = {
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Done',
         operations: [
           { someOtherField: 'value' }, // No clientEvent
@@ -437,7 +458,9 @@ describe('agentSelectionTool', () => {
       };
 
       mockAgentNetwork.sendMessage.mockResolvedValue({
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Context processed',
       });
 
@@ -464,7 +487,9 @@ describe('agentSelectionTool', () => {
 
     it('should use provided correlation ID', async () => {
       mockAgentNetwork.sendMessage.mockResolvedValue({
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Done',
       });
 
@@ -487,7 +512,9 @@ describe('agentSelectionTool', () => {
 
     it('should generate correlation ID if not provided', async () => {
       mockAgentNetwork.sendMessage.mockResolvedValue({
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Done',
       });
 
@@ -512,7 +539,9 @@ describe('agentSelectionTool', () => {
     it('should include execution metadata', async () => {
       const mockResponse = {
         id: 'msg-meta',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Operation complete',
         metadata: {
           model: 'claude-3',
@@ -542,7 +571,9 @@ describe('agentSelectionTool', () => {
     it('should preserve original A2A message structure', async () => {
       const mockResponse = {
         id: 'msg-full',
-        type: 'success',
+        type: 'response' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         result: 'Complete response',
         steps: [{ action: 'step1' }, { action: 'step2' }],
         toolResults: [{ tool: 'tool1', result: 'result1' }],

@@ -19,6 +19,36 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+// Create mock GenerateTextResult
+function createMockGenerateTextResult(text: string): any {
+  return {
+    text,
+    reasoning: undefined,
+    files: [],
+    reasoningDetails: [],
+    sources: [],
+    experimental_output: undefined,
+    toolCalls: [],
+    toolResults: [],
+    finishReason: 'stop',
+    usage: {
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150,
+    },
+    warnings: undefined,
+    steps: [],
+    request: {
+      model: 'gpt-4',
+    },
+    response: {
+      id: 'test-response-id',
+      model: 'gpt-4',
+      timestamp: new Date(),
+    },
+  };
+}
+
 describe('chartControlTool', () => {
   const mockGenerateText = generateText as jest.MockedFunction<typeof generateText>;
   const mockIncrementMetric = incrementMetric as jest.MockedFunction<typeof incrementMetric>;
@@ -65,8 +95,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'BTCに変更します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('BTCに変更します。'));
 
       const result = await mockExecute({
         context: {
@@ -102,8 +132,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'ETHに変更します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('ETHに変更します。'));
 
       const result = await mockExecute({
         context: {
@@ -133,8 +163,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '4時間足に変更しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('4時間足に変更しました。'));
 
       const result = await mockExecute({
         context: {
@@ -197,8 +227,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '上昇トレンドラインを描画します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('上昇トレンドラインを描画します。'));
 
       const result = await mockExecute({
         context: {
@@ -235,8 +265,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'フィボナッチリトレースメントを描画します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('フィボナッチリトレースメントを描画します。'));
 
       const result = await mockExecute({
         context: {
@@ -266,8 +296,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '水平線を105000に描画します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('水平線を105000に描画します。'));
 
       const result = await mockExecute({
         context: {
@@ -299,8 +329,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'チャートを画面に合わせます。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('チャートを画面に合わせます。'));
 
       const result = await mockExecute({
         context: {
@@ -331,8 +361,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'ズームインします。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('ズームインします。'));
 
       const result = await mockExecute({
         context: {
@@ -363,8 +393,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '元に戻しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('元に戻しました。'));
 
       const result = await mockExecute({
         context: {
@@ -395,8 +425,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'やり直しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('やり直しました。'));
 
       const result = await mockExecute({
         context: {
@@ -427,8 +457,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '色を青に変更しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('色を青に変更しました。'));
 
       const result = await mockExecute({
         context: {
@@ -445,8 +475,8 @@ describe('chartControlTool', () => {
   describe('Error Handling', () => {
     it('should handle AI analysis parsing errors', async () => {
       mockGenerateText
-        .mockResolvedValueOnce({ text: 'Invalid JSON response' })
-        .mockResolvedValueOnce({ text: '申し訳ございません。リクエストを処理できませんでした。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult('Invalid JSON response'))
+        .mockResolvedValueOnce(createMockGenerateTextResult('申し訳ございません。リクエストを処理できませんでした。'));
 
       const result = await mockExecute({
         context: {
@@ -480,8 +510,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'トレンドラインを描画します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('トレンドラインを描画します。'));
 
       const result = await mockExecute({
         context: {
@@ -534,8 +564,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: '日足に変更しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('日足に変更しました。'));
 
       const result = await mockExecute({
         context: {
@@ -576,8 +606,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'MACDインジケーターを追加しました。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('MACDインジケーターを追加しました。'));
 
       const result = await mockExecute({
         context: {
@@ -628,8 +658,8 @@ describe('chartControlTool', () => {
       };
 
       mockGenerateText
-        .mockResolvedValueOnce({ text: JSON.stringify(mockAnalysisResponse) })
-        .mockResolvedValueOnce({ text: 'ETHの4時間足にRSIを表示します。' });
+        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
+        .mockResolvedValueOnce(createMockGenerateTextResult('ETHの4時間足にRSIを表示します。'));
 
       const result = await mockExecute({
         context: {

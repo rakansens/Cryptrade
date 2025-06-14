@@ -646,7 +646,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         if (version === 0) {
           // Migration from version 0 to 1
           // Add dbMeta to existing records
-          const migratedState = persistedState ? { ...persistedState } : {};
+          const migratedState = persistedState ? { ...persistedState } : {} as any;
           
           if (migratedState.records && Array.isArray(migratedState.records)) {
             migratedState.records = migratedState.records.map((record: AnalysisRecord) => ({

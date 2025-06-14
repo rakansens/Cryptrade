@@ -122,7 +122,7 @@ export class BinanceConnectionManagerShim {
       const subscription = subscribers[index];
       
       // Unsubscribe from RxJS Observable
-      subscription.rxjsSubscription.unsubscribe();
+      subscription?.rxjsSubscription.unsubscribe();
       
       // Remove from internal tracking
       subscribers.splice(index, 1);

@@ -257,8 +257,8 @@ export const chartDataAnalysisTool = createTool({
           timestamp: candleData[candleData.length - 1].time,
         },
         technicalAnalysis,
-        patterns: patterns.length > 0 ? patterns : undefined,
         recommendations,
+        patterns: patterns.length > 0 ? patterns : undefined,
         rawData: {
           candles: candleData.slice(-50), // Last 50 candles for reference
         },

@@ -23,7 +23,7 @@ const colors = {
 const chalk = colors;
 // const fetch = require('node-fetch'); // fetch is now a global in Node.js 18+
 
-const BASE_URL = process.env.API_URL || 'http://localhost:3000';
+const BASE_URL = process.env['API_URL'] || 'http://localhost:3000';
 
 // APIリクエストヘルパー
 interface ApiRequestOptions extends RequestInit {

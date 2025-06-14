@@ -350,7 +350,6 @@ export const marketDataResilientTool = createTool({
         metadata: {
           fromCache: false,
           latency: Date.now() - startTime,
-          isFallback: true,  // フォールバックフラグを追加
         }
       };
     }

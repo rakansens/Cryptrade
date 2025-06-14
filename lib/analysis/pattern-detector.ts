@@ -90,6 +90,8 @@ export class PatternDetector {
           const head = extremes[j];
           const rightShoulder = extremes[k];
           
+          if (!leftShoulder || !head || !rightShoulder) continue;
+          
           // Validate pattern rules
           const validation = this.validateHeadAndShoulders(
             data,
@@ -132,16 +134,20 @@ export class PatternDetector {
     const head = data[headIdx];
     const rightShoulder = data[rightShoulderIdx];
     
+    if (!leftShoulder || !head || !rightShoulder) {
+      return { isValid: false, confidence: 0 };
+    }
+    
     // Get the relevant price field
     const priceField = inverse ? 'low' : 'high';
     
     // Rule 1: Head must be highest/lowest
     if (inverse) {
-      if (head.low >= leftShoulder.low || head.low >= rightShoulder.low) {
+      if (head!.low >= leftShoulder!.low || head!.low >= rightShoulder!.low) {
         return { isValid: false, confidence: 0 };
       }
     } else {
-      if (head.high <= leftShoulder.high || head.high <= rightShoulder.high) {
+      if (head!.high <= leftShoulder!.high || head!.high <= rightShoulder!.high) {
         return { isValid: false, confidence: 0 };
       }
     }
@@ -163,6 +169,11 @@ export class PatternDetector {
     // Rule 4: Neckline should be relatively horizontal (within 2%)
     const leftValley = data[leftValleyIdx];
     const rightValley = data[rightValleyIdx];
+    
+    if (!leftValley || !rightValley) {
+      return { isValid: false, confidence: 0 };
+    }
+    
     const valleyField = inverse ? 'high' : 'low';
     const necklineDiff = Math.abs(leftValley[valleyField] - rightValley[valleyField]) / leftValley[valleyField];
     
@@ -199,51 +210,55 @@ export class PatternDetector {
     validation: { isValid: boolean; confidence: number; necklinePoints?: number[] },
     inverse: boolean
   ): PatternAnalysis {
+    if (!validation.necklinePoints || validation.necklinePoints.length < 2) {
+      throw new Error('Invalid neckline points');
+    }
+    
     const leftValleyIdx = validation.necklinePoints[0];
     const rightValleyIdx = validation.necklinePoints[1];
     
     // Create key points
     const keyPoints: PatternKeyPoint[] = [
       {
-        time: data[leftShoulderIdx].time,
-        value: data[leftShoulderIdx][inverse ? 'low' : 'high'],
+        time: data[leftShoulderIdx]?.time ?? 0,
+        value: data[leftShoulderIdx]?.[inverse ? 'low' : 'high'] ?? 0,
         type: 'peak',
         label: 'LS'
       },
       {
-        time: data[leftValleyIdx].time,
-        value: data[leftValleyIdx][inverse ? 'high' : 'low'],
+        time: data[leftValleyIdx]?.time ?? 0,
+        value: data[leftValleyIdx]?.[inverse ? 'high' : 'low'] ?? 0,
         type: 'trough',
         label: 'LV'
       },
       {
-        time: data[headIdx].time,
-        value: data[headIdx][inverse ? 'low' : 'high'],
+        time: data[headIdx]?.time ?? 0,
+        value: data[headIdx]?.[inverse ? 'low' : 'high'] ?? 0,
         type: 'peak',
         label: 'H'
       },
       {
-        time: data[rightValleyIdx].time,
-        value: data[rightValleyIdx][inverse ? 'high' : 'low'],
+        time: data[rightValleyIdx]?.time ?? 0,
+        value: data[rightValleyIdx]?.[inverse ? 'high' : 'low'] ?? 0,
         type: 'trough',
         label: 'RV'
       },
       {
-        time: data[rightShoulderIdx].time,
-        value: data[rightShoulderIdx][inverse ? 'low' : 'high'],
+        time: data[rightShoulderIdx]?.time ?? 0,
+        value: data[rightShoulderIdx]?.[inverse ? 'low' : 'high'] ?? 0,
         type: 'peak',
         label: 'RS'
       }
     ];
     
     // Calculate neckline and target
-    const necklinePrice = (keyPoints[1].value + keyPoints[3].value) / 2;
-    const patternHeight = Math.abs(keyPoints[2].value - necklinePrice);
+    const necklinePrice = keyPoints[1] && keyPoints[3] ? (keyPoints[1].value + keyPoints[3].value) / 2 : 0;
+    const patternHeight = keyPoints[2] ? Math.abs(keyPoints[2].value - necklinePrice) : 0;
     const targetPrice = inverse ? necklinePrice + patternHeight : necklinePrice - patternHeight;
     
     // Add neckline and target points
     keyPoints.push({
-      time: data[data.length - 1].time,
+      time: data[data.length - 1]?.time ?? 0,
       value: targetPrice,
       type: 'target',
       label: 'T'
@@ -269,18 +284,18 @@ export class PatternDetector {
     
     return {
       type: inverse ? 'inverseHeadAndShoulders' : 'headAndShoulders',
-      startTime: data[leftShoulderIdx].time,
-      endTime: data[rightShoulderIdx].time,
+      startTime: data[leftShoulderIdx]!.time,
+      endTime: data[rightShoulderIdx]!.time,
       startIndex: leftShoulderIdx,
       endIndex: rightShoulderIdx,
       confidence: validation.confidence,
       visualization,
       metrics: {
         formation_period: rightShoulderIdx - leftShoulderIdx + 1,
-        symmetry: 1 - Math.abs(keyPoints[0].value - keyPoints[4].value) / keyPoints[0].value,
+        symmetry: keyPoints[0] && keyPoints[4] ? 1 - Math.abs(keyPoints[0].value - keyPoints[4].value) / keyPoints[0].value : 0,
         breakout_level: necklinePrice,
         target_level: targetPrice,
-        stop_loss: keyPoints[2].value
+        stop_loss: keyPoints[2]!.value
       },
       description: `${inverse ? '逆' : ''}ヘッドアンドショルダーパターンを検出。ネックライン: $${necklinePrice.toFixed(2)}`,
       trading_implication: inverse ? 'bullish' : 'bearish'
@@ -295,11 +310,11 @@ export class PatternDetector {
     
     const field = inverse ? 'high' : 'low';
     let minIdx = startIdx + 1;
-    let minValue = data[minIdx][field];
+    let minValue = data[minIdx]![field];
     
     for (let i = startIdx + 1; i < endIdx; i++) {
-      if (inverse ? data[i][field] > minValue : data[i][field] < minValue) {
-        minValue = data[i][field];
+      if (inverse ? data[i]![field] > minValue : data[i]![field] < minValue) {
+        minValue = data[i]![field];
         minIdx = i;
       }
     }
@@ -382,13 +397,13 @@ export class PatternDetector {
     // Create visualization
     const keyPoints: PatternKeyPoint[] = [
       ...highs.map((h, i) => ({
-        time: data[h.index].time,
+        time: data[h.index]?.time ?? 0,
         value: h.value,
         type: 'peak' as const,
         label: `H${i + 1}`
       })),
       ...lows.map((l, i) => ({
-        time: data[l.index].time,
+        time: data[l.index]?.time ?? 0,
         value: l.value,
         type: 'trough' as const,
         label: `L${i + 1}`
@@ -425,22 +440,22 @@ export class PatternDetector {
     const patternType = type === 'ascending' ? 'ascendingTriangle' : 
                        type === 'descending' ? 'descendingTriangle' : 'symmetricalTriangle';
     
-    const startIdx = Math.min(highs[0].index, lows[0].index);
-    const endIdx = Math.max(highs[highs.length - 1].index, lows[lows.length - 1].index);
+    const startIdx = Math.min(highs[0]!.index, lows[0]!.index);
+    const endIdx = Math.max(highs[highs.length - 1]!.index, lows[lows.length - 1]!.index);
     
     return {
       type: patternType,
-      startTime: data[startIdx].time,
-      endTime: data[endIdx].time,
+      startTime: data[startIdx]?.time ?? 0,
+      endTime: data[endIdx]?.time ?? 0,
       startIndex: startIdx,
       endIndex: endIdx,
       confidence,
       visualization,
       metrics: {
         formation_period: endIdx - startIdx + 1,
-        breakout_level: type === 'ascending' ? highs[highs.length - 1].value :
-                       type === 'descending' ? lows[lows.length - 1].value :
-                       (highs[highs.length - 1].value + lows[lows.length - 1].value) / 2
+        breakout_level: type === 'ascending' ? highs[highs.length - 1]!.value :
+                       type === 'descending' ? lows[lows.length - 1]!.value :
+                       ((highs[highs.length - 1]?.value ?? 0) + (lows[lows.length - 1]?.value ?? 0)) / 2
       },
       description: `${type === 'ascending' ? '上昇' : type === 'descending' ? '下降' : '対称'}トライアングルパターン`,
       trading_implication: type === 'ascending' ? 'bullish' : 
@@ -464,11 +479,11 @@ export class PatternDetector {
         const second = extremes[j];
         
         // Check if peaks/troughs are similar (within 1%)
-        const priceDiff = Math.abs(first.value - second.value) / first.value;
+        const priceDiff = Math.abs(first!.value - second!.value) / first!.value;
         if (priceDiff > 0.01) continue;
         
         // Find valley/peak between them
-        const betweenIdx = this.findValleyBetween(data, first.index, second.index, type === 'bottom');
+        const betweenIdx = this.findValleyBetween(data, first!.index, second!.index, type === 'bottom');
         if (betweenIdx === -1) continue;
         
         const pattern = this.createDoublePattern(data, first, second, betweenIdx, type);
@@ -493,26 +508,26 @@ export class PatternDetector {
   ): PatternAnalysis {
     const keyPoints: PatternKeyPoint[] = [
       {
-        time: data[first.index].time,
+        time: data[first.index]!.time,
         value: first.value,
         type: type === 'top' ? 'peak' : 'trough',
         label: type === 'top' ? 'T1' : 'B1'
       },
       {
-        time: data[betweenIdx].time,
-        value: data[betweenIdx][type === 'top' ? 'low' : 'high'],
+        time: data[betweenIdx]!.time,
+        value: data[betweenIdx]![type === 'top' ? 'low' : 'high'],
         type: type === 'top' ? 'trough' : 'peak',
         label: 'N'
       },
       {
-        time: data[second.index].time,
+        time: data[second.index]!.time,
         value: second.value,
         type: type === 'top' ? 'peak' : 'trough',
         label: type === 'top' ? 'T2' : 'B2'
       }
     ];
     
-    const necklinePrice = keyPoints[1].value;
+    const necklinePrice = keyPoints[1]!.value;
     const patternHeight = Math.abs(first.value - necklinePrice);
     const targetPrice = type === 'top' ? necklinePrice - patternHeight : necklinePrice + patternHeight;
     
@@ -535,8 +550,8 @@ export class PatternDetector {
     
     return {
       type: type === 'top' ? 'doubleTop' : 'doubleBottom',
-      startTime: data[first.index].time,
-      endTime: data[second.index].time,
+      startTime: data[first.index]!.time,
+      endTime: data[second.index]!.time,
       startIndex: first.index,
       endIndex: second.index,
       confidence,
@@ -563,11 +578,11 @@ export class PatternDetector {
     const window = 5;
     
     for (let i = window; i < data.length - window; i++) {
-      const current = data[i].high;
+      const current = data[i]!.high;
       let isPeak = true;
       
       for (let j = i - window; j <= i + window; j++) {
-        if (j !== i && data[j].high >= current) {
+        if (j !== i && data[j]!.high >= current) {
           isPeak = false;
           break;
         }
@@ -589,11 +604,11 @@ export class PatternDetector {
     const window = 5;
     
     for (let i = window; i < data.length - window; i++) {
-      const current = data[i].low;
+      const current = data[i]!.low;
       let isTrough = true;
       
       for (let j = i - window; j <= i + window; j++) {
-        if (j !== i && data[j].low <= current) {
+        if (j !== i && data[j]!.low <= current) {
           isTrough = false;
           break;
         }

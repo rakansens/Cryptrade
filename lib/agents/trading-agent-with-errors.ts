@@ -65,7 +65,7 @@ export const tradingAgentWithErrors = createAgent({
       const marketData = await this.tools.enhancedMarketData({
         symbol,
         interval: '1h',
-      }).catch(error => {
+      }).catch((error: any) => {
         // ツールエラーの詳細なトラッキング
         const agentError = new AgentError(
           `Market data tool failed: ${error.message}`,
@@ -205,7 +205,7 @@ export const tradingAgentWithErrors = createAgent({
   // ボラティリティ計算
   calculateVolatility(prices: number[]): string {
     const returns = prices.slice(1).map((price, i) => 
-      ((price - prices[i]) / prices[i]) * 100
+      ((price - prices[i]!) / prices[i]!) * 100
     );
     
     const variance = returns.reduce((sum, ret) => {

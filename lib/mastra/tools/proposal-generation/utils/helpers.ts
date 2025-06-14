@@ -53,7 +53,7 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   const sorted = [...values].sort((a, b) => a - b);
   const index = Math.ceil((percentile / 100) * sorted.length) - 1;
   
-  return sorted[Math.max(0, Math.min(index, sorted.length - 1))];
+  return sorted[Math.max(0, Math.min(index, sorted.length - 1))] || 0;
 }
 
 /**
@@ -253,9 +253,9 @@ export function deepMerge<T extends Record<string, unknown>>(
         !Array.isArray(source[key])
       ) {
         result[key] = deepMerge(
-          result[key] || {},
+          (result[key] || {}) as Record<string, unknown>,
           source[key] as Record<string, unknown>
-        );
+        ) as T[Extract<keyof T, string>];
       } else {
         result[key] = source[key] as T[Extract<keyof T, string>];
       }

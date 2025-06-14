@@ -213,7 +213,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             
             // Keep only last MAX_MESSAGES_IN_MEMORY messages for memory efficiency
             // Archive older messages to DB if enabled
-            if (currentSession.messages.length > MAX_MESSAGES_IN_MEMORY) {
+            if (currentSession && currentSession.messages.length > MAX_MESSAGES_IN_MEMORY) {
               const messagesToArchive = currentSession.messages.slice(0, currentSession.messages.length - MAX_MESSAGES_IN_MEMORY);
               
               // DBが有効な場合はアーカイブを保存
@@ -231,6 +231,20 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           // Save to database if enabled
           if (state.isDbEnabled) {
             try {
+              // First ensure session exists in DB
+              await prisma.conversationSession.upsert({
+                where: { id: message.sessionId },
+                create: {
+                  id: message.sessionId,
+                  userId: 'default-user', // TODO: Get actual user ID from context
+                  startedAt: timestamp,
+                  lastActiveAt: timestamp,
+                },
+                update: {
+                  lastActiveAt: timestamp,
+                },
+              });
+              
               const dbMessage = await prisma.conversationMessage.create({
                 data: {
                   sessionId: message.sessionId,
@@ -785,7 +799,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           defaultProcessors: state.defaultProcessors,
         }),
         // Custom serialization for processors
-        serialize: (state) => {
+        serialize: (state: any) => {
           const serializedState = {
             ...state,
             state: {
@@ -795,14 +809,14 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                   id,
                   {
                     ...session,
-                    processors: session.processors.map(p => ({
+                    processors: session.processors.map((p: any) => ({
                       name: p.getName(),
                       type: p.constructor.name,
                     })),
                   },
                 ])
               ),
-              defaultProcessors: state.state.defaultProcessors.map(p => ({
+              defaultProcessors: state.state.defaultProcessors.map((p: any) => ({
                 name: p.getName(),
                 type: p.constructor.name,
               })),
@@ -811,7 +825,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           return JSON.stringify(serializedState);
         },
         // Custom deserialization to recreate processors
-        deserialize: (str) => {
+        deserialize: (str: string) => {
           const parsed = JSON.parse(str);
           if (parsed.state?.sessions) {
             Object.values(parsed.state.sessions).forEach((session: any) => {

@@ -246,28 +246,31 @@ export interface BollingerBandsDataLightweight {
 // =============================================================================
 
 // Environment-aware validation helpers
-const shouldValidate = process.env.NODE_ENV !== 'production' || process.env.FORCE_VALIDATION === 'true';
+/* eslint-disable no-restricted-syntax */
+const shouldValidate = process.env['NODE_ENV'] !== 'production' || process.env['FORCE_VALIDATION'] === 'true';
 
 // Fast validation for production (basic type checks)
 function fastValidateTradeMessage(data: unknown): BinanceTradeMessage | null {
   if (!data || typeof data !== 'object') return null;
-  if (data.e !== 'trade') return null;
-  if (typeof data.E !== 'number' || typeof data.s !== 'string') return null;
-  if (typeof data.t !== 'number' || typeof data.p !== 'string') return null;
-  if (typeof data.q !== 'string' || typeof data.T !== 'number') return null;
-  if (typeof data.m !== 'boolean') return null;
+  const msg = data as any;
+  if (msg.e !== 'trade') return null;
+  if (typeof msg.E !== 'number' || typeof msg.s !== 'string') return null;
+  if (typeof msg.t !== 'number' || typeof msg.p !== 'string') return null;
+  if (typeof msg.q !== 'string' || typeof msg.T !== 'number') return null;
+  if (typeof msg.m !== 'boolean') return null;
   // Optional fields don't need validation
   
-  return data as BinanceTradeMessage;
+  return msg as BinanceTradeMessage;
 }
 
 function fastValidateKlineMessage(data: unknown): BinanceKlineMessage | null {
   if (!data || typeof data !== 'object') return null;
-  if (data.e !== 'kline') return null;
-  if (typeof data.E !== 'number' || typeof data.s !== 'string') return null;
-  if (!data.k || typeof data.k !== 'object') return null;
+  const msg = data as any;
+  if (msg.e !== 'kline') return null;
+  if (typeof msg.E !== 'number' || typeof msg.s !== 'string') return null;
+  if (!msg.k || typeof msg.k !== 'object') return null;
   
-  const k = data.k;
+  const k = msg.k;
   if (typeof k.t !== 'number' || typeof k.T !== 'number') return null;
   if (typeof k.s !== 'string' || typeof k.i !== 'string') return null;
   if (typeof k.o !== 'string' || typeof k.c !== 'string') return null;

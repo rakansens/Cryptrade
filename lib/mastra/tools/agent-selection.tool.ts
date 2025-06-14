@@ -90,10 +90,10 @@ export const agentSelectionTool = createTool({
             response: a2aResult.response || 'No response from agent',
             data: a2aResult.data,
             metadata: {
-              model: a2aResult.metadata?.model || 'unknown',
-              tokensUsed: a2aResult.metadata?.tokensUsed,
+              model: a2aResult.metadata?.['model'] || 'unknown',
+              tokensUsed: a2aResult.metadata?.['tokensUsed'],
               executionTime: Date.now() - startTime,
-              toolsUsed: a2aResult.metadata?.toolsUsed || [],
+              toolsUsed: a2aResult.metadata?.['toolsUsed'] || [],
             },
             // A2A通信の完全な結果を含める
             ...(a2aResult.steps && { steps: a2aResult.steps }),
@@ -297,7 +297,7 @@ async function executeDirectUIControl(
       context: {
         userRequest: query,
         conversationHistory,
-        currentState: userContext?.currentState || {},
+        currentState: userContext?.['currentState'] || {},
       }
     });
 
@@ -410,7 +410,7 @@ async function broadcastUIOperations(
     // toolResults配列からoperationsを抽出
     const fromToolResults = Array.isArray(agentResult?.toolResults)
       ? agentResult.toolResults.flatMap((tr: ToolResult) =>
-          Array.isArray(tr?.result?.operations) ? tr.result.operations : []
+          Array.isArray(tr?.result?.operations) ? tr.result?.operations : []
         )
       : [];
     
@@ -419,7 +419,7 @@ async function broadcastUIOperations(
       ? agentResult.steps.flatMap((step: Step) =>
           Array.isArray(step?.toolResults)
             ? step.toolResults.flatMap((tr: ToolResult) =>
-                Array.isArray(tr?.result?.operations) ? tr.result.operations : []
+                Array.isArray(tr?.result?.operations) ? tr.result?.operations : []
               )
             : []
         )
@@ -430,11 +430,11 @@ async function broadcastUIOperations(
     const operations = Array.isArray(agentResult.operations) 
       ? agentResult.operations                    // ルートレベル
       : Array.isArray(agentResult.data?.operations)
-      ? agentResult.data.operations               // data配下
+      ? agentResult.data?.operations               // data配下
       : Array.isArray(agentResult.result?.operations)
-      ? agentResult.result.operations             // result配下
+      ? agentResult.result?.operations             // result配下
       : Array.isArray(agentResult.executionResult?.data?.operations)
-      ? agentResult.executionResult.data.operations // executionResult.data配下
+      ? agentResult.executionResult?.data?.operations // executionResult.data配下
       : fromToolResults.length > 0
       ? fromToolResults                           // toolResults配下
       : fromSteps.length > 0
@@ -483,7 +483,7 @@ async function broadcastUIOperations(
     // 各operation のclientEventを配信
     for (let index = 0; index < operations.length; index++) {
       const operation = operations[index];
-      if (operation.clientEvent) {
+      if (operation?.clientEvent) {
         const { event, data } = operation.clientEvent;
         
         logger.debug('[Agent Selection Tool] Dispatching client event', {
@@ -506,7 +506,7 @@ async function broadcastUIOperations(
           });
         } else {
           // サーバー環境ではSSE経由で配信
-          await emitUIEvent({ event, data });
+          await emitUIEvent({ event, data: data || {} });
           
           logger.info('[Agent Selection Tool] UI event emitted to SSE', {
             event,

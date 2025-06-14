@@ -1,6 +1,6 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { agentNetwork } from '../network/agent-network';
-import { logger } from '@/lib/utils/logger';
+// import { logger } from '@/lib/utils/logger'; // not used directly
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -25,7 +25,7 @@ jest.mock('../network/agent-registry', () => ({
 jest.mock('../agents/trading.agent', () => ({
   tradingAgent: {
     name: 'tradingAgent',
-    generate: jest.fn().mockResolvedValue({
+    generate: jest.fn<() => Promise<unknown>>().mockResolvedValue({
       text: 'エントリー提案を生成しました',
       steps: [
         {
@@ -117,7 +117,7 @@ describe('A2A Entry Proposal Mock Test', () => {
         ],
       };
 
-      jest.spyOn(agentNetwork, 'sendMessage').mockResolvedValue(mockResponse);
+      jest.spyOn(agentNetwork, 'sendMessage').mockResolvedValue(mockResponse as any);
 
       const result = await agentNetwork.sendMessage(
         'orchestratorAgent',
@@ -138,19 +138,19 @@ describe('A2A Entry Proposal Mock Test', () => {
       expect(result).toBeDefined();
       expect(result?.type).toBe('response');
       expect(result?.steps).toBeDefined();
-      expect(result?.steps?.[0]?.toolResults).toBeDefined();
+      expect((result as any)?.steps?.[0]?.toolResults).toBeDefined();
       
-      const toolResult = result?.steps?.[0]?.toolResults?.[0];
+      const toolResult = (result as any)?.steps?.[0]?.toolResults?.[0];
       expect(toolResult?.toolName).toBe('entryProposalGeneration');
       expect(toolResult?.result?.success).toBe(true);
       expect(toolResult?.result?.proposalGroup?.proposals).toHaveLength(1);
     });
 
     it('should handle tool name correctly in prompts', async () => {
-      const mockFormatMessage = jest.fn();
+      // const mockFormatMessage = jest.fn();
       
       // Test the prompt generation logic
-      const context = {
+      const _context = {
         extractedSymbol: 'BTCUSDT',
         isProposalMode: true,
         proposalType: 'entry',
@@ -223,7 +223,7 @@ describe('A2A Entry Proposal Mock Test', () => {
         }
       );
 
-      expect(entryResult?.proposalGroup?.type).toBe('entryProposalGroup');
+      expect((entryResult as any)?.proposalGroup?.type).toBe('entryProposalGroup');
 
       // Test regular proposal
       const regularResult = await agentNetwork.sendMessage(
@@ -239,7 +239,7 @@ describe('A2A Entry Proposal Mock Test', () => {
         }
       );
 
-      expect(regularResult?.proposalGroup?.type).toBe('proposalGroup');
+      expect((regularResult as any)?.proposalGroup?.type).toBe('proposalGroup');
     });
   });
 
@@ -291,7 +291,7 @@ describe('A2A Entry Proposal Mock Test', () => {
         correlationId: 'perf-correlation-123',
       };
 
-      jest.spyOn(agentNetwork, 'sendMessage').mockResolvedValue(mockResponse);
+      jest.spyOn(agentNetwork, 'sendMessage').mockResolvedValue(mockResponse as any);
 
       await agentNetwork.sendMessage(
         'orchestratorAgent',

@@ -242,7 +242,7 @@ export function isChatMessageMetadata(data: unknown): data is ChatMessageMetadat
   if (typeof data !== 'object' || data === null) return false;
   const metadata = data as Record<string, unknown>;
   
-  if (metadata.type && !['text', 'proposal', 'entry'].includes(metadata.type as string)) {
+  if (metadata['type'] && !['text', 'proposal', 'entry'].includes(metadata['type'] as string)) {
     return false;
   }
   
@@ -254,9 +254,9 @@ export function isProposalGroup(data: unknown): data is ProposalGroup {
   const group = data as Record<string, unknown>;
   
   return (
-    typeof group.id === 'string' &&
-    Array.isArray(group.proposals) &&
-    typeof group.timestamp === 'number'
+    typeof group['id'] === 'string' &&
+    Array.isArray(group['proposals']) &&
+    typeof group['timestamp'] === 'number'
   );
 }
 
@@ -265,10 +265,10 @@ export function isAnalysisResultMetadata(data: unknown): data is AnalysisResultM
   const metadata = data as Record<string, unknown>;
   
   return (
-    Array.isArray(metadata.indicators) &&
-    Array.isArray(metadata.patterns) &&
-    Array.isArray(metadata.signals) &&
-    typeof metadata.summary === 'object'
+    Array.isArray(metadata['indicators']) &&
+    Array.isArray(metadata['patterns']) &&
+    Array.isArray(metadata['signals']) &&
+    typeof metadata['summary'] === 'object'
   );
 }
 
@@ -277,9 +277,9 @@ export function isPatternMetadata(data: unknown): data is PatternMetadata {
   const metadata = data as Record<string, unknown>;
   
   return (
-    typeof metadata.coordinates === 'object' &&
-    typeof metadata.measurements === 'object' &&
-    typeof metadata.validation === 'object'
+    typeof metadata['coordinates'] === 'object' &&
+    typeof metadata['measurements'] === 'object' &&
+    typeof metadata['validation'] === 'object'
   );
 }
 
@@ -288,9 +288,9 @@ export function isTradeMetadata(data: unknown): data is TradeMetadata {
   const metadata = data as Record<string, unknown>;
   
   return (
-    typeof metadata.strategy === 'string' &&
-    Array.isArray(metadata.indicators) &&
-    typeof metadata.marketConditions === 'object'
+    typeof metadata['strategy'] === 'string' &&
+    Array.isArray(metadata['indicators']) &&
+    typeof metadata['marketConditions'] === 'object'
   );
 }
 
@@ -300,11 +300,11 @@ export function isAlertConditions(data: unknown): data is AlertConditions {
   
   // At least one condition should be present
   return (
-    conditions.priceAbove !== undefined ||
-    conditions.priceBelow !== undefined ||
-    conditions.volumeAbove !== undefined ||
-    conditions.indicatorCrossover !== undefined ||
-    conditions.patternDetected !== undefined
+    conditions['priceAbove'] !== undefined ||
+    conditions['priceBelow'] !== undefined ||
+    conditions['volumeAbove'] !== undefined ||
+    conditions['indicatorCrossover'] !== undefined ||
+    conditions['patternDetected'] !== undefined
   );
 }
 
@@ -313,8 +313,8 @@ export function isChartDrawingData(data: unknown): data is ChartDrawingData {
   const drawing = data as Record<string, unknown>;
   
   return (
-    typeof drawing.type === 'string' &&
-    Array.isArray(drawing.points) &&
-    typeof drawing.properties === 'object'
+    typeof drawing['type'] === 'string' &&
+    Array.isArray(drawing['points']) &&
+    typeof drawing['properties'] === 'object'
   );
 }

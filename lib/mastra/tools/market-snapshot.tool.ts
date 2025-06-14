@@ -39,7 +39,8 @@ export const marketSnapshotTool = createTool({
   description: 'Get a quick market overview for casual conversation',
   inputSchema: MarketSnapshotInput,
   outputSchema: MarketSnapshotOutput,
-  execute: async ({ focus, limit }) => {
+  execute: async ({ context }) => {
+    const { focus, limit } = context;
     try {
       logger.info('[MarketSnapshot] Fetching market overview', { focus, limit });
       

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { enhancedMarketDataService, EnhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
+import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
 import { multiTimeframeLineDetector, MultiTimeframeLineDetector } from '@/lib/analysis/multi-timeframe-line-detector';
 import { enhancedLineAnalysisTool } from '@/lib/mastra/tools/enhanced-line-analysis.tool';
 import type { ProcessedKline } from '@/types/market';
@@ -55,7 +55,7 @@ describe('Multi-Timeframe Analysis', () => {
         const { binanceAPI } = require('@/lib/binance/api-service');
         
         // Make some timeframe calls fail
-        binanceAPI.fetchKlines.mockImplementation((symbol: string, interval: string) => {
+        binanceAPI.fetchKlines.mockImplementation((_symbol: string, interval: string) => {
           if (interval === '15m') {
             return Promise.reject(new Error('15m data unavailable'));
           }
@@ -125,7 +125,7 @@ describe('Multi-Timeframe Analysis', () => {
         const levels = enhancedMarketDataService.findMultiTimeframeSupportResistance(multiTimeframeData);
         
         for (let i = 1; i < levels.length; i++) {
-          expect(levels[i - 1].confidenceScore).toBeGreaterThanOrEqual(levels[i].confidenceScore);
+          expect(levels[i - 1]!.confidenceScore).toBeGreaterThanOrEqual(levels[i]!.confidenceScore);
         }
       });
     });
@@ -536,7 +536,7 @@ function addSupportResistanceLevels(klines: ProcessedKline[]): void {
   const resistanceLevel = 51000;
   
   // Make price respect these levels
-  klines.forEach((kline, index) => {
+  klines.forEach((kline, _index) => {
     if (kline.low < supportLevel && Math.random() > 0.3) {
       // Bounce off support
       kline.low = supportLevel;

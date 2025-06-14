@@ -38,10 +38,10 @@ export function isLogEntry(value: unknown): value is LogEntry {
   const obj = value as Record<string, unknown>;
   
   return (
-    typeof obj.id === 'string' &&
-    typeof obj.timestamp === 'number' &&
-    typeof obj.level === 'string' &&
-    typeof obj.message === 'string'
+    typeof obj['id'] === 'string' &&
+    typeof obj['timestamp'] === 'number' &&
+    typeof obj['level'] === 'string' &&
+    typeof obj['message'] === 'string'
   );
 }
 

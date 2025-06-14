@@ -387,7 +387,7 @@ function ProposalItem({ proposal, status = 'pending', onApprove, onReject, onCan
           </div>
           {proposal.drawingData.levels && (
             <div className="text-[var(--font-xs)] text-[hsl(var(--text-muted))]">
-              レベル: {proposal.drawingData.levels.map(l => `${(l * 100).toFixed(1)}%`).join(', ')}
+              レベル: {proposal.drawingData.levels.map((l: number) => `${(l * 100).toFixed(1)}%`).join(', ')}
             </div>
           )}
         </div>

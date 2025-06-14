@@ -157,25 +157,19 @@ describe('create-api-handler', () => {
     it('should apply middleware in correct order', async () => {
       const executionOrder: string[] = [];
       
-      const middleware1 = createApiMiddleware({
-        name: 'middleware1',
-        handler: async (req, next) => {
+      const middleware1 = async (req: NextRequest, next: () => Promise<NextResponse>) => {
           executionOrder.push('middleware1-start');
           const result = await next();
           executionOrder.push('middleware1-end');
           return result;
-        }
-      });
+      };
 
-      const middleware2 = createApiMiddleware({
-        name: 'middleware2',
-        handler: async (req, next) => {
+      const middleware2 = async (req: NextRequest, next: () => Promise<NextResponse>) => {
           executionOrder.push('middleware2-start');
           const result = await next();
           executionOrder.push('middleware2-end');
           return result;
-        }
-      });
+      };
 
       const handler = createApiHandler({
         middleware: [middleware1, middleware2],

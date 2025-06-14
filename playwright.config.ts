@@ -1,3 +1,5 @@
+// Updated: Playwright設定ファイル - ESLintルール無効化（テスト設定ファイルのため）
+/* eslint-disable no-restricted-syntax */
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -10,13 +12,13 @@ export default defineConfig({
     timeout: 5000
   },
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: !!process.env['CI'],
+  retries: process.env['CI'] ? 2 : 0,
+  workers: process.env['CI'] ? 1 : undefined,
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
     ['list'],
-    ...(process.env.CI ? [['github'] as const] : [])
+    ...(process.env['CI'] ? [['github'] as const] : [])
   ],
   use: {
     baseURL: 'http://localhost:3000',
@@ -43,7 +45,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 3000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env['CI'],
     timeout: 120 * 1000,
   },
 });

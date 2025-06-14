@@ -49,7 +49,7 @@ export function measurePerformance(options: PerformanceOptions = {}): MethodDeco
       };
 
       if (options.includeArgs) {
-        context.args = args;
+        context['args'] = args;
       }
 
       try {
@@ -132,7 +132,7 @@ export function measureFunction<T extends (...args: unknown[]) => unknown>(
     };
 
     if (options.includeArgs) {
-      context.args = args;
+      context['args'] = args;
     }
 
     try {

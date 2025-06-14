@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { ChartPersistenceManager } from '@/lib/storage/chart-persistence';
 import { ChartDrawingAPI } from '@/lib/api/chart-drawing-api';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
@@ -6,12 +6,12 @@ import type { TimeframeState } from '@/lib/api/chart-drawing-api';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
-vi.mock('@/lib/api/chart-drawing-api');
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/api/chart-drawing-api');
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
   },
 }));
 
@@ -72,24 +72,23 @@ describe('ChartPersistenceManager', () => {
   const mockTimeframeState: TimeframeState = {
     symbol: 'BTCUSDT',
     timeframe: '1h',
-    lastUpdate: Date.now(),
+    timestamp: Date.now(),
   };
 
   beforeEach(() => {
     // Clear all mocks
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     localStorageMock.clear();
     
     // Reset persistence configuration to defaults
     ChartPersistenceManager.configure({
       useDatabase: true,
       fallbackToLocal: true,
-      sessionId: undefined,
     });
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('Configuration', () => {
@@ -131,7 +130,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('Save Drawings', () => {
     it('should save drawings to database when enabled', async () => {
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveDrawings([mockDrawing]);
 
@@ -158,7 +157,7 @@ describe('ChartPersistenceManager', () => {
 
     it('should fallback to localStorage on database error', async () => {
       const dbError = new Error('Database connection failed');
-      (ChartDrawingAPI.saveDrawings as Mock).mockRejectedValue(dbError);
+      (ChartDrawingAPI.saveDrawings as any).mockRejectedValue(dbError);
 
       await ChartPersistenceManager.saveDrawings([mockDrawing]);
 
@@ -175,7 +174,7 @@ describe('ChartPersistenceManager', () => {
     it('should throw error when fallback is disabled', async () => {
       ChartPersistenceManager.configure({ fallbackToLocal: false });
       const dbError = new Error('Database connection failed');
-      (ChartDrawingAPI.saveDrawings as Mock).mockRejectedValue(dbError);
+      (ChartDrawingAPI.saveDrawings as any).mockRejectedValue(dbError);
 
       await ChartPersistenceManager.saveDrawings([mockDrawing]);
 
@@ -198,7 +197,7 @@ describe('ChartPersistenceManager', () => {
 
     it('should save multiple drawings', async () => {
       const drawing2 = { ...mockDrawing, id: 'drawing-2' };
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveDrawings([mockDrawing, drawing2]);
 
@@ -211,7 +210,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('Load Drawings', () => {
     it('should load drawings from database when enabled', async () => {
-      (ChartDrawingAPI.loadDrawings as Mock).mockResolvedValue([mockDrawing]);
+      (ChartDrawingAPI.loadDrawings as any).mockResolvedValue([mockDrawing]);
 
       const drawings = await ChartPersistenceManager.loadDrawings();
 
@@ -234,7 +233,7 @@ describe('ChartPersistenceManager', () => {
 
     it('should fallback to localStorage on database error', async () => {
       const dbError = new Error('Database connection failed');
-      (ChartDrawingAPI.loadDrawings as Mock).mockRejectedValue(dbError);
+      (ChartDrawingAPI.loadDrawings as any).mockRejectedValue(dbError);
       localStorageMock.setItem('cryptrade_chart_drawings', JSON.stringify([mockDrawing]));
 
       const drawings = await ChartPersistenceManager.loadDrawings();
@@ -247,7 +246,7 @@ describe('ChartPersistenceManager', () => {
     });
 
     it('should return empty array when no drawings exist', async () => {
-      (ChartDrawingAPI.loadDrawings as Mock).mockResolvedValue([]);
+      (ChartDrawingAPI.loadDrawings as any).mockResolvedValue([]);
 
       const drawings = await ChartPersistenceManager.loadDrawings();
 
@@ -287,7 +286,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('Save Patterns', () => {
     it('should save patterns to database when enabled', async () => {
-      (ChartDrawingAPI.savePatterns as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.savePatterns as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.savePatterns([mockPattern]);
 
@@ -322,7 +321,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('Load Patterns', () => {
     it('should load patterns from database when enabled', async () => {
-      (ChartDrawingAPI.loadPatterns as Mock).mockResolvedValue([mockPattern]);
+      (ChartDrawingAPI.loadPatterns as any).mockResolvedValue([mockPattern]);
 
       const patterns = await ChartPersistenceManager.loadPatterns();
 
@@ -402,7 +401,7 @@ describe('ChartPersistenceManager', () => {
   describe('Timeframe State', () => {
     it('should save timeframe state to database', async () => {
       ChartPersistenceManager.setSessionId('test-session');
-      (ChartDrawingAPI.saveTimeframeState as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveTimeframeState as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveTimeframeState(mockTimeframeState);
 
@@ -423,7 +422,7 @@ describe('ChartPersistenceManager', () => {
 
     it('should load timeframe state from database', async () => {
       ChartPersistenceManager.setSessionId('test-session');
-      (ChartDrawingAPI.loadTimeframeState as Mock).mockResolvedValue(mockTimeframeState);
+      (ChartDrawingAPI.loadTimeframeState as any).mockResolvedValue(mockTimeframeState);
 
       const state = await ChartPersistenceManager.loadTimeframeState();
 
@@ -465,7 +464,7 @@ describe('ChartPersistenceManager', () => {
   describe('Clear Operations', () => {
     it('should clear all data from database and localStorage', async () => {
       ChartPersistenceManager.setSessionId('test-session');
-      (ChartDrawingAPI.clearSession as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.clearSession as any).mockResolvedValue(undefined);
       
       // Add data to localStorage
       localStorageMock.setItem('cryptrade_chart_drawings', JSON.stringify([mockDrawing]));
@@ -483,7 +482,7 @@ describe('ChartPersistenceManager', () => {
     it('should handle database clear errors gracefully', async () => {
       ChartPersistenceManager.setSessionId('test-session');
       const error = new Error('Clear failed');
-      (ChartDrawingAPI.clearSession as Mock).mockRejectedValue(error);
+      (ChartDrawingAPI.clearSession as any).mockRejectedValue(error);
 
       await ChartPersistenceManager.clearAll();
 
@@ -507,7 +506,7 @@ describe('ChartPersistenceManager', () => {
 
     it('should use session ID for database operations', async () => {
       ChartPersistenceManager.setSessionId('custom-session');
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveDrawings([mockDrawing]);
 
@@ -517,8 +516,8 @@ describe('ChartPersistenceManager', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty arrays', async () => {
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
-      (ChartDrawingAPI.savePatterns as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
+      (ChartDrawingAPI.savePatterns as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveDrawings([]);
       await ChartPersistenceManager.savePatterns([]);
@@ -546,8 +545,8 @@ describe('ChartPersistenceManager', () => {
     });
 
     it('should handle concurrent operations', async () => {
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
-      (ChartDrawingAPI.savePatterns as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
+      (ChartDrawingAPI.savePatterns as any).mockResolvedValue(undefined);
 
       // Perform multiple operations concurrently
       await Promise.all([
@@ -566,7 +565,7 @@ describe('ChartPersistenceManager', () => {
         id: `drawing-${i}`,
       }));
 
-      (ChartDrawingAPI.saveDrawings as Mock).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
 
       await ChartPersistenceManager.saveDrawings(largeDataset);
 
@@ -627,7 +626,7 @@ describe('ChartPersistenceManager', () => {
       await ChartPersistenceManager.saveDrawings([complexDrawing]);
       const loaded = await ChartPersistenceManager.loadDrawings();
 
-      expect(loaded[0].metadata).toEqual(complexDrawing.metadata);
+      expect(loaded[0]?.metadata).toEqual(complexDrawing.metadata);
     });
   });
 });

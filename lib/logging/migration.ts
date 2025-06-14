@@ -1,11 +1,12 @@
 /**
- * Migration Guide and Utilities
+ * Updated: Migration Guide and Utilities - 環境変数の型安全なアクセスを実装
  * 
  * Helps migrate from existing logging implementations to unified logger
  */
 
 import type { LogLevel, UnifiedLoggerConfig } from './unified-logger';
 import type { UnifiedLogEntry, LogFilter } from '@/types/logging.types';
+import { env } from '@/config/env';
 
 // Type definitions for legacy configurations
 interface LegacyLoggerConfig {
@@ -148,7 +149,7 @@ export function migrateLogEntry(oldEntry: LegacyLogEntry): UnifiedLogEntry {
     timestamp,
     level: oldEntry.level,
     message: oldEntry.message,
-    environment: oldEntry.environment || process.env.NODE_ENV || 'development',
+    environment: oldEntry.environment || env.NODE_ENV || 'development',
     source: oldEntry.source || 'cryptrade',
     meta: oldEntry.meta || oldEntry.metadata || {},
   };

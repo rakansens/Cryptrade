@@ -31,7 +31,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'トレンドラインを引いて'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -44,8 +45,8 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(drawEvent).toBeDefined();
-        expect(drawEvent?.clientEvent?.data?.points).toBeDefined();
-        expect(drawEvent?.clientEvent?.data?.points.length).toBeGreaterThan(0);
+        expect(drawEvent?.clientEvent?.data?.['points']).toBeDefined();
+        expect(drawEvent?.clientEvent?.data?.['points'].length).toBeGreaterThan(0);
       });
 
       test('should create horizontal line', async () => {
@@ -53,7 +54,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: '水平線を描いて'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -63,7 +65,7 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(drawEvent).toBeDefined();
-        expect(drawEvent?.clientEvent?.data?.price).toBeDefined();
+        expect(drawEvent?.clientEvent?.data?.['price']).toBeDefined();
       });
 
       test('should create support and resistance lines', async () => {
@@ -71,7 +73,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'サポートとレジスタンスラインを描いて'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -89,7 +92,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'フィボナッチリトレースメントを追加'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -99,7 +103,7 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(fiboEvent).toBeDefined();
-        expect(fiboEvent?.clientEvent?.data?.points).toBeDefined();
+        expect(fiboEvent?.clientEvent?.data?.['points']).toBeDefined();
       });
     });
 
@@ -109,7 +113,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'ETHのチャートに切り替えて'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -119,7 +124,7 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(switchEvent).toBeDefined();
-        expect(switchEvent?.parameters?.symbol).toBe('ETHUSDT');
+        expect(switchEvent?.parameters?.['symbol']).toBe('ETHUSDT');
       });
 
       test('should change timeframe', async () => {
@@ -127,7 +132,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: '15分足に変更'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -137,7 +143,7 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(timeframeEvent).toBeDefined();
-        expect(timeframeEvent?.parameters?.timeframe).toBe('15m');
+        expect(timeframeEvent?.parameters?.['timeframe']).toBe('15m');
       });
 
       test('should add indicators', async () => {
@@ -145,7 +151,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'RSIとMACDを追加して'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -155,8 +162,8 @@ describe('Chart Operations Integration Tests', () => {
         );
         
         expect(indicatorEvents.length).toBe(2);
-        expect(indicatorEvents[0]?.parameters?.indicator).toBe('RSI');
-        expect(indicatorEvents[1]?.parameters?.indicator).toBe('MACD');
+        expect(indicatorEvents[0]?.parameters?.['indicator']).toBe('RSI');
+        expect(indicatorEvents[1]?.parameters?.['indicator']).toBe('MACD');
       });
     });
 
@@ -166,7 +173,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: '何か描いて'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -178,7 +186,8 @@ describe('Chart Operations Integration Tests', () => {
           context: {
             ...defaultContext,
             userRequest: 'XYZABCのチャートを表示'
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
 
         expect(result.success).toBe(true);
@@ -204,20 +213,23 @@ describe('Chart Operations Integration Tests', () => {
         );
 
         expect(result).toBeDefined();
-        expect(result.lines).toBeDefined();
-        expect(Array.isArray(result.lines)).toBe(true);
+        expect(result.horizontalLines).toBeDefined();
+        expect(Array.isArray(result.horizontalLines)).toBe(true);
+        expect(result.trendlines).toBeDefined();
+        expect(Array.isArray(result.trendlines)).toBe(true);
         
         // Should detect at least some lines
-        expect(result.lines.length).toBeGreaterThan(0);
+        const allLines = [...result.horizontalLines, ...result.trendlines];
+        expect(allLines.length).toBeGreaterThan(0);
         
         // Check line properties
-        if (result.lines.length > 0) {
-          const line = result.lines[0];
+        if (allLines.length > 0) {
+          const line = allLines[0];
           expect(line).toHaveProperty('type');
           expect(line).toHaveProperty('confidence');
           expect(line).toHaveProperty('strength');
           expect(line).toHaveProperty('points');
-          expect(line.points.length).toBeGreaterThanOrEqual(2);
+          expect(line?.points.length).toBeGreaterThanOrEqual(2);
         }
       });
 
@@ -232,7 +244,7 @@ describe('Chart Operations Integration Tests', () => {
           expect(zone).toHaveProperty('priceRange');
           expect(zone).toHaveProperty('lineCount');
           expect(zone).toHaveProperty('strength');
-          expect(zone.lineCount).toBeGreaterThanOrEqual(2);
+          expect(zone!.timeframeCount).toBeGreaterThanOrEqual(2);
         }
       });
 
@@ -242,14 +254,14 @@ describe('Chart Operations Integration Tests', () => {
           mockCandleData
         );
 
-        expect(result.qualityMetrics).toBeDefined();
-        expect(result.qualityMetrics).toHaveProperty('overallConfidence');
-        expect(result.qualityMetrics).toHaveProperty('dataQuality');
-        expect(result.qualityMetrics).toHaveProperty('timeframeCoverage');
+        expect(result.summary).toBeDefined();
+        expect(result.summary).toHaveProperty('totalLines');
+        expect(result.summary).toHaveProperty('highConfidenceLines');
+        expect(result.summary).toHaveProperty('averageStrength');
         
-        // Confidence should be between 0 and 1
-        expect(result.qualityMetrics.overallConfidence).toBeGreaterThanOrEqual(0);
-        expect(result.qualityMetrics.overallConfidence).toBeLessThanOrEqual(1);
+        // Average strength should be between 0 and 1
+        expect(result.summary.averageStrength).toBeGreaterThanOrEqual(0);
+        expect(result.summary.averageStrength).toBeLessThanOrEqual(1);
       });
     });
 
@@ -262,9 +274,12 @@ describe('Chart Operations Integration Tests', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.analysis).toBeDefined();
-        expect(result.detectedLines).toBeDefined();
-        expect(Array.isArray(result.detectedLines)).toBe(true);
+        expect(result.recommendations).toBeDefined();
+        expect(result.recommendations.analysis).toBeDefined();
+        expect(result.horizontalLines).toBeDefined();
+        expect(Array.isArray(result.horizontalLines)).toBe(true);
+        expect(result.trendlines).toBeDefined();
+        expect(Array.isArray(result.trendlines)).toBe(true);
       });
 
       test('should provide trading recommendations', async () => {
@@ -275,9 +290,11 @@ describe('Chart Operations Integration Tests', () => {
         });
 
         if (result.recommendations) {
-          expect(result.recommendations).toHaveProperty('action');
-          expect(result.recommendations).toHaveProperty('confidence');
-          expect(result.recommendations).toHaveProperty('reasoning');
+          expect(result.recommendations).toHaveProperty('analysis');
+          expect(result.recommendations).toHaveProperty('drawingActions');
+          if (result.recommendations.tradingSetup) {
+            expect(result.recommendations.tradingSetup).toHaveProperty('bias');
+          }
         }
       });
     });
@@ -297,8 +314,8 @@ describe('Chart Operations Integration Tests', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.analysis).toBeDefined();
-        expect(result.insights).toBeDefined();
+        expect(result.recommendations).toBeDefined();
+        expect(result.recommendations.analysis).toBeDefined();
       });
 
       test('should identify key levels', async () => {
@@ -310,11 +327,13 @@ describe('Chart Operations Integration Tests', () => {
           }
         });
 
-        if (result.keyLevels) {
-          expect(result.keyLevels).toHaveProperty('support');
-          expect(result.keyLevels).toHaveProperty('resistance');
-          expect(Array.isArray(result.keyLevels.support)).toBe(true);
-          expect(Array.isArray(result.keyLevels.resistance)).toBe(true);
+        expect(result.technicalAnalysis).toBeDefined();
+        expect(result.technicalAnalysis.supportResistance).toBeDefined();
+        if (result.technicalAnalysis.supportResistance) {
+          expect(result.technicalAnalysis.supportResistance).toHaveProperty('supports');
+          expect(result.technicalAnalysis.supportResistance).toHaveProperty('resistances');
+          expect(Array.isArray(result.technicalAnalysis.supportResistance.supports)).toBe(true);
+          expect(Array.isArray(result.technicalAnalysis.supportResistance.resistances)).toBe(true);
         }
       });
     });
@@ -339,7 +358,8 @@ describe('Chart Operations Integration Tests', () => {
                 symbol: 'BTCUSDT',
                 timeframe: '1h'
               }
-            }
+            },
+            runtimeContext: { sessionId: 'test-session' }
           });
 
           expect(result.success).toBe(true);
@@ -368,7 +388,8 @@ describe('Chart Operations Integration Tests', () => {
               symbol: 'BTCUSDT',
               timeframe: '1h'
             }
-          }
+          },
+          runtimeContext: { sessionId: 'test-session' }
         });
         
         const executionTime = Date.now() - startTime;
@@ -390,8 +411,8 @@ describe('Chart Operations Integration Tests', () => {
       }
 
       // Execution time should not grow exponentially
-      const timeGrowthRate = times[2] / times[0];
-      const sizeGrowthRate = dataSizes[2] / dataSizes[0];
+      const timeGrowthRate = times[2]! / times[0]!;
+      const sizeGrowthRate = dataSizes[2]! / dataSizes[0]!;
       
       // Time should grow slower than O(n²)
       expect(timeGrowthRate).toBeLessThan(sizeGrowthRate * sizeGrowthRate);

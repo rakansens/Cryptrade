@@ -206,8 +206,8 @@ test.describe('Enhanced Proposal Approval Flow', () => {
       // ソート順を確認（最初の2つの提案の価格を比較）
       const prices = await page.locator('[data-testid="proposal-price"]').allTextContents();
       if (prices.length >= 2) {
-        const price1 = parseFloat(prices[0].replace(/[$,]/g, ''));
-        const price2 = parseFloat(prices[1].replace(/[$,]/g, ''));
+        const price1 = parseFloat(prices[0]!.replace(/[$,]/g, ''));
+        const price2 = parseFloat(prices[1]!.replace(/[$,]/g, ''));
         expect(price1).toBeGreaterThanOrEqual(price2);
       }
     }

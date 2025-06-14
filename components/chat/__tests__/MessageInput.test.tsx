@@ -235,10 +235,7 @@ describe('MessageInput', () => {
 
   describe('Custom Placeholder', () => {
     it('uses default placeholder when not provided', () => {
-      const propsWithoutPlaceholder = {
-        ...defaultProps,
-        placeholder: undefined
-      }
+      const { placeholder, ...propsWithoutPlaceholder } = defaultProps
       
       render(<MessageInput {...propsWithoutPlaceholder} />)
       

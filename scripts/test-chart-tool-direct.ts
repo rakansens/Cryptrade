@@ -35,15 +35,15 @@ async function testDirectTool() {
         console.log(`\nOperation ${idx + 1}:`);
         console.log('- Type:', op.type);
         console.log('- Action:', op.action);
-        console.log('- Has points:', !!op.parameters?.points);
+        console.log('- Has points:', !!op.parameters?.['points']);
         console.log('- Execution mode:', op.executionMode);
         
         if (op.clientEvent) {
           console.log('- Client event:', op.clientEvent.event);
-          console.log('- Event has points:', !!op.clientEvent.data?.points);
+          console.log('- Event has points:', !!op.clientEvent.data?.['points']);
           
-          if (op.clientEvent.data?.points) {
-            console.log('- Points:', JSON.stringify(op.clientEvent.data.points, null, 2));
+          if (op.clientEvent.data?.['points']) {
+            console.log('- Points:', JSON.stringify(op.clientEvent.data['points'], null, 2));
           }
         }
       });
@@ -52,7 +52,7 @@ async function testDirectTool() {
     // Check results
     const hasProperDrawEvent = result.operations.some(op => 
       op.clientEvent?.event === 'draw:trendline' && 
-      op.clientEvent?.data?.points?.length > 0
+      op.clientEvent?.data?.['points']?.length > 0
     );
     
     console.log('\n🎯 Final Result:');

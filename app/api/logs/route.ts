@@ -75,8 +75,8 @@ export const GET = createApiHandler({
     // Time range
     if (data.from || data.to) {
       filter.timeRange = {};
-      if (data.from) filter.timeRange.from = data.from;
-      if (data.to) filter.timeRange.to = data.to;
+      if (data.from) filter.timeRange!.from = data.from;
+      if (data.to) filter.timeRange!.to = data.to;
     }
     
     // Other filters

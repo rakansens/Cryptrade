@@ -1,20 +1,21 @@
 /**
- * Pattern Renderer Adapter
+ * Updated: Pattern Renderer Adapter - 環境変数の型安全なアクセスを実装
  * 
  * 既存のPatternRendererから新しいPatternRendererCoreへの移行用アダプター
  * 破壊的変更を最小化しながら段階的に新しいアーキテクチャに移行
  */
 
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
-import type { PatternVisualization } from '@/types/pattern';
+import type { PatternVisualization, PatternRenderer as IPatternRenderer, PatternMetrics, PatternRendererState } from '@/types/pattern';
 import { PatternRendererCore } from './PatternRendererCore';
 import { PatternRenderer } from './pattern-renderer';
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 
 /**
  * アダプタークラス - 既存のAPIを維持しながら内部で新しいCoreを使用
  */
-export class PatternRendererAdapter {
+export class PatternRendererAdapter implements IPatternRenderer {
   private core: PatternRendererCore;
   private legacy: PatternRenderer;
   private useNewCore: boolean;
@@ -145,15 +146,47 @@ export class PatternRendererAdapter {
   }
   
   /**
+   * すべてのパターンを削除
+   */
+  removeAllPatterns(): void {
+    if (this.useNewCore) {
+      // Core doesn't have removeAllPatterns, so remove each pattern individually
+      const state = this.core.getDebugState();
+      if (state && state.patterns) {
+        state.patterns.forEach((_: any, id: string) => {
+          this.core.removePattern(id).catch(error => {
+            logger.error('[PatternRendererAdapter] Failed to remove pattern', { id, error });
+          });
+        });
+      }
+    } else if (this.legacy) {
+      this.legacy.removeAllPatterns();
+    }
+  }
+
+  /**
+   * タイムスケールを更新
+   */
+  updateTimeScale(timeScale: unknown): void {
+    if (this.legacy) {
+      this.legacy.updateTimeScale(timeScale);
+    }
+    // Core doesn't need timeScale updates
+  }
+
+  /**
    * デバッグ用状態取得（既存APIとの互換性）
    */
-  debugGetState() {
+  debugGetState(): PatternRendererState {
     if (this.useNewCore) {
       return this.core.getDebugState();
     } else if (this.legacy) {
       return this.legacy.debugGetState();
     }
-    return null;
+    return {
+      patterns: new Map(),
+      metricLinesDetails: []
+    };
   }
   
   /**
@@ -233,7 +266,7 @@ export function createPatternRendererWithAutoSelection(
   mainSeries: ISeriesApi<SeriesType>
 ): PatternRendererAdapter {
   // 環境変数またはフィーチャーフラグでの制御
-  const useNewCore = process.env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER === 'true' ||
+  const useNewCore = env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER === 'true' ||
                      (typeof window !== 'undefined' && 
                       (window as unknown as { __debugUseNewPatternRenderer?: boolean }).__debugUseNewPatternRenderer === true);
   
@@ -244,7 +277,7 @@ export function createPatternRendererWithAutoSelection(
   
   logger.info('[PatternRendererFactory] Created auto-selected renderer', {
     selectedRenderer: adapter.getCurrentRenderer(),
-    basedOnEnv: process.env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
+    basedOnEnv: env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
     basedOnDebug: (typeof window !== 'undefined' && 
                    (window as unknown as { __debugUseNewPatternRenderer?: boolean }).__debugUseNewPatternRenderer),
   });

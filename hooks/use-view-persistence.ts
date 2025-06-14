@@ -8,16 +8,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
  * Uses both URL parameters and localStorage for robustness
  */
 export function useViewPersistence() {
-  let searchParams: ReturnType<typeof useSearchParams> | null = null;
-  let router: ReturnType<typeof useRouter> | null = null;
-  
-  // Safely use hooks only in client environment
-  try {
-    searchParams = useSearchParams();
-    router = useRouter();
-  } catch (error) {
-    // Hooks not available in SSR
-  }
+  // Always call hooks at the top level (React Hooks rules)
+  const searchParams = useSearchParams();
+  const router = useRouter();
   
   const [currentView, setCurrentView] = useState<'home' | 'chat'>(() => {
     // Priority 1: Check URL parameter (only on client)
@@ -49,17 +42,21 @@ export function useViewPersistence() {
       localStorage.setItem('cryptrade_current_view', newView);
     }
     
-    // Update URL without page reload (only if router is available)
-    if (router && searchParams) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('view', newView);
-      router.push(`?${params.toString()}`, { scroll: false });
+    // Update URL without page reload
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('view', newView);
+        router.push(`?${params.toString()}`, { scroll: false });
+      } catch (error) {
+        // Ignore navigation errors
+      }
     }
   };
 
   // Sync with URL changes
   useEffect(() => {
-    if (searchParams) {
+    try {
       const urlView = searchParams.get('view');
       if (urlView === 'chat' || urlView === 'home') {
         if (urlView !== currentView) {
@@ -69,6 +66,8 @@ export function useViewPersistence() {
           }
         }
       }
+    } catch (error) {
+      // Ignore URL parsing errors
     }
   }, [searchParams, currentView]);
 

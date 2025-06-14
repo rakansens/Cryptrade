@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
+import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
 
 interface MigrateSession {
   title: string;
@@ -13,8 +14,8 @@ interface MigrateMessage {
   content: string;
   role: 'user' | 'assistant';
   type?: 'text' | 'proposal' | 'entry';
-  proposalGroup?: unknown;
-  entryProposalGroup?: unknown;
+  proposalGroup?: ProposalGroup;
+  entryProposalGroup?: EntryProposalGroup;
   isTyping?: boolean;
 }
 
@@ -41,8 +42,8 @@ export async function POST(request: NextRequest) {
               content: message.content,
               role: message.role,
               type: message.type,
-              proposalGroup: message.proposalGroup,
-              entryProposalGroup: message.entryProposalGroup,
+              proposalGroup: message.proposalGroup as ProposalGroup | undefined,
+              entryProposalGroup: message.entryProposalGroup as EntryProposalGroup | undefined,
               isTyping: message.isTyping,
             });
           } catch (error) {

@@ -54,7 +54,7 @@ export class FibonacciGenerator implements IProposalGenerator {
     
     if (swingPoints.length < 2) {
       logger.warn('[FibonacciGenerator] Not enough swing points found');
-      return proposals;
+      return proposals as unknown as ProposalGroup['proposals'];
     }
 
     // 2. 有効なフィボナッチペアを生成
@@ -79,7 +79,7 @@ export class FibonacciGenerator implements IProposalGenerator {
       finalProposals: finalProposals.length,
     });
 
-    return finalProposals;
+    return finalProposals as unknown as ProposalGroup['proposals'];
   }
 
   /**
@@ -216,6 +216,8 @@ export class FibonacciGenerator implements IProposalGenerator {
       for (let j = i + 1; j < Math.min(i + 5, recentSwings.length); j++) {
         const swing1 = recentSwings[i];
         const swing2 = recentSwings[j];
+        
+        if (!swing1 || !swing2) continue;
         
         // 最小距離チェック
         if (swing2.index - swing1.index < 10) continue;

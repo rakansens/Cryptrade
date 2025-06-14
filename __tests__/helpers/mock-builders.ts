@@ -12,10 +12,11 @@ import { EventEmitter } from 'events';
  * Mock Agent Builder
  */
 export class MockAgentBuilder {
-  private agent: Partial<Agent> = {
+  private agent: any = {
     name: 'test-agent',
     instructions: 'Test agent instructions',
   };
+  private executeFn: jest.Mock | undefined;
 
   withName(name: string): MockAgentBuilder {
     this.agent.name = name;
@@ -31,23 +32,24 @@ export class MockAgentBuilder {
     if (!this.agent.tools) {
       this.agent.tools = [];
     }
-    this.agent.tools.push(tool);
+    this.agent.tools!['push'](tool);
     return this;
   }
 
   withExecute(executeFn: jest.Mock): MockAgentBuilder {
-    this.agent.execute = executeFn;
+    this.executeFn = executeFn;
     return this;
   }
 
   build(): Agent {
-    return {
+    const mockAgent = {
       ...this.agent,
-      execute: this.agent.execute || jest.fn().mockResolvedValue({
+      execute: this.executeFn || jest.fn().mockResolvedValue({
         text: 'Mock response',
         toolCalls: [],
       }),
-    } as Agent;
+    };
+    return mockAgent as Agent;
   }
 }
 
@@ -73,9 +75,11 @@ export class MockWebSocketBuilder extends EventEmitter {
   }
 
   withSend(sendFn?: jest.Mock): MockWebSocketBuilder {
-    this.ws.send = sendFn || jest.fn((data, callback) => {
-      if (callback) callback();
-    });
+    this.ws.send = sendFn || jest.fn((_data: any, cb?: any) => {
+      if (typeof cb === 'function') {
+        cb();
+      }
+    }) as any;
     return this;
   }
 
@@ -176,10 +180,10 @@ export class MockLoggerBuilder {
   }
 
   withConsoleOutput(): MockLoggerBuilder {
-    this.logger.info = jest.fn((...args) => console.log('[INFO]', ...args));
-    this.logger.error = jest.fn((...args) => console.error('[ERROR]', ...args));
-    this.logger.warn = jest.fn((...args) => console.warn('[WARN]', ...args));
-    this.logger.debug = jest.fn((...args) => console.log('[DEBUG]', ...args));
+    this.logger['info'] = jest.fn((...args) => console.log('[INFO]', ...args));
+    this.logger['error'] = jest.fn((...args) => console.error('[ERROR]', ...args));
+    this.logger['warn'] = jest.fn((...args) => console.warn('[WARN]', ...args));
+    this.logger['debug'] = jest.fn((...args) => console.log('[DEBUG]', ...args));
     return this;
   }
 

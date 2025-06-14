@@ -302,7 +302,7 @@ describe('ChatDatabaseService', () => {
     it('should delete session and all messages', async () => {
       const sessionId = 'session-123';
 
-      mockPrismaClient.$transaction.mockImplementation(async (callback) => {
+      mockPrismaClient.$transaction.mockImplementation(async (callback: any) => {
         return callback(mockPrismaClient);
       });
 
@@ -396,14 +396,14 @@ describe('ChatDatabaseService', () => {
       const userId = 'user-123';
       const sessionId = 'session-456';
 
-      mockPrismaClient.$transaction.mockImplementation(async (callback) => {
+      mockPrismaClient.$transaction.mockImplementation(async (callback: any) => {
         const result = await callback(mockPrismaClient);
         return result;
       });
 
       // Simulate a complex operation
       const complexOperation = async () => {
-        return service.prisma.$transaction(async (tx) => {
+        return service.prisma.$transaction(async (tx: any) => {
           const session = await tx.conversationSession.create({
             data: { id: sessionId, userId, title: 'New Session' },
           });

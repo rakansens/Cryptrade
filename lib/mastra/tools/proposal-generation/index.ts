@@ -46,6 +46,15 @@ export const ProposalGenerationTool = createTool({
     const input = context as ProposalGenerationInput;
     const startTime = Date.now();
     
+    // Validate input
+    if (!input || typeof input !== 'object') {
+      throw new Error('Invalid input: context is required');
+    }
+    
+    if (!input.symbol) {
+      throw new Error('Invalid input: symbol is required');
+    }
+    
     try {
       logger.info('[ProposalGeneration] Starting analysis', {
         symbol: input.symbol,

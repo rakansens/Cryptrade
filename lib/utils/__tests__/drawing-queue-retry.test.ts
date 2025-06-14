@@ -36,9 +36,9 @@ describe('DrawingOperationQueue with Retry', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const metrics = metricsCollector.toJSON();
-    expect(metrics.drawing_success_total.value).toBe(1);
-    expect(metrics.drawing_failed_total.value).toBe(0);
-    expect(metrics.drawing_retry_total.value).toBe(0);
+    expect(metrics['drawing_success_total'].value).toBe(1);
+    expect(metrics['drawing_failed_total'].value).toBe(0);
+    expect(metrics['drawing_retry_total'].value).toBe(0);
   });
 
   it('should retry failed operation and increment counters', async () => {
@@ -55,9 +55,9 @@ describe('DrawingOperationQueue with Retry', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const metrics = metricsCollector.toJSON();
-    expect(metrics.drawing_success_total.value).toBe(1);
-    expect(metrics.drawing_failed_total.value).toBe(0);
-    expect(metrics.drawing_retry_total.value).toBe(1); // One retry
+    expect(metrics['drawing_success_total'].value).toBe(1);
+    expect(metrics['drawing_failed_total'].value).toBe(0);
+    expect(metrics['drawing_retry_total'].value).toBe(1); // One retry
   }, 10000);
 
   it('should increment drawing_failed_total after all retries fail', async () => {
@@ -73,9 +73,9 @@ describe('DrawingOperationQueue with Retry', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const metrics = metricsCollector.toJSON();
-    expect(metrics.drawing_success_total.value).toBe(0);
-    expect(metrics.drawing_failed_total.value).toBe(1);
-    expect(metrics.drawing_retry_total.value).toBe(2); // Two retries
+    expect(metrics['drawing_success_total'].value).toBe(0);
+    expect(metrics['drawing_failed_total'].value).toBe(1);
+    expect(metrics['drawing_retry_total'].value).toBe(2); // Two retries
   }, 10000);
 
   it('should handle multiple operations with mixed results', async () => {
@@ -102,8 +102,8 @@ describe('DrawingOperationQueue with Retry', () => {
     await new Promise(resolve => setTimeout(resolve, 200));
     
     const metrics = metricsCollector.toJSON();
-    expect(metrics.drawing_success_total.value).toBe(2);
-    expect(metrics.drawing_failed_total.value).toBe(1);
-    expect(metrics.drawing_retry_total.value).toBe(3); // 1 retry for op2, 2 for op3
+    expect(metrics['drawing_success_total'].value).toBe(2);
+    expect(metrics['drawing_failed_total'].value).toBe(1);
+    expect(metrics['drawing_retry_total'].value).toBe(3); // 1 retry for op2, 2 for op3
   }, 15000);
 });

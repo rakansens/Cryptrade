@@ -12,14 +12,14 @@ import type { MessageHandler } from './types';
 function getFeatureFlag(): boolean {
   if (typeof window !== 'undefined') {
     // Browser environment - use process.env directly (safer)
-    return process.env.USE_NEW_WS_MANAGER === 'true' || false;
+    return process.env['USE_NEW_WS_MANAGER'] === 'true' || false;
   } else {
     // Server environment - can safely use centralized env
     try {
       const { env } = require('@/config/env');
       return env.USE_NEW_WS_MANAGER === 'true' || false;
     } catch {
-      return process.env.USE_NEW_WS_MANAGER === 'true' || false;
+      return process.env['USE_NEW_WS_MANAGER'] === 'true' || false;
     }
   }
 }

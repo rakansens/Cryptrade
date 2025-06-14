@@ -45,7 +45,7 @@ async function testFinalIntegration() {
         { userLevel: 'intermediate', marketStatus: 'open' }
       );
       
-      const actualProcessedBy = result.executionResult?.metadata?.processedBy || 'unknown';
+      const actualProcessedBy = result.executionResult?.metadata?.['processedBy'] || 'unknown';
       const isCorrect = actualProcessedBy === testCase.expectedProcessedBy;
       
       results.push({

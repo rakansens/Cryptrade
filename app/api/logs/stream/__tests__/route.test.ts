@@ -127,7 +127,7 @@ describe('Logs Stream API Route', () => {
 
       const testLog: LogEntry = {
         id: 'log-1',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         level: 'info',
         message: 'Test log message',
         source: 'test',
@@ -155,7 +155,7 @@ describe('Logs Stream API Route', () => {
       const logs: LogEntry[] = [
         {
           id: 'log-1',
-          timestamp: new Date().toISOString(),
+          timestamp: new Date(),
           level: 'info',
           message: 'First log',
           source: 'test',
@@ -163,7 +163,7 @@ describe('Logs Stream API Route', () => {
         },
         {
           id: 'log-2',
-          timestamp: new Date().toISOString(),
+          timestamp: new Date(),
           level: 'error',
           message: 'Second log',
           source: 'test',
@@ -213,7 +213,7 @@ describe('Logs Stream API Route', () => {
       // This should not throw
       const errorLog: LogEntry = {
         id: 'error-log',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         level: 'error',
         message: 'This will fail to write',
         source: 'test',

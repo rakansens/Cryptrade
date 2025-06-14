@@ -357,7 +357,7 @@ export class ChartDrawingDatabaseService {
       // Filter by timeframe in metadata
       const filteredDrawings = dbDrawings.filter(drawing => {
         const metadata = drawing.metadata as Record<string, unknown> | null;
-        return metadata?.timeframe === timeframe;
+        return metadata?.['timeframe'] === timeframe;
       });
 
       return filteredDrawings.map(drawing => this.convertToChartDrawing(drawing));

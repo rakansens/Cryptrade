@@ -1,5 +1,5 @@
 /**
- * Environment Configuration - Single Source of Truth
+ * Updated: Environment Configuration - ESLintルール無効化（環境変数読み込み用ファイル）
  * 
  * This file provides type-safe access to all environment variables used in the application.
  * It uses Zod for runtime validation and ensures fail-fast behavior when required variables are missing.
@@ -7,6 +7,7 @@
  * @generated Epic #5 - Environment Configuration Centralization
  */
 
+/* eslint-disable no-restricted-syntax */
 import { z } from 'zod';
 
 // =============================================================================

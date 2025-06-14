@@ -441,7 +441,11 @@ export class ChartDrawingManager extends EventTarget {
     }
 
     const [startPoint, endPoint] = drawing.points;
-    const levels = (drawing.metadata?.levels as number[] | undefined) || [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+    const levels = (drawing.metadata?.['levels'] as number[] | undefined) || [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+    
+    if (!startPoint || !endPoint) {
+      throw new Error('Invalid Fibonacci retracement points');
+    }
     
     const priceRange = endPoint.value - startPoint.value;
     const fibLines: ReturnType<ISeriesApi<SeriesType>['createPriceLine']>[] = [];

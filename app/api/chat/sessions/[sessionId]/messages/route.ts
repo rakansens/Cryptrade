@@ -1,7 +1,8 @@
-// @ts-nocheck
+// Updated: チャットセッションメッセージAPIにて環境変数の型安全なアクセスを実装
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 
 export async function GET(
   request: NextRequest,
@@ -39,7 +40,7 @@ export async function POST(
     return NextResponse.json(
       { 
         error: 'Failed to add message',
-        ...(process.env.NODE_ENV === 'development' && typeof error === 'object' ? { detail: (error as Error).message, stack: (error as Error).stack } : {})
+        ...(env.NODE_ENV === 'development' && typeof error === 'object' ? { detail: (error as Error).message, stack: (error as Error).stack } : {})
       },
       { status: 500 }
     );

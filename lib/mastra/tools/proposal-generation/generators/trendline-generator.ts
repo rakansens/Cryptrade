@@ -93,7 +93,7 @@ export class TrendlineGenerator implements IProposalGenerator {
       downtrendCount: downtrendProposals.length,
     });
 
-    return sortedProposals;
+    return sortedProposals as unknown as ProposalGroup['proposals'];
     } catch (error) {
       logger.error('[TrendlineGenerator] Generation failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -429,7 +429,7 @@ export class TrendlineGenerator implements IProposalGenerator {
           start,
           end,
           score,
-          type,
+          type: type === 'uptrend' ? 'support' : 'resistance',
         });
       }
     }

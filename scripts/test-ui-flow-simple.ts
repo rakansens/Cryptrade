@@ -9,21 +9,21 @@ const logger = {
   error: (message: string, ...args: unknown[]) => console.error(`[ERROR] ${message}`, ...args),
 };
 
-interface UIEvent {
+interface TestUIEvent {
   type: string;
   detail: Record<string, unknown>;
 }
 
 // Simple event dispatcher for testing
 class SimpleEventDispatcher {
-  private events: UIEvent[] = [];
+  private events: TestUIEvent[] = [];
   
-  dispatch(event: UIEvent) {
+  dispatch(event: TestUIEvent) {
     this.events.push(event);
     logger.debug('Event dispatched:', event.type);
   }
   
-  dispatchBatch(events: UIEvent[]) {
+  dispatchBatch(events: TestUIEvent[]) {
     events.forEach(e => this.dispatch(e));
   }
   

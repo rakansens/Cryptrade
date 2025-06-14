@@ -65,8 +65,8 @@ describe('useLineTracking', () => {
       const { result } = renderHook(() => useLineTracking());
       
       expect(result.current.activeRecords).toHaveLength(2);
-      expect(result.current.activeRecords[0].id).toBe('record-1');
-      expect(result.current.activeRecords[1].id).toBe('record-2');
+      expect(result.current.activeRecords[0]!.id).toBe('record-1');
+      expect(result.current.activeRecords[1]!.id).toBe('record-2');
     });
 
     it('should memoize active records', () => {

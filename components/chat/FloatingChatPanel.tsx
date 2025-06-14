@@ -1,3 +1,4 @@
+// Updated: フローティングチャットパネルにて環境変数の型安全なアクセスを実装
 'use client'
 
 import { motion } from 'framer-motion'
@@ -10,6 +11,7 @@ import ChatSidebar from './ChatSidebar'
 import { useChat } from '@/store/chat.store'
 import { useChartActions, useDrawingActions, useChartStore, useChartStoreBase } from '@/store/chart.store'
 import type { DrawingData, DrawingPoint, DrawTrendlineEventDetail } from '@/types/ui-events.types'
+import { env } from '@/config/env'
 
 interface FloatingChatPanelProps {
   isVisible: boolean
@@ -34,7 +36,7 @@ export default function FloatingChatPanel({ isVisible, onToggleVisibility }: Flo
   // UI操作と自動描画のイベントハンドラ
   useEffect(() => {
     // 開発環境でデバッグ用にwindowに露出
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    if (typeof window !== 'undefined' && env.NODE_ENV === 'development') {
       interface WindowWithChartStore extends Window {
         chartStore?: typeof useChartStoreBase;
       }

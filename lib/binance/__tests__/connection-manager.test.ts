@@ -351,8 +351,8 @@ describe('BinanceConnectionManager', () => {
     jest.clearAllMocks();
     
     // Get the mocked module
-    const module = require('../connection-manager');
-    connectionManager = module.binanceConnectionManager;
+    const connectionModule = require('../connection-manager');
+    connectionManager = connectionModule.binanceConnectionManager;
   });
   
   afterEach(() => {

@@ -74,8 +74,8 @@ async function testOrchestrator() {
         // メタデータをチェック
         if (result.executionResult.metadata) {
           logger.info('Metadata:', {
-            processedBy: result.executionResult.metadata.processedBy,
-            intent: result.executionResult.metadata.intent,
+            processedBy: result.executionResult.metadata['processedBy'],
+            intent: result.executionResult.metadata['intent'],
           });
         }
       }

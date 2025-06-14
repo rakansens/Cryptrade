@@ -4,13 +4,9 @@ import {
   useChartSymbol,
   useChartTimeframe,
   useChartIndicators,
-  useChartSettings,
-  useIsChartReady,
   useChartDrawings,
   useChartPatterns,
   useDrawingMode,
-  useSelectedDrawing,
-  useIsDrawing,
   useChartActions,
   useDrawingActions,
   usePatternActions,
@@ -20,8 +16,7 @@ import {
   useDrawingStore,
   usePatternStore
 } from '@/store/chart';
-import type { ChartDrawing, DrawingMode } from '@/types/drawing';
-import type { Pattern } from '@/types/pattern';
+import type { ChartDrawing } from '@/types/drawing';
 import type { PatternData } from '@/store/chart/types';
 
 // Mock logger

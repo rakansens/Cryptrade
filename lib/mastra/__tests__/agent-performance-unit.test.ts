@@ -117,7 +117,7 @@ describe('Agent Performance - Unit Tests', () => {
     it('should have Orchestrator split into multiple modules', () => {
       // Orchestratorが分割されているか確認
       const modules = ['handlers', 'utils', 'types'];
-      const missingModules = [];
+      const missingModules: string[] = [];
       
       modules.forEach(module => {
         try {

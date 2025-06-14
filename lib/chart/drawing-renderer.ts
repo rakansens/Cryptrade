@@ -1,7 +1,9 @@
+// Updated: 描画レンダラーにて環境変数の型安全なアクセスを実装
 import { IChartApi, IPriceLine, ISeriesApi, SeriesType, LineWidth, LineStyle } from 'lightweight-charts';
 import { useDrawingStore as useChartStoreBase, type ChartDrawing } from '@/store/chart';
 import type { ChartSeriesApi, DrawingPoint, FibonacciLevel } from '@/types/chart.types';
 import { DEFAULT_FIBONACCI_LEVELS } from '@/types/chart.types';
+import { env } from '@/config/env';
 
 export class DrawingRenderer {
   private priceLines: Map<string, IPriceLine> = new Map();
@@ -180,15 +182,17 @@ export class DrawingRenderer {
       // Update existing fibonacci lines
       existingLines.forEach((line, index) => {
         const level = levels[index];
-        const price = startPrice + (diff * level);
-        
-        line.applyOptions({
-          price,
-          color: drawing.style.color || levelColors[index],
-          lineWidth: drawing.style.lineWidth as LineWidth,
-          lineStyle: this.convertLineStyle(drawing.style.lineStyle),
-          title: `${(level * 100).toFixed(1)}%`,
-        });
+        if (level !== undefined) {
+          const price = startPrice + (diff * level);
+          
+          line.applyOptions({
+            price,
+            color: drawing.style.color || levelColors[index],
+            lineWidth: drawing.style.lineWidth as LineWidth,
+            lineStyle: this.convertLineStyle(drawing.style.lineStyle),
+            title: `${(level * 100).toFixed(1)}%`,
+          });
+        }
       });
     } else {
       // Create new fibonacci lines
@@ -242,5 +246,5 @@ export class DrawingRenderer {
 
 // Feature flag check
 export function isDrawingRendererEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === 'true';
+  return env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === 'true';
 }

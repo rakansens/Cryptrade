@@ -55,7 +55,7 @@ export function useCandlestickData({
         
         if (data.length > 0) {
           const latestCandle = data[data.length - 1];
-          updateLatestPrice(symbol, parseFloat(latestCandle.close));
+          updateLatestPrice(symbol, parseFloat(latestCandle!.close));
         }
         
         logger.info('[useCandlestickData] Historical data set', { 

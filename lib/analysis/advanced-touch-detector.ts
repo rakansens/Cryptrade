@@ -79,6 +79,8 @@ export class AdvancedTouchDetector {
     // Analyze each candle for touches
     for (let i = 0; i < data.length; i++) {
       const candle = data[i];
+      if (!candle) continue;
+      
       const touchPoint = this.detectTouchPoint(
         candle, 
         priceLevel, 
@@ -235,6 +237,7 @@ export class AdvancedTouchDetector {
       
       if (touchPoint.type === 'support') {
         // For support, look for upward bounce
+        if (!futureCandle || !touchCandle) continue;
         const bounceAmount = futureCandle.high - touchCandle.low;
         const bouncePercent = (bounceAmount / touchCandle.low) * 100;
         
@@ -244,6 +247,7 @@ export class AdvancedTouchDetector {
         }
       } else {
         // For resistance, look for downward bounce
+        if (!futureCandle || !touchCandle) continue;
         const bounceAmount = touchCandle.high - futureCandle.low;
         const bouncePercent = (bounceAmount / touchCandle.high) * 100;
         
@@ -256,7 +260,7 @@ export class AdvancedTouchDetector {
     
     if (maxBounce > this.config.bounceThresholdPercent) {
       touchPoint.bounceStrength = maxBounce;
-      touchPoint.bounceDirection = bounceDirection;
+      touchPoint.bounceDirection = bounceDirection || 'up';
       
       // Boost strength for strong bounces
       const bounceMultiplier = 1 + (maxBounce / 100) * 0.5;
@@ -265,6 +269,7 @@ export class AdvancedTouchDetector {
     
     // Calculate overall price movement
     const endCandle = data[touchIndex + lookforward];
+    if (!endCandle || !touchCandle) return;
     const priceMovement = ((endCandle.close - touchCandle.close) / touchCandle.close) * 100;
     touchPoint.priceMovement = priceMovement;
   }

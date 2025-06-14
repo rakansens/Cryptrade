@@ -94,21 +94,21 @@ export function validateDrawingData(data: unknown): ValidatedDrawingData {
  */
 export function validateDrawingProposal(proposal: Record<string, unknown>): Record<string, unknown> {
   // 基本的な必須フィールドチェック
-  if (!proposal.id || !proposal.type || !proposal.drawingData) {
+  if (!proposal['id'] || !proposal['type'] || !proposal['drawingData']) {
     throw new Error('Missing required proposal fields');
   }
   
   // 描画データの検証
-  proposal.drawingData = validateDrawingData(proposal.drawingData);
+  proposal['drawingData'] = validateDrawingData(proposal['drawingData'] as typeof proposal['drawingData']);
   
   // 信頼度の範囲チェック
-  if (typeof proposal.confidence === 'number') {
-    proposal.confidence = Math.max(0, Math.min(1, proposal.confidence));
+  if (typeof proposal['confidence'] === 'number') {
+    proposal['confidence'] = Math.max(0, Math.min(1, proposal['confidence'] as number));
   }
   
   // 優先度の検証
-  if (!['high', 'medium', 'low'].includes(proposal.priority)) {
-    proposal.priority = 'low';
+  if (!['high', 'medium', 'low'].includes(proposal['priority'] as string)) {
+    proposal['priority'] = 'low';
   }
   
   return proposal;
@@ -181,7 +181,7 @@ export function validatePriceValue(price: number, symbol: string): boolean {
     DEFAULT: { min: 0.00001, max: 10000000 },
   };
   
-  const range = ranges[symbol] || ranges.DEFAULT;
+  const range = ranges[symbol] || ranges['DEFAULT'];
   return price >= range.min && price <= range.max;
 }
 
@@ -209,17 +209,17 @@ export function validateStyle(style: Record<string, unknown>): boolean {
   if (!style) return true;
   
   // 色の検証
-  if (style.color && !/^#[0-9a-fA-F]{6}$/.test(style.color)) {
+  if (style['color'] && !/^#[0-9a-fA-F]{6}$/.test(style['color'] as string)) {
     return false;
   }
   
   // 線幅の検証
-  if (style.lineWidth && (style.lineWidth < 1 || style.lineWidth > 10)) {
+  if (style['lineWidth'] && ((style['lineWidth'] as number) < 1 || (style['lineWidth'] as number) > 10)) {
     return false;
   }
   
   // 線スタイルの検証
-  if (style.lineStyle && !['solid', 'dashed', 'dotted'].includes(style.lineStyle)) {
+  if (style['lineStyle'] && !['solid', 'dashed', 'dotted'].includes(style['lineStyle'] as string)) {
     return false;
   }
   

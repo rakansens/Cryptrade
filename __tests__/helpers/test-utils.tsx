@@ -60,7 +60,7 @@ export function createDeferredPromise<T>() {
 export function mockFetch(responses: Array<{ url: string | RegExp; response: any }>) {
   const fetchMock = jest.fn();
   
-  fetchMock.mockImplementation(async (url: string, options?: RequestInit) => {
+  fetchMock.mockImplementation(async (url: string, _options?: RequestInit) => {
     const match = responses.find(r => {
       if (typeof r.url === 'string') {
         return url.includes(r.url);
@@ -174,14 +174,18 @@ export async function expectToReject(
 /**
  * Creates a spy on a module method
  */
-export function spyOnModule<T>(
+export function spyOnModule<T extends Record<string, any>>(
   module: T,
   method: keyof T,
   implementation?: any
 ): jest.SpyInstance {
-  return jest.spyOn(module, method as any).mockImplementation(
-    implementation || (() => Promise.resolve())
-  );
+  const spy = jest.spyOn(module, method as any);
+  if (implementation) {
+    spy.mockImplementation(implementation);
+  } else {
+    spy.mockImplementation((() => Promise.resolve()) as any);
+  }
+  return spy;
 }
 
 /**

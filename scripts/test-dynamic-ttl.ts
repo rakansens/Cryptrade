@@ -32,15 +32,17 @@ async function testDynamicTTL(testCase: TestCase) {
     
     // First request (cache miss)
     const start1 = Date.now();
-    const result1 = await marketDataResilientTool.execute({
+    const result1 = await marketDataResilientTool.execute?.({
       context: { symbol: testCase.symbol }
     });
     const duration1 = Date.now() - start1;
     
     console.log(`  ${colors.yellow('→')} First request: ${duration1}ms (cache miss)`);
-    console.log(`     Price: $${result1.currentPrice.toLocaleString()}`);
-    console.log(`     24h Change: ${result1.priceChangePercent24h >= 0 ? '+' : ''}${result1.priceChangePercent24h.toFixed(2)}%`);
-    console.log(`     Volatility: ${result1.analysis.volatility}`);
+    if (result1) {
+      console.log(`     Price: $${result1.currentPrice.toLocaleString()}`);
+      console.log(`     24h Change: ${result1.priceChangePercent24h >= 0 ? '+' : ''}${result1.priceChangePercent24h.toFixed(2)}%`);
+      console.log(`     Volatility: ${result1.analysis.volatility}`);
+    }
     
     // Get cache stats
     const stats = getCacheStats();
@@ -63,7 +65,7 @@ async function testDynamicTTL(testCase: TestCase) {
       
       // Second request (should be cache hit)
       const start2 = Date.now();
-      const result2 = await marketDataResilientTool.execute({
+      const result2 = await marketDataResilientTool.execute?.({
         context: { symbol: testCase.symbol }
       });
       const duration2 = Date.now() - start2;
@@ -79,7 +81,7 @@ async function testDynamicTTL(testCase: TestCase) {
       
       // Third request (should be cache miss after expiration)
       const start3 = Date.now();
-      const result3 = await marketDataResilientTool.execute({
+      const result3 = await marketDataResilientTool.execute?.({
         context: { symbol: testCase.symbol }
       });
       const duration3 = Date.now() - start3;

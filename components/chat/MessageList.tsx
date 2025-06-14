@@ -96,10 +96,10 @@ export function MessageList({
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2 px-4">
               <div className="p-[var(--space-sm)] rounded-lg premium-glass-subtle border border-[hsl(var(--border))] text-[var(--font-xs)] text-[hsl(var(--text-secondary))] interactive">
-                💰 "BTCの分析をして"
+                💰 &quot;BTCの分析をして&quot;
               </div>
               <div className="p-[var(--space-sm)] rounded-lg premium-glass-subtle border border-[hsl(var(--border))] text-[var(--font-xs)] text-[hsl(var(--text-secondary))] interactive">
-                📊 "ETHの価格は？"
+                📊 &quot;ETHの価格は？&quot;
               </div>
             </div>
           </div>

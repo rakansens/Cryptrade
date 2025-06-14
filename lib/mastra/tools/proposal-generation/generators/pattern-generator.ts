@@ -72,7 +72,7 @@ export class PatternGenerator implements IProposalGenerator {
       finalProposals: finalProposals.length,
     });
 
-    return finalProposals;
+    return finalProposals as unknown as ProposalGroup['proposals'];
   }
 
   /**

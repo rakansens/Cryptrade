@@ -122,9 +122,9 @@ export function processOrchestratorResult(orchestratorResult: OrchestratorResult
   // executionResultがオブジェクトの場合、responseフィールドを探す
   if (orchestratorResult.executionResult && typeof orchestratorResult.executionResult === 'object') {
     const execResult = orchestratorResult.executionResult as Record<string, unknown>;
-    responseMessage = execResult.response || 
-                     execResult.executionResult?.response || 
-                     execResult.message;
+    responseMessage = execResult['response'] || 
+                     execResult['executionResult']?.['response'] || 
+                     execResult['message'];
   }
   
   // 提案モードで応答がない場合の処理

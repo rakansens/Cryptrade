@@ -20,14 +20,17 @@ describe('calculateBollingerBands', () => {
     // Verify first calculation manually
     // Values: [10, 12, 14], SMA = 12, StdDev ≈ 1.63
     const first = result[0];
-    expect(first.time).toBe(3);
-    expect(first.middle).toBeCloseTo(12, 2);
-    expect(first.upper).toBeGreaterThan(first.middle);
-    expect(first.lower).toBeLessThan(first.middle);
-    
-    // Verify structure
-    expect(first.upper).toBeCloseTo(12 + 2 * Math.sqrt((4 + 0 + 4) / 3), 2);
-    expect(first.lower).toBeCloseTo(12 - 2 * Math.sqrt((4 + 0 + 4) / 3), 2);
+    expect(first).toBeDefined();
+    if (first) {
+      expect(first.time).toBe(3);
+      expect(first.middle).toBeCloseTo(12, 2);
+      expect(first.upper).toBeGreaterThan(first.middle);
+      expect(first.lower).toBeLessThan(first.middle);
+      
+      // Verify structure
+      expect(first.upper).toBeCloseTo(12 + 2 * Math.sqrt((4 + 0 + 4) / 3), 2);
+      expect(first.lower).toBeCloseTo(12 - 2 * Math.sqrt((4 + 0 + 4) / 3), 2);
+    }
   });
 
   test('returns empty array when insufficient data', () => {

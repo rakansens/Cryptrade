@@ -364,6 +364,7 @@ export const enhancedLineAnalysisTool = createTool({
 
       const result = {
         symbol,
+        config: detectionResult.config,
         analysisTimestamp: Date.now(),
         horizontalLines: enhancedHorizontalLines,
         trendlines: enhancedTrendlines,
@@ -371,7 +372,6 @@ export const enhancedLineAnalysisTool = createTool({
         summary: enhancedSummary,
         marketStructure,
         recommendations,
-        config: detectionResult.config,
         rawData: returnRawData ? {
           multiTimeframeData: currentMarketData,
           detectionDetails: detectionResult
@@ -398,6 +398,14 @@ export const enhancedLineAnalysisTool = createTool({
       const fallbackPrice = 50000; // Default BTC price
       return {
         symbol,
+        config: {
+          minTimeframes: 2,
+          priceTolerancePercent: 0.5,
+          minTouchCount: 3,
+          confluenceZoneWidth: 1.0,
+          strengthThreshold: 0.6,
+          recencyWeight: 0.3
+        },
         analysisTimestamp: Date.now(),
         horizontalLines: [],
         trendlines: [],

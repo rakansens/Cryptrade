@@ -4,6 +4,7 @@ import { tradingAgent } from '../agents/trading.agent';
 import { orchestratorAgent } from '../agents/orchestrator.agent';
 import { registerAllAgents } from '../network/agent-registry';
 import { logger } from '@/lib/utils/logger';
+import type { AgentContext } from '@/types';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -18,7 +19,7 @@ jest.mock('@/lib/utils/logger', () => ({
 // Mock binance API to avoid actual API calls
 jest.mock('@/lib/binance/api-service', () => ({
   binanceAPI: {
-    fetchKlines: jest.fn().mockResolvedValue(
+    fetchKlines: jest.fn(() => Promise.resolve(
       Array.from({ length: 100 }, (_, i) => ({
         time: Date.now() - (100 - i) * 3600000,
         open: 100000 + i * 100,
@@ -27,34 +28,34 @@ jest.mock('@/lib/binance/api-service', () => ({
         close: 100050 + i * 100,
         volume: 1000 + i * 10,
       }))
-    ),
+    )),
   },
 }));
 
 // Mock the entry proposal generation tool dependencies
 jest.mock('../tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
-  analyzeMarketContext: jest.fn().mockResolvedValue({
+  analyzeMarketContext: jest.fn(() => Promise.resolve({
     trend: 'bullish',
     volatility: 'normal',
     volume: 'average',
     momentum: 'positive',
     keyLevels: { support: [100000, 99000], resistance: [105000, 106000] },
-  }),
+  })),
 }));
 
 jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
-  evaluateEntryConditions: jest.fn().mockResolvedValue({
+  evaluateEntryConditions: jest.fn(() => Promise.resolve({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
       { type: 'momentum', met: true, description: 'Positive momentum' },
     ],
     score: 0.8,
     readyToEnter: true,
-  }),
+  })),
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () => ({
-  calculateEntryPoints: jest.fn().mockResolvedValue([
+  calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
     {
       price: 100500,
       direction: 'long',
@@ -74,7 +75,7 @@ jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () 
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () => ({
-  calculateRiskManagement: jest.fn().mockResolvedValue({
+  calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],
     positionSize: 0.1,
@@ -86,17 +87,17 @@ jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () =
 // Mock OpenAI to avoid API calls in tests
 jest.mock('@ai-sdk/openai', () => ({
   openai: jest.fn(() => ({
-    generate: jest.fn().mockImplementation((messages, options) => {
+    generate: jest.fn<(messages: unknown, options: unknown) => unknown>().mockImplementation((_messages, options) => {
       // Check if this is for entry proposal generation
-      if (options?.isProposalMode && options?.proposalType === 'entry') {
+      if ((options as any)?.isProposalMode && (options as any)?.proposalType === 'entry') {
         return Promise.resolve({
           text: 'BTCUSDTのエントリー提案を生成しました。',
           steps: [{
             toolCalls: [{
               toolName: 'entryProposalGeneration',
               args: {
-                symbol: options.extractedSymbol || 'BTCUSDT',
-                interval: options.interval || '1h',
+                symbol: (options as any).extractedSymbol || 'BTCUSDT',
+                interval: (options as any).interval || '1h',
                 strategyPreference: 'dayTrading',
                 riskPercentage: 1,
                 maxProposals: 3,
@@ -254,15 +255,12 @@ describe('A2A Entry Proposal Integration', () => {
   describe('Orchestrator to Trading Agent Flow', () => {
     it('should handle entry proposal intent correctly', async () => {
       // Mock the orchestrator's intent analysis
-      const mockIntentAnalysis = {
-        intent: 'proposal_request',
-        confidence: 0.95,
-        extractedSymbol: 'BTCUSDT',
-        reasoning: 'エントリー提案リクエスト',
-        analysisDepth: 'detailed',
+      const mockIntentAnalysis: AgentContext = {
         isProposalMode: true,
-        proposalType: 'entry',
+        proposalType: 'entry' as const,
         isEntryProposal: true,
+        extractedSymbol: 'BTCUSDT',
+        correlationId: 'test-correlation-id',
       };
 
       // Simulate orchestrator routing to trading agent
@@ -306,7 +304,7 @@ describe('A2A Entry Proposal Integration', () => {
       // Create a spy on the trading agent's generate method
       const generateSpy = jest.spyOn(tradingAgent, 'generate');
 
-      const response = await agentNetwork.sendMessage(
+      const _response = await agentNetwork.sendMessage(
         'orchestratorAgent',
         'tradingAnalysisAgent',
         'process_query',
@@ -328,9 +326,9 @@ describe('A2A Entry Proposal Integration', () => {
       const generateCall = generateSpy.mock.calls[0];
       if (generateCall && generateCall[1]) {
         const context = generateCall[1];
-        expect(context.isProposalMode).toBe(true);
-        expect(context.proposalType).toBe('entry');
-        expect(context.isEntryProposal).toBe(true);
+        expect((context as any).isProposalMode).toBe(true);
+        expect((context as any).proposalType).toBe('entry');
+        expect((context as any).isEntryProposal).toBe(true);
       }
 
       generateSpy.mockRestore();
@@ -458,7 +456,7 @@ describe('A2A Entry Proposal Integration', () => {
     it('should handle network errors', async () => {
       // Temporarily mock a network error
       const originalSendMessage = agentNetwork.sendMessage;
-      agentNetwork.sendMessage = jest.fn().mockRejectedValue(new Error('Network error'));
+      (agentNetwork as any).sendMessage = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('Network error'));
 
       await expect(
         agentNetwork.sendMessage(

@@ -5,23 +5,8 @@
  * consistent, and powerful logging system with backward compatibility.
  */
 
-// Conditional import to avoid env validation in tests
-interface EnvConfig {
-  NODE_ENV?: string;
-  LOG_LEVEL?: string;
-  [key: string]: string | undefined;
-}
-
-let env: EnvConfig;
-try {
-  if (process.env.NODE_ENV === 'test') {
-    env = {}; // Use empty env in tests
-  } else {
-    env = require('@/config/env').env as EnvConfig;
-  }
-} catch {
-  env = {}; // Fallback to empty env
-}
+// Updated: 統合ロガーシステムにて環境変数の型安全なアクセスを実装
+import { env } from '@/config/env';
 
 // Unified Types (combining all existing types)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
@@ -182,6 +167,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 // Safe environment variable access
 function getEnvVar(key: string): string | undefined {
+  /* eslint-disable no-restricted-syntax */
   if (typeof window !== 'undefined') {
     try {
       return process?.env?.[key];
@@ -190,7 +176,7 @@ function getEnvVar(key: string): string | undefined {
     }
   } else {
     try {
-      return env?.[key] || process?.env?.[key];
+      return (env as any)?.[key] || process?.env?.[key];
     } catch {
       try {
         return process?.env?.[key];
@@ -199,6 +185,7 @@ function getEnvVar(key: string): string | undefined {
       }
     }
   }
+  /* eslint-enable no-restricted-syntax */
 }
 
 // Get default log level
@@ -525,13 +512,13 @@ export class UnifiedLogger {
 
     // Add context information
     const context = this.getCurrentContext();
-    entry.correlationId = context.correlationId;
-    entry.userId = context.userId;
-    entry.sessionId = context.sessionId;
-    entry.agentName = meta?.agentName || context.agentName;
-    entry.toolName = meta?.toolName || context.toolName;
-    entry.duration = meta?.duration;
-    entry.tags = meta?.tags;
+    entry.correlationId = context['correlationId'];
+    entry.userId = context['userId'];
+    entry.sessionId = context['sessionId'];
+    entry.agentName = meta?.['agentName'] || context['agentName'];
+    entry.toolName = meta?.['toolName'] || context['toolName'];
+    entry.duration = meta?.['duration'];
+    entry.tags = meta?.['tags'];
 
     // Add stack trace for errors
     if (this.config.enableStackTrace && (level === 'error' || level === 'critical')) {

@@ -332,14 +332,17 @@ export class MultiTimeframeLineDetector {
     
     for (let i = lookback; i < data.length - lookback; i++) {
       const current = data[i];
-      const currentPrice = current[type];
+      if (!current) continue;
+      const currentPrice = current![type];
       let isSwing = true;
       
       // Check surrounding candles
       for (let j = i - lookback; j <= i + lookback; j++) {
         if (j === i) continue;
         
-        const comparePrice = data[j][type];
+        const compareData = data[j];
+        if (!compareData) continue;
+        const comparePrice = compareData![type];
         if (type === 'high' && comparePrice >= currentPrice) {
           isSwing = false;
           break;
@@ -352,7 +355,7 @@ export class MultiTimeframeLineDetector {
       
       if (isSwing) {
         swingPoints.push({
-          time: current.time,
+          time: current!.time,
           price: currentPrice,
           index: i
         });
@@ -381,9 +384,11 @@ export class MultiTimeframeLineDetector {
         const point1 = swingPoints[i];
         const point2 = swingPoints[j];
         
+        if (!point1 || !point2) continue;
+        
         // Calculate trendline parameters
-        const slope = (point2.price - point1.price) / (point2.time - point1.time);
-        const intercept = point1.price - slope * point1.time;
+        const slope = (point2!.price - point1!.price) / (point2!.time - point1!.time);
+        const intercept = point1!.price - slope * point1!.time;
         
         // Validate direction
         if (direction === 'ascending' && slope <= 0) continue;
@@ -394,8 +399,8 @@ export class MultiTimeframeLineDetector {
           swingPoints,
           slope,
           intercept,
-          point1.time,
-          point2.time,
+          point1!.time,
+          point2!.time,
           interval
         );
         
@@ -584,9 +589,14 @@ export class MultiTimeframeLineDetector {
   private generateTrendlineKey(trendline: DetectedLine, config: LineDetectionConfig): string {
     const startPoint = trendline.points[0];
     const endPoint = trendline.points[trendline.points.length - 1];
-    const slope = (endPoint.price - startPoint.price) / (endPoint.time - startPoint.time);
     
-    return `${Math.round(slope * 10000)}-${Math.round(startPoint.price)}-${Math.round(endPoint.price)}`;
+    if (!startPoint || !endPoint) {
+      return `${Math.round(trendline.confidence * 10000)}`;
+    }
+    
+    const slope = (endPoint!.price - startPoint!.price) / (endPoint!.time - startPoint!.time);
+    
+    return `${Math.round(slope * 10000)}-${Math.round(startPoint!.price)}-${Math.round(endPoint!.price)}`;
   }
   
   /**
@@ -623,7 +633,7 @@ export class MultiTimeframeLineDetector {
     // Sort by time and remove duplicates
     touchPoints.sort((a, b) => a.time - b.time);
     return touchPoints.filter((point, index, array) => 
-      index === 0 || point.time !== array[index - 1].time
+      index === 0 || point.time !== array[index - 1]!.time
     );
   }
   

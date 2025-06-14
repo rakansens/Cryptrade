@@ -214,10 +214,12 @@ export async function enhancedProposalGeneration(
             type: 'horizontalLine',
             points: level.touchPoints,
             price: level.price,
-            style: {
-              color: level.type === 'support' ? '#22c55e' : '#ef4444',
-              lineWidth: 2,
-              lineStyle: 'solid'
+            metadata: {
+              style: {
+                color: level.type === 'support' ? '#22c55e' : '#ef4444',
+                lineWidth: 2,
+                lineStyle: 'solid'
+              }
             }
           }
         });
@@ -279,10 +281,14 @@ export async function enhancedProposalGeneration(
           drawingData: {
             type: 'trendline',
             points: trendline.touchPoints,
-            style: {
-              color: trendline.direction === '上昇' ? '#22c55e' : '#ef4444',
-              lineWidth: 2,
-              lineStyle: 'solid'
+            slope: trendline.slope,
+            intercept: trendline.intercept,
+            metadata: {
+              style: {
+                color: trendline.direction === '上昇' ? '#22c55e' : '#ef4444',
+                lineWidth: 2,
+                lineStyle: 'solid'
+              }
             }
           }
         });

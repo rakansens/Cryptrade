@@ -103,10 +103,10 @@ describe('Market Store Batching Tests', () => {
       });
 
       // Verify prices were updated correctly
-      expect(storeResult.current.BTCUSDT).toBeDefined();
-      expect(storeResult.current.BTCUSDT.price).toBe(50000);
-      expect(storeResult.current.ETHUSDT).toBeDefined();
-      expect(storeResult.current.ETHUSDT.price).toBe(3000);
+      expect(storeResult.current['BTCUSDT']).toBeDefined();
+      expect(storeResult.current['BTCUSDT'].price).toBe(50000);
+      expect(storeResult.current['ETHUSDT']).toBeDefined();
+      expect(storeResult.current['ETHUSDT'].price).toBe(3000);
     });
 
     it('should handle rapid updates for same symbol correctly', async () => {
@@ -168,9 +168,9 @@ describe('Market Store Batching Tests', () => {
       });
 
       const priceUpdate = storeResult.current[symbol];
-      expect(priceUpdate.price).toBe(51000);
-      expect(priceUpdate.change).toBe(1000);
-      expect(priceUpdate.changePercent).toBeCloseTo(2, 1); // 2% increase
+      expect(priceUpdate?.price).toBe(51000);
+      expect(priceUpdate?.change).toBe(1000);
+      expect(priceUpdate?.changePercent).toBeCloseTo(2, 1); // 2% increase
     });
   });
 
@@ -192,9 +192,9 @@ describe('Market Store Batching Tests', () => {
       });
 
       // Should update immediately without requestAnimationFrame
-      expect(storeResult.current.BTCUSDT.price).toBe(50000);
-      expect(storeResult.current.ETHUSDT.price).toBe(3000);
-      expect(storeResult.current.ADAUSDT.price).toBe(1.5);
+      expect(storeResult.current['BTCUSDT'].price).toBe(50000);
+      expect(storeResult.current['ETHUSDT'].price).toBe(3000);
+      expect(storeResult.current['ADAUSDT'].price).toBe(1.5);
     });
   });
 

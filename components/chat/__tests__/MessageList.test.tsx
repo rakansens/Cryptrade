@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageList } from '../MessageList'
 import type { ChatMessage } from '@/store/chat.store'
 import type { ProposalMessage } from '@/types/proposal'
@@ -59,7 +59,7 @@ describe('MessageList', () => {
     }
   ]
 
-  const mockProposalMessage: ProposalMessage = {
+  const mockProposalMessage = {
     id: 'msg-3',
     role: 'assistant',
     content: 'Here is a trading proposal',
@@ -68,14 +68,21 @@ describe('MessageList', () => {
       id: 'group-1',
       title: 'Trend Analysis',
       description: 'Based on current market trends',
+      status: 'pending' as const,
+      createdAt: Date.now(),
       proposals: [
         {
           id: 'proposal-1',
+          type: 'trendline' as const,
           title: 'Uptrend Line',
           description: 'Strong upward trend',
-          priority: 'high',
+          priority: 'high' as const,
           confidence: 0.85,
           reason: 'Multiple support points',
+          reasoning: 'Multiple support points indicate strong upward momentum',
+          symbol: 'BTCUSDT',
+          interval: '1h',
+          createdAt: Date.now(),
           drawingData: {
             type: 'trendline',
             points: [
@@ -85,12 +92,12 @@ describe('MessageList', () => {
             style: {
               color: '#3b82f6',
               lineWidth: 2,
-              lineStyle: 'solid'
+              lineStyle: 'solid' as const,
+              showLabels: true
             }
           }
         }
-      ],
-      timestamp: Date.now()
+      ]
     }
   }
 
@@ -353,10 +360,10 @@ describe('MessageList', () => {
     it('shows AI avatar for typing indicator', () => {
       render(<MessageList {...defaultProps} isLoading={true} />)
       
-      const aiAvatar = screen.getAllByText('AI')[0]
-      expect(aiAvatar.parentElement).toHaveClass('bg-gradient-to-br')
-      expect(aiAvatar.parentElement).toHaveClass('from-[hsl(var(--color-accent))]')
-      expect(aiAvatar.parentElement).toHaveClass('to-[hsl(var(--color-profit))]')
+      const aiAvatar = screen.getAllByText('AI')[0]!
+      expect(aiAvatar.parentElement!).toHaveClass('bg-gradient-to-br')
+      expect(aiAvatar.parentElement!).toHaveClass('from-[hsl(var(--color-accent))]')
+      expect(aiAvatar.parentElement!).toHaveClass('to-[hsl(var(--color-profit))]')
     })
 
     it('shows AI avatar for analysis progress', () => {

@@ -181,20 +181,20 @@ export function AnalysisProgress({
                     {/* Details for completed steps */}
                     {step.status === 'completed' && step.details && !step.finalText && (
                       <div className="mt-2 text-[var(--font-xs)] text-[hsl(var(--text-muted))]">
-                        {step.type === 'data-collection' && step.details.dataPoints && (
-                          <span>{step.details.dataPoints}個のデータポイントを収集</span>
+                        {step.type === 'data-collection' && step.details['dataPoints'] && (
+                          <span>{step.details['dataPoints']}個のデータポイントを収集</span>
                         )}
-                        {step.type === 'technical-analysis' && step.details.indicators && (
-                          <span>指標: {(step.details.indicators as string[]).join(', ')}</span>
+                        {step.type === 'technical-analysis' && step.details['indicators'] && (
+                          <span>指標: {(step.details['indicators'] as string[]).join(', ')}</span>
                         )}
-                        {step.type === 'pattern-detection' && step.details.patternsFound !== undefined && (
-                          <span>{step.details.patternsFound}個のパターンを検出</span>
+                        {step.type === 'pattern-detection' && step.details['patternsFound'] !== undefined && (
+                          <span>{step.details['patternsFound']}個のパターンを検出</span>
                         )}
-                        {step.type === 'line-calculation' && step.details.linesCalculated && (
-                          <span>{step.details.linesCalculated}本のラインを計算</span>
+                        {step.type === 'line-calculation' && step.details['linesCalculated'] && (
+                          <span>{step.details['linesCalculated']}本のラインを計算</span>
                         )}
-                        {step.type === 'proposal-creation' && step.details.proposalsCreated !== undefined && (
-                          <span>{step.details.proposalsCreated}個の提案を作成</span>
+                        {step.type === 'proposal-creation' && step.details['proposalsCreated'] !== undefined && (
+                          <span>{step.details['proposalsCreated']}個の提案を作成</span>
                         )}
                       </div>
                     )}

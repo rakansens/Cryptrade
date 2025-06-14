@@ -56,7 +56,7 @@ jest.mock('@ai-sdk/openai', () => ({
         await new Promise(resolve => setTimeout(resolve, 50));
       }
     }),
-    generate: jest.fn().mockResolvedValue({
+    generate: jest.fn<() => Promise<unknown>>().mockResolvedValue({
       text: 'エントリー提案を分析中です...\n\n1. **ロングエントリー提案**\n- エントリー価格: $100,500\n- ストップロス: $99,500\n- テイクプロフィット: $102,000\n\n提案の生成が完了しました。',
       steps: [{
         toolCalls: [{ toolName: 'entryProposalGeneration', args: { symbol: 'BTCUSDT' } }],
@@ -269,8 +269,8 @@ describe('Entry Proposal Streaming Response', () => {
     });
 
     it('should fallback to non-streaming on connection issues', async () => {
-      const mockStreamingAttempt = jest.fn().mockRejectedValue(new Error('Connection failed'));
-      const mockNonStreamingFallback = jest.fn().mockResolvedValue({
+      const mockStreamingAttempt = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('Connection failed'));
+      const mockNonStreamingFallback = jest.fn<() => Promise<unknown>>().mockResolvedValue({
         text: 'Fallback response',
         proposalGroup: { id: 'epg_fallback' },
       });

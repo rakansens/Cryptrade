@@ -22,7 +22,7 @@ describe('Chart Rendering Performance Tests', () => {
   let mockChart: any;
   let mockSeries: any;
   let renderer: PatternRendererCore;
-  let adapter: PatternRendererAdapter;
+  // let adapter: PatternRendererAdapter;
   let performanceResults: Record<string, number[]> = {};
 
   beforeEach(() => {
@@ -283,8 +283,8 @@ describe('Chart Rendering Performance Tests', () => {
           operations.push(() => {
             const drawing = drawings[Math.floor(Math.random() * drawings.length)];
             renderer.updateDrawing({
-              ...drawing,
-              style: { ...drawing.style, lineWidth: Math.floor(Math.random() * 5) + 1 }
+              ...drawing!,
+              style: { ...drawing!.style!, lineWidth: Math.floor(Math.random() * 5) + 1 }
             });
           });
         } else if (drawings.length > 0) {
@@ -292,7 +292,7 @@ describe('Chart Rendering Performance Tests', () => {
           operations.push(() => {
             const index = Math.floor(Math.random() * drawings.length);
             const drawing = drawings[index];
-            renderer.removeDrawing(drawing.id);
+            renderer.removeDrawing(drawing!.id);
             drawings.splice(index, 1);
           });
         }
@@ -436,8 +436,8 @@ function createComplexPattern(): PatternData {
   return {
     type: 'complex',
     confidence: 0.92,
-    startTime: keyPoints[0].time,
-    endTime: keyPoints[keyPoints.length - 1].time,
+    startTime: keyPoints[0]!.time,
+    endTime: keyPoints[keyPoints.length - 1]!.time,
     visualization: {
       keyPoints,
       lines,

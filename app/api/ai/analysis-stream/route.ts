@@ -120,7 +120,7 @@ async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
     });
 
     for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
+      const step = steps[i]!;
       step.status = 'in-progress';
       step.startTime = Date.now();
 
@@ -135,37 +135,37 @@ async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
         },
       });
 
-      if (STREAMING_TEXTS[step.type]) {
-        const texts = STREAMING_TEXTS[step.type];
-        step.streamingText = '';
+      if (STREAMING_TEXTS[step!.type]) {
+        const texts = STREAMING_TEXTS[step.type]!;
+        step!.streamingText = '';
 
         for (const text of texts) {
           const chars = await streamText(text);
           for (const char of chars) {
-            step.streamingText += char;
+            step!.streamingText += char;
             sendEvent({
               type: 'analysis:step-progress',
               sessionId,
               timestamp: Date.now(),
               data: {
-                step,
+                step: step!,
                 currentStepIndex: i,
                 totalSteps: steps.length,
               },
             });
           }
-          step.streamingText += '\n';
+          step!.streamingText += '\n';
           await new Promise(res => setTimeout(res, 100));
         }
 
-        step.finalText = step.streamingText;
-        step.progress = 100;
+        step!.finalText = step!.streamingText;
+        step!.progress = 100;
       } else {
-        await simulateStepProgress(step, i, steps.length, sendEvent, sessionId);
+        await simulateStepProgress(step!, i, steps.length, sendEvent, sessionId);
       }
 
-      step.status = 'completed';
-      step.endTime = Date.now();
+      step!.status = 'completed';
+      step!.endTime = Date.now();
 
       sendEvent({
         type: 'analysis:step-complete',

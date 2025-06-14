@@ -83,7 +83,7 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       finalProposals: finalProposals.length,
     });
 
-    return finalProposals;
+    return finalProposals as unknown as ProposalGroup['proposals'];
   }
 
   /**
@@ -227,15 +227,20 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     for (let i = 0; i < levels.length; i++) {
       if (used.has(i)) continue;
       
-      const cluster: PriceLevel[] = [levels[i]];
+      const firstLevel = levels[i];
+      if (!firstLevel) continue;
+      const cluster: PriceLevel[] = [firstLevel];
       used.add(i);
       
       // 近接レベルをクラスタに追加
       for (let j = i + 1; j < levels.length; j++) {
         if (used.has(j)) continue;
         
-        if (Math.abs(levels[j].price - levels[i].price) <= clusterThreshold) {
-          cluster.push(levels[j]);
+        const nextLevel = levels[j];
+        if (!nextLevel) continue;
+        
+        if (Math.abs(nextLevel.price - firstLevel.price) <= clusterThreshold) {
+          cluster.push(nextLevel);
           used.add(j);
         }
       }

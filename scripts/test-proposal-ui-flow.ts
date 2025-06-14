@@ -5,7 +5,7 @@
 
 // Set test environment - bypass env validation
 process.env.NODE_ENV = 'test';
-process.env.SKIP_ENV_VALIDATION = 'true';
+process.env['SKIP_ENV_VALIDATION'] = 'true';
 
 // Direct imports to avoid env validation
 const logger = {

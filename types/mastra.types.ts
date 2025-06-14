@@ -210,10 +210,10 @@ export function isChartData(data: unknown): data is ChartData {
   const obj = data as Record<string, unknown>;
   
   return (
-    typeof obj.symbol === 'string' &&
-    typeof obj.timeframe === 'string' &&
-    Array.isArray(obj.candles) &&
-    typeof obj.currentPrice === 'number'
+    typeof obj['symbol'] === 'string' &&
+    typeof obj['timeframe'] === 'string' &&
+    Array.isArray(obj['candles']) &&
+    typeof obj['currentPrice'] === 'number'
   );
 }
 
@@ -222,10 +222,10 @@ export function isChartOperation(op: unknown): op is ChartOperation {
   const obj = op as Record<string, unknown>;
   
   return (
-    typeof obj.type === 'string' &&
-    typeof obj.action === 'string' &&
-    typeof obj.parameters === 'object' &&
-    typeof obj.description === 'string'
+    typeof obj['type'] === 'string' &&
+    typeof obj['action'] === 'string' &&
+    typeof obj['parameters'] === 'object' &&
+    typeof obj['description'] === 'string'
   );
 }
 
@@ -234,9 +234,9 @@ export function isAIAnalysisResult(result: unknown): result is AIAnalysisResult 
   const obj = result as Record<string, unknown>;
   
   return (
-    Array.isArray(obj.operations) &&
-    typeof obj.reasoning === 'string' &&
-    typeof obj.confidence === 'number' &&
-    typeof obj.userIntent === 'string'
+    Array.isArray(obj['operations']) &&
+    typeof obj['reasoning'] === 'string' &&
+    typeof obj['confidence'] === 'number' &&
+    typeof obj['userIntent'] === 'string'
   );
 }

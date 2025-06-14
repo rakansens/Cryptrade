@@ -129,7 +129,7 @@ export class ModelSelector {
       taskLower.includes('poem') ||
       taskLower.includes('ストーリー') ||
       taskLower.includes('story') ||
-      context?.requiresNuance
+      context?.['requiresNuance']
     ) {
       return 'specialized';
     }
@@ -143,7 +143,7 @@ export class ModelSelector {
       taskLower.includes('複雑') ||
       taskLower.includes('complex') ||
       taskLower.length > 100 ||
-      context?.multiStep
+      context?.['multiStep']
     ) {
       return 'complex';
     }

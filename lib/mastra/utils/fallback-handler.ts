@@ -141,7 +141,7 @@ export class FallbackHandler {
     agentType: string, 
     error?: Error | string | unknown
   ): FallbackResponse {
-    const message = STATIC_FALLBACK_MESSAGES[agentType] || STATIC_FALLBACK_MESSAGES.default;
+    const message = STATIC_FALLBACK_MESSAGES[agentType] || STATIC_FALLBACK_MESSAGES['default'];
     
     return {
       response: message,
@@ -167,7 +167,7 @@ export class FallbackHandler {
     const contextStr = this.prepareContext(context);
     
     // プロンプトの選択
-    const promptGenerator = AI_FALLBACK_PROMPTS[agentType] || AI_FALLBACK_PROMPTS.conversational;
+    const promptGenerator = AI_FALLBACK_PROMPTS[agentType] || AI_FALLBACK_PROMPTS['conversational'];
     const prompt = promptGenerator(query, contextStr);
 
     // AI生成

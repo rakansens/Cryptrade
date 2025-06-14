@@ -1,10 +1,11 @@
 /**
- * Sentry Transport for Unified Logger
+ * Updated: Sentry Transport for Unified Logger - 環境変数の型安全なアクセスを実装
  * 
  * Enhanced Sentry integration with error tracking
  */
 
 import type { IUnifiedTransport, UnifiedLogEntry, UnifiedLoggerConfig } from '../unified-logger';
+import { env } from '@/config/env';
 
 // Minimal Sentry type definitions
 interface SentryScope {
@@ -64,8 +65,10 @@ export class SentryTransport implements IUnifiedTransport {
   }
 
   private checkSentryAvailability(): boolean {
-    const sentryDsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
-    return !!sentryDsn && process.env.ENABLE_SENTRY !== 'false';
+    /* eslint-disable no-restricted-syntax */
+    const sentryDsn = process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'];
+    return !!sentryDsn && process.env['ENABLE_SENTRY'] !== 'false';
+    /* eslint-enable no-restricted-syntax */
   }
 
   private async getSentry(): Promise<SentrySDK | null> {

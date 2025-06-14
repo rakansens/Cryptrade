@@ -208,7 +208,7 @@ describe('BinanceWebSocketManager', () => {
       };
       
       const ws = MockWebSocket.instances[0];
-      if (ws.onmessage) {
+      if (ws?.onmessage) {
         ws.onmessage({ data: JSON.stringify(tradeData), type: 'message' });
       }
       
@@ -230,7 +230,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      if (ws.onmessage) {
+      if (ws?.onmessage) {
         ws.onmessage({ data: 'invalid json', type: 'message' });
       }
       
@@ -260,7 +260,7 @@ describe('BinanceWebSocketManager', () => {
       };
       
       const ws = MockWebSocket.instances[0];
-      if (ws.onmessage) {
+      if (ws?.onmessage) {
         ws.onmessage({ data: JSON.stringify(tradeData), type: 'message' });
       }
       
@@ -282,7 +282,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      if (ws.onclose) {
+      if (ws?.onclose) {
         ws.onclose({ 
           code: 1006, 
           reason: 'Connection lost',
@@ -312,7 +312,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      if (ws.onerror) {
+      if (ws?.onerror) {
         ws.onerror({ type: 'error' });
       }
       
@@ -355,7 +355,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      ws.close();
+      ws?.close();
       
       jest.advanceTimersByTime(20);
       
@@ -410,7 +410,7 @@ describe('BinanceWebSocketManager', () => {
       
       // Close connection to trigger reconnect
       const ws = MockWebSocket.instances[0];
-      ws.close();
+      ws?.close();
       jest.advanceTimersByTime(20);
       
       // Manually close before reconnect happens

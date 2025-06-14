@@ -75,7 +75,7 @@ export default function DrawingManager({ className }: DrawingManagerProps) {
                   isPattern:false,
                   idx,
                   color: drawing.style?.color || '#6b7280',
-                  direction: drawing.points && drawing.points.length>1 && (drawing.points.slice(-1)[0].value - drawing.points[0].value) >=0 ? 'up':'down',
+                  direction: drawing.points && drawing.points.length>1 && (drawing.points.slice(-1)[0]!.value - drawing.points[0]!.value) >=0 ? 'up':'down',
                   createdAt: (drawing as DrawingWithMetadata).metadata?.createdAt,
                 })),
                 ...patternEntries.map(([id, p], idx)=>({ id, isPattern:true, idx, color:'#ffffff', direction:null, createdAt:undefined }))].map((item: DrawingItem) => (

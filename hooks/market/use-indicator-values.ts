@@ -49,13 +49,13 @@ export function useIndicatorValues(symbol: string, timeframe: string): Indicator
     const macdData = calculateMACD(priceData, 12, 26, 9);
 
     return {
-      ma7: ma7Data.length > 0 ? ma7Data[ma7Data.length - 1].value : null,
-      ma25: ma25Data.length > 0 ? ma25Data[ma25Data.length - 1].value : null,
-      ma99: ma99Data.length > 0 ? ma99Data[ma99Data.length - 1].value : null,
-      rsi: rsiData.length > 0 ? rsiData[rsiData.length - 1].rsi : null,
-      macd: macdData.length > 0 ? macdData[macdData.length - 1].macd : null,
-      macdSignal: macdData.length > 0 ? macdData[macdData.length - 1].signal : null,
-      macdHistogram: macdData.length > 0 ? macdData[macdData.length - 1].histogram : null,
+      ma7: ma7Data.length > 0 ? ma7Data[ma7Data.length - 1]!.value : null,
+      ma25: ma25Data.length > 0 ? ma25Data[ma25Data.length - 1]!.value : null,
+      ma99: ma99Data.length > 0 ? ma99Data[ma99Data.length - 1]!.value : null,
+      rsi: rsiData.length > 0 ? rsiData[rsiData.length - 1]!.rsi : null,
+      macd: macdData.length > 0 ? macdData[macdData.length - 1]!.macd : null,
+      macdSignal: macdData.length > 0 ? macdData[macdData.length - 1]!.signal : null,
+      macdHistogram: macdData.length > 0 ? macdData[macdData.length - 1]!.histogram : null,
     };
   }, [priceData]);
 

@@ -292,7 +292,7 @@ function getConfigForAnalysisType(analysisType: string, userConfig: UserConfig) 
     ...userConfig,
     touchConfig: {
       ...baseConfig.touchConfig,
-      ...(userConfig.touchConfig || {})
+      ...(userConfig['touchConfig'] || {})
     }
   };
 }

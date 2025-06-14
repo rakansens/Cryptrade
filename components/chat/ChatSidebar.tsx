@@ -101,7 +101,7 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
   const groupedSessions = sortedSessions.reduce((acc, session) => {
     const group = formatDate(session.updatedAt)
     if (!acc[group]) acc[group] = []
-    acc[group].push(session)
+    acc[group]!.push(session)
     return acc
   }, {} as Record<string, typeof sortedSessions>)
 
@@ -328,9 +328,9 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
                             )}>
                               {session.title}
                             </p>
-                            {messagesBySession[session.id] && messagesBySession[session.id].length > 0 && (
+                            {messagesBySession[session.id] && messagesBySession[session.id]!.length > 0 && (
                               <p className="text-[var(--font-xs)] text-[hsl(var(--text-muted))] truncate mt-1 leading-[var(--leading-tight)]">
-                                {messagesBySession[session.id].length} メッセージ
+                                {messagesBySession[session.id]!.length} メッセージ
                               </p>
                             )}
                           </div>

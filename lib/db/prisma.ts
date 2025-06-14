@@ -1,5 +1,7 @@
+// Updated: Prismaデータベース設定にて環境変数の型安全なアクセスを実装
 import { PrismaClient, Prisma } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
+import { env } from '@/config/env'
 
 // Prismaイベントの型定義
 type PrismaQueryEvent = {
@@ -44,11 +46,11 @@ function createPrismaClient() {
         level: 'warn',
       },
     ],
-    errorFormat: process.env.NODE_ENV === 'development' ? 'pretty' : 'minimal',
+    errorFormat: env.NODE_ENV === 'development' ? 'pretty' : 'minimal',
   })
 
   // Log queries in development
-  if (process.env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === 'development') {
     client.$on('query' as never, (e: PrismaQueryEvent) => {
       logger.debug('[Prisma Query]', {
         query: e.query,
@@ -73,7 +75,7 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+if (env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // BigIntを持つ可能性があるデータの型
 type SerializableData = 

@@ -5,7 +5,7 @@ import { config } from 'dotenv';
 config({ path: '.env.local' });
 
 describe('API Endpoints Integration Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const baseUrl = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000';
   
   // Helper function to make API requests
   async function makeRequest(endpoint: string, options?: RequestInit) {
@@ -294,11 +294,11 @@ describe('API Endpoints Integration Tests', () => {
       const { response } = await makeRequest('/api/health');
       
       // Check for rate limit headers if implemented
-      const rateLimitHeaders = [
-        'x-ratelimit-limit',
-        'x-ratelimit-remaining',
-        'x-ratelimit-reset',
-      ];
+      // const rateLimitHeaders = [
+      //   'x-ratelimit-limit',
+      //   'x-ratelimit-remaining',
+      //   'x-ratelimit-reset',
+      // ];
       
       // This test assumes rate limiting is implemented
       // Adjust based on actual implementation
@@ -327,7 +327,7 @@ describe('API Performance Tests', () => {
 
   test('Health endpoint should respond quickly', async () => {
     const start = Date.now();
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health`);
+    await fetch(`${process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000'}/api/health`);
     const duration = Date.now() - start;
     
     expect(duration).toBeLessThan(performanceThresholds.health);
@@ -335,7 +335,7 @@ describe('API Performance Tests', () => {
 
   test('Chat endpoint should respond within threshold', async () => {
     const start = Date.now();
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/chat`, {
+    await fetch(`${process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000'}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'test', sessionId: 'perf-test' }),

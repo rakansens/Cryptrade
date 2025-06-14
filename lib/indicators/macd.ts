@@ -48,7 +48,9 @@ export function calculateMACD(
   for (let i = 0; i < ema26.length; i++) {
     const ema12Value = ema12[i + startIndex];
     const ema26Value = ema26[i];
-    macdLine.push(ema12Value - ema26Value);
+    if (ema12Value !== undefined && ema26Value !== undefined) {
+      macdLine.push(ema12Value - ema26Value);
+    }
   }
   
   // Calculate Signal line (EMA of MACD line)
@@ -61,6 +63,7 @@ export function calculateMACD(
   for (let i = 0; i < signalLine.length; i++) {
     const macdValue = macdLine[i + signalPeriod - 1];
     const signalValue = signalLine[i];
+    if (macdValue === undefined || signalValue === undefined) continue;
     const histogram = macdValue - signalValue;
     
     const dataIndex = resultStartIndex + i;

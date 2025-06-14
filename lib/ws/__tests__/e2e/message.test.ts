@@ -73,7 +73,7 @@ describe('WSManager E2E - Message Handling', () => {
         next: (data) => {
           expect(data).toHaveProperty('e', 'kline');
           expect(data).toHaveProperty('s', 'ETHUSDT');
-          expect(data.k).toHaveProperty('i', '1h');
+          expect(data['k']).toHaveProperty('i', '1h');
           subscription.unsubscribe();
           done();
         },
@@ -128,21 +128,21 @@ describe('WSManager E2E - Message Handling', () => {
       // Create multiple subscribers
       const sub1 = manager.subscribe('btcusdt@trade').subscribe({
         next: (data) => {
-          expect(data.p).toBe('55000');
+          expect(data['p']).toBe('55000');
           checkComplete();
         }
       });
       
       const sub2 = manager.subscribe('btcusdt@trade').subscribe({
         next: (data) => {
-          expect(data.p).toBe('55000');
+          expect(data['p']).toBe('55000');
           checkComplete();
         }
       });
       
       const sub3 = manager.subscribe('btcusdt@trade').subscribe({
         next: (data) => {
-          expect(data.p).toBe('55000');
+          expect(data['p']).toBe('55000');
           checkComplete();
         }
       });
@@ -236,7 +236,7 @@ describe('WSManager E2E - Message Handling', () => {
       // Subscribe only to BTC
       const subscription = manager.subscribe('btcusdt@trade').subscribe({
         next: (data) => {
-          expect(data.s).toBe('BTCUSDT');
+          expect(data['s']).toBe('BTCUSDT');
           btcMessages++;
           
           if (btcMessages === 2) {

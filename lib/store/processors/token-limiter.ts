@@ -11,6 +11,7 @@ export class TokenLimiter implements MemoryProcessor {
     const filtered: ConversationMessage[] = [];
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
+      if (!m) continue;
       const est = Math.ceil(m.content.length * this.estimatedTokensPerChar);
       if (totalTokens + est <= this.maxTokens) {
         filtered.unshift(m);

@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globa
 import { AgentNetwork, agentNetwork } from '../network/agent-network';
 import { registerAllAgents } from '../network/agent-registry';
 import { logger } from '@/lib/utils/logger';
+import type { AgentContext } from '@/types';
 
 // Zustand永続化のテスト環境対応
 if (typeof window !== 'undefined') {
@@ -100,8 +101,8 @@ describe('A2A Communication System', () => {
       };
       
       // パターンベースの選択をモック - 優先順位重視
-      mockRoutingAgent.generate.mockImplementation((prompt: string) => {
-        const queryLower = prompt.toLowerCase();
+      mockRoutingAgent.generate.mockImplementation((prompt: unknown) => {
+        const queryLower = String(prompt).toLowerCase();
         
         // BTCとpriceは最優先でpriceInquiryAgent
         if (queryLower.includes('btc') && queryLower.includes('価格')) {
@@ -134,7 +135,7 @@ describe('A2A Communication System', () => {
     test('should select correct agent for price inquiry', async () => {
       const selectedAgent = await agentNetwork.selectAgent(
         'BTCの現在価格を教えて',
-        { intent: 'price_inquiry' }
+        { correlationId: 'test-correlation-id' } as AgentContext
       );
       
       expect(selectedAgent).toBe('priceInquiryAgent');
@@ -143,7 +144,7 @@ describe('A2A Communication System', () => {
     test('should select correct agent for UI control', async () => {
       const selectedAgent = await agentNetwork.selectAgent(
         'チャートを1時間足に変更して',
-        { intent: 'ui_control' }
+        { correlationId: 'test-correlation-id' } as AgentContext
       );
       
       expect(selectedAgent).toBe('uiControlAgent');
@@ -152,7 +153,7 @@ describe('A2A Communication System', () => {
     test('should select correct agent for trading analysis', async () => {
       const selectedAgent = await agentNetwork.selectAgent(
         'ETHの投資判断を分析して',
-        { intent: 'trading_analysis' }
+        { correlationId: 'test-correlation-id' } as AgentContext
       );
       
       expect(selectedAgent).toBe('tradingAnalysisAgent');
@@ -161,7 +162,7 @@ describe('A2A Communication System', () => {
     test('should fallback to orchestrator for unclear queries', async () => {
       const selectedAgent = await agentNetwork.selectAgent(
         'こんにちは',
-        { intent: 'conversational' }
+        { correlationId: 'test-correlation-id' } as AgentContext
       );
       
       // 不明な場合はオーケストレーターにフォールバック
@@ -186,10 +187,10 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化
-      const mockGenerate = jest.fn().mockResolvedValue('Test response from agent');
+      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Test response from agent');
       
       // 登録されたエージェントのgenerateメソッドをモック
-      for (const [agentId, registration] of (agentNetwork as any).agents) {
+      for (const [, registration] of (agentNetwork as any).agents) {
         registration.agent.generate = mockGenerate;
       }
     });
@@ -243,9 +244,9 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化
-      const mockGenerate = jest.fn().mockResolvedValue('Broadcast response');
+      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Broadcast response');
       
-      for (const [agentId, registration] of (agentNetwork as any).agents) {
+      for (const [, registration] of (agentNetwork as any).agents) {
         registration.agent.generate = mockGenerate;
       }
     });
@@ -285,9 +286,9 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化（高速）
-      const mockGenerate = jest.fn().mockResolvedValue('Health OK');
+      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Health OK');
       
-      for (const [agentId, registration] of (agentNetwork as any).agents) {
+      for (const [, registration] of (agentNetwork as any).agents) {
         registration.agent.generate = mockGenerate;
       }
     });
@@ -310,7 +311,7 @@ describe('A2A Communication System', () => {
       });
       
       // モック化された高速レスポンスでも動作確認
-      const mockGenerate = jest.fn().mockResolvedValue('Fast health check');
+      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Fast health check');
       shortTimeoutNetwork.registerAgent('testAgent', { generate: mockGenerate } as any, [], 'test');
       
       const healthResults = await shortTimeoutNetwork.healthCheck();
@@ -326,7 +327,7 @@ describe('A2A Communication System', () => {
         'orchestratorAgent',
         'priceInquiryAgent',
         '', // 空のメソッド
-        null, // nullパラメータ
+        {}, // 空のパラメータ
         undefined // undefinedの相関ID
       );
 
@@ -406,7 +407,7 @@ describe('A2A Integration Tests', () => {
     registerAllAgents();
     
     // グローバルエージェントネットワークのモック化
-    const mockGenerate = jest.fn().mockResolvedValue('Integration test response');
+    const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Integration test response');
     
     for (const [agentId, registration] of (agentNetwork as any).agents) {
       registration.agent.generate = mockGenerate;
@@ -414,7 +415,7 @@ describe('A2A Integration Tests', () => {
     
     // ルーティングエージェントもモック化
     (agentNetwork as any).routingAgent = {
-      generate: jest.fn().mockResolvedValue('priceInquiryAgent')
+      generate: jest.fn<() => Promise<unknown>>().mockResolvedValue('priceInquiryAgent')
     };
   });
 
@@ -424,12 +425,12 @@ describe('A2A Integration Tests', () => {
     
     const result = await agentSelectionTool.execute({
       context: {
-        agentType: 'price_inquiry',
+        agentType: 'price_inquiry' as const,
         query: 'BTCの価格を教えて',
         context: {},
         correlationId: 'integration-test-001',
       },
-      runtimeContext: { sessionId: 'test-session' }, // runtimeContextを追加
+      runtimeContext: { sessionId: 'test-session' },
     });
 
     expect(result.success).toBe(true);

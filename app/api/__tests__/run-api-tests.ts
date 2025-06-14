@@ -62,9 +62,9 @@ async function runTests() {
       const failedMatch = output.match(/(\d+) failed/);
       const skippedMatch = output.match(/(\d+) skipped/);
       
-      const passed = passedMatch ? parseInt(passedMatch[1]) : 0;
-      const failed = failedMatch ? parseInt(failedMatch[1]) : 0;
-      const skipped = skippedMatch ? parseInt(skippedMatch[1]) : 0;
+      const passed = passedMatch ? parseInt(passedMatch[1], 10) : 0;
+      const failed = failedMatch ? parseInt(failedMatch[1], 10) : 0;
+      const skipped = skippedMatch ? parseInt(skippedMatch[1], 10) : 0;
       const duration = Date.now() - startTime;
       
       results.push({
@@ -91,9 +91,9 @@ async function runTests() {
       const failedMatch = errorOutput.match(/(\d+) failed/);
       const skippedMatch = errorOutput.match(/(\d+) skipped/);
       
-      const passed = passedMatch ? parseInt(passedMatch[1]) : 0;
-      const failed = failedMatch ? parseInt(failedMatch[1]) : 0;
-      const skipped = skippedMatch ? parseInt(skippedMatch[1]) : 0;
+      const passed = passedMatch ? parseInt(passedMatch[1], 10) : 0;
+      const failed = failedMatch ? parseInt(failedMatch[1], 10) : 0;
+      const skipped = skippedMatch ? parseInt(skippedMatch[1], 10) : 0;
       
       results.push({
         suite: suite.name,

@@ -76,7 +76,7 @@ export const POST = createApiHandler<ChatRequest>({
       const response = buildChatResponse({
         message: finalMessage,
         orchestratorResult,
-        proposalGroup: entryProposalGroup || proposalGroup,
+        proposalGroup: entryProposalGroup || proposalGroup || undefined,
         sessionId,
       });
 

@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { config } from 'dotenv';
 import { executeImprovedOrchestrator } from '../../../lib/mastra/agents/orchestrator.agent';
-import { logger } from '../../../lib/utils/logger';
 import { dispatchTypedUIEvent } from '../../../lib/utils/ui-event-dispatcher';
 import type { ProposalEventData, ChartEventData } from '../../../types/events/all-event-types';
 
@@ -18,7 +17,7 @@ describe('Proposal System Integration Tests', () => {
 
   beforeAll(() => {
     // Mock UI event dispatcher for testing
-    jest.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+    jest.spyOn(global, 'fetch').mockImplementation(async (url, _options) => {
       if (url.toString().includes('/api/ui-events')) {
         return Promise.resolve({
           ok: true,
@@ -59,14 +58,22 @@ describe('Proposal System Integration Tests', () => {
         
         expect(result.analysis.intent).toBe('entry_proposal');
         expect(result.executionResult).toBeDefined();
-        expect(result.executionResult.metadata?.processedBy).toContain('trading');
+        expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
         
         // Verify proposal structure
-        if (result.executionResult.proposal) {
-          expect(result.executionResult.proposal.type).toBe(expectedType);
-          expect(result.executionResult.proposal.symbol).toBe(expectedSymbol);
-          expect(result.executionResult.proposal.confidence).toBeGreaterThan(0);
-          expect(result.executionResult.proposal.confidence).toBeLessThanOrEqual(1);
+        if (result.executionResult!.proposalGroup) {
+          const proposalGroup = result.executionResult!.proposalGroup;
+          expect(proposalGroup.proposals).toBeDefined();
+          expect(proposalGroup.proposals.length).toBeGreaterThan(0);
+          
+          const firstProposal = proposalGroup.proposals[0];
+          if ('direction' in firstProposal) {
+            // EntryProposal
+            expect(firstProposal.direction).toBe(expectedType);
+            expect(firstProposal.symbol).toBe(expectedSymbol);
+            expect(firstProposal.confidence).toBeGreaterThan(0);
+            expect(firstProposal.confidence).toBeLessThanOrEqual(1);
+          }
         }
       }
     );
@@ -80,14 +87,19 @@ describe('Proposal System Integration Tests', () => {
       expect(result.analysis.intent).toMatch(/entry_proposal|analysis/);
       expect(result.executionResult).toBeDefined();
       
-      // Check if chart annotations are included
-      if (result.executionResult.chartAnnotations) {
-        expect(Array.isArray(result.executionResult.chartAnnotations)).toBe(true);
-        expect(result.executionResult.chartAnnotations.length).toBeGreaterThan(0);
+      // Check if proposals with chart annotations are included
+      if (result.executionResult!.proposalGroup) {
+        const proposalGroup = result.executionResult!.proposalGroup;
+        expect(proposalGroup.proposals).toBeDefined();
+        expect(Array.isArray(proposalGroup.proposals)).toBe(true);
+        expect(proposalGroup.proposals.length).toBeGreaterThan(0);
         
-        const annotation = result.executionResult.chartAnnotations[0];
-        expect(annotation).toHaveProperty('type');
-        expect(annotation).toHaveProperty('points');
+        const firstProposal = proposalGroup.proposals[0];
+        if ('drawingData' in firstProposal) {
+          // DrawingProposal
+          expect(firstProposal.drawingData).toHaveProperty('type');
+          expect(firstProposal.drawingData).toHaveProperty('points');
+        }
       }
     });
   });
@@ -95,7 +107,7 @@ describe('Proposal System Integration Tests', () => {
   describe('Proposal API Integration', () => {
     beforeEach(() => {
       // Mock the proposal API endpoint
-      jest.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+      jest.spyOn(global, 'fetch').mockImplementation(async (url, _options) => {
         if (url.toString().includes('/api/chat/proposal')) {
           const body = JSON.parse(options?.body as string);
           return Promise.resolve({
@@ -225,9 +237,15 @@ describe('Proposal System Integration Tests', () => {
       });
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult.proposal) {
-        expect(result.executionResult.proposal.confidence).toBeGreaterThan(0.8);
-        expect(result.executionResult.proposal.confidenceFactors).toBeDefined();
+      if (result.executionResult!.proposalGroup) {
+        const proposalGroup = result.executionResult!.proposalGroup;
+        expect(proposalGroup.proposals.length).toBeGreaterThan(0);
+        
+        const firstProposal = proposalGroup.proposals[0];
+        expect(firstProposal.confidence).toBeGreaterThan(0.8);
+        if ('confidenceFactors' in firstProposal) {
+          expect(firstProposal.confidenceFactors).toBeDefined();
+        }
       }
     });
 
@@ -236,9 +254,15 @@ describe('Proposal System Integration Tests', () => {
       const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult.proposal) {
-        expect(result.executionResult.proposal.timeframeAnalysis).toBeDefined();
-        expect(Array.isArray(result.executionResult.proposal.timeframeAnalysis)).toBe(true);
+      if (result.executionResult!.proposalGroup) {
+        const proposalGroup = result.executionResult!.proposalGroup;
+        expect(proposalGroup.proposals.length).toBeGreaterThan(0);
+        
+        const firstProposal = proposalGroup.proposals[0];
+        if ('timeframeAnalysis' in firstProposal) {
+          expect(firstProposal.timeframeAnalysis).toBeDefined();
+          expect(Array.isArray(firstProposal.timeframeAnalysis)).toBe(true);
+        }
       }
     });
 
@@ -247,10 +271,17 @@ describe('Proposal System Integration Tests', () => {
       const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult.proposal) {
-        expect(result.executionResult.proposal.riskReward).toBeDefined();
-        expect(result.executionResult.proposal.positionSize).toBeDefined();
-        expect(result.executionResult.proposal.maxRisk).toBeDefined();
+      if (result.executionResult!.proposalGroup) {
+        const proposalGroup = result.executionResult!.proposalGroup;
+        expect(proposalGroup.proposals.length).toBeGreaterThan(0);
+        
+        const firstProposal = proposalGroup.proposals[0];
+        if ('riskParameters' in firstProposal) {
+          // EntryProposal has riskParameters
+          expect(firstProposal.riskParameters).toBeDefined();
+          expect(firstProposal.riskParameters.stopLoss).toBeDefined();
+          expect(firstProposal.riskParameters.riskRewardRatio).toBeDefined();
+        }
       }
     });
   });
@@ -265,7 +296,7 @@ describe('Proposal System Integration Tests', () => {
       
       expect(result.executionResult).toBeDefined();
       // Should either use a default symbol or ask for clarification
-      expect(result.executionResult.response).toBeDefined();
+      expect(result.executionResult!.response).toBeDefined();
     });
 
     test('should handle API failures gracefully', async () => {

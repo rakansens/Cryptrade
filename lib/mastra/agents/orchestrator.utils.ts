@@ -66,12 +66,12 @@ export function validateResponse(response: unknown): response is AgentResponse {
   
   return (
     'intent' in r &&
-    typeof r.intent === 'string' &&
+    typeof r['intent'] === 'string' &&
     'response' in r &&
-    typeof r.response === 'string' &&
-    (!('confidence' in r) || typeof r.confidence === 'number') &&
-    (!('data' in r) || r.data !== undefined) &&
-    (!('metadata' in r) || (typeof r.metadata === 'object' && r.metadata !== null))
+    typeof r['response'] === 'string' &&
+    (!('confidence' in r) || typeof r['confidence'] === 'number') &&
+    (!('data' in r) || r['data'] !== undefined) &&
+    (!('metadata' in r) || (typeof r['metadata'] === 'object' && r['metadata'] !== null))
   );
 }
 

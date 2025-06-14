@@ -4,7 +4,6 @@ import { useChatStore, useChatActions } from '@/store/chat.store';
 import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
 import { useProposalApprovalStore } from '@/store/proposal-approval.store';
 import type { ChartDrawing } from '@/types/drawing';
-import type { Pattern } from '@/types/pattern';
 import type { PatternData } from '@/store/chart/types';
 
 // Import the base store for direct access
@@ -176,7 +175,6 @@ describe('Store Integration Tests', () => {
     it('should handle proposal creation in chat messages', () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: chatStore } = renderHook(() => useChatStore(state => state));
-      const { result: proposalStore } = renderHook(() => useProposalApprovalStore());
 
       let sessionId: string = '';
 
@@ -218,9 +216,12 @@ describe('Store Integration Tests', () => {
       });
 
       const messages = chatStore.current.messagesBySession[sessionId];
+      expect(messages).toBeDefined();
       expect(messages).toHaveLength(2);
-      expect(messages[1].type).toBe('proposal');
-      expect(messages[1].proposalGroup).toEqual(proposalGroup);
+      if (messages && messages[1]) {
+        expect(messages[1].type).toBe('proposal');
+        expect(messages[1].proposalGroup).toEqual(proposalGroup);
+      }
     });
 
     it('should handle proposal approval flow', async () => {
@@ -477,9 +478,8 @@ describe('Store Integration Tests', () => {
       });
 
       // Error should affect chat functionality
-      let sessionId: string = '';
       act(() => {
-        sessionId = chatActions.current.createSession();
+        chatActions.current.createSession();
         chatActions.current.setError('Cannot analyze - chart not ready');
       });
 

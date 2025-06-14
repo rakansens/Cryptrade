@@ -53,11 +53,11 @@ jest.mock('../MessageInput', () => ({
 jest.mock('@/components/ui/tabs', () => {
   const React = require('react');
   return {
-    Tabs: ({ children, value, onValueChange, className }: any) => (
+    Tabs: ({ children, value, _onValueChange, className }: any) => (
       <div className={className} data-testid="tabs">
         {React.Children.map(children, (child: any) => {
           if (child?.props?.value === value || !child?.props?.value) {
-            return React.cloneElement(child, { onValueChange })
+            return React.cloneElement(child, { _onValueChange })
           }
           return null
         })}
@@ -257,8 +257,7 @@ describe('ChatPanel', () => {
       expect(screen.queryByTestId('session-analysis-history')).not.toBeInTheDocument()
       
       // Switch to history tab
-      const tabsComponent = screen.getByTestId('tabs')
-      const onValueChange = tabsComponent.getAttribute('onValueChange')
+      // The tabs component would handle switching but we're testing the state here
       
       // Simulate tab change
       ;(useChat as jest.Mock).mockReturnValue({

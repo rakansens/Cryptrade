@@ -53,14 +53,14 @@ describe('Data Processing Performance Tests', () => {
 
   describe('ML Feature Extraction Performance', () => {
     it('should extract features from line within threshold', () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const mockLine = createMockLine();
       const times: number[] = [];
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
         const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
-        const normalized = extractor.normalizeFeatures(features);
+        const _normalized = extractor.normalizeFeatures(features);
         const end = performance.now();
         times.push(end - start);
       }
@@ -72,7 +72,7 @@ describe('Data Processing Performance Tests', () => {
     });
 
     it('should handle batch feature extraction efficiently', () => {
-      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1].close);
+      const extractor = new FeatureExtractor(mockPriceData, mockPriceData[mockPriceData.length - 1]!.close);
       const lines = Array.from({ length: 50 }, () => createMockLine());
       
       const start = performance.now();
@@ -95,7 +95,7 @@ describe('Data Processing Performance Tests', () => {
 
       for (let i = 0; i < 10; i++) {
         const start = performance.now();
-        const patterns = detector.detectPatterns(mockCandlestickData);
+        const _patterns = detector.detectPatterns(mockCandlestickData);
         const end = performance.now();
         times.push(end - start);
       }
@@ -111,7 +111,7 @@ describe('Data Processing Performance Tests', () => {
       const largeDataset = generateMockCandlestickData(5000);
       
       const start = performance.now();
-      const patterns = detector.detectPatterns(largeDataset);
+      const _patterns = detector.detectPatterns(largeDataset);
       const end = performance.now();
       const totalTime = end - start;
 
@@ -133,7 +133,7 @@ describe('Data Processing Performance Tests', () => {
       });
 
       // Check that time roughly doubles when data doubles
-      const ratio = times[3] / times[1]; // 2000 vs 500
+      const ratio = times[3]! / times[1]!; // 2000 vs 500
       expect(ratio).toBeLessThan(5); // Should be around 4x, allow some overhead
     });
   });
@@ -145,7 +145,7 @@ describe('Data Processing Performance Tests', () => {
 
       for (let i = 0; i < 50; i++) {
         const start = performance.now();
-        const touches = detector.detectTouches(mockCandlestickData, 50000);
+        const _touches = detector.detectTouches(mockCandlestickData, 50000);
         const end = performance.now();
         times.push(end - start);
       }
@@ -183,7 +183,7 @@ describe('Data Processing Performance Tests', () => {
 
       for (let i = 0; i < 20; i++) {
         const start = performance.now();
-        const lines = detector.detectLines(mockCandlestickData, { minTouches: 3 });
+        const _lines = detector.detectLines(mockCandlestickData, { minTouches: 3 });
         const end = performance.now();
         times.push(end - start);
       }
@@ -198,7 +198,7 @@ describe('Data Processing Performance Tests', () => {
       const detector = new EnhancedLineDetectorV2();
       const start = performance.now();
       
-      const lines = detector.detectMultiTimeframeLines(
+      const _lines = detector.detectMultiTimeframeLines(
         mockCandlestickData,
         ['1h', '4h', '1d'],
         { minTouches: 3 }
@@ -265,11 +265,11 @@ describe('Data Processing Performance Tests', () => {
       const start = performance.now();
       
       // Calculate all indicators
-      const macd = calculateMACD(mockCandlestickData);
-      const rsi = calculateRSI(mockCandlestickData);
-      const bb = calculateBollingerBands(mockCandlestickData);
-      const sma20 = calculateSMA(mockCandlestickData, 20);
-      const sma50 = calculateSMA(mockCandlestickData, 50);
+      const _macd = calculateMACD(mockCandlestickData);
+      const _rsi = calculateRSI(mockCandlestickData);
+      const _bb = calculateBollingerBands(mockCandlestickData);
+      const _sma20 = calculateSMA(mockCandlestickData, 20);
+      const _sma50 = calculateSMA(mockCandlestickData, 50);
       
       const end = performance.now();
       const totalTime = end - start;
@@ -287,9 +287,9 @@ describe('Data Processing Performance Tests', () => {
       const start = performance.now();
       
       // Process multiple operations
-      const patterns = detector.detectPatterns(largeDataset);
-      const macd = calculateMACD(largeDataset);
-      const rsi = calculateRSI(largeDataset);
+      const _patterns = detector.detectPatterns(largeDataset);
+      const _macd = calculateMACD(largeDataset);
+      const _rsi = calculateRSI(largeDataset);
       
       const end = performance.now();
       const totalTime = end - start;

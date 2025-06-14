@@ -7,7 +7,6 @@ import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { 
   AnalysisProgressEvent, 
-  AnalysisStepType,
   getAnalysisSteps 
 } from '@/types/analysis-progress';
 

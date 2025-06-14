@@ -31,7 +31,7 @@ jest.mock('@ai-sdk/openai', () => ({
     };
     
     // Add the generate function to the model
-    mockModel.generate = jest.fn().mockImplementation(async (messages, options) => {
+    (mockModel as any).generate = jest.fn<(messages: unknown, options: unknown) => Promise<unknown>>().mockImplementation(async (messages: any, options: any) => {
       const query = messages[0]?.content || '';
       const context = options || {};
       
@@ -100,13 +100,7 @@ describe('AI Tool Selection', () => {
         mockToolCalls.length = 0; // Reset for each test
         
         const result = await tradingAgent.generate(
-          [{ role: 'user', content: query }],
-          {
-            isProposalMode: true,
-            proposalType: 'entry',
-            isEntryProposal: true,
-            extractedSymbol: 'BTCUSDT',
-          }
+          [{ role: 'user', content: query }]
         );
 
         expect(mockToolCalls).toHaveLength(1);
@@ -130,12 +124,7 @@ describe('AI Tool Selection', () => {
         mockToolCalls.length = 0;
         
         await tradingAgent.generate(
-          [{ role: 'user', content: query }],
-          {
-            isProposalMode: true,
-            proposalType: 'trendline',
-            extractedSymbol: 'BTCUSDT',
-          }
+          [{ role: 'user', content: query }]
         );
 
         expect(mockToolCalls).toHaveLength(1);
@@ -205,7 +194,7 @@ describe('AI Tool Selection', () => {
         isEntryProposal: true,
       };
       
-      const tools = tradingAgent.tools(entryProposalContext);
+      const tools = (tradingAgent as any).tools(entryProposalContext);
       expect(tools).toHaveProperty('entryProposalGeneration');
       expect(Object.keys(tools)).toHaveLength(1);
     });
@@ -216,7 +205,7 @@ describe('AI Tool Selection', () => {
         proposalType: 'trendline',
       };
       
-      const tools = tradingAgent.tools(regularProposalContext);
+      const tools = (tradingAgent as any).tools(regularProposalContext);
       expect(tools).toHaveProperty('proposalGeneration');
       expect(tools).not.toHaveProperty('entryProposalGeneration');
       expect(Object.keys(tools)).toHaveLength(1);
@@ -227,7 +216,7 @@ describe('AI Tool Selection', () => {
         isProposalMode: false,
       };
       
-      const tools = tradingAgent.tools(normalContext);
+      const tools = (tradingAgent as any).tools(normalContext);
       expect(Object.keys(tools).length).toBeGreaterThan(1);
       expect(tools).toHaveProperty('marketData');
       expect(tools).toHaveProperty('proposalGeneration');

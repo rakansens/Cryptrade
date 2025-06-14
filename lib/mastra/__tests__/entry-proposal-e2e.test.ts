@@ -33,7 +33,7 @@ jest.mock('@/config/env', () => ({
 // Mock API and services
 jest.mock('@/lib/binance/api-service', () => ({
   binanceAPI: {
-    fetchKlines: jest.fn().mockResolvedValue(
+    fetchKlines: jest.fn<() => Promise<unknown>>().mockResolvedValue(
       Array.from({ length: 100 }, (_, i) => ({
         time: Date.now() - (100 - i) * 3600000,
         open: 100000 + i * 100,
@@ -142,7 +142,7 @@ jest.mock('@ai-sdk/openai', () => ({
 
 // Mock entry proposal tool dependencies
 jest.mock('../tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
-  analyzeMarketContext: jest.fn().mockResolvedValue({
+  analyzeMarketContext: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     trend: 'bullish',
     volatility: 'normal',
     volume: 'average',
@@ -152,7 +152,7 @@ jest.mock('../tools/entry-proposal-generation/analyzers/market-context-analyzer'
 }));
 
 jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
-  evaluateEntryConditions: jest.fn().mockResolvedValue({
+  evaluateEntryConditions: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
       { type: 'momentum', met: true, description: 'Positive momentum' },
@@ -163,7 +163,7 @@ jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', ()
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () => ({
-  calculateEntryPoints: jest.fn().mockResolvedValue([
+  calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
     {
       price: 100500,
       direction: 'long',
@@ -183,7 +183,7 @@ jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () 
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () => ({
-  calculateRiskManagement: jest.fn().mockResolvedValue({
+  calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],
     positionSize: 0.1,
@@ -221,13 +221,13 @@ describe('Entry Proposal End-to-End Integration', () => {
       const proposalGroup = extractProposalGroup(orchestratorResult.executionResult);
       
       expect(proposalGroup).toBeDefined();
-      expect(proposalGroup.id).toMatch(/^epg_/);
-      expect(proposalGroup.proposals).toHaveLength(1);
-      expect(proposalGroup.proposals[0].direction).toBe('long');
-      expect(proposalGroup.proposals[0].entryPrice).toBe(100500);
+      expect(proposalGroup!.id).toMatch(/^epg_/);
+      expect(proposalGroup!.proposals).toHaveLength(1);
+      expect((proposalGroup!.proposals[0] as any).direction).toBe('long');
+      expect((proposalGroup!.proposals[0] as any).entryPrice).toBe(100500);
       
       // Step 4: Verify UI events would be dispatched
-      const proposal = proposalGroup.proposals[0];
+      const proposal = proposalGroup!.proposals[0] as any;
       expect(proposal.riskParameters).toMatchObject({
         stopLoss: 99500,
         takeProfit: [102000, 103000],
@@ -371,10 +371,10 @@ describe('Entry Proposal End-to-End Integration', () => {
         expect(proposal).toHaveProperty('priority');
         
         // Verify chart drawing data
-        expect(proposal.entryZone).toHaveProperty('start');
-        expect(proposal.entryZone).toHaveProperty('end');
-        expect(proposal.riskParameters.stopLoss).toBeGreaterThan(0);
-        expect(proposal.riskParameters.takeProfit).toBeInstanceOf(Array);
+        expect(proposal!.entryZone).toHaveProperty('start');
+        expect(proposal!.entryZone).toHaveProperty('end');
+        expect(proposal!.riskParameters.stopLoss).toBeGreaterThan(0);
+        expect(proposal!.riskParameters.takeProfit).toBeInstanceOf(Array);
       }
     });
   });

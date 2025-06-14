@@ -72,8 +72,8 @@ async function testQueries() {
                   result.executionResult.message || 
                   'レスポンスなし';
         
-        processedBy = result.executionResult.metadata?.processedBy || 
-                     (result.executionResult.executionResult?.metadata?.processedBy) || 
+        processedBy = result.executionResult.metadata?.['processedBy'] || 
+                     (result.executionResult.executionResult?.metadata?.['processedBy']) || 
                      'unknown';
       }
       

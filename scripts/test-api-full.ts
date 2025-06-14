@@ -10,7 +10,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 // Set test mode to use mocked responses
 process.env.NODE_ENV = 'test';
-process.env.USE_MOCK_AI = 'true';
+process.env['USE_MOCK_AI'] = 'true';
 
 async function testAPI() {
   console.log('\n🚀 Testing API with Mock AI Responses...\n');

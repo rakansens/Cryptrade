@@ -1,6 +1,7 @@
-// Browser notification system for line touch alerts
+// Updated: Browser notification system for line touch alerts - 環境変数の型安全なアクセスを実装
 
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 
 export interface NotificationOptions {
   title: string;
@@ -207,7 +208,7 @@ export const notifications = new BrowserNotificationManager();
 // Auto-request permission on first import (optional)
 if (typeof window !== 'undefined') {
   // Only auto-request in production or when explicitly enabled
-  const autoRequest = process.env.NODE_ENV === 'production' || 
+  const autoRequest = env.NODE_ENV === 'production' || 
                      localStorage.getItem('auto-request-notifications') === 'true';
   
   if (autoRequest) {

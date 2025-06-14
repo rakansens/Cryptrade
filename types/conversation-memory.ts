@@ -22,8 +22,12 @@ export interface ConversationMessage {
 
 export interface ConversationSession {
   id: string;
+  userId?: string | null;
   startedAt: Date;
   lastActiveAt: Date;
   messages: ConversationMessage[];
-  summary?: string;
+  summary?: string | null;
+  metadata?: any;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

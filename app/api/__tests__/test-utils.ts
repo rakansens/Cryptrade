@@ -60,7 +60,7 @@ export const mockData = {
     return {
       id: `pg_${Date.now()}`,
       proposals: [mockData.createProposal()],
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
       ...overrides
     };
   },

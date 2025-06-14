@@ -101,11 +101,11 @@ describe('PatternDetector', () => {
       const patterns = hsDetector.detectPatterns(params);
 
       expect(patterns.length).toBeGreaterThan(0);
-      expect(patterns[0].type).toBe('headAndShoulders');
-      expect(patterns[0].metrics).toHaveProperty('leftShoulderHeight');
-      expect(patterns[0].metrics).toHaveProperty('headHeight');
-      expect(patterns[0].metrics).toHaveProperty('rightShoulderHeight');
-      expect(patterns[0].metrics).toHaveProperty('necklineLevel');
+      expect(patterns[0]!.type).toBe('headAndShoulders');
+      expect(patterns[0]!.metrics).toHaveProperty('leftShoulderHeight');
+      expect(patterns[0]!.metrics).toHaveProperty('headHeight');
+      expect(patterns[0]!.metrics).toHaveProperty('rightShoulderHeight');
+      expect(patterns[0]!.metrics).toHaveProperty('necklineLevel');
     });
 
     it('should detect inverse head and shoulders pattern', () => {
@@ -122,8 +122,8 @@ describe('PatternDetector', () => {
       const patterns = ihsDetector.detectPatterns(params);
 
       expect(patterns.length).toBeGreaterThan(0);
-      expect(patterns[0].type).toBe('inverseHeadAndShoulders');
-      expect(patterns[0].trading_implication).toContain('bullish');
+      expect(patterns[0]!.type).toBe('inverseHeadAndShoulders');
+      expect(patterns[0]!.trading_implication).toContain('bullish');
     });
 
     it('should validate shoulder symmetry', () => {

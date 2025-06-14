@@ -109,7 +109,7 @@ export class LineRenderer implements ILineRendererPlugin {
       
       logger.info('[LineRenderer] Starting line rendering', {
         id,
-        linesCount: data.lines.length,
+        linesCount: data.lines?.length ?? 0,
         instanceId: this.context.instanceId,
       });
       
@@ -127,7 +127,7 @@ export class LineRenderer implements ILineRendererPlugin {
       // レジストリに登録
       this.lineSeries.set(id, createdSeries);
       this.context.registry.registerSeries(id, createdSeries, 'line', {
-        linesCount: data.lines.length,
+        linesCount: data.lines?.length ?? 0,
         createdAt: Date.now(),
       });
       
@@ -355,6 +355,10 @@ export class LineRenderer implements ILineRendererPlugin {
     
     const first = lineData[0];
     const last = lineData[lineData.length - 1];
+    
+    if (!first || !last) {
+      return lineData;
+    }
     
     // 傾きを計算
     const slope = (last.value - first.value) / (last.time - first.time);

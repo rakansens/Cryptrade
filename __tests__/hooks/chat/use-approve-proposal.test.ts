@@ -48,7 +48,11 @@ const mockProposalMessage = {
         id: 'proposal-1',
         type: 'trendline' as const,
         confidence: 0.8,
+        title: 'Test Trendline',
         description: 'Test trendline',
+        reason: 'Test reasoning',
+        priority: 'medium' as const,
+        createdAt: Date.now(),
         symbol: 'BTCUSDT',
         interval: '1h',
         reasoning: 'Test reasoning',
@@ -139,8 +143,24 @@ describe('useApproveProposal', () => {
         proposals: [
           mockProposalMessage.proposalGroup.proposals[0],
           {
-            ...mockProposalMessage.proposalGroup.proposals[0],
             id: 'proposal-2',
+            type: 'trendline' as const,
+            confidence: 0.8,
+            title: 'Test Trendline 2',
+            description: 'Test trendline 2',
+            reason: 'Test reasoning 2',
+            priority: 'medium' as const,
+            createdAt: Date.now(),
+            symbol: 'BTCUSDT',
+            interval: '1h',
+            reasoning: 'Test reasoning 2',
+            drawingData: {
+              type: 'trendline' as const,
+              points: [
+                { time: 1000, value: 100 },
+                { time: 2000, value: 200 },
+              ],
+            },
           },
         ],
       },
@@ -181,7 +201,24 @@ describe('useApproveProposal', () => {
         ...mockProposalMessage.proposalGroup,
         proposals: [
           {
-            ...mockProposalMessage.proposalGroup.proposals[0],
+            id: 'proposal-1',
+            type: 'trendline' as const,
+            confidence: 0.8,
+            title: 'Test Trendline',
+            description: 'Test trendline',
+            reason: 'Test reasoning',
+            priority: 'medium' as const,
+            createdAt: Date.now(),
+            symbol: 'BTCUSDT',
+            interval: '1h',
+            reasoning: 'Test reasoning',
+            drawingData: {
+              type: 'trendline' as const,
+              points: [
+                { time: 1000, value: 100 },
+                { time: 2000, value: 200 },
+              ],
+            },
             mlPrediction: {
               successProbability: 0.75,
               expectedBounces: 3,

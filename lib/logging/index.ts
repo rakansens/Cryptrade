@@ -145,8 +145,10 @@ export const enhancedLogger = {
 };
 
 // Default export for convenience
-export default {
+const loggerExports = {
   logger,
   enhancedLogger,
   unifiedLogger,
 };
+
+export default loggerExports;

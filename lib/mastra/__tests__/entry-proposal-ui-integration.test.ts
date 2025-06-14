@@ -54,7 +54,7 @@ const mockClearProposals = jest.fn();
 // Mock binance API
 jest.mock('@/lib/binance/api-service', () => ({
   binanceAPI: {
-    fetchKlines: jest.fn().mockResolvedValue(
+    fetchKlines: jest.fn<() => Promise<unknown>>().mockResolvedValue(
       Array.from({ length: 100 }, (_, i) => ({
         time: Date.now() - (100 - i) * 3600000,
         open: 100000 + i * 100,
@@ -69,7 +69,7 @@ jest.mock('@/lib/binance/api-service', () => ({
 
 // Mock the entry proposal dependencies
 jest.mock('../tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
-  analyzeMarketContext: jest.fn().mockResolvedValue({
+  analyzeMarketContext: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     trend: 'bullish',
     volatility: 'normal',
     volume: 'average',
@@ -79,7 +79,7 @@ jest.mock('../tools/entry-proposal-generation/analyzers/market-context-analyzer'
 }));
 
 jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
-  evaluateEntryConditions: jest.fn().mockResolvedValue({
+  evaluateEntryConditions: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
       { type: 'momentum', met: true, description: 'Positive momentum' },
@@ -90,7 +90,7 @@ jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', ()
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () => ({
-  calculateEntryPoints: jest.fn().mockResolvedValue([
+  calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
     {
       price: 100500,
       direction: 'long',
@@ -110,7 +110,7 @@ jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () 
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () => ({
-  calculateRiskManagement: jest.fn().mockResolvedValue({
+  calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],
     positionSize: 0.1,
@@ -126,7 +126,7 @@ describe('Entry Proposal UI Integration', () => {
 
   describe('Proposal Display Events', () => {
     it('should dispatch proposal display event when proposals are generated', async () => {
-      const result = await entryProposalGenerationTool.execute({
+      const result = await (entryProposalGenerationTool as any).execute({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -134,6 +134,7 @@ describe('Entry Proposal UI Integration', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
@@ -235,7 +236,7 @@ describe('Entry Proposal UI Integration', () => {
 
   describe('UI State Updates', () => {
     it('should update store when proposals are generated', async () => {
-      const result = await entryProposalGenerationTool.execute({
+      const result = await (entryProposalGenerationTool as any).execute({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -243,6 +244,7 @@ describe('Entry Proposal UI Integration', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       // Simulate store update
@@ -408,7 +410,7 @@ describe('Entry Proposal UI Integration', () => {
       const { analyzeMarketContext } = require('../tools/entry-proposal-generation/analyzers/market-context-analyzer');
       analyzeMarketContext.mockRejectedValueOnce(new Error('Market data error'));
 
-      const result = await entryProposalGenerationTool.execute({
+      const result = await (entryProposalGenerationTool as any).execute({
         context: {
           symbol: 'BTCUSDT',
           interval: '1h',
@@ -416,6 +418,7 @@ describe('Entry Proposal UI Integration', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(false);

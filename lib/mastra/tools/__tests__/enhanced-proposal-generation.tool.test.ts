@@ -128,9 +128,9 @@ describe('enhancedProposalGeneration', () => {
 
       expect(result.success).toBe(true);
       expect(result.proposals).toHaveLength(2);
-      expect(result.proposals[0].type).toBe('pattern');
-      expect(result.proposals[0].description).toContain('ヘッドアンドショルダー');
-      expect(result.proposals[0].confidence).toBe(0.85);
+      expect(result.proposals[0]?.type).toBe('pattern');
+      expect(result.proposals[0]?.description).toContain('ヘッドアンドショルダー');
+      expect(result.proposals[0]?.confidence).toBe(0.85);
       expect(mockPatternDetector.detectPatterns).toHaveBeenCalledWith({
         lookbackPeriod: 100,
         minConfidence: 0.6,
@@ -151,7 +151,7 @@ describe('enhancedProposalGeneration', () => {
       const result = await enhancedProposalGeneration(input);
 
       expect(result.proposals).toHaveLength(1);
-      expect(result.proposals[0].description).toContain('ヘッドアンドショルダー');
+      expect(result.proposals[0]?.description).toContain('ヘッドアンドショルダー');
     });
   });
 
@@ -192,8 +192,8 @@ describe('enhancedProposalGeneration', () => {
       expect(mlValidatedProposals.length).toBeGreaterThan(0);
       
       if (mlValidatedProposals.length > 0) {
-        expect(mlValidatedProposals[0].mlPrediction?.successProbability).toBe(0.82);
-        expect(mlValidatedProposals[0].mlPrediction?.expectedBounces).toBe(3);
+        expect(mlValidatedProposals[0]?.mlPrediction?.successProbability).toBe(0.82);
+        expect(mlValidatedProposals[0]?.mlPrediction?.expectedBounces).toBe(3);
       }
     });
   });
@@ -217,8 +217,8 @@ describe('enhancedProposalGeneration', () => {
       const trendlineProposal = result.proposals.find(p => p.type === 'trendline');
       if (trendlineProposal) {
         expect(trendlineProposal.description).toMatch(/トレンドライン/);
-        expect(trendlineProposal.drawingData.type).toBe('trendline');
-        expect(trendlineProposal.drawingData.points).toBeInstanceOf(Array);
+        expect(trendlineProposal.drawingData?.type).toBe('trendline');
+        expect(trendlineProposal.drawingData?.points).toBeInstanceOf(Array);
       }
     });
 
@@ -277,7 +277,7 @@ describe('enhancedProposalGeneration', () => {
       const result = await enhancedProposalGeneration(input);
 
       for (let i = 1; i < result.proposals.length; i++) {
-        expect(result.proposals[i - 1].confidence).toBeGreaterThanOrEqual(result.proposals[i].confidence);
+        expect(result.proposals[i - 1]?.confidence ?? 0).toBeGreaterThanOrEqual(result.proposals[i]?.confidence ?? 0);
       }
     });
   });
@@ -319,7 +319,7 @@ describe('enhancedProposalGeneration', () => {
 
       expect(result.success).toBe(true);
       expect(result.proposals.length).toBeGreaterThan(0);
-      expect(result.proposals[0].mlPrediction).toBeUndefined();
+      expect(result.proposals[0]?.mlPrediction).toBeUndefined();
     });
   });
 

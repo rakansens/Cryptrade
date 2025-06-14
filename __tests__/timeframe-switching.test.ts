@@ -1,6 +1,5 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useChartStoreBase } from '@/store/chart.store';
-import { ChartPersistenceManager } from '@/lib/storage/chart-persistence';
 import type { ChartDrawing } from '@/lib/validation/chart-drawing.schema';
 
 // Mock localStorage

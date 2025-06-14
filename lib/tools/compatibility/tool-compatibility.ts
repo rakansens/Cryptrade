@@ -92,7 +92,7 @@ export class ToolCompatibilityAdapter {
 
   constructor(provider: string) {
     this.provider = provider;
-    this.config = PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS.openai;
+    this.config = PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS['openai'];
     
     logger.info(`[ToolCompatibility] Initialized for provider: ${this.provider}`, {
       config: this.config,

@@ -82,7 +82,7 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
               case 'horizontal':
                 if (drawing.points.length >= 1) {
                   drawingManager.addHorizontalLine(
-                    drawing.points[0].value,
+                    drawing.points[0]!.value,
                     drawing.style,
                     drawing.id
                   );
@@ -91,7 +91,7 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
               case 'vertical':
                 if (drawing.points.length >= 1) {
                   drawingManager.addVerticalLine(
-                    drawing.points[0].time,
+                    drawing.points[0]!.time,
                     drawing.style,
                     drawing.id
                   );
