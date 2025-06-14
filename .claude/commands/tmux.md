@@ -6,6 +6,16 @@ tmuxの複数paneでClaude Codeインスタンスを並列実行し、効率的�
 
 ## 基本セットアップ
 
+### 共通変数設定（NEW）
+```bash
+# pane ID をまとめて管理
+PANES=(%27 %28 %25 %29 %26)
+# 承認後の再確認待ち秒数
+SLEEP_AFTER_APPROVE=5
+# cc コマンドが無い場合はエイリアスを自動設定
+command -v cc >/dev/null || alias cc="claude"
+```
+
 ### 1. tmux pane構成作成
 ```bash
 # 5つのpaneに分割（基本的な分割方法）
@@ -161,17 +171,19 @@ done
 実際の運用では、ファイル変更の承認待ちが頻繁に発生します。以下の方法で効率化できます：
 
 ```bash
-# 30秒ごとに全paneの承認待ちをチェック（承認後5秒で再確認）
-watch -n 30 'for pane in %27 %28 %25 %29 %26; do \
-  if tmux capture-pane -t $pane -p | grep -q "approve"; then \
-    tmux send-keys -t $pane "2" Enter; \
-    sleep 5; \
-    if tmux capture-pane -t $pane -p | grep -q "approve"; then \
-      echo "Re-approving changes in $pane"; \
-      tmux send-keys -t $pane "2" Enter; \
-    fi; \
-  fi; \
- done'
+# 30秒ごとに全paneの承認待ちをチェック（承認後${SLEEP_AFTER_APPROVE}秒で再確認）
+watch -n 30 '
+  for pane in "${PANES[@]}"; do
+    if tmux capture-pane -t $pane -p | grep -q "approve"; then
+      tmux send-keys -t $pane "2" Enter
+      sleep ${SLEEP_AFTER_APPROVE}
+      if tmux capture-pane -t $pane -p | grep -q "approve"; then
+        echo "Re-approving changes in $pane"
+        tmux send-keys -t $pane "2" Enter
+      fi
+    fi
+  done
+'
 ```
 
 ### 2. タスク管理の改善
@@ -289,11 +301,11 @@ done
 
 <!-- 2024-06-14 更新: 自動承認スクリプトに5秒後の再確認ロジックを追加 -->
 ```bash
-# または、承認待ちの確認と自動承認（承認後5秒で再チェック）
-for pane in %27 %28 %25 %29 %26; do
+# または、承認待ちの確認と自動承認（承認後${SLEEP_AFTER_APPROVE}秒で再チェック）
+for pane in "${PANES[@]}"; do
     if tmux capture-pane -t $pane -p | grep -q "approve"; then
         tmux send-keys -t $pane "2" Enter
-        sleep 5
+        sleep ${SLEEP_AFTER_APPROVE}
         if tmux capture-pane -t $pane -p | grep -q "approve"; then
             echo "Re-approving changes in $pane"
             tmux send-keys -t $pane "2" Enter
@@ -303,13 +315,13 @@ done
 ```
 
 ```bash
-# 定期的な承認チェックスクリプト（バックグラウンド実行、承認後5秒再確認）
+# 定期的な承認チェックスクリプト（バックグラウンド実行、承認後${SLEEP_AFTER_APPROVE}秒再確認）
 while true; do
-    for pane in %27 %28 %25 %29 %26; do
+    for pane in "${PANES[@]}"; do
         if tmux capture-pane -t $pane -p | tail -10 | grep -q "approve"; then
             echo "Approving changes in $pane"
             tmux send-keys -t $pane "2" Enter
-            sleep 5
+            sleep ${SLEEP_AFTER_APPROVE}
             if tmux capture-pane -t $pane -p | tail -10 | grep -q "approve"; then
                 echo "Re-approving changes in $pane"
                 tmux send-keys -t $pane "2" Enter
