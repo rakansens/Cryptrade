@@ -6,8 +6,7 @@
 
 import { z } from 'zod';
 import { createApiHandler } from '@/lib/api/create-api-handler';
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
-import { LogFilter, PaginationOptions, LogLevel, LogEntry } from '@/lib/logs/types';
+import { enhancedLogger, type LogFilter, type PaginationOptions, type LogLevel, type LogEntry } from '@/lib/logging';
 import { ValidationError } from '@/lib/errors/base-error';
 
 // Request validation schemas

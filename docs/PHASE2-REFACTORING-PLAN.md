@@ -17,7 +17,7 @@ Phase 1の成果を基に、残りの重複箇所とさらなる共通化機会�
 **現状**: 3つの独立したロギング実装が存在
 - `lib/utils/logger.ts` - Transport-agnostic logger with DI
 - `lib/utils/logger-enhanced.ts` - Wrapper with storage capabilities  
-- `lib/logs/enhanced-logger.ts` - Full storage integration
+- `lib/logs/enhanced-logger.ts` - Full storage integration (removed, replaced by `lib/logging/`)
 
 **問題**: 
 - 開発者が混乱しやすい

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import type { LogLevel } from '@/lib/logs/types'
+import type { LogLevel } from '@/lib/logging'
 import type { LogEntry, LogFilters, LogPagination } from '@/types/log-viewer.types'
 import { formatLogError } from '@/types/log-viewer.types'
 

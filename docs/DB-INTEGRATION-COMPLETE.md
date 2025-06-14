@@ -19,7 +19,7 @@ PrismaとSupabaseを使用したデータベース統合が完了しました。
 ### ✅ 2. チャート描画データのDB統合
 - **ファイル**: 
   - `/lib/services/database/chart-drawing.service.ts` - データベースサービス
-  - `/lib/storage/chart-persistence-db.ts` - DB統合版永続化マネージャー
+  - `/lib/storage/chart-persistence-wrapper.ts` - DB統合版永続化マネージャー
 - **機能**:
   - 描画データの保存/読み込み
   - パターン分析データの管理

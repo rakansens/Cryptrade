@@ -6,8 +6,7 @@
 
 import { z } from 'zod';
 import { createApiHandler } from '@/lib/api/create-api-handler';
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
-import { LogFilter, LogLevel } from '@/lib/logs/types';
+import { enhancedLogger, type LogFilter, type LogLevel } from '@/lib/logging';
 
 // Request validation schema
 const logStatsQuerySchema = z.object({

@@ -4,8 +4,7 @@
  * Server-Sent Events for real-time log streaming
  */
 
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
-import { LogFilter, LogEntry, LogLevel } from '@/lib/logs/types';
+import { enhancedLogger, type LogFilter, type LogEntry, type LogLevel } from '@/lib/logging';
 import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
 
 export const GET = createSSEHandler({

@@ -7,8 +7,7 @@
 import { createStreamingHandler } from '@/lib/api/create-api-handler';
 import { StreamingResponseBuilder, streamJSON } from '@/lib/api/streaming';
 import { z } from 'zod';
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
-import { LogFilter, LogEntry, LogLevel } from '@/lib/logs/types';
+import { enhancedLogger, type LogFilter, type LogEntry, type LogLevel } from '@/lib/logging';
 
 // Define query parameters schema
 const LogStreamQuerySchema = z.object({

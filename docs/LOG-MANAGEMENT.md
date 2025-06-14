@@ -245,9 +245,9 @@ LOG_RETENTION_CRITICAL=365
 ### プログラマティック設定
 
 ```typescript
-import { EnhancedLogger } from '@/lib/logs/enhanced-logger';
+import { UnifiedLogger } from '@/lib/logging';
 
-const customLogger = new EnhancedLogger({
+const customLogger = new UnifiedLogger({
   source: 'my-service',
   minLevel: 'info',
   bufferSize: 1000,

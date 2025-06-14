@@ -5,12 +5,12 @@ const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
-import { enhancedLogger } from '@/lib/logs/enhanced-logger';
+import { enhancedLogger } from '@/lib/logging';
 import { responseHelpers } from '@/app/api/__tests__/test-utils';
-import { LogEntry } from '@/lib/logs/types';
+import { type LogEntry } from '@/lib/logging';
 
 // Mock the enhanced logger
-jest.mock('@/lib/logs/enhanced-logger', () => ({
+jest.mock('@/lib/logging', () => ({
   enhancedLogger: {
     subscribe: jest.fn(),
   }

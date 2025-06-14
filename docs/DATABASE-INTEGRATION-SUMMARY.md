@@ -27,7 +27,7 @@ CryptradeプロジェクトにPrisma/Supabaseを使用したデータベース�
   - 描画データの保存/読み込み
   - パターン分析データの管理
   - タイムフレーム別のデータ取得
-- ✅ `ChartPersistenceManagerDB`の作成
+- ✅ `ChartPersistenceManager` (ラッパー利用) の実装
   - DB/localStorageの切り替え可能
   - 自動移行機能
   - エラー時のフォールバック
@@ -104,16 +104,16 @@ await chat.addMessage(sessionId, {
 
 #### チャート描画
 ```typescript
-import { ChartPersistenceManagerDB } from '@/lib/storage/chart-persistence-db';
+import { ChartPersistenceManager } from '@/lib/storage/chart-persistence-wrapper';
 
 // DB使用を有効化
-await ChartPersistenceManagerDB.enableDatabase(sessionId);
+await ChartPersistenceManager.enableDatabase(sessionId);
 
 // 描画の保存
-await ChartPersistenceManagerDB.saveDrawings(drawings);
+await ChartPersistenceManager.saveDrawings(drawings);
 
 // 描画の読み込み
-const drawings = await ChartPersistenceManagerDB.loadDrawings();
+const drawings = await ChartPersistenceManager.loadDrawings();
 ```
 
 #### 分析履歴

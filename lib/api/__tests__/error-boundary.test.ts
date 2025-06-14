@@ -21,11 +21,11 @@ import {
   AuthorizationError,
   RateLimitError
 } from '@/lib/errors';
-import { enhancedLogger as logger } from '@/lib/logs/enhanced-logger';
+import { enhancedLogger as logger } from '@/lib/logging';
 import { env } from '@/config/env';
 
 // Mock dependencies
-jest.mock('@/lib/logs/enhanced-logger', () => ({
+jest.mock('@/lib/logging', () => ({
   enhancedLogger: {
     error: jest.fn(),
     warn: jest.fn(),

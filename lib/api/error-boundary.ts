@@ -18,7 +18,7 @@ import {
   RateLimitError,
   ConfigurationError
 } from '@/lib/errors';
-import { enhancedLogger as logger } from '@/lib/logs/enhanced-logger';
+import { enhancedLogger as logger } from '@/lib/logging';
 import { env } from '@/config/env';
 import type { ApiHandler, ApiHandlerContext, ErrorDetails } from '@/lib/api/types';
 
