@@ -48,3 +48,12 @@ next-env.d.ts
 debug-*.js
 test-proposal-*.js
 test-proposal-*.html
+
+# additional coverage directories
+/coverage-ws/
+/coverage-api/
+
+# test result artifacts
+/test-results*.json
+/test-results*.txt
+/test-performance*.json
