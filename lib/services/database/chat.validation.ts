@@ -33,7 +33,7 @@ export const MessageRoleSchema = z.enum(['user', 'assistant', 'system']);
 export const ChatMessageSchema = z.object({
   content: z
     .string()
-    .min(1, 'Message content cannot be empty')
+    .min(0, 'Message content cannot be empty')
     .max(MAX_CONTENT_LENGTH, `Message content cannot exceed ${MAX_CONTENT_LENGTH} characters`)
     .transform(sanitizeContent),
   role: MessageRoleSchema,

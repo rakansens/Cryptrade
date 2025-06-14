@@ -1,4 +1,5 @@
 import { PatternRenderer } from '../pattern-renderer'
+import { GlobalStateManager } from '../GlobalStateManager'
 import { logger } from '@/lib/utils/logger'
 import type { IChartApi, ISeriesApi, SeriesMarker, Time, SeriesType } from 'lightweight-charts'
 import type { PatternVisualization } from '@/types/pattern'
@@ -15,6 +16,7 @@ describe('PatternRenderer', () => {
   let mockMainSeries: jest.Mocked<ISeriesApi<SeriesType>>
   let mockPatternSeries: jest.Mocked<ISeriesApi<SeriesType>>
   let renderer: PatternRenderer
+  let stateManager: GlobalStateManager<ISeriesApi<SeriesType>>
 
   const mockVisualization: PatternVisualization = {
     keyPoints: [
@@ -42,6 +44,8 @@ describe('PatternRenderer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+
+    stateManager = new GlobalStateManager<ISeriesApi<SeriesType>>()
     
     // Mock pattern series
     mockPatternSeries = {
@@ -72,7 +76,7 @@ describe('PatternRenderer', () => {
 
   describe('Initialization', () => {
     it('creates renderer instance with unique ID', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       expect(logger.info).toHaveBeenCalledWith(
         '[PatternRenderer] Creating new instance',
@@ -87,7 +91,7 @@ describe('PatternRenderer', () => {
       const originalWindow = global.window
       global.window = { } as unknown as Window & typeof globalThis
       
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       expect((window as unknown as { __debugPatternRenderer: PatternRenderer }).__debugPatternRenderer).toBe(renderer)
       expect((window as unknown as { __debugPatternRenderers: unknown }).__debugPatternRenderers).toBeDefined()
@@ -98,7 +102,7 @@ describe('PatternRenderer', () => {
 
   describe('Pattern Rendering', () => {
     it('validates visualization object', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Null visualization
       renderer.renderPattern('pattern-1', null as unknown as PatternVisualization, 'test')
@@ -120,7 +124,7 @@ describe('PatternRenderer', () => {
     })
 
     it('renders pattern with all components', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       renderer.renderPattern('pattern-1', mockVisualization, 'head-and-shoulders', {
         target_level: 48000,
@@ -145,7 +149,7 @@ describe('PatternRenderer', () => {
     })
 
     it('cleans up existing pattern before rendering new one', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Render first pattern
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
@@ -158,7 +162,7 @@ describe('PatternRenderer', () => {
     })
 
     it('handles empty visualization components gracefully', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       const emptyVisualization: PatternVisualization = {
         keyPoints: [],
@@ -175,7 +179,7 @@ describe('PatternRenderer', () => {
 
   describe('Pattern Removal', () => {
     it('removes pattern and cleans up series', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Render pattern
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
@@ -192,7 +196,7 @@ describe('PatternRenderer', () => {
     })
 
     it('handles removal of non-existent pattern', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       renderer.removePattern('non-existent')
       
@@ -203,7 +207,7 @@ describe('PatternRenderer', () => {
     })
 
     it('removes all patterns', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Render multiple patterns
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
@@ -223,7 +227,7 @@ describe('PatternRenderer', () => {
 
   describe('Metric Lines', () => {
     it('renders metric lines when provided', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       const metrics = {
         target_level: 48000,
@@ -238,7 +242,7 @@ describe('PatternRenderer', () => {
     })
 
     it('removes metric lines when pattern is removed', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Render with metrics
       renderer.renderPattern('pattern-1', mockVisualization, 'test', {
@@ -259,8 +263,8 @@ describe('PatternRenderer', () => {
       global.window = { } as unknown as Window & typeof globalThis
       
       // Create multiple renderer instances
-      const renderer1 = new PatternRenderer(mockChart, mockMainSeries)
-      const renderer2 = new PatternRenderer(mockChart, mockMainSeries)
+      const renderer1 = new PatternRenderer(mockChart, mockMainSeries, stateManager)
+      const renderer2 = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       renderer1.renderPattern('pattern-1', mockVisualization, 'test')
       renderer2.renderPattern('pattern-2', mockVisualization, 'test')
@@ -281,7 +285,7 @@ describe('PatternRenderer', () => {
 
   describe('Error Handling', () => {
     it('handles rendering errors gracefully', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Mock error in addLineSeries
       mockChart.addLineSeries.mockImplementation(() => {
@@ -299,7 +303,7 @@ describe('PatternRenderer', () => {
     })
 
     it('continues rendering after component failure', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Mock error only for first series
       let callCount = 0
@@ -322,7 +326,7 @@ describe('PatternRenderer', () => {
       const originalWindow = global.window
       global.window = { } as unknown as Window & typeof globalThis
       
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
       
       // Destroy should clean up
@@ -335,11 +339,23 @@ describe('PatternRenderer', () => {
       
       global.window = originalWindow
     })
+
+    it('removes manager state when pattern is removed', () => {
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
+      renderer.renderPattern('pattern-1', mockVisualization, 'test')
+
+      expect(stateManager.getState().seriesCount).toBeGreaterThan(0)
+
+      renderer.removePattern('pattern-1')
+
+      expect(stateManager.getState().seriesCount).toBe(0)
+      expect(stateManager.getState().metricLineCount).toBe(0)
+    })
   })
 
   describe('Pattern Types', () => {
     it('handles different pattern types correctly', () => {
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       const patternTypes = [
         'head-and-shoulders',
@@ -371,7 +387,7 @@ describe('PatternRenderer', () => {
       
       mockMainSeries.markers.mockReturnValue(existingMarkers)
       
-      renderer = new PatternRenderer(mockChart, mockMainSeries)
+      renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
       
       // Should preserve existing markers
