@@ -1,0 +1,124 @@
+# Prometheus alerting rules for WSManager monitoring
+# File: ws-manager-rules.yml
+
+groups:
+  - name: ws-manager-alerts
+    rules:
+      # High retry rate alert
+      - alert: WSManagerHighRetryRate
+        expr: rate(ws_manager_retry_count_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: websocket-manager
+          team: sre
+        annotations:
+          summary: "WebSocket Manager high retry rate detected"
+          description: "WSManager is experiencing {{ $value }} retries per second, which indicates connection instability."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#high-retry-rate"
+
+      # Connection leak detection
+      - alert: WSManagerConnectionLeak
+        expr: ws_manager_active_connections > 100
+        for: 5m
+        labels:
+          severity: critical
+          component: websocket-manager
+          team: sre
+        annotations:
+          summary: "WebSocket Manager connection leak detected"
+          description: "Active connections ({{ $value }}) exceed threshold. Possible connection leak."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#connection-leak"
+
+      # Service down alert
+      - alert: WSManagerServiceDown
+        expr: up{job="cryptrade-ws-metrics"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: websocket-manager
+          team: sre
+        annotations:
+          summary: "WebSocket Manager service is down"
+          description: "WSManager metrics endpoint is not responding."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#service-down"
+
+      # Memory leak detection (based on connection growth)
+      - alert: WSManagerConnectionGrowth
+        expr: increase(ws_manager_active_connections_hwm[1h]) > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: websocket-manager
+          team: dev-be
+        annotations:
+          summary: "WebSocket Manager connection count growing rapidly"
+          description: "High water mark increased by {{ $value }} connections in the last hour."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#connection-growth"
+
+      # Cleanup efficiency
+      - alert: WSManagerCleanupLag
+        expr: ws_manager_stream_creations_total - ws_manager_stream_cleanups_total > 20
+        for: 15m
+        labels:
+          severity: warning
+          component: websocket-manager
+          team: dev-be
+        annotations:
+          summary: "WebSocket Manager cleanup lagging behind"
+          description: "{{ $value }} more streams created than cleaned up, indicating potential cleanup issues."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#cleanup-lag"
+
+  - name: ws-manager-performance
+    rules:
+      # Derived metrics for better monitoring
+      - record: ws_manager:retry_rate_5m
+        expr: rate(ws_manager_retry_count_total[5m])
+
+      - record: ws_manager:stream_creation_rate_5m
+        expr: rate(ws_manager_stream_creations_total[5m])
+
+      - record: ws_manager:stream_cleanup_rate_5m
+        expr: rate(ws_manager_stream_cleanups_total[5m])
+
+      - record: ws_manager:connection_efficiency
+        expr: ws_manager_active_connections / ws_manager_active_connections_hwm
+
+      # Health score calculation (0-1, higher is better)
+      - record: ws_manager:health_score
+        expr: |
+          (
+            (1 - clamp_max(ws_manager:retry_rate_5m / 1.0, 1)) * 0.4 +
+            (1 - clamp_max(ws_manager_active_connections / 100, 1)) * 0.3 +
+            clamp_min(up{job="cryptrade-ws-metrics"}, 0) * 0.3
+          )
+
+  - name: ws-manager-canary
+    rules:
+      # Canary deployment monitoring
+      - alert: WSManagerCanaryHighErrorRate
+        expr: |
+          (
+            rate(ws_manager_retry_count_total{environment="staging"}[5m]) >
+            rate(ws_manager_retry_count_total{environment="production"}[5m]) * 1.5
+          ) and on() (
+            rate(ws_manager_retry_count_total{environment="staging"}[5m]) > 0.1
+          )
+        for: 3m
+        labels:
+          severity: warning
+          component: websocket-manager
+          team: sre
+          phase: canary
+        annotations:
+          summary: "WSManager canary showing higher error rate than production"
+          description: "Canary retry rate ({{ $value }}) is significantly higher than production."
+          runbook_url: "https://docs.internal.com/runbooks/ws-manager#canary-rollback"
+
+      # Canary vs Production comparison
+      - record: ws_manager:canary_production_ratio
+        expr: |
+          (
+            rate(ws_manager_retry_count_total{environment="staging"}[5m]) /
+            rate(ws_manager_retry_count_total{environment="production"}[5m])
+          ) or on() vector(0)

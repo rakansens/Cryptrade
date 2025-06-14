@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-06-11T15:38:09.454Z",
+  "totalSuites": 0,
+  "totalTests": 0,
+  "totalTime": 0,
+  "slowTests": [],
+  "suiteDetails": [],
+  "errorSuites": [
+    "lib/utils/__tests__/*.test.ts",
+    "lib/services/__tests__/*.test.ts",
+    "lib/binance/__tests__/*.test.ts",
+    "lib/api/__tests__/*.test.ts",
+    "lib/api/helpers/__tests__/*.test.ts",
+    "lib/errors/__tests__/*.test.ts",
+    "lib/indicators/__tests__/*.test.ts",
+    "lib/logging/__tests__/*.test.ts",
+    "lib/mastra/__tests__/*.test.ts",
+    "lib/mastra/utils/__tests__/*.test.ts",
+    "lib/ml/__tests__/*.test.ts",
+    "lib/ws/__tests__/*.test.ts",
+    "hooks/base/__tests__/*.test.ts",
+    "store/__tests__/*.test.ts"
+  ]
+}

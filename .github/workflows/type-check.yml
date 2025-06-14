@@ -1,0 +1,42 @@
+name: Type Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run type check
+      run: npm run type-check:ci
+    
+    - name: Check type coverage
+      run: npm run type-coverage
+      continue-on-error: true
+    
+    - name: Upload type coverage report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: type-coverage-report
+        path: type-coverage/
+        retention-days: 7

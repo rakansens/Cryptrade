@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id        String                @id @default(uuid())
+  email     String                @unique
+  name      String?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  sessions  ConversationSession[]
+  logs      SystemLog[]
+
+  @@map("users")
+}
+
+model AnalysisRecord {
+  id              String               @id @default(uuid())
+  proposalId      String?
+  sessionId       String?
+  timestamp       BigInt
+  symbol          String
+  interval        String
+  type            AnalysisType
+  proposalData    Json
+  trackingData    Json?
+  performanceData Json?
+  version         Int                  @default(1)
+  synced          Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  session         ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  touchEvents     TouchEvent[]
+
+  @@index([symbol, timestamp])
+  @@index([type, trackingData])
+  @@index([sessionId])
+  @@index([proposalData], map: "idx_analysis_records_proposal_data", type: Gin)
+  @@index([trackingData], map: "idx_analysis_records_tracking_data", type: Gin)
+  @@map("analysis_records")
+}
+
+model TouchEvent {
+  id        String         @id @default(uuid())
+  recordId  String
+  timestamp BigInt
+  price     Decimal
+  result    TouchResult
+  volume    Decimal?
+  strength  Decimal
+  createdAt DateTime       @default(now())
+  record    AnalysisRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId, timestamp])
+  @@map("touch_events")
+}
+
+model ConversationSession {
+  id           String                @id @default(uuid())
+  userId       String?
+  startedAt    DateTime              @default(now())
+  lastActiveAt DateTime              @default(now())
+  summary      String?
+  metadata     Json?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  analyses     AnalysisRecord[]
+  drawings     ChartDrawing[]
+  messages     ConversationMessage[]
+  user         User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patterns     PatternAnalysis[]
+  logs         SystemLog[]
+
+  @@index([userId])
+  @@map("conversation_sessions")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model ConversationMessage {
+  id        String              @id @default(uuid())
+  sessionId String
+  role      MessageRole
+  content   String
+  timestamp DateTime            @default(now())
+  agentId   String?
+  metadata  Json?
+  createdAt DateTime            @default(now())
+  session   ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, timestamp])
+  @@index([agentId])
+  @@map("conversation_messages")
+}
+
+model MarketData {
+  symbol    String
+  interval  String
+  time      BigInt
+  open      Decimal
+  high      Decimal
+  low       Decimal
+  close     Decimal
+  volume    Decimal
+  createdAt DateTime @default(now())
+
+  @@id([symbol, interval, time])
+  @@map("market_data")
+}
+
+model ChartDrawing {
+  id          String               @id @default(uuid())
+  sessionId   String?
+  type        DrawingType
+  points      Json
+  style       Json
+  price       Decimal?
+  time        BigInt?
+  levels      Json?
+  metadata    Json?
+  visible     Boolean              @default(true)
+  interactive Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  session     ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chart_drawings")
+}
+
+model PatternAnalysis {
+  id                 String               @id @default(uuid())
+  sessionId          String?
+  type               PatternType
+  symbol             String
+  interval           String
+  startTime          BigInt
+  endTime            BigInt
+  confidence         Decimal
+  visualization      Json
+  metrics            Json
+  description        String?
+  tradingImplication TradingImplication
+  createdAt          DateTime             @default(now())
+  session            ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([symbol, interval])
+  @@map("pattern_analyses")
+}
+
+model SystemLog {
+  id            String               @id @default(uuid())
+  timestamp     DateTime             @default(now())
+  level         LogLevel
+  source        String
+  message       String
+  metadata      Json?
+  correlationId String?
+  userId        String?
+  sessionId     String?
+  agentName     String?
+  toolName      String?
+  stack         String?
+  duration      Int?
+  tags          Json?
+  createdAt     DateTime             @default(now())
+  session       ConversationSession? @relation(fields: [sessionId], references: [id])
+  user          User?                @relation(fields: [userId], references: [id])
+
+  @@index([timestamp, level])
+  @@index([correlationId])
+  @@index([sessionId])
+  @@index([userId])
+  @@map("system_logs")
+}
+
+model TechnicalIndicator {
+  symbol        String
+  interval      String
+  indicatorType IndicatorType
+  time          BigInt
+  values        Json
+  config        Json?
+  createdAt     DateTime      @default(now())
+
+  @@id([symbol, interval, indicatorType, time])
+  @@map("technical_indicators")
+}
+
+enum AnalysisType {
+  support
+  resistance
+  trendline
+  pattern
+  fibonacci
+}
+
+enum TouchResult {
+  bounce
+  break
+  test
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum DrawingType {
+  trendline
+  fibonacci
+  horizontal
+  vertical
+  pattern
+}
+
+enum PatternType {
+  headAndShoulders
+  inverseHeadAndShoulders
+  doubleTop
+  doubleBottom
+  tripleTop
+  tripleBottom
+  ascendingTriangle
+  descendingTriangle
+  symmetricalTriangle
+  wedge
+  flag
+  pennant
+  channel
+  rectangle
+  cup
+  cupAndHandle
+}
+
+enum TradingImplication {
+  bullish
+  bearish
+  neutral
+}
+
+enum LogLevel {
+  debug
+  info
+  warn
+  error
+  critical
+}
+
+enum IndicatorType {
+  rsi
+  macd
+  ma
+  bollinger
+}

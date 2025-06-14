@@ -1,0 +1,115 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop, 'feature/*']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        test-suite: [standard, chaos]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      
+      - name: Run unit tests first
+        run: npm test
+        
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BINANCE_WS_URL: ${{ secrets.NEXT_PUBLIC_BINANCE_WS_URL || 'wss://stream.binance.com:9443' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
+      
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          CI: true
+      
+      - name: Run Chaos tests
+        run: npx playwright test chaos-drawing.spec.ts
+        env:
+          CI: true
+          CHAOS_TEST: true
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+          
+      - name: Upload test videos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-videos
+          path: test-results/
+          retention-days: 7
+          
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots/
+          retention-days: 7
+
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test-e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Start application
+        run: |
+          npm ci
+          npm run build
+          npm start &
+          sleep 10
+        env:
+          NEXT_PUBLIC_BINANCE_WS_URL: ${{ secrets.NEXT_PUBLIC_BINANCE_WS_URL || 'wss://stream.binance.com:9443' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
+      
+      - name: Run k6 load test
+        run: k6 run k6/drawing-load-test.js
+        env:
+          BASE_URL: http://localhost:3000
+      
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: |
+            summary.json
+            summary.html
+          retention-days: 30

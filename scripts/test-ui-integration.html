@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UI Integration Test - Trendline Drawing</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .test-section {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #00e676;
+      border: none;
+      color: #000;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #00c853;
+    }
+    #log {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #ddd;
+    }
+    .log-success {
+      border-left-color: #4caf50;
+      background: #e8f5e9;
+    }
+    .log-error {
+      border-left-color: #f44336;
+      background: #ffebee;
+    }
+    .log-info {
+      border-left-color: #2196f3;
+      background: #e3f2fd;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 UI Integration Test - Enhanced Chart Control</h1>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="testSimpleTrendline()">Test: トレンドラインを引いて</button>
+    <button onclick="testMultipleTrendlines()">Test: 3本のトレンドラインを引いて</button>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Event Log</h2>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const log = document.getElementById('log');
+    
+    function addLog(message, type = 'info', data = null) {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+      if (data) {
+        entry.innerHTML += `<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+      log.insertBefore(entry, log.firstChild);
+    }
+    
+    function clearLog() {
+      log.innerHTML = '';
+      addLog('Log cleared', 'info');
+    }
+    
+    // Listen for trendline drawing events
+    window.addEventListener('draw:trendline', (event) => {
+      addLog('✅ Trendline drawing event received!', 'success', event.detail);
+      
+      // Check if event has proper structure
+      if (event.detail && event.detail.points && event.detail.points.length === 2) {
+        addLog('✅ Event has valid points structure', 'success');
+      } else {
+        addLog('❌ Event missing valid points', 'error');
+      }
+    });
+    
+    // Listen for start drawing events (fallback)
+    window.addEventListener('chart:startDrawing', (event) => {
+      addLog('⚠️ Received chart:startDrawing (fallback mode)', 'info', event.detail);
+    });
+    
+    async function testSimpleTrendline() {
+      addLog('🚀 Testing simple trendline request...', 'info');
+      
+      try {
+        const response = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: 'user', content: 'トレンドラインを引いて' }
+            ],
+            isStreamMode: false
+          })
+        });
+        
+        const data = await response.json();
+        addLog('📨 AI Response received', 'info');
+        
+        if (data.operations) {
+          const drawOperations = data.operations.filter(op => 
+            op.clientEvent?.event === 'draw:trendline'
+          );
+          
+          if (drawOperations.length > 0) {
+            addLog(`✅ Found ${drawOperations.length} draw:trendline operations`, 'success');
+            drawOperations.forEach((op, idx) => {
+              addLog(`Operation ${idx + 1} points:`, 'info', op.clientEvent.data.points);
+            });
+          } else {
+            addLog('❌ No draw:trendline operations found', 'error');
+          }
+        }
+        
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    async function testMultipleTrendlines() {
+      addLog('🚀 Testing multiple trendlines request...', 'info');
+      
+      try {
+        const response = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: 'user', content: '3本のトレンドラインを引いて' }
+            ],
+            isStreamMode: false
+          })
+        });
+        
+        const data = await response.json();
+        addLog('📨 AI Response received', 'info');
+        
+        if (data.operations) {
+          const drawOperations = data.operations.filter(op => 
+            op.clientEvent?.event === 'draw:trendline'
+          );
+          
+          addLog(`Found ${drawOperations.length} draw:trendline operations`, 
+            drawOperations.length === 3 ? 'success' : 'error');
+        }
+        
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    // Initial log entry
+    addLog('🔧 Test page loaded - ready for testing', 'info');
+  </script>
+</body>
+</html>

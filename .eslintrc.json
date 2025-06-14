@@ -1,0 +1,59 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/lib/utils/old-logger",
+            "message": "旧 logger は削除済み。'@/lib/utils/logger' を使ってください。"
+          },
+          {
+            "name": "@/types/binance",
+            "message": "型定義は統一済み。'@/types/market' から z.infer で型を取得してください。"
+          },
+          {
+            "name": "@/types/chart",
+            "message": "型定義は統一済み。'@/types/market' から z.infer で型を取得してください。"
+          },
+          {
+            "name": "@/lib/schemas/binance.schema",
+            "message": "スキーマは '@/types/market' に統合済み。"
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["**/types/binance", "**/types/chart"],
+            "message": "型定義ファイルは削除済み。'@/types/market' から統一型を使用してください。"
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "MemberExpression[object.name='process'][property.name='env']",
+        "message": "環境変数は '@/config/env' から型安全に取得してください。直接 process.env へのアクセスは禁止されています。"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/__tests__/**/*",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/testing/**/*",
+        "config/testing/setupEnvMock.ts",
+        "lib/utils/logger.ts",
+        "lib/utils/zustand-helpers.ts",
+        "lib/ws/compat-shim.ts",
+        "lib/ws/migration.ts"
+      ],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    }
+  ]
+}

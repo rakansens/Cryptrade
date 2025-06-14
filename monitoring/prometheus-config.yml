@@ -1,0 +1,80 @@
+# Prometheus configuration for WSManager metrics collection
+# Add this to your existing prometheus.yml configuration
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "ws-manager-rules.yml"
+
+scrape_configs:
+  # WSManager metrics endpoint
+  - job_name: 'cryptrade-ws-metrics'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/api/ws/metrics'
+    params:
+      format: ['prometheus']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    
+    # Staging environment specific
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: environment
+        replacement: 'staging'
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'cryptrade-api'
+
+  # Application health check
+  - job_name: 'cryptrade-health'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/api/health'
+    scrape_interval: 15s
+    
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up'
+        target_label: component
+        replacement: 'websocket-manager'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Service discovery for Kubernetes (if applicable)
+  - job_name: 'cryptrade-k8s'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - stg-ws-canary
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: cryptrade-api
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
