@@ -37,8 +37,40 @@ export interface IntentAnalysisResult {
  */
 export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   const queryLower = userQuery.toLowerCase().trim();
-  
-  // 0. 短すぎる入力のチェック（特定のキーワードは除外）
+
+  const detectors = [
+    detectShortInput,
+    detectEntryProposal,
+    detectUIControl,
+    detectPriceInquiry,
+    detectProposalRequest,
+    detectDrawingProposal,
+    detectTradingAnalysis,
+    detectGreeting,
+    detectHelpRequest,
+    detectMarketChat,
+    detectSmallTalk,
+  ];
+
+  for (const detector of detectors) {
+    const result = detector(userQuery, queryLower);
+    if (result) {
+      return result;
+    }
+  }
+
+  return {
+    intent: 'conversational',
+    confidence: 0.6,
+    reasoning: 'カジュアル会話と推定',
+    analysisDepth: 'basic',
+    requiresWorkflow: true,
+    conversationMode: 'casual',
+    emotionalTone: 'neutral'
+  };
+}
+
+export function detectShortInput(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const shortInputExceptions = /^(hi|ok|はい|いえ|yes|no|分析|価格|値段)$/i;
   if (userQuery.trim().length <= 2 && !shortInputExceptions.test(userQuery.trim())) {
     return {
@@ -50,32 +82,36 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       suggestedResponse: '申し訳ございませんが、もう少し詳しく教えていただけますか？'
     };
   }
-  
-  // 1. エントリー提案の判定を最優先（価格照会より先にチェック）
+  return null;
+}
+
+export function detectEntryProposal(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const entryProposalKeywords = ['エントリー提案', 'エントリーポイント', 'エントリー', 'entry', '売買', 'トレード', 'ポジション', 'テイクプロフィット', 'ストップロス'];
   const hasEntryKeyword = entryProposalKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
-  
+
   if (hasEntryKeyword && (queryLower.includes('提案') || queryLower.includes('suggest') || queryLower.includes('recommend') || queryLower.includes('おすすめ'))) {
     return {
-      intent: 'proposal_request',  // 提案リクエストとして処理
+      intent: 'proposal_request',
       confidence: 0.95,
       reasoning: 'エントリー提案リクエスト検出',
       analysisDepth: 'comprehensive',
       extractedSymbol: extractSymbol(userQuery) || 'BTCUSDT',
       requiresWorkflow: true,
       isProposalMode: true,
-      proposalType: 'entry',  // エントリー提案専用タイプ
-      isEntryProposal: true,  // エントリー提案フラグ
+      proposalType: 'entry',
+      isEntryProposal: true,
       suggestedResponse: 'エントリー提案を生成します'
     };
   }
-  
-  // 2. UI操作・チャート切り替えの判定（価格照会より優先）
+  return null;
+}
+
+export function detectUIControl(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const uiControlKeywords = [
     'チャート', '切り替え', '変更', '表示して', '見せて', 'にして',
     'switch', 'change', 'show', 'display'
   ];
-  
+
   const chartSwitchPatterns = [
     /(.+)の?チャートに?切り替え/,
     /(.+)に?変更/,
@@ -83,13 +119,11 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     /(.+)を?表示/,
     /(.+)の?チャート/
   ];
-  
+
   const hasUIKeyword = uiControlKeywords.some(keyword => queryLower.includes(keyword));
   const hasChartSwitchPattern = chartSwitchPatterns.some(pattern => pattern.test(queryLower));
-  
-  // 通貨シンボルと組み合わせたUI操作の判定
   const symbolWithUIAction = extractSymbol(userQuery) && (hasUIKeyword || hasChartSwitchPattern);
-  
+
   if (symbolWithUIAction && !queryLower.includes('価格') && !queryLower.includes('いくら')) {
     return {
       intent: 'ui_control',
@@ -100,16 +134,19 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       requiresWorkflow: false
     };
   }
-  
-  // 3. 価格照会の判定（UI操作と分析を除外）
+  return null;
+}
+
+export function detectPriceInquiry(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const drawingKeywords = ['引いて', '描いて', 'トレンドライン', 'ライン', 'フィボナッチ', 'サポート', 'レジスタンス'];
   const hasDrawingKeyword = drawingKeywords.some(keyword => queryLower.includes(keyword));
   const priceAnalysisKeywords = ['将来性', '見通し', '買い時', '売り時', '投資', 'どう思う', '分析'];
   const hasAnalysisKeyword = priceAnalysisKeywords.some(keyword => queryLower.includes(keyword));
-  
+  const hasUIKeyword = ['チャート', '切り替え', '変更', '表示して', '見せて', 'にして', 'switch', 'change', 'show', 'display'].some(keyword => queryLower.includes(keyword));
+
   if ((queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('値段') ||
-      /btc|eth|ada|sol|usdt|price|コイン/i.test(queryLower)) && 
-      !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') || 
+      /btc|eth|ada|sol|usdt|price|コイン/i.test(queryLower)) &&
+      !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
         hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
     return {
       intent: 'price_inquiry',
@@ -120,28 +157,28 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       requiresWorkflow: false
     };
   }
-  
-  // 4. 提案リクエストの判定
-  
+  return null;
+}
+
+export function detectProposalRequest(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const proposalKeywords = [
     '提案', '候補', 'おすすめ', '推奨', 'どこに', 'suggest', 'recommend', 'proposal'
   ];
-  
+
   const proposalDrawingKeywords = [
-    'トレンドライン', 'ライン', '線', 'サポート', 'レジスタンス', 
+    'トレンドライン', 'ライン', '線', 'サポート', 'レジスタンス',
     'trend', 'line', 'support', 'resistance'
   ];
-  
-  // 提案キーワードと描画キーワードの組み合わせをチェック
+
   const hasProposalKeyword = proposalKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
   const hasProposalDrawingKeyword = proposalDrawingKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
-  
+
   if (hasProposalKeyword && hasProposalDrawingKeyword) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
-    
+
     if (queryLower.includes('トレンドライン') || queryLower.includes('trend')) {
       proposalType = 'trendline';
-    } else if (queryLower.includes('サポート') || queryLower.includes('レジスタンス') || 
+    } else if (queryLower.includes('サポート') || queryLower.includes('レジスタンス') ||
                queryLower.includes('support') || queryLower.includes('resistance')) {
       proposalType = 'support-resistance';
     } else if (queryLower.includes('フィボナッチ') || queryLower.includes('fibonacci')) {
@@ -149,7 +186,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     } else if (queryLower.includes('パターン') || queryLower.includes('pattern')) {
       proposalType = 'pattern';
     }
-    
+
     return {
       intent: 'proposal_request',
       confidence: 0.95,
@@ -157,48 +194,45 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       analysisDepth: 'detailed',
       extractedSymbol: extractSymbol(userQuery),
       isProposalMode: true,
-      proposalType: proposalType
+      proposalType
     };
   }
-  
-  // 5. 描画・提案の判定（描画関連は提案モードとして優先処理）
+  return null;
+}
+
+export function detectDrawingProposal(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const drawingSpecificKeywords = [
     'トレンドライン', '引いて', '描いて', '描画',
     'フィボナッチ', 'サポート', 'レジスタンス', 'サポレジ',
     'trend', 'draw', 'fibonacci', 'support', 'resistance',
-    // パターン認識キーワードを追加
     'パターン', 'pattern', 'ヘッドアンドショルダー', 'head and shoulders',
     'トライアングル', 'triangle', 'ダブルトップ', 'double top',
     'ダブルボトム', 'double bottom', 'フラッグ', 'flag', 'ペナント', 'pennant'
   ];
-  
-  // "線"と"ライン"は文脈によって判断が必要
+
   const contextualDrawingKeywords = ['ライン', '線', 'line'];
-  
+
   const generalUIKeywords = [
     '変更', '切り替え', '時間足', '移動平均', 'インジケーター',
     'フィット', 'ズーム', 'チャート', '移動平均線', 'ボリンジャー', 'RSI', 'MACD'
   ];
-  
-  // サポート・レジスタンスと組み合わせた場合は描画として扱う
-  const supportResistanceWithDisplay = (queryLower.includes('サポート') || queryLower.includes('レジスタンス')) && 
+
+  const supportResistanceWithDisplay = (queryLower.includes('サポート') || queryLower.includes('レジスタンス')) &&
                                       queryLower.includes('表示');
-  
-  // 描画関連のキーワードが含まれている場合は自動的に提案モードに（優先判定）
+
   const hasSpecificDrawingKeyword = drawingSpecificKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
   const hasContextualKeyword = contextualDrawingKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
-  
-  // 明確な描画キーワードがある、または文脈的キーワードと描画アクションの組み合わせ、またはサポート・レジスタンスの表示
+
   if (hasSpecificDrawingKeyword || (hasContextualKeyword && !generalUIKeywords.some(k => queryLower.includes(k))) || supportResistanceWithDisplay) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
-    
+
     if (queryLower.includes('トレンドライン') || queryLower.includes('trend')) {
       proposalType = 'trendline';
-    } else if (queryLower.includes('サポート') || queryLower.includes('レジスタンス') || 
-               queryLower.includes('サポレジ') || queryLower.includes('support') || 
+    } else if (queryLower.includes('サポート') || queryLower.includes('レジスタンス') ||
+               queryLower.includes('サポレジ') || queryLower.includes('support') ||
                queryLower.includes('resistance')) {
       proposalType = 'support-resistance';
-    } else if (queryLower.includes('フィボナッチ') || queryLower.includes('fibonacci') || 
+    } else if (queryLower.includes('フィボナッチ') || queryLower.includes('fibonacci') ||
                queryLower.includes('フィボ')) {
       proposalType = 'fibonacci';
     } else if (queryLower.includes('パターン') || queryLower.includes('pattern') ||
@@ -206,7 +240,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
                queryLower.includes('ダブルトップ') || queryLower.includes('ダブルボトム')) {
       proposalType = 'pattern';
     }
-    
+
     return {
       intent: 'proposal_request',
       confidence: 0.95,
@@ -214,20 +248,21 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       analysisDepth: 'detailed',
       extractedSymbol: extractSymbol(userQuery),
       isProposalMode: true,
-      proposalType: proposalType
+      proposalType
     };
   }
-  
-  // 6. 詳細分析の判定（拡張キーワード追加）
+  return null;
+}
+
+export function detectTradingAnalysis(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const analysisKeywords = [
     '分析', 'テクニカル', '市場', '買う', '売る', '投資',
     '推奨', 'おすすめ', '戦略', 'リスク', '評価', 'レポート',
-    // 追加キーワード
-    '将来性', '見通し', '予想', '買い時', '売り時', 
+    '将来性', '見通し', '予想', '買い時', '売り時',
     'どう思う', '判断', 'トレンド', '動向', '展望',
     'outlook', 'forecast', 'prediction', 'trend', 'analysis'
   ];
-  
+
   if (analysisKeywords.some(keyword => queryLower.includes(keyword))) {
     return {
       intent: 'trading_analysis',
@@ -238,13 +273,15 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       requiresWorkflow: true
     };
   }
-  
-  // 7. 挨拶の判定
+  return null;
+}
+
+export function detectGreeting(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
     /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey)\.?$/i,
     /^(お疲れ様|よろしく|どうも)\.?$/i
   ];
-  
+
   if (greetingPatterns.some(pattern => pattern.test(queryLower))) {
     return {
       intent: 'greeting',
@@ -255,9 +292,11 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       suggestedResponse: 'こんにちは！暗号通貨取引についてお手伝いします。'
     };
   }
-  
-  // 8. ヘルプの判定
-  if (queryLower.includes('ヘルプ') || queryLower.includes('使い方') || 
+  return null;
+}
+
+export function detectHelpRequest(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+  if (queryLower.includes('ヘルプ') || queryLower.includes('使い方') ||
       queryLower.includes('help') || queryLower.includes('how')) {
     return {
       intent: 'help_request',
@@ -268,14 +307,16 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       suggestedResponse: generateHelpResponse()
     };
   }
-  
-  // 9. 市場雑談の判定
+  return null;
+}
+
+export function detectMarketChat(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const marketChatKeywords = [
     '最近', 'どう', '調子', '相場', '市場', '今日', '昨日', '明日',
     'ビットコイン', 'イーサリアム', '暗号通貨', '仮想通貨', 'クリプト',
     '上がり', '下がり', '動き', 'トレンド', '傾向', '様子'
   ];
-  
+
   const casualMarketPhrases = [
     /最近.*どう/i,
     /調子.*どう/i,
@@ -283,10 +324,10 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     /今日.*相場/i,
     /市場.*様子/i
   ];
-  
+
   const hasMarketChatKeyword = marketChatKeywords.some(keyword => queryLower.includes(keyword));
   const hasCasualMarketPhrase = casualMarketPhrases.some(pattern => pattern.test(queryLower));
-  
+
   if ((hasMarketChatKeyword && queryLower.length < 50) || hasCasualMarketPhrase) {
     return {
       intent: 'market_chat',
@@ -298,14 +339,16 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       emotionalTone: detectEmotionalTone(userQuery)
     };
   }
-  
-  // 10. 雑談の判定
+  return null;
+}
+
+export function detectSmallTalk(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const smallTalkKeywords = [
     '元気', 'げんき', '疲れ', 'つかれ', 'お疲れ', '大丈夫',
     'ありがとう', 'ありがと', 'すごい', 'いいね', 'そうだね',
     'そうなんだ', 'なるほど', 'わかった', 'わかりました', 'OK', 'ok'
   ];
-  
+
   const emotionalPhrases = [
     /嬉しい|うれしい/i,
     /心配|しんぱい/i,
@@ -313,10 +356,10 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     /期待|きたい/i,
     /悲しい|かなしい/i
   ];
-  
+
   const hasSmallTalkKeyword = smallTalkKeywords.some(keyword => queryLower.includes(keyword));
   const hasEmotionalPhrase = emotionalPhrases.some(pattern => pattern.test(queryLower));
-  
+
   if (hasSmallTalkKeyword || hasEmotionalPhrase || queryLower.length < 10) {
     return {
       intent: 'small_talk',
@@ -328,17 +371,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       emotionalTone: detectEmotionalTone(userQuery)
     };
   }
-  
-  // 11. デフォルト: カジュアル会話
-  return {
-    intent: 'conversational',
-    confidence: 0.6,
-    reasoning: 'カジュアル会話と推定',
-    analysisDepth: 'basic',
-    requiresWorkflow: true,
-    conversationMode: 'casual',
-    emotionalTone: 'neutral'
-  };
+  return null;
 }
 
 /**
