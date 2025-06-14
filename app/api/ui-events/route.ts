@@ -3,6 +3,7 @@ import { getUIEventBus, uiEventBus, UIEventPayload } from '@/lib/server/uiEventB
 import { logger } from '@/lib/utils/logger';
 import { ValidationError } from '@/lib/errors/base-error';
 import { errorHandler } from '@/lib/api/helpers/error-handler';
+import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,48 +11,31 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/ui-events - SSE Stream（常にストリームを返す）
  */
-export async function GET() {
-  const stream = new ReadableStream({
-    start(controller) {
+export const GET = createSSEHandler({
+  handler: {
+    onConnect({ stream }) {
       const send = (payload: UIEventPayload) => {
-        try {
-          controller.enqueue(
-            `event: ui-event\ndata: ${JSON.stringify(payload)}\n\n`
-          );
-        } catch (error) {
-          console.error('[STREAM] Error enqueueing:', error);
-          // Remove listener if controller is closed
-          uiEventBus.off('ui-event', send);
-        }
+        stream.write({ event: 'ui-event', data: payload });
       };
 
       // 初回ping
       send({ event: 'ping', data: { timestamp: Date.now() } } as UIEventPayload);
 
-      // EventBus → SSE
       uiEventBus.on('ui-event', send);
 
-      // Cleanup on stream close
-      const cleanup = () => {
-        uiEventBus.off('ui-event', send);
-      };
-      
-      // Handle various close scenarios
-      controller.signal?.addEventListener('abort', cleanup);
+      off = () => uiEventBus.off('ui-event', send);
     },
-  });
+    onDisconnect() {
+      off();
+    }
+  },
+  cors: { origin: '*', credentials: true }
+});
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': 'true',
-    },
-  });
-}
+// Holder for disconnect cleanup
+let off: () => void = () => {};
+
+export const OPTIONS = createSSEOptionsHandler({ origin: '*', credentials: true });
 
 /**
  * POST /api/ui-events - イベント送信

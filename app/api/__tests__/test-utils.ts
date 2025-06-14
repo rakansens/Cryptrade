@@ -181,36 +181,51 @@ export const responseHelpers = {
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     const events: unknown[] = [];
-    
+
     const timeout = setTimeout(() => {
       reader.cancel();
     }, timeoutMs);
+
+    let currentEvent: { event?: string; data: string[] } = { event: undefined, data: [] };
 
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
-        
+
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data.trim() && data !== '[DONE]') {
-              try {
-                events.push(JSON.parse(data));
-              } catch (e) {
-                // Skip invalid JSON
+          if (line.startsWith('event:')) {
+            currentEvent.event = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            currentEvent.data.push(line.slice(5));
+          } else if (line.trim() === '') {
+            if (currentEvent.data.length) {
+              const dataStr = currentEvent.data.join('\n');
+              let parsed: unknown = dataStr;
+              if (dataStr.trim() && dataStr !== '[DONE]') {
+                try {
+                  parsed = JSON.parse(dataStr);
+                } catch (e) {
+                  // keep raw string
+                }
+              }
+              if (currentEvent.event) {
+                events.push({ event: currentEvent.event, data: parsed });
+              } else {
+                events.push(parsed);
               }
             }
+            currentEvent = { event: undefined, data: [] };
           }
         }
       }
     } finally {
       clearTimeout(timeout);
     }
-    
+
     return events;
   }
 };
