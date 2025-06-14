@@ -1,5 +1,5 @@
 # tmuxを使った相互通信によるClaude Code Company管理方法 - 改善版
-<!-- 2024-06-14 更新: 自動承認スクリプトに5秒後の再確認ロジックを追加 -->
+<!-- 2024-06-15 更新: 自動承認スクリプトを改良（不要な"2"入力の解消 & Yes/Always-Yes を自動判定） -->
 
 ## 概要
 tmuxの複数paneでClaude Codeインスタンスを並列実行し、効率的にタスクを分散処理する方法。実践経験に基づく改善版。
@@ -171,16 +171,21 @@ done
 実際の運用では、ファイル変更の承認待ちが頻繁に発生します。以下の方法で効率化できます：
 
 ```bash
-# 30秒ごとに全paneの承認待ちをチェック（承認後${SLEEP_AFTER_APPROVE}秒で再確認）
+# 30秒ごとに全paneの承認待ちをチェック（入力欄クリア＆Yes/Always-Yes自動判定）
 watch -n 30 '
   for pane in "${PANES[@]}"; do
-    if tmux capture-pane -t $pane -p | grep -q "approve"; then
-      tmux send-keys -t $pane "2" Enter
-      sleep ${SLEEP_AFTER_APPROVE}
-      if tmux capture-pane -t $pane -p | grep -q "approve"; then
-        echo "Re-approving changes in $pane"
-        tmux send-keys -t $pane "2" Enter
+    # 直近数行のみを確認し、古いapproveログで誤爆しないようにする
+    recent="$(tmux capture-pane -t $pane -p | tail -5)"
+    if echo "$recent" | grep -q "approve"; then
+      # Yes/Always-Yes の選択肢を自動判定
+      if echo "$recent" | grep -q "(2)"; then
+        key=2   # 最初の「今後は自動承認」ボタン
+      else
+        key=1   # 2回目以降の通常Yesボタン
       fi
+      # 入力欄にゴミが残らないよう一旦 Ctrl-u でクリア
+      tmux send-keys -t $pane C-u
+      tmux send-keys -t $pane "$key" Enter
     fi
   done
 '
@@ -299,33 +304,20 @@ done
 
 このシステムにより、複数のClaude Codeインスタンスを効率的に管理し、大規模タスクの並列処理が可能になります。実践を通じて得られた知見を活用することで、より効率的なチーム運営が実現できます。
 
-<!-- 2024-06-14 更新: 自動承認スクリプトに5秒後の再確認ロジックを追加 -->
+<!-- 2024-06-15 更新: 自動承認スクリプトを改良（不要な"2"入力の解消 & Yes/Always-Yes を自動判定） -->
 ```bash
-# または、承認待ちの確認と自動承認（承認後${SLEEP_AFTER_APPROVE}秒で再チェック）
-for pane in "${PANES[@]}"; do
-    if tmux capture-pane -t $pane -p | grep -q "approve"; then
-        tmux send-keys -t $pane "2" Enter
-        sleep ${SLEEP_AFTER_APPROVE}
-        if tmux capture-pane -t $pane -p | grep -q "approve"; then
-            echo "Re-approving changes in $pane"
-            tmux send-keys -t $pane "2" Enter
-        fi
-    fi
-done
-```
-
-```bash
-# 定期的な承認チェックスクリプト（バックグラウンド実行、承認後${SLEEP_AFTER_APPROVE}秒再確認）
+# 定期的な承認チェックスクリプト（バックグラウンド実行、Yes/Always-Yesを自動判定）
 while true; do
     for pane in "${PANES[@]}"; do
-        if tmux capture-pane -t $pane -p | tail -10 | grep -q "approve"; then
-            echo "Approving changes in $pane"
-            tmux send-keys -t $pane "2" Enter
-            sleep ${SLEEP_AFTER_APPROVE}
-            if tmux capture-pane -t $pane -p | tail -10 | grep -q "approve"; then
-                echo "Re-approving changes in $pane"
-                tmux send-keys -t $pane "2" Enter
+        recent="$(tmux capture-pane -t $pane -p | tail -5)"
+        if echo "$recent" | grep -q "approve"; then
+            if echo "$recent" | grep -q "(2)"; then
+                key=2
+            else
+                key=1
             fi
+            tmux send-keys -t $pane C-u  # 入力欄クリア
+            tmux send-keys -t $pane "$key" Enter
         fi
     done
     sleep 30
