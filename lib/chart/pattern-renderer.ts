@@ -7,26 +7,13 @@ import { renderKeyPointMarkers } from '@/lib/chart/renderers/keyPointMarkerRende
 import { renderPatternLines } from '@/lib/chart/renderers/patternLineRenderer';
 import { renderPatternAreas } from '@/lib/chart/renderers/patternAreaRenderer';
 import { renderMetricLines } from '@/lib/chart/renderers/patternMetricRenderer';
+import { GlobalStateManager } from './GlobalStateManager';
 
 // Global instance counter for debugging
 let instanceCounter = 0;
 
-// Global map to track metric lines across all instances
-// This ensures metric lines can be found even if PatternRenderer is recreated
-const globalMetricLines = new Map<string, {
-  series: ISeriesApi<SeriesType>[];
-  instanceId: number;
-  createdAt: number;
-}>();
-
-// Global map to track ALL series created by PatternRenderer
-// This is a failsafe to ensure we can clean up any orphaned series
-const globalAllSeries = new Map<string, {
-  patternId: string;
-  series: ISeriesApi<SeriesType>;
-  type: 'marker' | 'line' | 'metric';
-  createdAt: number;
-}>();
+// Global state manager instance shared across renderers
+const defaultStateManager = new GlobalStateManager<ISeriesApi<SeriesType>>();
 
 export class PatternRenderer {
   private chart: IChartApi;
@@ -35,11 +22,17 @@ export class PatternRenderer {
   private markers: Map<string, SeriesMarker<Time>[]> = new Map();
   private metricLines: Map<string, ISeriesApi<SeriesType>[]> = new Map();
   private instanceId: number;
-  
-  constructor(chart: IChartApi, mainSeries: ISeriesApi<SeriesType>) {
+  private stateManager: GlobalStateManager<ISeriesApi<SeriesType>>;
+
+  constructor(
+    chart: IChartApi,
+    mainSeries: ISeriesApi<SeriesType>,
+    stateManager: GlobalStateManager<ISeriesApi<SeriesType>> = defaultStateManager
+  ) {
     this.chart = chart;
     this.mainSeries = mainSeries;
     this.instanceId = ++instanceCounter;
+    this.stateManager = stateManager;
     
     logger.info('[PatternRenderer] Creating new instance', {
       instanceId: this.instanceId,
@@ -127,8 +120,8 @@ export class PatternRenderer {
         renderMetricLines(id, visualization, metrics, baseStyle, {
           chart: this.chart,
           convertLineStyle: this.convertLineStyle.bind(this),
-          globalAllSeries,
-          globalMetricLines,
+          globalAllSeries: this.stateManager.allSeriesMap,
+          globalMetricLines: this.stateManager.metricLinesMap,
           metricLinesStore: this.metricLines,
           instanceId: this.instanceId,
         });
@@ -186,7 +179,7 @@ export class PatternRenderer {
         chart: this.chart,
         getLineColor: this.getLineColor.bind(this),
         convertLineStyle: this.convertLineStyle.bind(this),
-        globalAllSeries,
+        globalAllSeries: this.stateManager.allSeriesMap,
       });
 
       if (lineSeries.length > 0) {
@@ -282,10 +275,10 @@ export class PatternRenderer {
       // Remove metric lines - try instance map first, then global map
       let metricSeries = this.metricLines.get(id) || [];
       let fromGlobal = false;
-      
+
       // If not found in instance map, try global map
       if (metricSeries.length === 0) {
-        const globalEntry = globalMetricLines.get(id);
+        const globalEntry = this.stateManager.metricLinesMap.get(id);
         if (globalEntry) {
           metricSeries = globalEntry.series;
           fromGlobal = true;
@@ -307,7 +300,7 @@ export class PatternRenderer {
         const uniquePart = idParts.slice(-2).join('_'); // Get last two parts
         
         // Search in both maps
-        for (const [key, value] of globalMetricLines.entries()) {
+        for (const [key, value] of this.stateManager.metricLinesMap.entries()) {
           if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(idParts[idParts.length - 1]))) {
             logger.info('[PatternRenderer] Found metric lines with fuzzy match', { 
               requestedId: id, 
@@ -323,16 +316,16 @@ export class PatternRenderer {
         }
       }
       
-      logger.info('[PatternRenderer] Checking metric lines', { 
-        id, 
+      logger.info('[PatternRenderer] Checking metric lines', {
+        id,
         hasMetricLines: this.metricLines.has(id),
-        hasGlobalMetricLines: globalMetricLines.has(id),
+        hasGlobalMetricLines: this.stateManager.metricLinesMap.has(id),
         metricLineCount: metricSeries.length,
         fromGlobal,
         allMetricLineIds: Array.from(this.metricLines.keys()),
-        allGlobalIds: Array.from(globalMetricLines.keys()),
+        allGlobalIds: Array.from(this.stateManager.metricLinesMap.keys()),
         mapSize: this.metricLines.size,
-        globalMapSize: globalMetricLines.size,
+        globalMapSize: this.stateManager.metricLinesMap.size,
         idType: typeof id,
         idValue: id
       });
@@ -362,17 +355,17 @@ export class PatternRenderer {
         
         // Clean up from both maps - check all possible variations of the ID
         this.metricLines.delete(id);
-        globalMetricLines.delete(id);
+        this.stateManager.metricLinesMap.delete(id);
         
         // Also try to clean up any similar IDs
         const idParts = id.split('_');
         const uniquePart = idParts.slice(-2).join('_');
         
         // Clean up any entries that might match
-        for (const key of Array.from(globalMetricLines.keys())) {
+        for (const key of Array.from(this.stateManager.metricLinesMap.keys())) {
           if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(idParts[idParts.length - 1]))) {
             logger.info('[PatternRenderer] Also removing similar ID from global map', { key });
-            globalMetricLines.delete(key);
+            this.stateManager.metricLinesMap.delete(key);
           }
         }
         
@@ -381,13 +374,13 @@ export class PatternRenderer {
           successCount,
           totalCount: metricSeries.length,
           remainingInstanceKeys: Array.from(this.metricLines.keys()),
-          remainingGlobalKeys: Array.from(globalMetricLines.keys())
+          remainingGlobalKeys: Array.from(this.stateManager.metricLinesMap.keys())
         });
       } else {
-        logger.warn('[PatternRenderer] No metric lines found for pattern', { 
+        logger.warn('[PatternRenderer] No metric lines found for pattern', {
           id,
           instanceKeys: Array.from(this.metricLines.keys()),
-          globalKeys: Array.from(globalMetricLines.keys())
+          globalKeys: Array.from(this.stateManager.metricLinesMap.keys())
         });
         
         // Last resort: try to remove all metric lines that might be related
@@ -396,12 +389,12 @@ export class PatternRenderer {
           const idParts = id.split('_');
           const timestamp = idParts.find(part => /^\d{13}$/.test(part)); // Find timestamp
           
-          for (const [key, value] of globalMetricLines.entries()) {
+          for (const [key, value] of this.stateManager.metricLinesMap.entries()) {
             if (timestamp && key.includes(timestamp)) {
               logger.info('[PatternRenderer] Removing orphaned metric lines', { key });
               try {
                 value.series.forEach(s => this.chart.removeSeries(s));
-                globalMetricLines.delete(key);
+                this.stateManager.metricLinesMap.delete(key);
               } catch (e) {
                 logger.error('[PatternRenderer] Failed to remove orphaned series', { key, error: String(e) });
               }
@@ -413,7 +406,7 @@ export class PatternRenderer {
       // Final cleanup: use globalAllSeries to find any remaining series
       logger.info('[PatternRenderer] Checking globalAllSeries for cleanup');
       const remainingSeries: string[] = [];
-      for (const [seriesId, seriesInfo] of globalAllSeries.entries()) {
+      for (const [seriesId, seriesInfo] of this.stateManager.allSeriesMap.entries()) {
         if (seriesInfo.patternId === id || 
             (id.includes('pattern') && seriesInfo.patternId.includes(id.split('_').slice(-1)[0]))) {
           remainingSeries.push(seriesId);
@@ -424,7 +417,7 @@ export class PatternRenderer {
               type: seriesInfo.type,
               hasChart: !!this.chart,
               hasSeries: !!seriesInfo.series,
-              globalAllSeriesSize: globalAllSeries.size
+              globalAllSeriesSize: this.stateManager.allSeriesMap.size
             });
             
             // Remove from chart first
@@ -440,8 +433,8 @@ export class PatternRenderer {
             }
             
             // Then remove from global map
-            if (globalAllSeries.has(seriesId)) {
-              globalAllSeries.delete(seriesId);
+            if (this.stateManager.allSeriesMap.has(seriesId)) {
+              this.stateManager.allSeriesMap.delete(seriesId);
             } else {
               logger.warn('[PatternRenderer] Series not found in globalAllSeries', { seriesId });
             }
@@ -457,12 +450,15 @@ export class PatternRenderer {
       }
       
       if (remainingSeries.length > 0) {
-        logger.info('[PatternRenderer] Cleaned up remaining series from globalAllSeries', { 
+        logger.info('[PatternRenderer] Cleaned up remaining series from globalAllSeries', {
           count: remainingSeries.length,
           seriesIds: remainingSeries
         });
       }
-      
+
+      // Final cleanup of manager state
+      this.stateManager.cleanup(id);
+
       logger.info('[PatternRenderer] Pattern removed successfully', { id });
     } catch (error) {
       logger.error('[PatternRenderer] Error removing pattern', { id, error: String(error) });
@@ -493,15 +489,15 @@ export class PatternRenderer {
         id,
         lineCount: lines.length
       })),
-      globalMetricLines: Array.from(globalMetricLines.keys()),
-      globalMetricLinesDetails: Array.from(globalMetricLines.entries()).map(([id, entry]) => ({
+      globalMetricLines: Array.from(this.stateManager.metricLinesMap.keys()),
+      globalMetricLinesDetails: Array.from(this.stateManager.metricLinesMap.entries()).map(([id, entry]) => ({
         id,
         lineCount: entry.series.length,
         instanceId: entry.instanceId,
         age: Date.now() - entry.createdAt
       })),
-      globalAllSeries: Array.from(globalAllSeries.keys()),
-      globalAllSeriesDetails: Array.from(globalAllSeries.entries()).map(([id, entry]) => ({
+      globalAllSeries: Array.from(this.stateManager.allSeriesMap.keys()),
+      globalAllSeriesDetails: Array.from(this.stateManager.allSeriesMap.entries()).map(([id, entry]) => ({
         id,
         patternId: entry.patternId,
         type: entry.type,
@@ -610,7 +606,7 @@ export class PatternRenderer {
       
       // Track in global series map
       const targetSeriesId = `${id}_metric_target_${Date.now()}`;
-      globalAllSeries.set(targetSeriesId, {
+      this.stateManager.allSeriesMap.set(targetSeriesId, {
         patternId: id,
         series: targetSeries,
         type: 'metric',
@@ -642,7 +638,7 @@ export class PatternRenderer {
       
       // Track in global series map
       const stopLossSeriesId = `${id}_metric_stoploss_${Date.now()}`;
-      globalAllSeries.set(stopLossSeriesId, {
+      this.stateManager.allSeriesMap.set(stopLossSeriesId, {
         patternId: id,
         series: stopLossSeries,
         type: 'metric',
@@ -674,7 +670,7 @@ export class PatternRenderer {
       
       // Track in global series map
       const breakoutSeriesId = `${id}_metric_breakout_${Date.now()}`;
-      globalAllSeries.set(breakoutSeriesId, {
+      this.stateManager.allSeriesMap.set(breakoutSeriesId, {
         patternId: id,
         series: breakoutSeries,
         type: 'metric',
@@ -686,7 +682,7 @@ export class PatternRenderer {
     if (metricLines.length > 0) {
       // Store in both instance map and global map
       this.metricLines.set(id, metricLines);
-      globalMetricLines.set(id, {
+      this.stateManager.metricLinesMap.set(id, {
         series: metricLines,
         instanceId: this.instanceId,
         createdAt: Date.now()
@@ -701,13 +697,13 @@ export class PatternRenderer {
         breakoutLevel: metrics.breakout_level,
         allPatternIds: Array.from(this.metricLines.keys()),
         mapSize: this.metricLines.size,
-        globalMapSize: globalMetricLines.size,
-        globalPatternIds: Array.from(globalMetricLines.keys())
+        globalMapSize: this.stateManager.metricLinesMap.size,
+        globalPatternIds: Array.from(this.stateManager.metricLinesMap.keys())
       });
       
       // Debug: Verify the lines were actually stored
       const storedLines = this.metricLines.get(id);
-      const globalStoredLines = globalMetricLines.get(id);
+      const globalStoredLines = this.stateManager.metricLinesMap.get(id);
       logger.info('[PatternRenderer] Verification - metric lines retrieved:', {
         id,
         retrieved: !!storedLines,

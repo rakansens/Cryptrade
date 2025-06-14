@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core';
 import { openai } from '@ai-sdk/openai';
-import { agentNetwork, registerCryptradeAgent } from './agent-network';
+import { agentNetwork, registerCryptradeAgent } from './message-router';
 import { logger } from '@/lib/utils/logger';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { enhancedChartControlTool } from '../tools/enhanced-chart-control.tool';

@@ -225,15 +225,17 @@ interface RenderContext {
 
 1. **Extract Global State Manager** (1-2 days)
    ```typescript
-   class GlobalStateManager {
-     private metricLines = new Map();
-     private allSeries = new Map();
+  class GlobalStateManager {
+    private metricLines = new Map();
+    private allSeries = new Map();
      
      cleanup(patternId: string): void
      forceCleanup(): void
      getState(): StateSnapshot
-   }
-   ```
+  }
+  ```
+
+  *Implemented in `lib/chart/GlobalStateManager.ts`*
 
 2. **Dependency Injection** (1 day)
    - Inject `GlobalStateManager` into PatternRenderer constructor
