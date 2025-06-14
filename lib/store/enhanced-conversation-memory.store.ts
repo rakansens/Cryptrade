@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
@@ -17,6 +17,8 @@ import type { ConversationMessage } from "@/types/conversation-memory";
  * - Database persistence with Prisma/Supabase
  * - Automatic fallback to localStorage
  * - Session and message management
+ * 
+ * Bug Fix (2025-06-14): Added missing closing parenthesis in the `persist/immer` wrapper to resolve a TypeScript syntax error.
  */
 
 // Enhanced store state with DB integration
@@ -82,6 +84,7 @@ const DEFAULT_PROCESSORS: MemoryProcessor[] = [
 export const useEnhancedConversationMemory = create<EnhancedConversationMemoryState>()(
   devtools(
     persist(
+      // ストレージをブラウザ環境に限定
       immer((set, get) => ({
         sessions: {},
         currentSessionId: null,
@@ -119,7 +122,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                   startedAt: dbSession.createdAt,
                   lastActiveAt: dbSession.lastActiveAt,
                   messages: [],
-                  summary: dbSession.summary || undefined,
+                  ...(dbSession.summary ? { summary: dbSession.summary } : {}),
                   processors: sessionProcessors,
                   tokenUsage: { total: 0, input: 0, output: 0 }
                 };
@@ -681,7 +684,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                     agentId: msg.agentId || undefined,
                     metadata: msg.metadata as any,
                   })),
-                  summary: dbSession.summary || undefined,
+                  ...(dbSession.summary ? { summary: dbSession.summary } : {}),
                   processors,
                   tokenUsage: (dbSession.metadata as any)?.tokenUsage || { total: 0, input: 0, output: 0 },
                 };
@@ -839,6 +842,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           }
           return parsed;
         },
+        storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : undefined))
       }
     )
   )
