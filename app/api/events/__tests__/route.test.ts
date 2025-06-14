@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/config/testing/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { GET, OPTIONS, broadcastEvent } from '../route';
+import { GET, OPTIONS, broadcastEvent, eventBroadcast } from '../route';
 import { responseHelpers } from '@/app/api/__tests__/test-utils';
 
 // Mock console methods
@@ -19,10 +19,7 @@ jest.mock('@/lib/utils/logger', () => ({
 describe('Events SSE API Route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Clear global client streams
-    if (globalThis.__clientStreams) {
-      globalThis.__clientStreams.clear();
-    }
+    eventBroadcast.close();
   });
 
   afterAll(() => {
@@ -40,23 +37,24 @@ describe('Events SSE API Route', () => {
 
       // Collect initial events
       const events = await responseHelpers.collectSSEEvents(response, 100);
-      
+
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({
-        type: 'connected',
-        message: 'SSE connection established',
-        timestamp: expect.any(Number)
+        event: 'connected',
+        data: {
+          message: 'SSE connection established',
+          timestamp: expect.any(Number)
+        }
       });
     });
 
-    it('should add client to global streams collection', async () => {
-      expect(globalThis.__clientStreams).toBeUndefined();
+    it('should register subscriber', async () => {
+      expect(eventBroadcast.getSubscriberCount()).toBe(0);
 
       const request = new NextRequest('http://localhost/api/events');
       await GET(request);
 
-      expect(globalThis.__clientStreams).toBeDefined();
-      expect(globalThis.__clientStreams.size).toBe(1);
+      expect(eventBroadcast.getSubscriberCount()).toBe(1);
     });
 
     it('should handle multiple concurrent connections', async () => {
@@ -68,9 +66,8 @@ describe('Events SSE API Route', () => {
 
       const responses = await Promise.all(requests.map(req => GET(req)));
 
-      expect(globalThis.__clientStreams.size).toBe(3);
-      
-      // All should be SSE streams
+      expect(eventBroadcast.getSubscriberCount()).toBe(3);
+
       responses.forEach(response => {
         expect(response.headers.get('content-type')).toBe('text/event-stream');
       });
@@ -118,7 +115,7 @@ describe('Events SSE API Route', () => {
       });
 
       const response = await GET(request);
-      expect(globalThis.__clientStreams.size).toBe(1);
+      expect(eventBroadcast.getSubscriberCount()).toBe(1);
 
       // Simulate client disconnection
       abortController.abort();
@@ -127,7 +124,7 @@ describe('Events SSE API Route', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Client should be removed
-      expect(globalThis.__clientStreams.size).toBe(0);
+      expect(eventBroadcast.getSubscriberCount()).toBe(0);
     });
 
     it('should send heartbeat events', async () => {
@@ -143,8 +140,8 @@ describe('Events SSE API Route', () => {
 
       expect(events).toContainEqual(
         expect.objectContaining({
-          type: 'heartbeat',
-          timestamp: expect.any(Number)
+          event: 'heartbeat',
+          data: expect.objectContaining({ timestamp: expect.any(Number) })
         })
       );
 
@@ -155,42 +152,43 @@ describe('Events SSE API Route', () => {
       const request = new NextRequest('http://localhost/api/events');
       await GET(request);
 
-      // Mock a client that throws an error
-      const badClient = jest.fn().mockImplementation(() => {
-        throw new Error('Client error');
-      });
-      globalThis.__clientStreams.add(badClient);
+      const badStream = {
+        write: jest.fn(() => { throw new Error('Client error'); }),
+        close: jest.fn(),
+        get isClosed() { return false; }
+      };
+      eventBroadcast.subscribe(badStream);
 
-      const initialSize = globalThis.__clientStreams.size;
+      const initialSize = eventBroadcast.getSubscriberCount();
 
-      // Broadcast should remove the bad client
       broadcastEvent({ type: 'test', data: {} });
 
-      expect(globalThis.__clientStreams.size).toBe(initialSize - 1);
-      expect(badClient).toHaveBeenCalled();
+      expect(eventBroadcast.getSubscriberCount()).toBe(initialSize - 1);
+      expect(badStream.write).toHaveBeenCalled();
     });
 
     it('should handle missing timestamp in broadcast', () => {
-      const mockPushEvent = jest.fn();
-      globalThis.__clientStreams = new Set([mockPushEvent]);
+      const mockStream = {
+        write: jest.fn(),
+        close: jest.fn(),
+        get isClosed() { return false; }
+      };
+      eventBroadcast.subscribe(mockStream);
 
-      broadcastEvent({
-        type: 'test-event',
-        data: { value: 42 }
-      });
+      broadcastEvent({ type: 'test-event', data: { value: 42 } });
 
-      expect(mockPushEvent).toHaveBeenCalledWith(
+      expect(mockStream.write).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'test-event',
-          data: { value: 42 },
-          timestamp: expect.any(Number)
+          data: expect.objectContaining({
+            type: 'test-event',
+            data: { value: 42 },
+            timestamp: expect.any(Number)
+          })
         })
       );
     });
 
     it('should handle broadcast when no clients connected', () => {
-      globalThis.__clientStreams = undefined;
-
       // Should not throw
       expect(() => {
         broadcastEvent({ type: 'test', data: {} });

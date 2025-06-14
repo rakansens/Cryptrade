@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
 import { mastra } from '@/lib/mastra/mastra';
@@ -9,11 +9,11 @@ import {
   AnalysisStepType,
   getAnalysisSteps,
 } from '@/types/analysis-progress';
-// Import will be dynamic to avoid initialization issues
+import { createSSEHandler, createSSEOptionsHandler, SSEStream } from '@/lib/api/create-sse-handler';
 
 /**
  * Analysis Progress Streaming API
- * 
+ *
  * Streams real-time progress updates during proposal generation
  * Now with character-by-character streaming for text content
  */
@@ -26,7 +26,6 @@ const AnalysisStreamRequestSchema = z.object({
   sessionId: z.string().optional(),
 });
 
-// Streaming text content for each step type
 const STREAMING_TEXTS: Record<string, string[]> = {
   'peak-trough-detection': [
     '価格データの極値を分析中...',
@@ -67,15 +66,27 @@ const STREAMING_TEXTS: Record<string, string[]> = {
   ],
 };
 
-// Helper to stream text character by character
-async function* streamText(text: string, delayMs: number = 20): AsyncGenerator<string> {
+async function streamText(text: string, delayMs: number = 20): Promise<string[]> {
+  const chars: string[] = [];
   for (const char of text) {
-    yield char;
-    await new Promise(resolve => setTimeout(resolve, delayMs));
+    chars.push(char);
+    await new Promise(res => setTimeout(res, delayMs));
   }
+  return chars;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = createSSEHandler({
+  handler: {
+    async onConnect({ request, stream }) {
+      await runAnalysisStream(request, stream);
+    }
+  },
+  cors: { origin: '*' },
+});
+
+export const OPTIONS = createSSEOptionsHandler({ origin: '*' });
+
+async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
   try {
     const body = await request.json();
     const validatedInput = AnalysisStreamRequestSchema.parse(body);
@@ -88,88 +99,52 @@ export async function POST(request: NextRequest) {
       sessionId,
     });
 
-    // Create the response stream
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = (event: AnalysisProgressEvent) => {
-          const data = `data: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-        };
+    const sendEvent = (event: AnalysisProgressEvent) => {
+      stream.write({ data: event });
+    };
 
-        // Get steps based on analysis type
-        const stepTypes = getAnalysisSteps(validatedInput.analysisType);
-        const steps: AnalysisStep[] = stepTypes.map(type => createAnalysisStep(type));
+    const stepTypes = getAnalysisSteps(validatedInput.analysisType);
+    const steps: AnalysisStep[] = stepTypes.map(type => createAnalysisStep(type));
 
-        try {
-          // Send start event
-          sendEvent({
-            type: 'analysis:start',
-            sessionId,
-            timestamp: Date.now(),
-            data: {
-              totalSteps: steps.length,
-              analysisType: validatedInput.analysisType,
-              symbol: validatedInput.symbol,
-              interval: validatedInput.interval,
-            },
-          });
+    // Send start event
+    sendEvent({
+      type: 'analysis:start',
+      sessionId,
+      timestamp: Date.now(),
+      data: {
+        totalSteps: steps.length,
+        analysisType: validatedInput.analysisType,
+        symbol: validatedInput.symbol,
+        interval: validatedInput.interval,
+      },
+    });
 
-          // Process each step
-          for (let i = 0; i < steps.length; i++) {
-            const step = steps[i];
-            step.status = 'in-progress';
-            step.startTime = Date.now();
-            
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      step.status = 'in-progress';
+      step.startTime = Date.now();
+
+      sendEvent({
+        type: 'analysis:step-start',
+        sessionId,
+        timestamp: Date.now(),
+        data: {
+          step,
+          currentStepIndex: i,
+          totalSteps: steps.length,
+        },
+      });
+
+      if (STREAMING_TEXTS[step.type]) {
+        const texts = STREAMING_TEXTS[step.type];
+        step.streamingText = '';
+
+        for (const text of texts) {
+          const chars = await streamText(text);
+          for (const char of chars) {
+            step.streamingText += char;
             sendEvent({
-              type: 'analysis:step-start',
-              sessionId,
-              timestamp: Date.now(),
-              data: {
-                step,
-                currentStepIndex: i,
-                totalSteps: steps.length,
-              },
-            });
-
-            // Special handling for steps with streaming text
-            if (STREAMING_TEXTS[step.type]) {
-              const texts = STREAMING_TEXTS[step.type];
-              step.streamingText = '';
-              
-              for (const text of texts) {
-                // Stream each character
-                for await (const char of streamText(text)) {
-                  step.streamingText += char;
-                  sendEvent({
-                    type: 'analysis:step-progress',
-                    sessionId,
-                    timestamp: Date.now(),
-                    data: {
-                      step,
-                      currentStepIndex: i,
-                      totalSteps: steps.length,
-                    },
-                  });
-                }
-                
-                // Add newline between texts
-                step.streamingText += '\n';
-                await new Promise(resolve => setTimeout(resolve, 100));
-              }
-              
-              step.finalText = step.streamingText;
-              step.progress = 100;
-            } else {
-              // Regular progress simulation for other steps
-              await simulateStepProgress(step, i, steps.length, sendEvent, sessionId);
-            }
-
-            step.status = 'completed';
-            step.endTime = Date.now();
-
-            sendEvent({
-              type: 'analysis:step-complete',
+              type: 'analysis:step-progress',
               sessionId,
               timestamp: Date.now(),
               data: {
@@ -179,118 +154,95 @@ export async function POST(request: NextRequest) {
               },
             });
           }
-
-          // Step 6: Proposal Creation - Actually call the tool
-          let result: { proposalGroup: { id: string; proposals: unknown[] } | null } = { proposalGroup: null };
-          try {
-            // Dynamic import to avoid initialization issues
-            const { proposalGenerationTool } = await import('@/lib/mastra/tools/proposal-generation.tool');
-            type ProposalGenerationOutput = import('@/lib/mastra/tools/proposal-generation.tool').ProposalGenerationOutput;
-            const toolResult = await proposalGenerationTool.execute({
-              symbol: validatedInput.symbol,
-              interval: validatedInput.interval,
-              analysisType: validatedInput.analysisType,
-              maxProposals: validatedInput.maxProposals,
-            }) as ProposalGenerationOutput;
-            
-            if (toolResult.success && toolResult.proposalGroup) {
-              result = {
-                proposalGroup: {
-                  id: toolResult.proposalGroup.id,
-                  proposals: toolResult.proposalGroup.proposals,
-                }
-              };
-            }
-          } catch (toolError) {
-            logger.error('[Analysis Stream API] Proposal generation failed', { error: toolError });
-            // Continue with simulated data
-            result = {
-              proposalGroup: {
-                id: `pg_simulated_${Date.now()}`,
-                proposals: [],
-              }
-            };
-          }
-
-          // Send complete event
-          const duration = steps.reduce((sum, step) => {
-            if (step.startTime && step.endTime) {
-              return sum + (step.endTime - step.startTime);
-            }
-            return sum;
-          }, 0);
-
-          sendEvent({
-            type: 'analysis:complete',
-            sessionId,
-            timestamp: Date.now(),
-            data: {
-              duration,
-              proposalCount: result.proposalGroup?.proposals.length || 0,
-              proposalGroupId: result.proposalGroup?.id || '',
-            },
-          });
-
-          // Close the stream
-          try {
-            controller.close();
-          } catch (err) {
-            // Controller might already be closed
-          }
-
-        } catch (error) {
-          logger.error('[Analysis Stream API] Error during analysis', { error });
-          
-          sendEvent({
-            type: 'analysis:error',
-            sessionId,
-            timestamp: Date.now(),
-            data: {
-              error: error instanceof Error ? error.message : 'Unknown error',
-            },
-          });
-          
-          try {
-            controller.close();
-          } catch (err) {
-            // Controller might already be closed
-          }
+          step.streamingText += '\n';
+          await new Promise(res => setTimeout(res, 100));
         }
+
+        step.finalText = step.streamingText;
+        step.progress = 100;
+      } else {
+        await simulateStepProgress(step, i, steps.length, sendEvent, sessionId);
+      }
+
+      step.status = 'completed';
+      step.endTime = Date.now();
+
+      sendEvent({
+        type: 'analysis:step-complete',
+        sessionId,
+        timestamp: Date.now(),
+        data: {
+          step,
+          currentStepIndex: i,
+          totalSteps: steps.length,
+        },
+      });
+    }
+
+    // Proposal generation
+    let result: { proposalGroup: { id: string; proposals: unknown[] } | null } = { proposalGroup: null };
+    try {
+      const { proposalGenerationTool } = await import('@/lib/mastra/tools/proposal-generation.tool');
+      type ProposalGenerationOutput = import('@/lib/mastra/tools/proposal-generation.tool').ProposalGenerationOutput;
+      const toolResult = await (proposalGenerationTool.execute({
+        symbol: validatedInput.symbol,
+        interval: validatedInput.interval,
+        analysisType: validatedInput.analysisType,
+        maxProposals: validatedInput.maxProposals,
+      }) as Promise<ProposalGenerationOutput>);
+      if (toolResult.success && toolResult.proposalGroup) {
+        result = {
+          proposalGroup: {
+            id: toolResult.proposalGroup.id,
+            proposals: toolResult.proposalGroup.proposals,
+          }
+        };
+      }
+    } catch (toolError) {
+      logger.error('[Analysis Stream API] Proposal generation failed', { error: toolError });
+      result = {
+        proposalGroup: {
+          id: `pg_simulated_${Date.now()}`,
+          proposals: [],
+        }
+      };
+    }
+
+    const duration = steps.reduce((sum, step) => {
+      if (step.startTime && step.endTime) {
+        return sum + (step.endTime - step.startTime);
+      }
+      return sum;
+    }, 0);
+
+    sendEvent({
+      type: 'analysis:complete',
+      sessionId,
+      timestamp: Date.now(),
+      data: {
+        duration,
+        proposalCount: result.proposalGroup?.proposals.length || 0,
+        proposalGroupId: result.proposalGroup?.id || '',
       },
     });
 
-    return new NextResponse(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
-
+    stream.close();
   } catch (error) {
     logger.error('[Analysis Stream API] Request failed', { error });
-    
-    if (error instanceof z.ZodError) {
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid request',
-          details: error.errors,
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    return new Response(
-      JSON.stringify({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    stream.write({
+      data: {
+        type: 'analysis:error',
+        sessionId: `session_${Date.now()}`,
+        timestamp: Date.now(),
+        data: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    });
+    stream.close();
   }
 }
 
-// Simulate progress for regular steps
 async function simulateStepProgress(
   step: AnalysisStep,
   currentIndex: number,
@@ -437,7 +389,6 @@ async function simulateStepProgress(
       break;
 
     default:
-      // Default progress simulation
       for (let progress = 0; progress <= 100; progress += 20) {
         step.progress = progress;
         sendEvent({
