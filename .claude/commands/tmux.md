@@ -1,5 +1,5 @@
 # tmuxを使った相互通信によるClaude Code Company管理方法 - 改善版
-<!-- 2024-06-15 更新: 自動承認スクリプトを改良（不要な"2"入力の解消 & Yes/Always-Yes を自動判定） -->
+<!-- 2024-06-15 更新: 自動承認改良 & リアルタイムモニタリング機能を追加 -->
 
 ## 概要
 tmuxの複数paneでClaude Codeインスタンスを並列実行し、効率的にタスクを分散処理する方法。実践経験に基づく改善版。
@@ -301,6 +301,27 @@ for pane in %27 %28 %25 %29 %26; do
     tmux capture-pane -t $pane -p | grep -E "(完了|エラー|進行中)" | tail -5 >> progress.txt
 done
 ```
+
+### 9. リアルタイムモニタリング (NEW)
+プロマネpaneが部下paneの最新ログを定期取得して1行サマリを受け取る。
+
+```bash
+# 60秒ごとに各paneの直近3行を1行に圧縮してメインpaneに送信
+while true; do
+  for pane in "${PANES[@]}"; do
+    summary=$(tmux capture-pane -t $pane -p | tail -3 | tr "\n" " " | sed -E 's/ {2,}/ /g' | cut -c -280)
+    tmux send-keys -t %22 "[Log $pane] $summary" Enter
+  done
+  sleep 60
+done &
+```
+
+ポイント:
+- `tail -3` で最新状況を取得し `tr` で改行→スペースへ変換、一行にまとめる。
+- `cut -c -280` で長過ぎるログをカットしトークン節約。
+- main pane `%22` に `[Log %ID]` プレフィックス付きで流すので、プロマネAIは通知として認識しやすい。
+
+> 必要に応じて `sleep` を変更して頻度を調整。
 
 このシステムにより、複数のClaude Codeインスタンスを効率的に管理し、大規模タスクの並列処理が可能になります。実践を通じて得られた知見を活用することで、より効率的なチーム運営が実現できます。
 
