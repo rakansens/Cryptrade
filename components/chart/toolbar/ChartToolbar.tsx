@@ -27,11 +27,11 @@ const ChartToolbar = memo(function ChartToolbar({ onFitContent }: ChartToolbarPr
   )
   
   const handleSymbolChange = useCallback((newSymbol: string) => {
-    setSymbol(newSymbol)
+    setSymbol(newSymbol as 'BTCUSDT' | 'ETHUSDT' | 'ADAUSDT' | 'SOLUSDT')
   }, [setSymbol])
   
   const handleTimeframeChange = useCallback((tf: string) => {
-    setTimeframe(tf)
+    setTimeframe(tf as '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w')
   }, [setTimeframe])
 
   const handleFitContent = useCallback(() => {

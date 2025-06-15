@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
-import { usePatternActions, usePatternStore } from '@/store/chart';
-import { validatePatternEvent } from '@/types/events/pattern-events';
+import { usePatternActions, usePatternStore, useChartBaseStore } from '@/store/chart';
+import { 
+  validatePatternEvent,
+  type AddPatternEvent,
+  type RemovePatternEvent,
+  type UpdatePatternStyleEvent
+} from '@/types/events/pattern-events';
 import { 
   handleAgentError, 
   showAgentSuccess, 
@@ -9,6 +14,8 @@ import {
 } from '@/lib/chart/agent-utils';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
+import type { PatternData } from '@/store/chart/types';
+import type { PatternMetrics } from '@/types/store.types';
 
 /**
  * Pattern Event Handlers Hook
@@ -22,6 +29,8 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
     removePattern,
     clearPatterns,
   } = usePatternActions();
+  
+  const { symbol, timeframe } = useChartBaseStore();
 
   useEffect(() => {
     // Add Pattern Handler
@@ -36,7 +45,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { id, pattern } = validation.data.data;
+      const { id, pattern } = validation.data.data as AddPatternEvent;
       logger.info('[Pattern Event] Handling add pattern', { 
         id, 
         patternType: pattern.type,
@@ -45,11 +54,55 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
       });
       
       try {
+        // Create full PatternData object with required fields
+        const fullPatternData: PatternData = {
+          id,
+          type: pattern.type,
+          symbol: symbol,
+          interval: timeframe,
+          startTime: Date.now(),
+          endTime: Date.now(),
+          visualization: pattern.visualization || { keyPoints: [] } as PatternVisualization
+        };
+        
+        // Add optional properties
+        if (pattern.tradingImplication) {
+          fullPatternData.description = pattern.tradingImplication;
+          fullPatternData.tradingImplication = pattern.tradingImplication;
+        }
+        if (pattern.confidence !== undefined) {
+          fullPatternData.confidence = pattern.confidence;
+        }
+        
+        // Add metrics with required fields
+        if (pattern.metrics) {
+          // Cast to any to handle type mismatch between different PatternMetrics definitions
+          const anyMetrics = pattern.metrics as any;
+          
+          // Ensure required fields are present
+          const metrics: PatternMetrics = {
+            height: anyMetrics.height ?? 0, // Default value since it's required
+            width: anyMetrics.width ?? 0,  // Default value since it's required
+            ...(anyMetrics.angle !== undefined && { angle: anyMetrics.angle }),
+            ...(anyMetrics.retracement !== undefined && { retracement: anyMetrics.retracement }),
+            ...(anyMetrics.volume !== undefined && { volume: anyMetrics.volume }),
+            ...(anyMetrics.priceChange !== undefined && { priceChange: anyMetrics.priceChange }),
+            ...(anyMetrics.duration !== undefined && { duration: anyMetrics.duration }),
+            ...(anyMetrics.confidence !== undefined && { confidence: anyMetrics.confidence }),
+            ...(anyMetrics.stopLoss !== undefined && { stopLoss: anyMetrics.stopLoss }),
+            ...(anyMetrics.entryPrice !== undefined && { entryPrice: anyMetrics.entryPrice }),
+            ...(anyMetrics.targetPrice !== undefined && { targetPrice: anyMetrics.targetPrice }),
+            ...(anyMetrics.riskReward !== undefined && { riskReward: anyMetrics.riskReward }),
+            ...(anyMetrics.breakoutLevel !== undefined && { breakoutLevel: anyMetrics.breakoutLevel })
+          };
+          fullPatternData.metrics = metrics;
+        }
+        
         // Store pattern in state
-        addPattern(id, pattern);
+        addPattern(id, fullPatternData);
         
         // Get current PatternRenderer instance
-        const currentPatternRenderer = getPatternRenderer(handlers);
+        const currentPatternRenderer = getPatternRenderer(handlers as any);
         
         if (!currentPatternRenderer) {
           logger.warn('[Pattern Event] Pattern renderer not available');
@@ -61,12 +114,42 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
           return;
         }
         
+        // Transform visualization if needed
+        let patternVisualization = pattern.visualization;
+        
+        // If visualization has markers instead of keyPoints, transform it
+        if (pattern.visualization && 'markers' in pattern.visualization) {
+          const markers = (pattern.visualization as any).markers || [];
+          patternVisualization = {
+            lines: (pattern.visualization as any).lines?.map((l: any, idx: number) => ({
+              from: idx * 2,
+              to: idx * 2 + 1,
+              type: 'outline' as const,
+              style: l.style
+            })) || [],
+            keyPoints: markers.map((m: any) => ({
+              time: m.time,
+              value: m.value,
+              type: 'peak' as const,
+              label: m.text
+            })),
+            areas: (pattern.visualization as any).zones?.map((z: any) => ({
+              points: [0, 1, 2, 3], // Simple placeholder
+              style: z.style
+            }))
+          } as any;
+        }
+        
         // Render the pattern
         currentPatternRenderer.renderPattern(
           id, 
-          pattern.visualization, 
+          patternVisualization as any, 
           pattern.type,
-          pattern.metrics // Pass metrics for target/stop loss lines
+          pattern.metrics ? {
+            ...(pattern.metrics.targetPrice !== undefined && { target_level: pattern.metrics.targetPrice }),
+            ...(pattern.metrics.stopLoss !== undefined && { stop_loss: pattern.metrics.stopLoss }),
+            ...((pattern.metrics as any).breakoutLevel !== undefined && { breakout_level: (pattern.metrics as any).breakoutLevel })
+          } : undefined
         );
         
         showAgentSuccess({
@@ -96,7 +179,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { id } = validation.data.data;
+      const { id } = validation.data.data as RemovePatternEvent;
       logger.info('[Pattern Event] Handling remove pattern', { id });
       
       try {
@@ -112,7 +195,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         removePattern(id);
         
         // Get current PatternRenderer instance
-        const currentPatternRenderer = getPatternRenderer(handlers);
+        const currentPatternRenderer = getPatternRenderer(handlers as any);
         
         if (!currentPatternRenderer) {
           logger.warn('[Pattern Event] Pattern renderer not available');
@@ -162,7 +245,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { patternId, patternStyle, lineStyles, immediate } = validation.data.data;
+      const { patternId, patternStyle, lineStyles, immediate } = validation.data.data as UpdatePatternStyleEvent;
       logger.info('[Pattern Event] Handling update pattern style', { 
         patternId, 
         patternStyle, 
@@ -185,7 +268,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         }
         
         // Get current PatternRenderer instance
-        const currentPatternRenderer = getPatternRenderer(handlers);
+        const currentPatternRenderer = getPatternRenderer(handlers as any);
         
         if (!currentPatternRenderer) {
           logger.error('[Pattern Event] Pattern renderer not available for style update');
@@ -210,24 +293,28 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
             if (pattern.visualization) {
               // Update line styles
               if (pattern.visualization.lines) {
-                pattern.visualization.lines = pattern.visualization.lines.map((line) => ({
-                  ...line,
-                  style: {
-                    ...line.style,
-                    ...(baseStyle.color !== undefined && { color: baseStyle.color }),
-                    ...(baseStyle.lineWidth !== undefined && { lineWidth: baseStyle.lineWidth }),
-                    ...(baseStyle.lineStyle !== undefined && { lineStyle: baseStyle.lineStyle }),
-                  }
-                }));
+                pattern.visualization.lines = pattern.visualization.lines.map((line: any) => {
+                  // Ensure line is an object before spreading
+                  const baseLine = typeof line === 'object' && line !== null ? line : {};
+                  return {
+                    ...baseLine,
+                    style: {
+                      ...(baseLine.style && typeof baseLine.style === 'object' ? baseLine.style : {}),
+                      ...(baseStyle.color !== undefined && { color: baseStyle.color }),
+                      ...(baseStyle.lineWidth !== undefined && { lineWidth: baseStyle.lineWidth }),
+                      ...(baseStyle.lineStyle !== undefined && { lineStyle: baseStyle.lineStyle }),
+                    }
+                  };
+                });
               }
               
               // Update zone styles
-              if (pattern.visualization.zones) {
-                pattern.visualization.zones = pattern.visualization.zones.map((zone) => ({
-                  ...zone,
+              if ('areas' in pattern.visualization && (pattern.visualization as any).areas) {
+                (pattern.visualization as any).areas = (pattern.visualization as any).areas.map((area: any) => ({
+                  ...area,
                   style: {
-                    ...zone.style,
-                    ...(baseStyle.color !== undefined && { color: baseStyle.color }),
+                    ...area.style,
+                    ...(baseStyle.color !== undefined && { fillColor: baseStyle.color }),
                   }
                 }));
               }
@@ -244,12 +331,43 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         // Force redraw if immediate or base style was updated
         if (immediate || patternStyle?.baseStyle) {
           // Re-render the pattern with new styles
+          // Transform visualization if needed
+          let patternVisualization = pattern.visualization;
+          
+          // If visualization has markers instead of keyPoints, transform it
+          if (pattern.visualization && 'markers' in pattern.visualization) {
+            const markers = (pattern.visualization as any).markers || [];
+            patternVisualization = {
+              type: pattern.visualization?.type || 'pattern',
+              lines: (pattern.visualization as any).lines?.map((l: any, idx: number) => ({
+                from: idx * 2,
+                to: idx * 2 + 1,
+                type: 'outline' as const,
+                style: l.style
+              })) || [],
+              keyPoints: markers.map((m: any) => ({
+                time: m.time,
+                value: m.value,
+                type: 'peak' as const,
+                label: m.text
+              })),
+              zones: (pattern.visualization as any).zones?.map((z: any) => ({
+                points: [0, 1, 2, 3], // Simple placeholder
+                style: z.style
+              }))
+            } as any;
+          }
+          
           currentPatternRenderer.removePattern(patternId);
           currentPatternRenderer.renderPattern(
             patternId,
-            pattern.visualization,
+            patternVisualization as any,
             pattern.type,
-            pattern.metrics
+            pattern.metrics ? {
+              target_level: (pattern.metrics as any).targetPrice || (pattern.metrics as any).target_level,
+              stop_loss: (pattern.metrics as any).stopLoss || (pattern.metrics as any).stop_loss,
+              breakout_level: (pattern.metrics as any).breakoutLevel || (pattern.metrics as any).breakout_level
+            } : undefined
           );
         }
         

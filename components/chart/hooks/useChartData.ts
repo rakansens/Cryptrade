@@ -17,7 +17,6 @@ interface UseChartDataProps {
 
 export function useChartData({ 
   priceData, 
-  indicators, 
   bollingerSettings = { period: 20, stdDev: 2 },
   getSeries, 
   fitContent,
@@ -79,10 +78,8 @@ export function useChartData({
     if (formattedData.length === 0) return;
 
     const series = getSeries();
-    const currentDataLength = formattedData.length;
     const currentSymbol = '';
     const isSymbolChange = false;
-    const isDataSizeChange = Math.abs(currentDataLength - prevDataLength.current) > 10;
     
     // Only auto-fit on symbol change or initial load, not on timeframe changes
     const shouldAutoFit = autoFit && (isSymbolChange || (!hasAutoFitted.current && isInitialUpdate.current));

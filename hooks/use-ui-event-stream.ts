@@ -8,17 +8,32 @@ import { useSSEStream } from '@/hooks/base/use-sse-stream';
  * UIイベントストリームを購読するフック
  * SSE経由でサーバーからのUIイベントを受信し、window.dispatchEventで配信
  */
+// Type guard for checking if object has event property
+function hasEventProperty(obj: unknown): obj is { event: string; [key: string]: unknown } {
+  return typeof obj === 'object' && obj !== null && 'event' in obj && typeof (obj as { event: unknown }).event === 'string';
+}
+
+// Type guard for checking if object has type property
+function hasTypeProperty(obj: unknown): obj is { type: string; [key: string]: unknown } {
+  return typeof obj === 'object' && obj !== null && 'type' in obj && typeof (obj as { type: unknown }).type === 'string';
+}
+
 export function useUIEventStream() {
   const publish = useCallback(async (eventData: Event | CustomEvent | Record<string, unknown>) => {
     // CustomEvent 判定（ブラウザ環境のみ）
     const isCustomEvent = typeof window !== 'undefined' && eventData instanceof CustomEvent;
 
-    const eventName: string | undefined = isCustomEvent
-      ? eventData.type
-      : (eventData?.type ?? eventData?.event);
+    let eventName: string | undefined;
+    if (isCustomEvent) {
+      eventName = eventData.type;
+    } else if (hasTypeProperty(eventData)) {
+      eventName = eventData.type;
+    } else if (hasEventProperty(eventData)) {
+      eventName = eventData.event;
+    }
 
     // detail or full object
-    const payloadData = isCustomEvent ? (eventData as CustomEvent).detail : eventData;
+    const payloadData = isCustomEvent ? eventData.detail : eventData;
 
     try {
       const response = await fetch('/api/ui-events', {
@@ -77,7 +92,7 @@ export function useUIEventStream() {
         logger.error('[UI-Event] failed to parse', { type, data: ev.data, err });
       }
     },
-    onError: (e) => logger.warn('[UI-Event] SSE error', e),
+    onError: (e) => logger.warn('[UI-Event] SSE error', { error: e }),
   });
 
   return { publish };

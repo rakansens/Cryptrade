@@ -7,12 +7,12 @@ import { useAddApprovedDrawing } from '@/store/proposal-approval.store';
 import { useUIEventPublisher } from '@/store/ui-event.store';
 import { useAsyncState } from '@/hooks/base/use-async-state';
 import { validateDrawingData } from '@/schema/drawing';
-import { ExtendedProposalSchema, type ProposalMessage } from '@/types/proposal';
+import { type ProposalMessage } from '@/types/proposals';
+import type { ExtendedProposal, EnhancedProposalActionEvent } from '@/types/proposals';
 import { createChartEvent } from '@/types/events/chart-events';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
 import type { AnalysisRecord } from '@/types/analysis-history';
-import type { EnhancedProposalActionEvent } from '@/types/proposal';
 
 /**
  * Hook for handling proposal approval logic
@@ -62,15 +62,20 @@ export function useApproveProposal() {
     };
 
     // Construct proposal with context from message
-    const proposal = {
+    const proposal: ExtendedProposal = {
       ...proposalData,
       symbol: extractSymbolFromTitle(message.proposalGroup.title),
       interval: extractIntervalFromDescription(message.proposalGroup.description),
-    };
+      reasoning: proposalData.reason, // Map reason to reasoning for ExtendedProposal
+    } as ExtendedProposal;
     logger.info('[ApproveProposal] Approving proposal', { proposalId, type: proposal.type });
 
     // Validate the drawing data
-    const validatedData = validateDrawingData(proposal.drawingData);
+    const drawingData = 'drawingData' in proposalData ? proposalData.drawingData : undefined;
+    if (!drawingData) {
+      throw new Error('Drawing data is required for approval');
+    }
+    const validatedData = validateDrawingData(drawingData);
 
     // Create a unique drawing ID for this approval
     const drawingId = `${proposalId}_${Date.now()}`;
@@ -103,14 +108,12 @@ export function useApproveProposal() {
       // Regular drawing events
       chartEvent = createChartEvent('addDrawingWithMetadata', {
         id: drawingId,
-        type: validatedData.type,
+        type: validatedData.type as any,
         points: validatedData.points,
         style: validatedData.style || {},
         price: validatedData.price,
         time: validatedData.time,
         levels: validatedData.levels,
-        visible: true,
-        interactive: true,
         metadata: {
           symbol: proposal.symbol,
           interval: proposal.interval,
@@ -139,7 +142,7 @@ export function useApproveProposal() {
     );
 
     // Create analysis record if ML prediction exists
-    if (proposal.mlPrediction && proposal.mlPrediction.successProbability !== undefined) {
+    if (proposal.mlPrediction && proposal.mlPrediction.confidence !== undefined) {
       const analysisRecord: Omit<AnalysisRecord, 'id'> = {
         proposalId,
         sessionId: currentSessionId,
@@ -152,13 +155,33 @@ export function useApproveProposal() {
           validatedData.type === 'fibonacci' ? 'fibonacci' : 'pattern',
         proposal: {
           confidence: proposal.confidence,
-          price: proposal.drawingData.points[0]?.value,
-          mlPrediction: {
-            successProbability: proposal.mlPrediction.successProbability,
-            expectedBounces: proposal.mlPrediction.expectedBounces,
-            reasoning: proposal.mlPrediction.reasoning
-          },
-          drawingData: proposal.drawingData
+          price: drawingData.points[0]?.value,
+          mlPrediction: proposal.mlPrediction ? {
+            successProbability: proposal.mlPrediction.confidence,
+            expectedBounces: 0, // Default since it's not in the MLPrediction type
+            reasoning: [] // Default since it's not in the MLPrediction type
+          } : undefined,
+          drawingData: {
+            type: validatedData.type,
+            points: validatedData.points,
+            style: validatedData.style,
+            metadata: validatedData.metadata ? Object.entries(validatedData.metadata).reduce((acc, [key, value]) => {
+              // Ensure metadata values conform to expected types
+              if (
+                typeof value === 'string' || 
+                typeof value === 'number' || 
+                typeof value === 'boolean' ||
+                (Array.isArray(value) && value.every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')) ||
+                (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.values(value).every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'))
+              ) {
+                acc[key] = value;
+              }
+              return acc;
+            }, {} as Record<string, string | number | boolean | (string | number | boolean)[] | Record<string, string | number | boolean>>) : undefined,
+            price: validatedData.price,
+            time: validatedData.time,
+            levels: validatedData.levels
+          }
         },
         tracking: {
           status: 'active',
@@ -185,7 +208,7 @@ export function useApproveProposal() {
       }
     };
     
-    publish(approvalEvent);
+    publish(approvalEvent as unknown as Record<string, unknown>);
 
     // Show success notification
     showProposalApprovalSuccess(proposal.symbol, proposal.type || validatedData.type);
@@ -200,7 +223,7 @@ export function useApproveProposal() {
     try {
       return await approveAsync(message, proposalId);
     } catch (error) {
-      logger.error('[ApproveProposal] Failed to approve proposal', error);
+      logger.error('[ApproveProposal] Failed to approve proposal', { error });
       showProposalApprovalError(error as Error);
       throw error;
     }

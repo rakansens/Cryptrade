@@ -3,8 +3,111 @@
 import React, { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, X, ChevronRight, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react'
-import type { DrawingProposal, DrawingProposalGroup, ProposalGroup } from '@/types/proposals'
+import type { DrawingProposal as NewDrawingProposal, DrawingProposalGroup } from '@/types/proposals'
+// Legacy type no longer needed - all types now use proposals.ts
+import type { DrawingData } from '@/types/drawing'
 import { StyleEditor } from './StyleEditor'
+
+// Legacy proposal interface for backward compatibility
+interface LegacyDrawingProposal {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  reason: string;
+  drawingData: DrawingData;
+  confidence: number;
+  priority: 'high' | 'medium' | 'low';
+  createdAt: number;
+  expiresAt?: number;
+  touches?: number;
+  confidenceFactors?: Record<string, unknown>;
+}
+
+// Adapter to convert new DrawingProposal to legacy format expected by the component
+function adaptProposal(proposal: NewDrawingProposal): LegacyDrawingProposal {
+  // Convert coordinates to DrawingData format
+  const drawingData: DrawingData = {
+    type: proposal.analysisType as 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | 'pattern',
+    points: [
+      { time: proposal.coordinates.start.x, value: proposal.coordinates.start.y },
+      { time: proposal.coordinates.end.x, value: proposal.coordinates.end.y },
+      ...(proposal.coordinates.additionalPoints || []).map(p => ({ time: p.x, value: p.y }))
+    ],
+    style: {
+      color: proposal.metadata?.['color'] as string || '#3498db',
+      lineWidth: proposal.metadata?.['lineWidth'] as number || 2,
+      lineStyle: proposal.metadata?.['lineStyle'] as 'solid' | 'dashed' | 'dotted' || 'solid',
+      showLabels: proposal.metadata?.['showLabels'] as boolean || false
+    },
+    metadata: proposal.metadata ? Object.entries(proposal.metadata).reduce((acc, [key, value]) => {
+      // Only include simple types that DrawingData metadata expects
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        acc[key] = value;
+      } else if (Array.isArray(value) && value.every(v => 
+        typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+      )) {
+        acc[key] = value;
+      } else if (typeof value === 'object' && value !== null && !Array.isArray(value) && !('then' in value)) {
+        // Check if it's a simple object with only primitive values
+        const isSimpleObject = Object.values(value).every(v => 
+          typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+        );
+        if (isSimpleObject) {
+          acc[key] = value as unknown as Record<string, string | number | boolean>;
+        }
+      }
+      return acc;
+    }, {} as Record<string, string | number | boolean | (string | number | boolean)[] | Record<string, string | number | boolean>>) : undefined,
+    price: proposal.analysisType === 'horizontal' ? proposal.coordinates.start.y : undefined,
+    time: proposal.analysisType === 'vertical' ? proposal.coordinates.start.x : undefined,
+    levels: (proposal.metadata?.['levels'] as unknown as number[]) || undefined
+  };
+
+  const legacyProposal: LegacyDrawingProposal = {
+    id: proposal.id,
+    type: proposal.type,
+    title: proposal.title || proposal.metadata?.['title'] as string || `${proposal.analysisType} Analysis`,
+    description: proposal.description || proposal.metadata?.['description'] as string || proposal.reasoning,
+    reason: proposal.reason || proposal.reasoning,
+    drawingData,
+    confidence: proposal.confidence,
+    priority: proposal.priority,
+    createdAt: proposal.createdAt,
+  };
+
+  // Add optional properties only if they have values
+  if (proposal.expiresAt) {
+    legacyProposal.expiresAt = proposal.expiresAt;
+  }
+  
+  const touches = proposal.touches || (proposal.metadata?.touchPoints as number);
+  if (touches !== undefined) {
+    legacyProposal.touches = touches;
+  }
+  
+  if (proposal.confidenceFactors) {
+    legacyProposal.confidenceFactors = proposal.confidenceFactors as unknown as Record<string, unknown>;
+  }
+
+  return legacyProposal;
+}
+
+// Type alias for clarity
+type DrawingProposal = LegacyDrawingProposal;
+
+// Type for adapted proposal group with legacy proposals
+interface AdaptedProposalGroup extends Omit<DrawingProposalGroup, 'proposals'> {
+  proposals: LegacyDrawingProposal[];
+}
+
+// Adapter for proposal groups
+function adaptProposalGroup(group: DrawingProposalGroup): AdaptedProposalGroup {
+  return {
+    ...group,
+    proposals: group.proposals.map(p => adaptProposal(p as NewDrawingProposal))
+  };
+}
 
 interface ProposalCardProps {
   proposalGroup: DrawingProposalGroup
@@ -18,7 +121,7 @@ interface ProposalCardProps {
 
 // Memoize the component to prevent unnecessary re-renders
 export const ProposalCard = React.memo(function ProposalCard({
-  proposalGroup,
+  proposalGroup: rawProposalGroup,
   onApprove,
   onReject,
   onApproveAll,
@@ -26,6 +129,8 @@ export const ProposalCard = React.memo(function ProposalCard({
   onCancel,
   approvedDrawingIds = new Map(),
 }: ProposalCardProps) {
+  // Adapt the proposal group to use legacy format
+  const proposalGroup: AdaptedProposalGroup = useMemo(() => adaptProposalGroup(rawProposalGroup), [rawProposalGroup]);
   // Track local approval states
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set())
   const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set())
@@ -53,7 +158,7 @@ export const ProposalCard = React.memo(function ProposalCard({
       console.warn('[ProposalCard] onApproveAll is not defined');
       return;
     }
-    const allIds = new Set(proposalGroup.proposals.map(p => p.id))
+    const allIds = new Set<string>(proposalGroup.proposals.map((p) => p.id))
     setApprovedIds(allIds)
     onApproveAll()
   }
@@ -63,7 +168,7 @@ export const ProposalCard = React.memo(function ProposalCard({
       console.warn('[ProposalCard] onRejectAll is not defined');
       return;
     }
-    const allIds = new Set(proposalGroup.proposals.map(p => p.id))
+    const allIds = new Set<string>(proposalGroup.proposals.map((p) => p.id))
     setRejectedIds(allIds)
     onRejectAll()
   }
@@ -84,7 +189,7 @@ export const ProposalCard = React.memo(function ProposalCard({
   // Count proposals by status with memoization
   const { pendingCount, approvedCount, rejectedCount } = useMemo(() => {
     let pending = 0, approved = 0, rejected = 0;
-    proposalGroup.proposals.forEach(p => {
+    proposalGroup.proposals.forEach((p) => {
       if (approvedIds.has(p.id)) approved++;
       else if (rejectedIds.has(p.id)) rejected++;
       else pending++;
@@ -94,7 +199,7 @@ export const ProposalCard = React.memo(function ProposalCard({
 
   // Memoize proposals to prevent unnecessary re-renders
   const memoizedProposals = useMemo(() => 
-    proposalGroup.proposals.map(p => ({ ...p })),
+    proposalGroup.proposals.map((p) => ({ ...p })),
     [proposalGroup.proposals]
   )
 
@@ -175,16 +280,30 @@ export const ProposalCard = React.memo(function ProposalCard({
             const isRejected = rejectedIds.has(proposal.id)
             const status = isApproved ? 'approved' : isRejected ? 'rejected' : 'pending'
             
+            const itemProps: ProposalItemProps = {
+              proposal,
+              status,
+            };
+            
+            // Only add optional props if they have values
+            if (status === 'pending') {
+              itemProps.onApprove = () => handleApprove(proposal.id);
+              itemProps.onReject = () => handleReject(proposal.id);
+            }
+            
+            const drawingId = approvedDrawingIds.get(proposal.id);
+            if (drawingId) {
+              itemProps.drawingId = drawingId;
+            }
+            
+            if (status === 'approved' && onCancel && drawingId) {
+              itemProps.onCancel = () => handleCancel(proposal.id, drawingId);
+            }
+            
             return (
               <ProposalItem
                 key={proposal.id}
-                proposal={proposal}
-                status={status}
-                onApprove={status === 'pending' ? () => handleApprove(proposal.id) : undefined}
-                onReject={status === 'pending' ? () => handleReject(proposal.id) : undefined}
-                drawingId={approvedDrawingIds.get(proposal.id)}
-                onCancel={status === 'approved' && onCancel && approvedDrawingIds.get(proposal.id) ? 
-                  () => handleCancel(proposal.id, approvedDrawingIds.get(proposal.id)!) : undefined}
+                {...itemProps}
               />
             )
           })
@@ -212,7 +331,7 @@ export const ProposalCard = React.memo(function ProposalCard({
 })
 
 interface ProposalItemProps {
-  proposal: DrawingProposal
+  proposal: DrawingProposal // This now refers to the legacy format
   status?: 'pending' | 'approved' | 'rejected'
   onApprove?: () => void
   onReject?: () => void
@@ -315,9 +434,9 @@ function ProposalItem({ proposal, status = 'pending', onApprove, onReject, onCan
             <StyleEditor
               drawingId={drawingId}
               proposalId={proposal.id}
-              currentStyle={proposal.drawingData.style}
+              {...(proposal.drawingData.style && { currentStyle: proposal.drawingData.style })}
               isPattern={proposal.drawingData.type === 'pattern'}
-              patternType={proposal.drawingData.metadata?.patternType}
+              {...(proposal.drawingData.metadata?.['patternType'] && { patternType: proposal.drawingData.metadata['patternType'] as string })}
             />
             <Button
               size="sm"
@@ -356,20 +475,20 @@ function ProposalItem({ proposal, status = 'pending', onApprove, onReject, onCan
           <div className="flex items-center justify-between text-[var(--font-xs)]">
             <span className="text-[hsl(var(--text-muted))]">価格範囲</span>
             <span className="text-[hsl(var(--text-secondary))]">
-              ${(proposal.drawingData.points[0].value || 0).toLocaleString()} → 
-              ${(proposal.drawingData.points[1].value || 0).toLocaleString()}
+              ${(proposal.drawingData.points[0]?.value || 0).toLocaleString()} → 
+              ${(proposal.drawingData.points[1]?.value || 0).toLocaleString()}
             </span>
           </div>
         </div>
       )}
       
       {/* Price Info for horizontal line */}
-      {(proposal.drawingData.type === 'horizontal' || proposal.drawingData.type === 'horizontalLine') && proposal.drawingData.points && (
+      {proposal.drawingData.type === 'horizontal' && proposal.drawingData.points && (
         <div className="mt-[var(--space-sm)] pt-[var(--space-sm)] border-t border-[hsl(var(--border)/0.5)]">
           <div className="flex items-center justify-between text-[var(--font-xs)]">
             <span className="text-[hsl(var(--text-muted))]">価格レベル</span>
             <span className="text-[hsl(var(--text-secondary))]">
-              ${(proposal.drawingData.price || proposal.drawingData.points[0].value).toLocaleString()}
+              ${(proposal.drawingData.price || proposal.drawingData.points[0]?.value || 0).toLocaleString()}
             </span>
           </div>
         </div>
@@ -381,8 +500,8 @@ function ProposalItem({ proposal, status = 'pending', onApprove, onReject, onCan
           <div className="flex items-center justify-between text-[var(--font-xs)] mb-1">
             <span className="text-[hsl(var(--text-muted))]">価格範囲</span>
             <span className="text-[hsl(var(--text-secondary))]">
-              ${proposal.drawingData.points[0].value.toLocaleString()} → 
-              ${proposal.drawingData.points[1].value.toLocaleString()}
+              ${proposal.drawingData.points[0]?.value?.toLocaleString() || '0'} → 
+              ${proposal.drawingData.points[1]?.value?.toLocaleString() || '0'}
             </span>
           </div>
           {proposal.drawingData.levels && (
@@ -397,40 +516,40 @@ function ProposalItem({ proposal, status = 'pending', onApprove, onReject, onCan
       {proposal.drawingData.type === 'pattern' && proposal.drawingData.metadata && (
         <div className="mt-2 pt-2 border-t border-gray-700/50">
           <div className="space-y-1 text-xs">
-            {proposal.drawingData.metadata.metrics?.breakout_level && (
+            {(proposal.drawingData.metadata['metrics'] as any)?.breakout_level && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">ブレイクアウト</span>
                 <span className="text-gray-300">
-                  ${proposal.drawingData.metadata.metrics.breakout_level.toLocaleString()}
+                  ${(proposal.drawingData.metadata['metrics'] as any).breakout_level.toLocaleString()}
                 </span>
               </div>
             )}
-            {proposal.drawingData.metadata.metrics?.target_level && (
+            {(proposal.drawingData.metadata['metrics'] as any)?.target_level && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">目標価格</span>
                 <span className="text-green-400">
-                  ${proposal.drawingData.metadata.metrics.target_level.toLocaleString()}
+                  ${(proposal.drawingData.metadata['metrics'] as any).target_level.toLocaleString()}
                 </span>
               </div>
             )}
-            {proposal.drawingData.metadata.metrics?.stop_loss && (
+            {(proposal.drawingData.metadata['metrics'] as any)?.stop_loss && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">ストップロス</span>
                 <span className="text-red-400">
-                  ${proposal.drawingData.metadata.metrics.stop_loss.toLocaleString()}
+                  ${(proposal.drawingData.metadata['metrics'] as any).stop_loss.toLocaleString()}
                 </span>
               </div>
             )}
-            {proposal.drawingData.metadata.tradingImplication && (
+            {proposal.drawingData.metadata['tradingImplication'] && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-gray-500">シグナル:</span>
                 <span className={`font-medium ${
-                  proposal.drawingData.metadata.tradingImplication === 'bullish' ? 'text-green-400' :
-                  proposal.drawingData.metadata.tradingImplication === 'bearish' ? 'text-red-400' :
+                  proposal.drawingData.metadata['tradingImplication'] === 'bullish' ? 'text-green-400' :
+                  proposal.drawingData.metadata['tradingImplication'] === 'bearish' ? 'text-red-400' :
                   'text-gray-400'
                 }`}>
-                  {proposal.drawingData.metadata.tradingImplication === 'bullish' ? '上昇' :
-                   proposal.drawingData.metadata.tradingImplication === 'bearish' ? '下落' : '中立'}
+                  {proposal.drawingData.metadata['tradingImplication'] === 'bullish' ? '上昇' :
+                   proposal.drawingData.metadata['tradingImplication'] === 'bearish' ? '下落' : '中立'}
                 </span>
               </div>
             )}

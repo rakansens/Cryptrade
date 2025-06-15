@@ -1,10 +1,21 @@
 import { useEffect } from 'react';
-import { useChartStoreBase } from '@/store/chart.store';
-import { validateUIEvent } from '@/types/events/chart-ui-events';
+import { useChartBaseStore, useIndicatorStore } from '@/store/chart';
+import { 
+  validateUIEvent,
+  type ToggleIndicatorEvent,
+  type UpdateIndicatorSettingEvent,
+  type ChangeSymbolEvent,
+  type ChangeTimeframeEvent,
+  type SetDrawingModeEvent,
+  type AutoAnalysisEvent
+} from '@/types/events/chart-ui-events';
 import { handleAgentError, showAgentSuccess, handleValidationError } from '@/lib/chart/agent-utils';
 import { useCursor } from './useCursor';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
+import type { IndicatorOptions } from '@/types/market';
+import type { Timeframe, SymbolValue } from '@/constants/chart';
+import type { IndicatorValue } from '@/types/store.types';
 
 /**
  * Chart UI Event Handlers Hook
@@ -13,10 +24,10 @@ import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEv
  */
 
 export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
-  const setSymbol = useChartStoreBase(state => state.setSymbol);
-  const setTimeframe = useChartStoreBase(state => state.setTimeframe);
-  const setIndicatorEnabled = useChartStoreBase(state => state.setIndicatorEnabled);
-  const setIndicatorSetting = useChartStoreBase(state => state.setIndicatorSetting);
+  const setSymbol = useChartBaseStore(state => state.setSymbol);
+  const setTimeframe = useChartBaseStore(state => state.setTimeframe);
+  const setIndicatorEnabled = useIndicatorStore(state => state.setIndicatorEnabled);
+  const setIndicatorSetting = useIndicatorStore(state => state.setIndicatorSetting);
   
   const { setCursor, resetCursor, setDrawingCursor } = useCursor();
 
@@ -33,11 +44,11 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { indicator, enabled } = validation.data.data;
+      const { indicator, enabled } = validation.data.data as ToggleIndicatorEvent;
       logger.info('[UI Event] Handling indicator toggle', { indicator, enabled });
       
       try {
-        setIndicatorEnabled(indicator, enabled);
+        setIndicatorEnabled(indicator as keyof IndicatorOptions, enabled);
         showAgentSuccess({
           eventType: 'ui:toggleIndicator',
           operation: 'Toggle indicator',
@@ -63,11 +74,11 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { indicator, key, value } = validation.data.data;
+      const { indicator, key, value } = validation.data.data as UpdateIndicatorSettingEvent;
       logger.info('[UI Event] Handling indicator setting update', { indicator, key, value });
       
       try {
-        setIndicatorSetting(indicator, key, value);
+        setIndicatorSetting(indicator, key, value as IndicatorValue);
         showAgentSuccess({
           eventType: 'ui:updateIndicatorSetting',
           operation: 'Update indicator setting',
@@ -93,11 +104,11 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { symbol } = validation.data.data;
+      const { symbol } = validation.data.data as ChangeSymbolEvent;
       logger.info('[UI Event] Handling symbol change', { symbol });
       
       try {
-        setSymbol(symbol);
+        setSymbol(symbol as SymbolValue);
         showAgentSuccess({
           eventType: 'ui:changeSymbol',
           operation: 'Change symbol',
@@ -123,11 +134,11 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { timeframe } = validation.data.data;
+      const { timeframe } = validation.data.data as ChangeTimeframeEvent;
       logger.info('[UI Event] Handling timeframe change', { timeframe });
       
       try {
-        setTimeframe(timeframe);
+        setTimeframe(timeframe as Timeframe);
         showAgentSuccess({
           eventType: 'ui:changeTimeframe',
           operation: 'Change timeframe',
@@ -153,7 +164,7 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { mode } = validation.data.data;
+      const { mode } = validation.data.data as SetDrawingModeEvent;
       logger.info('[UI Event] Handling set drawing mode', { mode });
       
       try {
@@ -189,7 +200,7 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { type, config } = validation.data.data;
+      const { type, config } = validation.data.data as AutoAnalysisEvent;
       logger.info('[UI Event] Handling auto analysis', { type, config });
       
       if (!handlers.chartData || handlers.chartData.length === 0) {
@@ -203,8 +214,8 @@ export function useChartUIEventHandlers(handlers: ChartEventHandlers) {
       }
 
       try {
-        const { ChartAnalyzer } = await import('@/lib/chart/drawing-primitives');
-        const analyzer = new ChartAnalyzer(handlers.chartData);
+        // ChartAnalyzer import would be used here for actual analysis
+        await import('@/lib/chart/drawing-primitives');
         
         // Analysis logic would go here - simplified for now
         showAgentSuccess({

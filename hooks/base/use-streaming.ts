@@ -108,15 +108,20 @@ export function useStreaming<T = unknown>(options: StreamingHookOptions<T>): Str
     try {
       logger.debug('[useStreaming] Connecting to stream', { endpoint, method });
 
-      const response = await fetch(endpoint, {
+      const requestInit: RequestInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
           ...headers,
         },
-        body: body ? JSON.stringify(body) : undefined,
         signal: abortControllerRef.current.signal,
-      });
+      };
+      
+      if (body) {
+        requestInit.body = JSON.stringify(body);
+      }
+      
+      const response = await fetch(endpoint, requestInit);
 
       if (!response.ok) {
         throw new Error(`Stream request failed: ${response.status} ${response.statusText}`);
@@ -254,7 +259,7 @@ export interface SSEHookOptions<T> extends Omit<StreamingHookOptions<T>, 'method
 export function useSSE<T = unknown>(options: SSEHookOptions<T>): StreamingHookReturn<T> & {
   eventSource: EventSource | null;
 } {
-  const { eventTypes = [], ...streamingOptions } = options;
+  const { eventTypes = [] } = options;
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 

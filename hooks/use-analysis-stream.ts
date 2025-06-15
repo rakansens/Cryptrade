@@ -6,7 +6,6 @@ import { logger } from '@/lib/utils/logger';
 import {
   AnalysisProgressEvent,
   AnalysisStep,
-  AnalysisStepType,
 } from '@/types/analysis-progress';
 import { streamToLines } from '@/lib/utils/stream-utils';
 
@@ -35,7 +34,7 @@ interface UseAnalysisStreamReturn {
 export function useAnalysisStream(options: UseAnalysisStreamOptions = {}): UseAnalysisStreamReturn {
   const [steps, setSteps] = useState<AnalysisStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
-  const [sessionId, setSessionId] = useState<string>('');
+  const [_sessionId, setSessionId] = useState<string>('');
 
   // Handle incoming events
   const handleEvent = useCallback((event: AnalysisProgressEvent) => {
@@ -50,35 +49,38 @@ export function useAnalysisStream(options: UseAnalysisStreamOptions = {}): UseAn
 
       case 'analysis:step-start':
         if ('step' in event.data && 'currentStepIndex' in event.data) {
+          const stepData = event.data as { step: AnalysisStep; currentStepIndex: number; totalSteps: number };
           setSteps(prev => {
             const newSteps = [...prev];
-            newSteps[event.data.currentStepIndex] = event.data.step;
+            newSteps[stepData.currentStepIndex] = stepData.step;
             return newSteps;
           });
-          setCurrentStepIndex(event.data.currentStepIndex);
-          options.onStepStart?.(event.data.step);
+          setCurrentStepIndex(stepData.currentStepIndex);
+          options.onStepStart?.(stepData.step);
         }
         break;
 
       case 'analysis:step-progress':
         if ('step' in event.data && 'currentStepIndex' in event.data) {
+          const stepData = event.data as { step: AnalysisStep; currentStepIndex: number; totalSteps: number };
           setSteps(prev => {
             const newSteps = [...prev];
-            newSteps[event.data.currentStepIndex] = event.data.step;
+            newSteps[stepData.currentStepIndex] = stepData.step;
             return newSteps;
           });
-          options.onStepProgress?.(event.data.step);
+          options.onStepProgress?.(stepData.step);
         }
         break;
 
       case 'analysis:step-complete':
         if ('step' in event.data && 'currentStepIndex' in event.data) {
+          const stepData = event.data as { step: AnalysisStep; currentStepIndex: number; totalSteps: number };
           setSteps(prev => {
             const newSteps = [...prev];
-            newSteps[event.data.currentStepIndex] = event.data.step;
+            newSteps[stepData.currentStepIndex] = stepData.step;
             return newSteps;
           });
-          options.onStepComplete?.(event.data.step);
+          options.onStepComplete?.(stepData.step);
         }
         break;
 

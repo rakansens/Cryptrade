@@ -62,7 +62,7 @@ export function MLAnalysisProgress({
           }
         }
       } catch (err) {
-        logger.error('[MLAnalysisProgress] Analysis error', err)
+        logger.error('[MLAnalysisProgress] Analysis error', { error: err instanceof Error ? err.message : String(err) })
         setError('ML分析中にエラーが発生しました')
       }
     }

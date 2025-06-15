@@ -365,30 +365,16 @@ export function useMultiWebSocket(options: MultiWebSocketOptions) {
     const newConnections: Record<string, WebSocketHookReturn> = {};
 
     connections.forEach(({ id, url, options: connOptions = {} }) => {
-      const hookOptions: WebSocketHookOptions = {
-        ...connOptions,
-        url,
-        onMessage: (event) => {
-          connOptions.onMessage?.(event);
-          onMessage?.(id, event);
-        },
-        onError: (event) => {
-          connOptions.onError?.(event);
-          onError?.(id, event);
-        },
-        onOpen: (event) => {
-          connOptions.onOpen?.(event);
-          onOpen?.(id, event);
-        },
-        onClose: (event) => {
-          connOptions.onClose?.(event);
-          onClose?.(id, event);
-        },
-      };
-
       // This would need to be implemented differently to actually use the hook
       // For now, this is a conceptual implementation
-      logger.warn('[useMultiWebSocket] Multi-connection management needs custom implementation');
+      // Would create WebSocket connections with these options:
+      // - url, connOptions merged with global handlers
+      // - onMessage/onError/onOpen/onClose would call both local and global handlers
+      logger.warn('[useMultiWebSocket] Multi-connection management needs custom implementation', {
+        id,
+        url,
+        hasOptions: !!connOptions
+      });
     });
 
     connectionsRef.current = newConnections;

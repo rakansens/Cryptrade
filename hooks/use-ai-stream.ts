@@ -61,7 +61,7 @@ export function useAIStream(options: UseAIStreamOptions = {}): UseAIStreamReturn
       onStreamStart?.();
     },
     onEvent: (_type: string, ev: MessageEvent) => {
-      let payload: { type: string; content?: string; metadata?: unknown };
+      let payload: { type: string; text?: string; message?: string };
       try {
         payload = JSON.parse(ev.data);
       } catch (parseError) {
@@ -82,7 +82,7 @@ export function useAIStream(options: UseAIStreamOptions = {}): UseAIStreamReturn
           break;
         
         case 'chunk':
-          if (typeof payload.text === 'string' && currentAssistantMessageId) {
+          if (payload.text && typeof payload.text === 'string' && currentAssistantMessageId) {
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === currentAssistantMessageId
@@ -129,7 +129,7 @@ export function useAIStream(options: UseAIStreamOptions = {}): UseAIStreamReturn
           logger.warn('[useAIStream] Unknown SSE event type', { type: payload?.type });
       }
     },
-    onError: (ev) => {
+    onError: (_ev) => {
       const errObj = new Error('SSE connection error');
       logger.error('[useAIStream] SSE connection failed', { error: errObj });
       
@@ -223,9 +223,9 @@ export function useAIStream(options: UseAIStreamOptions = {}): UseAIStreamReturn
 /**
  * Format streaming messages for display
  */
-export function formatStreamMessage(content: string): string {
+export function formatStreamMessage(_content: string): string {
   // Handle markdown formatting
-  return content
+  return _content
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br />');
@@ -234,7 +234,7 @@ export function formatStreamMessage(content: string): string {
 /**
  * Calculate typing speed for simulated typing effect
  */
-export function getTypingDelay(content: string): number {
+export function getTypingDelay(_content: string): number {
   // Base delay of 30ms per character, with some randomness
   const baseDelay = 30;
   const randomFactor = 0.5 + Math.random() * 0.5;

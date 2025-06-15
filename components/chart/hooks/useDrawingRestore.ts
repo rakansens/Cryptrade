@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useChartDrawings } from '@/store/chart.store';
 import { ChartDrawingManager } from '@/lib/chart/drawing-primitives';
 import { logger } from '@/lib/utils/logger';
+import type { Time } from 'lightweight-charts';
 
 /**
  * Drawing Restore Hook
@@ -72,9 +73,14 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
                   }
                   
                   drawingManager.addTrendline(
-                    point1,
-                    point2,
-                    drawing.style,
+                    { time: point1.time as Time, value: point1.value },
+                    { time: point2.time as Time, value: point2.value },
+                    {
+                      color: drawing.style?.color || '#00e676',
+                      lineWidth: drawing.style?.lineWidth || 2,
+                      lineStyle: drawing.style?.lineStyle || 'solid',
+                      showLabels: drawing.style?.showLabels || false
+                    },
                     drawing.id
                   );
                 }
@@ -83,7 +89,12 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
                 if (drawing.points.length >= 1) {
                   drawingManager.addHorizontalLine(
                     drawing.points[0]!.value,
-                    drawing.style,
+                    {
+                      color: drawing.style?.color || '#00e676',
+                      lineWidth: drawing.style?.lineWidth || 2,
+                      lineStyle: drawing.style?.lineStyle || 'solid',
+                      showLabels: drawing.style?.showLabels || false
+                    },
                     drawing.id
                   );
                 }
@@ -92,7 +103,12 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
                 if (drawing.points.length >= 1) {
                   drawingManager.addVerticalLine(
                     drawing.points[0]!.time,
-                    drawing.style,
+                    {
+                      color: drawing.style?.color || '#00e676',
+                      lineWidth: drawing.style?.lineWidth || 2,
+                      lineStyle: drawing.style?.lineStyle || 'solid',
+                      showLabels: drawing.style?.showLabels || false
+                    },
                     drawing.id
                   );
                 }
@@ -100,9 +116,14 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
               case 'fibonacci':
                 if (drawing.points.length >= 2) {
                   drawingManager.addFibonacci(
-                    drawing.points[0],
-                    drawing.points[1],
-                    drawing.style,
+                    { time: drawing.points[0]!.time as Time, value: drawing.points[0]!.value },
+                    { time: drawing.points[1]!.time as Time, value: drawing.points[1]!.value },
+                    {
+                      color: drawing.style?.color || '#00e676',
+                      lineWidth: drawing.style?.lineWidth || 2,
+                      lineStyle: drawing.style?.lineStyle || 'solid',
+                      showLabels: drawing.style?.showLabels || false
+                    },
                     drawing.id
                   );
                 }

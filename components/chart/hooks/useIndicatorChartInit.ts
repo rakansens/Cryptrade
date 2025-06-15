@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState } from 'react';
-import { createChart, IChartApi, ColorType, LineStyle, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, ColorType, ISeriesApi } from 'lightweight-charts';
 import { useChartSync } from './useChartSync';
 import { logger } from '@/lib/utils/logger';
 
@@ -91,7 +91,7 @@ export function useIndicatorChartInit({
 
       return chart;
     } catch (error) {
-      logger.error(`[${chartId}] Chart initialization failed`, error);
+      logger.error(`[${chartId}] Chart initialization failed`, { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }, [chartId, height, theme, showTimeScale, registerChart]);
@@ -163,7 +163,7 @@ export function useIndicatorChartInit({
       
       logger.info(`[${chartId}] Chart cleaned up`);
     } catch (error) {
-      logger.error(`[${chartId}] Chart cleanup failed`, error);
+      logger.error(`[${chartId}] Chart cleanup failed`, { error: error instanceof Error ? error.message : String(error) });
     }
   }, [chartId, unregisterChart]);
 

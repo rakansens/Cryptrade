@@ -54,7 +54,7 @@ export function useIndicatorChartData({
       // Format for chart series
       return formatSeriesData(indicatorData);
     } catch (error) {
-      logger.error(`[${chartId}] Data preparation failed`, error);
+      logger.error(`[${chartId}] Data preparation failed`, { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }, [chartId, priceData, calculateIndicator, formatSeriesData]);
@@ -71,7 +71,7 @@ export function useIndicatorChartData({
       Object.entries(formattedData).forEach(([seriesKey, data]) => {
         const series = seriesRefs[seriesKey];
         if (series && Array.isArray(data) && data.length > 0) {
-          series.setData(data);
+          series.setData(data as any);
         }
       });
 
@@ -80,7 +80,7 @@ export function useIndicatorChartData({
         dataLength: priceData.length 
       });
     } catch (error) {
-      logger.error(`[${chartId}] Data update failed`, error);
+      logger.error(`[${chartId}] Data update failed`, { error: error instanceof Error ? error.message : String(error) });
     }
   }, [chartId, isInitialized, priceData, seriesRefs, prepareChartData]);
 
@@ -91,6 +91,8 @@ export function useIndicatorChartData({
       const timeoutId = setTimeout(updateChartData, 10);
       return () => clearTimeout(timeoutId);
     }
+    // Add explicit return for all code paths
+    return undefined;
   }, [updateChartData, isInitialized, priceData]);
 
   return {
@@ -122,26 +124,26 @@ export function useMacdChartData({
     isInitialized,
     calculateIndicator: (cleanedData) => calculateMACD(cleanedData, 12, 26, 9),
     formatSeriesData: (macdData) => {
-      const macdSeries = prepareLightweightChartsData(macdData.map(d => ({
+      const macdSeries = prepareLightweightChartsData(macdData.map((d: any) => ({
         time: d.time,
         value: d.macd,
-      })));
+      }))) as IndicatorDataPoint[];
 
-      const signalSeries = prepareLightweightChartsData(macdData.map(d => ({
+      const signalSeries = prepareLightweightChartsData(macdData.map((d: any) => ({
         time: d.time,
         value: d.signal,
-      })));
+      }))) as IndicatorDataPoint[];
 
       const zeroSeries = macdSeries.map((d: IndicatorDataPoint) => ({
         time: d.time,
         value: 0,
       }));
 
-      const histogramSeries = prepareLightweightChartsData(macdData.map(d => ({
+      const histogramSeries = prepareLightweightChartsData(macdData.map((d: any) => ({
         time: d.time,
         value: d.histogram,
         color: getMACDColor(d.histogram),
-      })));
+      }))) as IndicatorDataPoint[];
 
       return {
         macd: macdSeries,
@@ -174,10 +176,10 @@ export function useRsiChartData({
     isInitialized,
     calculateIndicator: (cleanedData) => calculateRSI(cleanedData, 14),
     formatSeriesData: (rsiData) => {
-      const rsiSeries = prepareLightweightChartsData(rsiData.map(d => ({
+      const rsiSeries = prepareLightweightChartsData(rsiData.map((d: any) => ({
         time: d.time,
         value: d.rsi,
-      })));
+      }))) as IndicatorDataPoint[];
 
       const overboughtSeries = rsiSeries.map((d: IndicatorDataPoint) => ({
         time: d.time,

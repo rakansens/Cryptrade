@@ -31,7 +31,7 @@ class GlobalChartSyncManager implements ChartSyncManager {
         if (!this.isUpdating && param.time) {
           this.syncCrosshair(id, { 
             time: param.time,
-            price: param.point?.y 
+            ...(param.point?.y !== undefined && { price: param.point.y })
           });
         }
       });
@@ -76,7 +76,7 @@ class GlobalChartSyncManager implements ChartSyncManager {
 
     this.isUpdating = true;
 
-    this.charts.forEach(({ chart }, id) => {
+    this.charts.forEach((_, id) => {
       if (id !== fromChartId) {
         try {
           // Move crosshair to the same time point

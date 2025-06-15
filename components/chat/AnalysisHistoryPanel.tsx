@@ -1,6 +1,5 @@
 'use client'
 
-import { SimpleScrollArea } from '@/components/ui/simple-scroll-area'
 import { Button } from '@/components/ui/button'
 import { 
   BarChart3, 
@@ -8,11 +7,9 @@ import {
   CheckCircle,
   TrendingUp, 
   TrendingDown,
-  Filter,
   Download,
   Trash2
 } from 'lucide-react'
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useAnalysisHistory,
@@ -21,7 +18,6 @@ import {
   useAnalysisActions
 } from '@/store/analysis-history.store'
 import { AnalysisRecordItem } from '@/components/shared/analysis/AnalysisRecordItem'
-import { FullHeightLayout } from '@/components/layout/FullHeightLayout'
 import { useAnalysisFormatting } from '@/hooks/use-analysis-formatting'
 
 export function AnalysisHistoryPanel() {
@@ -103,7 +99,7 @@ export function AnalysisHistoryPanel() {
         <div className="bg-[hsl(var(--color-secondary)/0.5)] rounded p-1 text-center">
           <div className="text-[hsl(var(--text-muted))]">成功</div>
           <div className="text-[hsl(var(--text-primary))] font-semibold">
-            {metrics.successfulRecords}
+            {metrics.completedRecords}
           </div>
         </div>
         <div className="bg-[hsl(var(--color-secondary)/0.5)] rounded p-1 text-center">

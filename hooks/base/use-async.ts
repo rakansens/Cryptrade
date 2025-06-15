@@ -59,7 +59,7 @@ export function useAsyncFn<TArgs extends unknown[], TResult>(
   useEffect(() => {
     if (immediate) {
       // 引数なしで実行（TArgsが空配列の場合のみ有効）
-      execute(...([] as unknown as TArgs))
+      void execute(...([] as unknown as TArgs))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

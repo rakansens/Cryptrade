@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, Filter, Download, Search, Eye, Clock, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react'
+import { RefreshCw, Download, Search, Eye, Clock, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -22,12 +22,12 @@ const LEVEL_COLORS: Record<LogLevel, string> = {
   debug: 'text-gray-400 bg-gray-400/10'
 }
 
-const LEVEL_ICONS: Record<LogLevel, React.ComponentType<{ className?: string }>> = {
-  critical: XCircle,
-  error: XCircle,
-  warn: AlertTriangle,
-  info: Info,
-  debug: CheckCircle
+const LEVEL_ICONS: Record<LogLevel, React.FC<{ className?: string }>> = {
+  critical: XCircle as React.FC<{ className?: string }>,
+  error: XCircle as React.FC<{ className?: string }>,
+  warn: AlertTriangle as React.FC<{ className?: string }>,
+  info: Info as React.FC<{ className?: string }>,
+  debug: CheckCircle as React.FC<{ className?: string }>
 }
 
 export function LogViewer({ className }: LogViewerProps) {
@@ -37,13 +37,7 @@ export function LogViewer({ className }: LogViewerProps) {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   
   // Filters
-  const [filters, setFilters] = useState<LogFilters>({
-    level: undefined,
-    component: undefined,
-    search: undefined,
-    startTime: undefined,
-    endTime: undefined,
-  })
+  const [filters, setFilters] = useState<LogFilters>({} as LogFilters)
   const [pagination, setPagination] = useState<LogPagination>({
     page: 1,
     limit: 50
@@ -61,8 +55,8 @@ export function LogViewer({ className }: LogViewerProps) {
     if (filters.level) params.append('level', filters.level)
     if (filters.component) params.append('component', filters.component)
     if (filters.search) params.append('search', filters.search)
-    if (filters.startTime) params.append('startTime', filters.startTime.toISOString())
-    if (filters.endTime) params.append('endTime', filters.endTime.toISOString())
+    if (filters.startTime) params.append('startTime', filters.startTime.toString())
+    if (filters.endTime) params.append('endTime', filters.endTime.toString())
     
     // Add pagination
     params.append('page', pagination.page.toString())
@@ -188,14 +182,30 @@ export function LogViewer({ className }: LogViewerProps) {
               <Input
                 placeholder="メッセージ検索..."
                 value={filters.search || ''}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value || undefined })}
+                onChange={(e) => setFilters((prev: LogFilters) => {
+                  const newFilters = { ...prev };
+                  if (e.target.value) {
+                    newFilters.search = e.target.value;
+                  } else {
+                    delete newFilters.search;
+                  }
+                  return newFilters;
+                })}
                 className="w-48"
               />
             </div>
             
             <Select
               value={filters.level || 'all'}
-              onValueChange={(value) => setFilters({ ...filters, level: value === 'all' ? undefined : value as LogLevel })}
+              onValueChange={(value) => setFilters((prev: LogFilters) => {
+                const newFilters = { ...prev };
+                if (value === 'all') {
+                  delete newFilters.level;
+                } else {
+                  newFilters.level = value as LogLevel;
+                }
+                return newFilters;
+              })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="レベル" />
@@ -212,7 +222,15 @@ export function LogViewer({ className }: LogViewerProps) {
             <Input
               placeholder="コンポーネント"
               value={filters.component || ''}
-              onChange={(e) => setFilters({ ...filters, component: e.target.value || undefined })}
+              onChange={(e) => setFilters((prev: LogFilters) => {
+                const newFilters = { ...prev };
+                if (e.target.value) {
+                  newFilters.component = e.target.value;
+                } else {
+                  delete newFilters.component;
+                }
+                return newFilters;
+              })}
               className="w-40"
             />
             

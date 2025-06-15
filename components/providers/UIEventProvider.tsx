@@ -8,13 +8,11 @@ import { useEffect } from 'react';
  * アプリケーション全体でSSEイベントを受信
  */
 export function UIEventProvider({ children }: { children: React.ReactNode }) {
-  const { isConnected } = useUIEventStream();
+  useUIEventStream();
 
   useEffect(() => {
-    if (isConnected) {
-      console.log('[UIEventProvider] SSE connected and ready to receive events');
-    }
-  }, [isConnected]);
+    console.log('[UIEventProvider] UI event stream initialized');
+  }, []);
 
   return <>{children}</>;
 }

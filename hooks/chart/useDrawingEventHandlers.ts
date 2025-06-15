@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 import { useDrawingActions, useChartStore, useDrawingStore } from '@/store/chart';
-import { validateDrawingEvent } from '@/types/events/drawing-events';
+import { 
+  validateDrawingEvent,
+  type StartDrawingEvent,
+  type AddDrawingEvent,
+  type DeleteDrawingEvent,
+  type UpdateDrawingStyleEvent,
+  type UndoEvent,
+  type RedoEvent
+} from '@/types/events/drawing-events';
 import { validateChartDrawing } from '@/types/drawing';
 import { 
   handleAgentError, 
@@ -10,8 +18,10 @@ import {
   prepareDrawingData 
 } from '@/lib/chart/agent-utils';
 import { useCursor } from './useCursor';
+import type { Time } from 'lightweight-charts';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
+import type { DrawingMode, ChartDrawing } from '@/store/chart/types';
 
 /**
  * Drawing Event Handlers Hook
@@ -49,11 +59,11 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { type, style } = validation.data.data;
+      const { type, style } = validation.data.data as StartDrawingEvent;
       logger.info('[Drawing Event] Handling start drawing', { type, style });
       
       try {
-        setDrawingMode(type);
+        setDrawingMode(type as DrawingMode);
         setIsDrawing(true);
         setDrawingCursor();
         
@@ -82,27 +92,63 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const eventData = validation.data.data;
+      const eventData = validation.data.data as AddDrawingEvent;
       logger.info('[Drawing Event] Handling add drawing', { 
         id: eventData.id, 
         type: eventData.type 
       });
       
       try {
-        const drawing = prepareDrawingData(eventData);
+        // Convert event data points to DrawingPoint format with Time type
+        const points = eventData.points?.map(p => ({
+          time: p.time as Time,
+          value: p.value
+        }));
+        
+        // Create drawing data with required fields
+        const drawingData: Parameters<typeof prepareDrawingData>[0] = {
+          id: eventData.id,
+          type: eventData.type,
+          points: points || [],
+          style: {
+            color: eventData.style?.color ?? '#3498db',
+            lineWidth: eventData.style?.lineWidth ?? 2,
+            lineStyle: eventData.style?.lineStyle ?? 'solid',
+            showLabels: eventData.style?.showLabels ?? false
+          }
+        };
+        
+        // Add optional properties only if they have values
+        if (eventData.price !== undefined) {
+          drawingData.price = eventData.price;
+        }
+        if (eventData.time !== undefined) {
+          drawingData.time = eventData.time;
+        }
+        if (eventData.levels !== undefined) {
+          drawingData.levels = eventData.levels;
+        }
+        const drawing = prepareDrawingData(drawingData);
         const validatedDrawing = validateChartDrawing(drawing);
         
         await executeDrawingOperation(async () => {
+          // Convert to store's ChartDrawing type
+          const storeDrawing: ChartDrawing = {
+            ...validatedDrawing,
+            style: validatedDrawing.style || undefined
+          } as ChartDrawing;
+          
           // Use async version if available
           if ('addDrawingAsync' in addDrawing) {
-            await (addDrawing as { addDrawingAsync: (drawing: typeof validatedDrawing) => Promise<void> }).addDrawingAsync(validatedDrawing);
+            await (addDrawing as { addDrawingAsync: (drawing: ChartDrawing) => Promise<void> }).addDrawingAsync(storeDrawing);
           } else {
-            addDrawing(validatedDrawing);
+            addDrawing(storeDrawing);
           }
           
           // Add to chart if drawing manager is available
           if (handlers.drawingManager) {
-            handlers.drawingManager.addDrawing(validatedDrawing);
+            // Cast to any due to type mismatch between store/chart/types and chart.types
+            handlers.drawingManager.addDrawing(storeDrawing as any);
           }
         }, {
           eventType: 'chart:addDrawing',
@@ -137,7 +183,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         const eventData = event.detail;
         
         // Validate drawing data structure
-        const drawingData = {
+        const drawingData: any = {
           id: eventData.id,
           type: eventData.type,
           points: eventData.points,
@@ -145,27 +191,43 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
             color: eventData.style?.color || '#ff0000',
             lineWidth: eventData.style?.lineWidth || 2,
             lineStyle: eventData.style?.lineStyle || 'solid',
-            showLabels: eventData.style?.showLabels !== undefined ? eventData.style.showLabels : true,
-            ...eventData.style
+            showLabels: eventData.style?.showLabels !== undefined ? eventData.style.showLabels : true
           },
-          price: eventData.price,
-          time: eventData.time,
-          levels: eventData.levels,
           visible: eventData.visible !== undefined ? eventData.visible : true,
-          interactive: eventData.interactive !== undefined ? eventData.interactive : true,
-          metadata: eventData.metadata || {}
+          interactive: eventData.interactive !== undefined ? eventData.interactive : true
         };
+        
+        // Add optional properties only if they have values
+        if (eventData.price !== undefined) {
+          drawingData.price = eventData.price;
+        }
+        if (eventData.time !== undefined) {
+          drawingData.time = eventData.time;
+        }
+        if (eventData.levels !== undefined) {
+          drawingData.levels = eventData.levels;
+        }
+        if (eventData.metadata !== undefined) {
+          drawingData.metadata = eventData.metadata;
+        }
         
         logger.info('[Drawing Event] Processing drawing with metadata', { drawingData });
         
         const validDrawing = validateChartDrawing(drawingData);
         
+        // Convert to store's ChartDrawing type
+        const storeDrawing: ChartDrawing = {
+          ...validDrawing,
+          style: validDrawing.style || undefined
+        } as ChartDrawing;
+        
         // Add to store
-        addDrawing(validDrawing);
+        addDrawing(storeDrawing);
         
         // Add to chart if drawing manager is available
         if (handlers.drawingManager) {
-          handlers.drawingManager.addDrawing(validDrawing);
+          // Cast to any due to type mismatch between store/chart/types and chart.types
+          handlers.drawingManager.addDrawing(storeDrawing as any);
           logger.info('[Drawing Event] Added drawing to chart manager', { drawingId: validDrawing.id });
         } else {
           logger.warn('[Drawing Event] No drawing manager available');
@@ -178,11 +240,11 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         }, `Proposal drawing ${eventData.type} added to chart`);
         
       } catch (error) {
-        logger.error('[Drawing Event] Failed to add drawing with metadata', error);
+        logger.error('[Drawing Event] Failed to add drawing with metadata', { error });
         handleAgentError(error, {
           eventType: 'chart:addDrawingWithMetadata',
           operation: 'Add drawing with metadata',
-          payload: event.detail,
+          payload: typeof event.detail === 'object' && event.detail !== null ? event.detail as Record<string, unknown> : undefined,
         });
       }
     };
@@ -199,7 +261,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { id } = validation.data.data;
+      const { id } = validation.data.data as DeleteDrawingEvent;
       logger.info('[Drawing Event] Handling delete drawing', { id });
       
       try {
@@ -276,7 +338,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { steps } = validation.data.data;
+      const { steps } = validation.data.data as UndoEvent;
       logger.info('[Drawing Event] Handling undo', { steps });
       
       try {
@@ -309,7 +371,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { steps } = validation.data.data;
+      const { steps } = validation.data.data as RedoEvent;
       logger.info('[Drawing Event] Handling redo', { steps });
       
       try {
@@ -377,7 +439,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { drawingId, style, immediate } = validation.data.data;
+      const { drawingId, style, immediate } = validation.data.data as UpdateDrawingStyleEvent;
       logger.info('[Drawing Event] Handling update drawing style', { drawingId, style, immediate });
       
       try {
@@ -397,22 +459,29 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
           return;
         }
         
-        // Merge with existing style
-        const validStyle = {
-          color: style.color !== undefined ? style.color : drawing.style.color,
-          lineWidth: style.lineWidth !== undefined ? style.lineWidth : drawing.style.lineWidth,
-          lineStyle: style.lineStyle !== undefined ? style.lineStyle : drawing.style.lineStyle,
-          showLabels: style.showLabels !== undefined ? style.showLabels : drawing.style.showLabels,
+        // Merge with existing style - ensure all required properties
+        const currentStyle = drawing.style || {
+          color: '#3498db',
+          lineWidth: 2,
+          lineStyle: 'solid' as const,
+          showLabels: false
         };
         
-        updateDrawing(drawingId, { style: validStyle });
+        const validStyle = {
+          color: style.color !== undefined ? style.color : currentStyle.color,
+          lineWidth: style.lineWidth !== undefined ? style.lineWidth : currentStyle.lineWidth,
+          lineStyle: style.lineStyle !== undefined ? style.lineStyle : currentStyle.lineStyle,
+          showLabels: style.showLabels !== undefined ? style.showLabels : currentStyle.showLabels
+        };
+        
+        updateDrawing(drawingId, { style: validStyle as any });
         
         if (handlers.drawingManager) {
-          handlers.drawingManager.updateDrawing(drawingId, { style: validStyle });
+          handlers.drawingManager.updateDrawing(drawingId, { style: validStyle as any });
           
           // If immediate flag is set, force redraw
           if (immediate && (handlers.drawingManager as { redrawDrawing?: (id: string) => void })?.redrawDrawing) {
-            (handlers.drawingManager as { redrawDrawing: (id: string) => void }).redrawDrawing(drawingId);
+            (handlers.drawingManager as unknown as { redrawDrawing: (id: string) => void }).redrawDrawing(drawingId);
           }
         }
         
@@ -443,7 +512,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { type, style } = validation.data.data;
+      const { type, style } = validation.data.data as any;
       logger.info('[Drawing Event] Handling update all styles', { type, style });
       
       try {
@@ -482,7 +551,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { id, color } = validation.data.data;
+      const { id, color } = validation.data.data as any;
       logger.info('[Drawing Event] Handling update drawing color', { id, color });
       
       try {
@@ -496,8 +565,8 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
           return;
         }
         
-        const validStyle = {
-          ...drawing.style,
+        const validStyle: any = {
+          ...(drawing.style || {}),
           color,
         };
         
@@ -534,7 +603,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         return;
       }
 
-      const { id, lineWidth } = validation.data.data;
+      const { id, lineWidth } = validation.data.data as any;
       logger.info('[Drawing Event] Handling update drawing line width', { id, lineWidth });
       
       try {
@@ -548,8 +617,8 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
           return;
         }
         
-        const validStyle = {
-          ...drawing.style,
+        const validStyle: any = {
+          ...(drawing.style || {}),
           lineWidth,
         };
         

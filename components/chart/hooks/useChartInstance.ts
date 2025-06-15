@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { createChart, IChartApi, ColorType, CrosshairMode, ISeriesApi } from 'lightweight-charts';
 import type { IndicatorOptions } from '@/types/market';
 import { useChartSync } from './useChartSync';
@@ -27,7 +27,6 @@ export interface ChartSeriesRefs {
 interface UseChartInstanceProps {
   height?: number;
   theme?: ChartTheme;
-  indicators: IndicatorOptions;
 }
 
 const DEFAULT_THEME: ChartTheme = {
@@ -40,8 +39,7 @@ const DEFAULT_THEME: ChartTheme = {
 
 export function useChartInstance({ 
   height, 
-  theme = DEFAULT_THEME, 
-  indicators 
+  theme = DEFAULT_THEME
 }: UseChartInstanceProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<IChartApi | null>(null);

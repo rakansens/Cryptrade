@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useChartDrawings, useChartPatterns, useDrawingActions, usePatternActions } from '@/store/chart.store'
 import { StyleEditor } from '@/components/chat/StyleEditor'
-import type { DrawingItem, DrawingWithMetadata } from '@/types/drawing-manager.types'
-import type { DrawingStyle } from '@/types/ui-events.types'
+import type { DrawingWithMetadata } from '@/types/drawing-manager.types'
+import type { DrawingStyle as _DrawingStyle } from '@/types/ui-events.types'
 
 interface DrawingManagerProps {
   className?: string
@@ -70,15 +70,22 @@ export default function DrawingManager({ className }: DrawingManagerProps) {
             <div className="text-center text-gray-500 py-4 text-xs">描画はありません</div>
           ) : (
             <div className="space-y-1">
-              {[...drawings.map((d, idx)=>({ drawing:d, idx})).map(({drawing,idx})=>({
+              {[...drawings.map((drawing, idx) => ({
                   id: drawing.id,
                   isPattern:false,
                   idx,
                   color: drawing.style?.color || '#6b7280',
-                  direction: drawing.points && drawing.points.length>1 && (drawing.points.slice(-1)[0]!.value - drawing.points[0]!.value) >=0 ? 'up':'down',
+                  direction: drawing.points && drawing.points.length>1 && drawing.points.slice(-1)[0] && drawing.points[0] && ((drawing.points.slice(-1)[0]?.value ?? 0) - (drawing.points[0]?.value ?? 0)) >=0 ? 'up':'down',
                   createdAt: (drawing as DrawingWithMetadata).metadata?.createdAt,
                 })),
-                ...patternEntries.map(([id, p], idx)=>({ id, isPattern:true, idx, color:'#ffffff', direction:null, createdAt:undefined }))].map((item: DrawingItem) => (
+                ...patternEntries.map(([id, _p], idx) => ({ 
+                  id, 
+                  isPattern: true, 
+                  idx, 
+                  color: '#ffffff', 
+                  direction: null as 'up' | 'down' | null, 
+                  createdAt: undefined 
+                }))].map((item) => (
                 <div key={item.id} className="text-xs px-1 py-1 rounded hover:bg-gray-800/40">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 max-w-[120px] mr-1">
@@ -110,9 +117,8 @@ export default function DrawingManager({ className }: DrawingManagerProps) {
                         <StyleEditor
                           drawingId={item.id}
                           proposalId="manual"
-                          currentStyle={undefined}
                           isPattern={item.isPattern}
-                          embedded
+                          embedded={true}
                         />
                       </PopoverContent>
                     </Popover>

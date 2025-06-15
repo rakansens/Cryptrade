@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { useChart, useIsChartReady } from '@/store/chart.store'
+import { useChart } from '@/store/chart.store'
 import { useCandlestickData } from '@/hooks/market/use-candlestick-data'
 import type { IndicatorOptions } from '@/types/market'
+import type { PatternRenderer } from '@/types/pattern.types'
 import { useChartInstance } from '../hooks/useChartInstance'
 import { useChartData } from '../hooks/useChartData'
 import { useAgentEventHandlers } from '../hooks/useAgentEventHandlers'
@@ -22,7 +23,6 @@ export interface CandlestickChartRef {
 const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
 function CandlestickChart({ height }, ref) {
   const { symbol, timeframe, indicators, settings, setChartReady } = useChart()
-  const isChartReady = useIsChartReady()
   const typedIndicators = indicators as IndicatorOptions
   const prevIndicators = useRef(typedIndicators)
   const isChartInitialized = useRef(false)
@@ -46,8 +46,7 @@ function CandlestickChart({ height }, ref) {
     patternRenderer,
     getPatternRenderer
   } = useChartInstance({ 
-    height, 
-    indicators: typedIndicators 
+    ...(height !== undefined && { height })
   })
 
   // Chart data management
@@ -83,13 +82,13 @@ function CandlestickChart({ height }, ref) {
     resetView: handleResetView,
     drawingManager,
     chartData: priceData,
-    patternRenderer,
-    getPatternRenderer,
+    patternRenderer: (patternRenderer as unknown as PatternRenderer) ?? null,
+    getPatternRenderer: getPatternRenderer as () => PatternRenderer | null,
   });
 
   // Restore patterns after chart initialization or timeframe change
   usePatternRestore({ 
-    patternRenderer, 
+    patternRenderer: (patternRenderer as unknown as PatternRenderer) ?? null, 
     isChartReady: isChartInitialized.current && !!patternRenderer,
     timeframe
   });
@@ -102,7 +101,7 @@ function CandlestickChart({ height }, ref) {
   });
   
   // Debug pattern renderer
-  usePatternDebug(patternRenderer);
+  usePatternDebug((patternRenderer as unknown as PatternRenderer) ?? null);
 
   // Track when pattern renderer is ready
   useEffect(() => {

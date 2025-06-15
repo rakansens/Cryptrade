@@ -43,18 +43,18 @@ export function usePatternDebug(patternRenderer: PatternRenderer | null) {
     // Override removePattern to add more logging
     const originalRemovePattern = patternRenderer.removePattern;
     patternRenderer.removePattern = function(id: string) {
-      logger.info('[PatternDebug] removePattern called with ID:', id);
+      logger.info('[PatternDebug] removePattern called with ID:', { id });
       
       // Log current state before removal
       const stateBefore = this.debugGetState();
-      logger.info('[PatternDebug] State before removal:', stateBefore);
+      logger.info('[PatternDebug] State before removal:', { state: stateBefore });
       
       // Call original method
       const result = originalRemovePattern.call(this, id);
       
       // Log state after removal
       const stateAfter = this.debugGetState();
-      logger.info('[PatternDebug] State after removal:', stateAfter);
+      logger.info('[PatternDebug] State after removal:', { state: stateAfter });
       
       return result;
     };
@@ -74,7 +74,7 @@ export function usePatternDebug(patternRenderer: PatternRenderer | null) {
       
       // Log state after rendering
       const stateAfter = this.debugGetState();
-      logger.info('[PatternDebug] State after rendering:', stateAfter);
+      logger.info('[PatternDebug] State after rendering:', { state: stateAfter });
       
       return result;
     };
