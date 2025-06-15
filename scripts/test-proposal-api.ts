@@ -128,7 +128,7 @@ async function testProposalAPI() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
     } catch (error) {
-      logger.error(`[ProposalAPITest] ${testCase.name} failed:`, error);
+      logger.error(`[ProposalAPITest] ${testCase.name} failed:`, { error: error instanceof Error ? error.message : String(error) });
       results.push({
         test: testCase.name,
         success: false,

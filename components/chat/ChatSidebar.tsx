@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Plus, Edit2, Trash2, MessageSquare, Clock, Archive, Sparkles, Home, BarChart3, AlertTriangle, Settings, Trash } from 'lucide-react'
+import { Edit2, Trash2, MessageSquare, Clock, Archive, Sparkles, BarChart3, AlertTriangle, Trash } from 'lucide-react'
 import { useChat } from '@/store/chat.store'
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
@@ -106,8 +106,9 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
   }, {} as Record<string, typeof sortedSessions>)
 
   const handleReturnToHome = useCallback(() => {
-    if (typeof window !== 'undefined' && (window as Window & { __returnToHome?: () => void }).__returnToHome) {
-      (window as Window & { __returnToHome?: () => void }).__returnToHome()
+    const windowWithReturnToHome = window as Window & { __returnToHome?: () => void }
+    if (typeof window !== 'undefined' && windowWithReturnToHome.__returnToHome) {
+      windowWithReturnToHome.__returnToHome()
     }
   }, [])
 

@@ -6,7 +6,6 @@
  */
 
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
-import { logger } from '../lib/utils/logger';
 
 // カラー出力用のヘルパー
 const colors = {

@@ -95,8 +95,8 @@ export function TypedUIEventProvider({
     reconnect,
     disconnect,
   } = useTypedUIEventStream({
-    eventFilter,
-    groupFilter,
+    ...(eventFilter && { eventFilter }),
+    ...(groupFilter && { groupFilter }),
     debug,
     onConnectionChange: (connected) => {
       if (debug) {

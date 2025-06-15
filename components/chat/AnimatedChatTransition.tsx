@@ -5,11 +5,9 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { HomeView } from '@/components/home/HomeView'
 import ChatLayout from './ChatLayout'
 import { MainLayout } from '@/components/MainLayout'
-import { useChat } from '@/store/chat.store'
 import { useViewPersistence } from '@/hooks/use-view-persistence-simple'
 
 export function AnimatedChatTransition() {
-  const { sessions, currentSessionId } = useChat()
   const { showHome, isClient, goToChat, goToHome } = useViewPersistence()
 
   const handleTransitionToChat = () => {

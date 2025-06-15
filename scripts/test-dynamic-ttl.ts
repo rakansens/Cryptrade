@@ -22,6 +22,16 @@ interface TestCase {
   expectedTTLRange: [number, number]; // [min, max] in seconds
 }
 
+// interface DynamicTTLTestResult {
+//   success: boolean;
+//   error?: unknown;
+//   symbol?: string;
+//   description?: string;
+//   expectedTTLRange?: [number, number];
+//   ttl?: number;
+//   volatility?: number;
+// }
+
 async function testDynamicTTL(testCase: TestCase) {
   console.log(`\n${colors.blue('▶')} Testing: ${testCase.description}`);
   console.log(`  Symbol: ${testCase.symbol}`);
@@ -33,7 +43,8 @@ async function testDynamicTTL(testCase: TestCase) {
     // First request (cache miss)
     const start1 = Date.now();
     const result1 = await marketDataResilientTool.execute?.({
-      context: { symbol: testCase.symbol }
+      symbol: testCase.symbol,
+      context: {} as any
     });
     const duration1 = Date.now() - start1;
     
@@ -65,8 +76,10 @@ async function testDynamicTTL(testCase: TestCase) {
       
       // Second request (should be cache hit)
       const start2 = Date.now();
-      const result2 = await marketDataResilientTool.execute?.({
-        context: { symbol: testCase.symbol }
+      await marketDataResilientTool.execute?.({
+        context: {
+          symbol: testCase.symbol,
+        }
       });
       const duration2 = Date.now() - start2;
       
@@ -81,23 +94,49 @@ async function testDynamicTTL(testCase: TestCase) {
       
       // Third request (should be cache miss after expiration)
       const start3 = Date.now();
-      const result3 = await marketDataResilientTool.execute?.({
-        context: { symbol: testCase.symbol }
+      await marketDataResilientTool.execute?.({
+        context: {
+          symbol: testCase.symbol,
+        }
       });
       const duration3 = Date.now() - start3;
       
       const wasExpired = duration3 > duration2 * 2; // Heuristic: expired if much slower
       console.log(`  ${colors.yellow('→')} Third request: ${duration3}ms (${wasExpired ? 'cache expired' : 'still cached'})`);
       
-      return { success: true, ttl: ttlSeconds, volatility: cacheEntry.volatility };
+      return { 
+        success: true, 
+        ttl: ttlSeconds, 
+        volatility: cacheEntry.volatility,
+        error: undefined,
+        symbol: undefined,
+        description: undefined,
+        expectedTTLRange: undefined
+      };
     } else {
       console.log(`  ${colors.red('✗')} No cache entry found`);
-      return { success: false };
+      return { 
+        success: false,
+        error: undefined,
+        symbol: undefined,
+        description: undefined,
+        expectedTTLRange: undefined,
+        ttl: undefined,
+        volatility: undefined
+      };
     }
     
   } catch (error) {
     console.log(`  ${colors.red('✗')} Error: ${error}`);
-    return { success: false, error } as DynamicTTLTestResult;
+    return { 
+      success: false, 
+      error,
+      symbol: undefined,
+      description: undefined,
+      expectedTTLRange: undefined,
+      ttl: undefined,
+      volatility: undefined
+    };
   }
 }
 

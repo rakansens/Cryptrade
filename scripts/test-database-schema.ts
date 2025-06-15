@@ -5,7 +5,6 @@
  */
 
 import { prisma } from '@/lib/db/prisma';
-import { logger } from '@/lib/utils/logger';
 
 // Color codes for output
 const colors = {
@@ -125,7 +124,7 @@ async function testDatabaseSchema() {
         data: { summary: 'Message Test Session' }
       });
       
-      const testMessage = await prisma.conversationMessage.create({
+      await prisma.conversationMessage.create({
         data: {
           sessionId: messageSession.id,
           role: 'user',
@@ -179,7 +178,7 @@ async function testDatabaseSchema() {
         data: { summary: 'Analysis Test Session' }
       });
       
-      const testAnalysis = await prisma.analysisRecord.create({
+      await prisma.analysisRecord.create({
         data: {
           sessionId: analysisSession.id,
           proposalId: `proposal-${Date.now()}`,
@@ -228,7 +227,7 @@ async function testDatabaseSchema() {
       }
       
       // Test query with JSON field
-      const supportAnalyses = await prisma.analysisRecord.findMany({
+      await prisma.analysisRecord.findMany({
         where: {
           type: 'support',
           proposalData: {
@@ -361,8 +360,10 @@ async function testDatabaseSchema() {
       if (drawings.length !== 5) throw new Error('Expected 5 drawings');
       
       // Test update
+      const firstDrawing = drawings[0];
+      if (!firstDrawing) throw new Error('No drawing found');
       await prisma.chartDrawing.update({
-        where: { id: drawings[0].id },
+        where: { id: firstDrawing.id },
         data: { visible: false }
       });
       
@@ -423,7 +424,7 @@ async function testDatabaseSchema() {
       }
       
       // Test query with filters
-      const bullishPatterns = await prisma.patternAnalysis.findMany({
+      await prisma.patternAnalysis.findMany({
         where: {
           sessionId: patternSession.id,
           tradingImplication: 'bullish'
@@ -493,7 +494,8 @@ async function testDatabaseSchema() {
       });
       
       if (logs.length !== 4) throw new Error('Expected 4 log entries');
-      if (!logs[0].user || !logs[0].session) throw new Error('Relations not loaded');
+      const firstLog = logs[0];
+      if (!firstLog || !firstLog.user || !firstLog.session) throw new Error('Relations not loaded');
       
       // Cleanup
       await prisma.systemLog.deleteMany({
@@ -552,8 +554,12 @@ async function testDatabaseSchema() {
         }
       });
       
-      const sessionId = cascadeUser.sessions[0].id;
-      const analysisId = cascadeUser.sessions[0].analyses[0].id;
+      const firstSession = cascadeUser.sessions[0];
+      if (!firstSession) throw new Error('No session found');
+      const sessionId = firstSession.id;
+      const firstAnalysis = firstSession.analyses[0];
+      if (!firstAnalysis) throw new Error('No analysis found');
+      const analysisId = firstAnalysis.id;
       
       // Add touch event to analysis
       await prisma.touchEvent.create({

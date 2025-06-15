@@ -22,7 +22,7 @@ export function useLineTracking() {
     [allRecords]
   );
   
-  const { addTouchEvent, updateTrackingStatus, completeTracking } = useAnalysisActions();
+  const { addTouchEvent, completeTracking } = useAnalysisActions();
 
   // Check if price touches a line
   const checkLineTouch = useCallback((record: AnalysisRecord, currentPrice: number, volume: number) => {
@@ -120,7 +120,7 @@ export function useLineTracking() {
     
     // Get unique symbols from active records
     const activeSymbols = [...new Set(activeRecords.map(r => r.symbol))];
-    logger.info('[LineTracking] Tracking symbols', activeSymbols);
+    logger.info('[LineTracking] Tracking symbols', { symbols: activeSymbols });
   }, [activeRecords.length]); // Only depend on length to avoid infinite loops
 
   // Manual touch recording (for testing)
@@ -181,10 +181,10 @@ export function usePriceStream(symbols: string[]) {
         };
         
       } catch (error) {
-        logger.error('[PriceStream] Failed to initialize WebSocket', error);
+        logger.error('[PriceStream] Failed to initialize WebSocket', { error });
         
         // Fallback to mock data if WebSocket fails
-        logger.info('[PriceStream] Falling back to mock price stream', symbols);
+        logger.info('[PriceStream] Falling back to mock price stream', { symbols });
         return null;
       }
     };

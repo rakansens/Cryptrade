@@ -15,7 +15,7 @@ import {
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
 import type { PatternData } from '@/store/chart/types';
-import type { PatternMetrics } from '@/types/store.types';
+import type { PatternMetrics, PatternVisualization } from '@/types/store.types';
 
 /**
  * Pattern Event Handlers Hook

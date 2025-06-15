@@ -6,7 +6,7 @@ export async function runMockTest() {
   console.log('Running mock API tests...\n');
   
   // Simulate API responses
-  const mockResponses = {
+  /*const mockResponses = {
     'trendline': {
       message: 'トレンドラインの分析を完了しました。',
       selectedAgent: 'chart_analysis',
@@ -147,7 +147,7 @@ export async function runMockTest() {
         }
       }
     }
-  };
+  };*/
   
   // Test each type
   console.log('📋 Test 1: Trendline Analysis');

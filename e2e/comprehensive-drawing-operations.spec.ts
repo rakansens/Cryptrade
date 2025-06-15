@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * チャート描画操作の包括的E2Eテスト
@@ -358,21 +358,21 @@ test.describe('Comprehensive Drawing Operations', () => {
 });
 
 // ヘルパー関数
-async function waitForDrawing(page: Page, type: string, timeout: number = 10000): Promise<boolean> {
-  return page.waitForFunction(
-    (drawingType) => {
-      const store = (window as any).__chartStore;
-      const drawings = store?.getState()?.drawings || [];
-      return drawings.some((d: any) => d.type === drawingType);
-    },
-    type,
-    { timeout }
-  ).then(() => true).catch(() => false);
-}
+// async function waitForDrawing(page: Page, type: string, timeout: number = 10000): Promise<boolean> {
+//   return page.waitForFunction(
+//     (drawingType) => {
+//       const store = (window as any).__chartStore;
+//       const drawings = store?.getState()?.drawings || [];
+//       return drawings.some((d: any) => d.type === drawingType);
+//     },
+//     type,
+//     { timeout }
+//   ).then(() => true).catch(() => false);
+// }
 
-async function getDrawingCount(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const store = (window as any).__chartStore;
-    return store?.getState()?.drawings?.length || 0;
-  });
-}
+// async function getDrawingCount(page: Page): Promise<number> {
+//   return page.evaluate(() => {
+//     const store = (window as any).__chartStore;
+//     return store?.getState()?.drawings?.length || 0;
+//   });
+// }

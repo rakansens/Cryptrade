@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * AI機能とマルチエージェント連携のE2Eテスト
@@ -161,12 +161,13 @@ test.describe('AI Multi-Agent Coordination', () => {
     await chatInput.press('Enter');
 
     // メモリが参照されたことを確認
-    const analysisResult = await page.waitForSelector('[data-testid="analysis-result"]', {
+    const analysisResult = page.locator('[data-testid="analysis-result"]');
+    await analysisResult.waitFor({
       state: 'visible',
       timeout: 30000
     });
 
-    await expect(analysisResult).toContainText(/4時間足|4H|トレンドライン/);
+    await expect(analysisResult).toHaveText(/4時間足|4H|トレンドライン/);
 
     // メモリの内容を確認（デバッグ用）
     const memoryContent = await page.evaluate(() => {
@@ -206,24 +207,26 @@ test.describe('AI Multi-Agent Coordination', () => {
     await chatInput.press('Enter');
 
     // 日本語での応答を確認
-    const japaneseResponse = await page.waitForSelector('[data-testid="message-content"]:has-text("トレンド")', {
+    const japaneseResponse = page.locator('[data-testid="message-content"]:has-text("トレンド")');
+    await japaneseResponse.waitFor({
       state: 'visible',
       timeout: 30000
     });
 
-    await expect(japaneseResponse).toContainText(/上昇|エントリー|ポイント/);
+    await expect(japaneseResponse).toHaveText(/上昇|エントリー|ポイント/);
 
     // 英語でのリクエスト
     await chatInput.fill('Analyze the support and resistance levels for the current chart');
     await chatInput.press('Enter');
 
     // 英語での応答を確認
-    const englishResponse = await page.waitForSelector('[data-testid="message-content"]:has-text("support")', {
+    const englishResponse = page.locator('[data-testid="message-content"]:has-text("support")');
+    await englishResponse.waitFor({
       state: 'visible',
       timeout: 30000
     });
 
-    await expect(englishResponse).toContainText(/support|resistance|level/i);
+    await expect(englishResponse).toHaveText(/support|resistance|level/i);
   });
 
   test('AIによる自動取引戦略の生成', async ({ page }) => {
@@ -234,16 +237,17 @@ test.describe('AI Multi-Agent Coordination', () => {
     await chatInput.press('Enter');
 
     // 戦略生成の完了を待機
-    const strategyResult = await page.waitForSelector('[data-testid="trading-strategy"]', {
+    const strategyResult = page.locator('[data-testid="trading-strategy"]');
+    await strategyResult.waitFor({
       state: 'visible',
       timeout: 45000
     });
 
     // 戦略に必要な要素が含まれていることを確認
-    await expect(strategyResult).toContainText(/エントリー|Entry/);
-    await expect(strategyResult).toContainText(/ストップロス|Stop Loss|SL/);
-    await expect(strategyResult).toContainText(/テイクプロフィット|Take Profit|TP/);
-    await expect(strategyResult).toContainText(/リスク|Risk/);
+    await expect(strategyResult).toHaveText(/エントリー|Entry/);
+    await expect(strategyResult).toHaveText(/ストップロス|Stop Loss|SL/);
+    await expect(strategyResult).toHaveText(/テイクプロフィット|Take Profit|TP/);
+    await expect(strategyResult).toHaveText(/リスク|Risk/);
 
     // 視覚的な戦略表示（チャート上のマーカー）を確認
     const strategyMarkers = await page.evaluate(() => {
@@ -304,30 +308,30 @@ test.describe('AI Multi-Agent Coordination', () => {
 });
 
 // ヘルパー関数
-async function waitForAgentActivity(page: Page, agentName: string, timeout: number = 30000): Promise<boolean> {
-  return new Promise((resolve) => {
-    let found = false;
-    const listener = (msg: any) => {
-      if (msg.text().includes(`[${agentName}]`)) {
-        found = true;
-        page.off('console', listener);
-        resolve(true);
-      }
-    };
-    
-    page.on('console', listener);
-    
-    setTimeout(() => {
-      page.off('console', listener);
-      resolve(found);
-    }, timeout);
-  });
-}
+// async function waitForAgentActivity(page: Page, agentName: string, timeout: number = 30000): Promise<boolean> {
+//   return new Promise((resolve) => {
+//     let found = false;
+//     const listener = (msg: any) => {
+//       if (msg.text().includes(`[${agentName}]`)) {
+//         found = true;
+//         page.off('console', listener);
+//         resolve(true);
+//       }
+//     };
+//     
+//     page.on('console', listener);
+//     
+//     setTimeout(() => {
+//       page.off('console', listener);
+//       resolve(found);
+//     }, timeout);
+//   });
+// }
 
-async function getAnalysisProgress(page: Page): Promise<number> {
-  const progressBar = page.locator('[data-testid="analysis-progress-bar"]');
-  if (!await progressBar.isVisible()) return 0;
-  
-  const progressValue = await progressBar.getAttribute('aria-valuenow');
-  return parseInt(progressValue || '0', 10);
-}
+// async function getAnalysisProgress(page: Page): Promise<number> {
+//   const progressBar = page.locator('[data-testid="analysis-progress-bar"]');
+//   if (!await progressBar.isVisible()) return 0;
+//   
+//   const progressValue = await progressBar.getAttribute('aria-valuenow');
+//   return parseInt(progressValue || '0', 10);
+// }

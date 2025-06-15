@@ -114,7 +114,7 @@ export function useMessageHandling() {
   }, [])
 
   const handleAnalysisComplete = useCallback((data: unknown) => {
-    logger.info('[ChatPanel] Analysis completed', data);
+    logger.info('[ChatPanel] Analysis completed', typeof data === 'object' && data !== null ? data as Record<string, unknown> : undefined);
     setAnalysisInProgress(null);
   }, [])
 

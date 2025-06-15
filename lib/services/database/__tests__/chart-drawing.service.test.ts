@@ -382,7 +382,7 @@ describe('ChartDrawingDatabaseService', () => {
 
       (prisma.patternAnalysis.create as jest.Mock).mockResolvedValue(dbPattern);
 
-      const result = await ChartDrawingDatabaseService.savePattern(pattern, 'session-123');
+      const result = await ChartDrawingDatabaseService.savePattern(pattern as any, 'session-123');
 
       expect(prisma.patternAnalysis.create).toHaveBeenCalledWith({
         data: {

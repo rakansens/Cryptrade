@@ -35,29 +35,29 @@ for (let i = 0; i < lines.length; i++) {
   
   const match = line.match(/^(.+\.ts)\((\d+),(\d+)\): error (TS\d+): (.+)$/);
   
-  if (match) {
+  if (match && match[1] && match[2] && match[3] && match[4] && match[5]) {
     const [, filePath, lineNum, colNum, errorCode, message] = match;
     currentError = {
-      file: filePath || '',
+      file: filePath,
       line: parseInt(lineNum),
       column: parseInt(colNum),
-      errorCode,
-      message: message || '',
+      errorCode: errorCode,
+      message: message,
     };
     
     // Categorize the error
     if (errorCode === 'TS2307' && filePath && (filePath.includes('__tests__') || filePath.includes('scripts/'))) {
-      errorSummary.import_errors_tests_scripts?.push(currentError);
+      if (currentError) errorSummary['import_errors_tests_scripts']?.push(currentError);
     } else if ((errorCode === 'TS2345' || errorCode === 'TS2769') && message && message.includes('ToolExecutionContext')) {
-      errorSummary.type_mismatch_toolexecutioncontext?.push(currentError);
+      if (currentError) errorSummary['type_mismatch_toolexecutioncontext']?.push(currentError);
     } else if ((errorCode === 'TS2345' || errorCode === 'TS2769') && message && message.toLowerCase().includes('proposal')) {
-      errorSummary.type_mismatch_proposal?.push(currentError);
+      if (currentError) errorSummary['type_mismatch_proposal']?.push(currentError);
     } else if (errorCode === 'TS2339') {
-      errorSummary.property_not_exist?.push(currentError);
+      if (currentError) errorSummary['property_not_exist']?.push(currentError);
     } else if (errorCode === 'TS18048') {
-      errorSummary.possibly_undefined?.push(currentError);
+      if (currentError) errorSummary['possibly_undefined']?.push(currentError);
     } else if (errorCode === 'TS7006' || errorCode === 'TS2322') {
-      errorSummary.any_type_usage?.push(currentError);
+      if (currentError) errorSummary['any_type_usage']?.push(currentError);
     }
   }
 }

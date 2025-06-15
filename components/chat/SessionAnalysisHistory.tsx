@@ -6,12 +6,10 @@
 // - 上部に大きな余白が出る問題を解消
 // ============================================================
 
-import { SimpleScrollArea } from '@/components/ui/simple-scroll-area'
 import { BarChart3 } from 'lucide-react'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAnalysisHistory } from '@/store/analysis-history.store'
 import { AnalysisRecordItem } from '@/components/shared/analysis/AnalysisRecordItem'
-import { FullHeightLayout } from '@/components/layout/FullHeightLayout'
 import { useAnalysisFormatting } from '@/hooks/use-analysis-formatting'
 
 interface SessionAnalysisHistoryProps {
@@ -73,8 +71,8 @@ export function SessionAnalysisHistory({ sessionId, resetKey = 0 }: SessionAnaly
     )
   }
 
-  // Stats header component
-  const StatsHeader = (
+  // Stats header component (unused)
+  (
     <div className="flex-shrink-0 p-4 border-b border-[hsl(var(--border))]">
       <div className="grid grid-cols-4 gap-3 text-xs">
         <div className="text-center">

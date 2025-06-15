@@ -199,6 +199,7 @@ enum AnalysisType {
   trendline
   pattern
   fibonacci
+  volume
 }
 
 enum TouchResult {

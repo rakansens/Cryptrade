@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Send } from 'lucide-react'
 

@@ -216,7 +216,6 @@ test.describe('Chaos Drawing Tests - Sprint 2', () => {
     
     for (let i = 0; i < 10; i++) {
       page.evaluate((index) => {
-        const start = Date.now();
         window.dispatchEvent(new CustomEvent('chart:addDrawing', {
           detail: {
             id: `stress_test_${index}`,

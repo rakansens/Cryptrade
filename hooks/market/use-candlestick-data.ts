@@ -64,7 +64,7 @@ export function useCandlestickData({
     const binanceConnectionManager = getBinanceConnection();
     const unsubscribe = binanceConnectionManager.subscribe(
       streamKey,
-      (data: BinanceKlineMessage) => {
+      ((data: BinanceKlineMessage) => {
         try {
           if (data.e === "kline" && data.s === symbol.toUpperCase()) {
             const kline: ProcessedKline = {
@@ -89,7 +89,7 @@ export function useCandlestickData({
           logger.error('[CandlestickData] Error processing kline data', { symbol }, error);
           setConnectionError(`Failed to process kline data for ${symbol}`);
         }
-      }
+      }) as any
     );
 
     unsubscribeRef.current = unsubscribe;

@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * 提案承認フローの拡張E2Eテスト
@@ -376,22 +376,22 @@ test.describe('Enhanced Proposal Approval Flow', () => {
 });
 
 // ヘルパー関数
-async function waitForProposal(page: Page, timeout: number = 30000): Promise<boolean> {
-  return page.waitForSelector('[data-testid="proposal-card"]', {
-    state: 'visible',
-    timeout
-  }).then(() => true).catch(() => false);
-}
+// async function waitForProposal(page: Page, timeout: number = 30000): Promise<boolean> {
+//   return page.waitForSelector('[data-testid="proposal-card"]', {
+//     state: 'visible',
+//     timeout
+//   }).then(() => true).catch(() => false);
+// }
 
-async function getProposalCount(page: Page, status?: string): Promise<number> {
-  const selector = status 
-    ? `[data-testid="proposal-card"][data-status="${status}"]`
-    : '[data-testid="proposal-card"]';
-  return page.locator(selector).count();
-}
+// async function getProposalCount(page: Page, status?: string): Promise<number> {
+//   const selector = status 
+//     ? `[data-testid="proposal-card"][data-status="${status}"]`
+//     : '[data-testid="proposal-card"]';
+//   return page.locator(selector).count();
+// }
 
-async function approveProposal(page: Page, index: number = 0): Promise<void> {
-  const approveButton = page.locator('button[title="承認"]').nth(index);
-  await approveButton.click();
-  await page.waitForTimeout(500);
-}
+// async function approveProposal(page: Page, index: number = 0): Promise<void> {
+//   const approveButton = page.locator('button[title="承認"]').nth(index);
+//   await approveButton.click();
+//   await page.waitForTimeout(500);
+// }

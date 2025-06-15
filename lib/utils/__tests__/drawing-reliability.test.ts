@@ -164,12 +164,12 @@ describe('Drawing Reliability Tests', () => {
         setVisible: jest.fn(),
       });
       
-      const drawing = {
+      const drawing: ChartDrawing = {
         id: 'test',
         type: 'trendline' as const,
         points: [
-          { time: 1000, price: 100 },
-          { time: 2000, price: 200 },
+          { time: 1000, value: 100 },
+          { time: 2000, value: 200 },
         ],
         style: {
           color: '#000',

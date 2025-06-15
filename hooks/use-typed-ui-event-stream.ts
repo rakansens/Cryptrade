@@ -190,7 +190,7 @@ export function useTypedUIEventStream(
   }, [debug, onError]);
 
   // SSE ストリームの設定
-  const { isStreaming, error, reconnect, disconnect } = useSSEStream({
+  const { isStreaming, error, connect: reconnect, disconnect } = useSSEStream({
     url: '/api/ui-events',
     eventTypes: filteredEventTypes,
     onOpen: () => {
@@ -244,7 +244,7 @@ export function useTypedUIEventStream(
       }
     },
     onError: (e) => {
-      logger.warn('[TypedUIEvent] SSE error', e);
+      logger.warn('[TypedUIEvent] SSE error', { error: e });
       onConnectionChange?.(false);
       onError?.(new Error('SSE connection error'));
     },

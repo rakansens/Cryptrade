@@ -18,7 +18,7 @@ const retry: AIMiddleware = async (fn) => {
   try {
     await fn();
   } catch (error) {
-    logger.warn('[useAIChat] Request failed, could implement retry logic here', error);
+    logger.warn('[useAIChat] Request failed, could implement retry logic here', typeof error === 'object' && error !== null ? error as Record<string, unknown> : undefined);
     throw error;
   }
 };
@@ -46,16 +46,12 @@ const compose = (...middlewares: AIMiddleware[]) => {
     let composedFn = fn;
     for (let i = middlewares.length - 1; i >= 0; i--) {
       const currentFn = composedFn;
-      composedFn = () => middlewares[i](currentFn);
+      composedFn = () => middlewares[i]!(currentFn);
     }
     return composedFn();
   };
 };
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
 
 export function useAIChat() {
   const isClient = useIsClient();
@@ -83,7 +79,7 @@ export function useAIChat() {
     // Ensure we have a session
     let sessionId = currentSessionId;
     if (!sessionId) {
-      sessionId = createSession();
+      sessionId = await createSession();
     }
 
     try {
@@ -201,8 +197,16 @@ export function useAIChat() {
           });
         } else {
           // Legacy streaming response
+          interface StreamingChunk {
+            type: string;
+            content?: string;
+            metadata?: unknown;
+            error?: string;
+            done?: boolean;
+          }
+          
           for await (const line of streamToLines(response)) {
-            let chunk: { type: string; content?: string; metadata?: unknown };
+            let chunk: StreamingChunk;
             try {
               chunk = JSON.parse(line);
             } catch {

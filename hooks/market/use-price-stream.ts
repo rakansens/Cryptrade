@@ -24,7 +24,7 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
     const binanceConnectionManager = getBinanceConnection();
     const unsubscribe = binanceConnectionManager.subscribe(
       streamKey,
-      (data: BinanceTradeMessage) => {
+      ((data: BinanceTradeMessage) => {
         try {
           if (data.e === "trade" && data.s === symbol.toUpperCase()) {
             updatePrice(data);
@@ -42,7 +42,7 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
           setConnectionError(`Failed to process price data for ${symbol}`);
           lastConnectionUpdate.current = Date.now();
         }
-      }
+      }) as any
     );
 
     unsubscribeRef.current = unsubscribe;

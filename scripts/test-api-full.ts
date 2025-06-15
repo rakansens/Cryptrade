@@ -9,7 +9,12 @@ import { resolve } from 'path';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 // Set test mode to use mocked responses
-process.env.NODE_ENV = 'test';
+Object.defineProperty(process.env, 'NODE_ENV', {
+  value: 'test',
+  writable: true,
+  enumerable: true,
+  configurable: true
+});
 process.env['USE_MOCK_AI'] = 'true';
 
 async function testAPI() {

@@ -3,11 +3,10 @@
  * 実際のエージェントシステムを使用して動作確認
  */
 
-import { orchestratorAgent, executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
+import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
 import { tradingAgent } from '../lib/mastra/agents/trading.agent';
 import { agentNetwork } from '../lib/mastra/network/agent-network';
 import { registerAllAgents } from '../lib/mastra/network/agent-registry';
-import { logger } from '../lib/utils/logger';
 
 // カラー出力用のヘルパー
 const colors = {
@@ -104,15 +103,15 @@ async function testEntryProposal() {
       // proposalGroupの存在確認
       if (a2aResponse.proposalGroup) {
         log('  ✅ ProposalGroupが検出されました', colors.green);
-        log(`  提案数: ${a2aResponse.proposalGroup.proposals?.length || 0}`, colors.blue);
+        log(`  提案数: ${(a2aResponse.proposalGroup as any).proposals?.length || 0}`, colors.blue);
       } else {
         log('  ⚠️  ProposalGroupが見つかりません', colors.yellow);
         
         // stepsから探す
         if (a2aResponse.steps) {
           for (const step of a2aResponse.steps) {
-            if (step.toolResults) {
-              for (const toolResult of step.toolResults) {
+            if ((step as any).toolResults) {
+              for (const toolResult of (step as any).toolResults) {
                 if (toolResult.toolName === 'entryProposalGeneration' && toolResult.result?.proposalGroup) {
                   log('  ✅ toolResultsからProposalGroupを検出', colors.green);
                   log(`  提案数: ${toolResult.result.proposalGroup.proposals?.length || 0}`, colors.blue);

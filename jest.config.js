@@ -18,7 +18,8 @@ module.exports = {
         '<rootDir>/lib/**/*.test.ts',
         '<rootDir>/app/api/**/*.test.ts',
         '<rootDir>/types/**/*.test.ts',
-        '<rootDir>/config/**/*.test.ts'
+        '<rootDir>/config/**/*.test.ts',
+        '<rootDir>/__tests__/integration/**/*.test.ts'
       ],
       transform: {
         '^.+\\.(ts|tsx)$': ['ts-jest', {

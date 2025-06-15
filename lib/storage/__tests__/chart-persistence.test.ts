@@ -285,7 +285,7 @@ describe('ChartPersistenceManager', () => {
     });
 
     it('handles empty map', async () => {
-      ChartPersistenceManager.savePatterns(new Map());
+      ChartPersistenceManager.savePatterns(new Map() as any);
       
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'cryptrade_chart_patterns',

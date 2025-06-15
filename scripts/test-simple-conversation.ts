@@ -40,24 +40,24 @@ async function testSimpleConversation() {
       });
       
       if (result.executionResult.response) {
-        logger.info('Response:', result.executionResult.response);
+        logger.info('Response:', { response: result.executionResult.response });
       }
     } else {
       logger.error('No execution result');
     }
     
     // エラーの詳細を確認
-    if (result.agentError) {
-      logger.error('Agent Error:', result.agentError);
+    if ((result as any).agentError) {
+      logger.error('Agent Error:', (result as any).agentError);
     }
     
   } catch (error) {
-    logger.error('Test failed:', error);
+    logger.error('Test failed:', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 // 実行
 testSimpleConversation().catch(error => {
-  logger.error('Script failed:', error);
+  logger.error('Script failed:', { error: error instanceof Error ? error.message : String(error) });
   process.exit(1);
 });

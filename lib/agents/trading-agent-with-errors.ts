@@ -62,9 +62,12 @@ export async function executeWithErrorHandling({ query, symbol, model }: { query
       // マーケットデータ取得
       const toolToUse = model === 'o1-preview' ? marketDataToolForO1 : marketDataToolForOpenAI;
       const marketData = await toolToUse.execute({
-        symbol,
-        interval: '1h',
-      }).catch((error: Error) => {
+        context: {
+          symbol,
+          interval: '1h',
+          limit: 100
+        }
+      } as any).catch((error: Error) => {
         // ツールエラーの詳細なトラッキング
         const agentError = new AgentError(
           `Market data tool failed: ${error.message}`,
@@ -149,9 +152,7 @@ export async function executeWithErrorHandling({ query, symbol, model }: { query
         },
       };
     }
-  },
-
-});
+}
 
 // 分析ロジック関数
 async function analyzeMarket(marketData: MarketAnalysisData, query: string) {

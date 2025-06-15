@@ -1,6 +1,6 @@
 import { AnalysisService } from '../analysis.service';
 import { prisma } from '@/lib/db/prisma';
-import { DrawingProposal } from '@/types/proposals';
+// import { DrawingProposal } from '@/types/proposals'; // Not used
 
 // Mock Prisma client
 jest.mock('@/lib/db/prisma', () => ({

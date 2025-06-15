@@ -6,10 +6,9 @@
  * 実際のアプリ環境でエージェント選択とA2A通信をテストします
  */
 
-import { agentNetwork, registerCryptradeAgent } from '../lib/mastra/network/agent-network';
+import { agentNetwork } from '../lib/mastra/network/agent-network';
 import { registerAllAgents } from '../lib/mastra/network/agent-registry';
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
-import { logger } from '../lib/utils/logger';
 
 // テストケース定義
 const TEST_CASES = [

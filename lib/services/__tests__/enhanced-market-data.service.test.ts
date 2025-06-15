@@ -17,7 +17,7 @@ jest.mock('@/lib/api/base-service');
 
 describe('EnhancedMarketDataService', () => {
   let service: EnhancedMarketDataService;
-  let mockGet: jest.Mock;
+  let mockGet: jest.Mock<Promise<any>, [string, Record<string, string>?]>;
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -25,7 +25,7 @@ describe('EnhancedMarketDataService', () => {
     
     // Mock the get method
     mockGet = jest.fn();
-    service['get'] = mockGet as any;
+    service['get'] = mockGet as typeof service['get'];
   });
 
   describe('fetchMultiTimeframeData', () => {
@@ -87,7 +87,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 } as any);
+      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
       const result1 = await service.fetchMultiTimeframeData(symbol);
       
       // Second call - should use cache
@@ -124,7 +124,7 @@ describe('EnhancedMarketDataService', () => {
     it('should throw error when all timeframes fail', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockRejectedValue(new Error('API unavailable' ) as any);
+      mockGet.mockRejectedValue(new Error('API unavailable'));
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow('Failed to fetch data from any timeframe');
     });
@@ -133,7 +133,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 } as any);
+      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
       await service.fetchMultiTimeframeData(symbol);
       
       // Simulate cache expiry by setting to a very small value
@@ -355,7 +355,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // Add some data to cache
-      mockGet.mockResolvedValue({ data: [], status: 200 } as any);
+      mockGet.mockResolvedValue({ data: [], status: 200 });
       await service.fetchMultiTimeframeData(symbol);
       
       const stats = service.getCacheStats();
@@ -373,7 +373,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       const error = new Error('API rate limit exceeded');
       
-      mockGet.mockRejectedValue(error as any);
+      mockGet.mockRejectedValue(error);
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow('Failed to fetch data from any timeframe');
       
@@ -389,7 +389,7 @@ describe('EnhancedMarketDataService', () => {
     it('should handle non-Error exceptions', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockRejectedValue('String error' as any);
+      mockGet.mockRejectedValue('String error');
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow();
       

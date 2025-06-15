@@ -8,11 +8,9 @@
  * and performance comparisons.
  */
 
-import { multiTimeframeLineDetector } from '@/lib/analysis/multi-timeframe-line-detector';
 import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
 import { enhancedLineAnalysisTool } from '@/lib/mastra/tools/enhanced-line-analysis.tool';
 import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
-import { logger } from '@/lib/utils/logger';
 
 interface AccuracyMetrics {
   totalLines: number;
@@ -160,12 +158,17 @@ class LineAccuracyTester {
       context: {
         symbol,
         analysisType: 'full',
+        returnRawData: false,
         config: {
           minTimeframes: 2,
+          priceTolerancePercent: 0.5,
+          minTouchCount: 3,
+          confluenceZoneWidth: 1.0,
           strengthThreshold: 0.5,
-          minTouchCount: 3
+          recencyWeight: 0.3
         }
-      }
+      },
+      runtimeContext: {} as any
     });
     
     const detectionTime = Date.now() - startTime;
@@ -204,8 +207,10 @@ class LineAccuracyTester {
         symbol,
         timeframe: '1h',
         limit: 500,
-        analysisType: 'full'
-      }
+        analysisType: 'full',
+        lookbackPeriod: 100
+      },
+      runtimeContext: {} as any
     });
     
     const detectionTime = Date.now() - startTime;

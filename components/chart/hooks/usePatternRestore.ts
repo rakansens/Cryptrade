@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useChartPatterns } from '@/store/chart.store';
 import { logger } from '@/lib/utils/logger';
-import type { PatternRenderer } from '@/types/pattern.types';
+import type { PatternRenderer, PatternVisualization as PatternViz } from '@/types/pattern.types';
 
 /**
  * Pattern Restore Hook
@@ -46,7 +46,33 @@ export function usePatternRestore({ patternRenderer, isChartReady, timeframe }: 
         try {
           if (!restoredPatternsRef.current.has(id)) {
             logger.info('[PatternRestore] Restoring pattern', { id, type: pattern.type });
-            patternRenderer.renderPattern(id, pattern.visualization, pattern.type, pattern.metrics);
+            // Convert store visualization to pattern visualization
+            const patternViz: PatternViz = {
+              type: pattern.visualization.type as PatternViz['type'],
+              points: pattern.visualization.keyPoints?.map(kp => ({
+                time: kp.time,
+                value: kp.price
+              })) || [],
+              lines: pattern.visualization.lines?.map(line => ({
+                point1: { time: line.start.time, value: line.start.price },
+                point2: { time: line.end.time, value: line.end.price }
+              })) || [],
+              labels: pattern.visualization.labels?.map(label => ({
+                point: { time: label.position.time, value: label.position.price },
+                text: label.text,
+                color: label.style?.color,
+                fontSize: label.style?.fontSize
+              })) as PatternViz['labels'] || []
+            };
+            // Convert store metrics to pattern metrics if present
+            const patternMetrics = pattern.metrics ? {
+              confidence: 0.8, // Default confidence as store doesn't have it
+              strength: 0.7,   // Default strength as store doesn't have it
+              ...(pattern.metrics.volume !== undefined && { volume: pattern.metrics.volume }),
+              ...(pattern.metrics.priceChange !== undefined && { priceChange: pattern.metrics.priceChange }),
+              ...(pattern.metrics.duration !== undefined && { duration: pattern.metrics.duration })
+            } : undefined;
+            patternRenderer.renderPattern(id, patternViz, pattern.type, patternMetrics);
             restoredPatternsRef.current.add(id);
           }
         } catch (error) {

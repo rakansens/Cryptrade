@@ -1,7 +1,6 @@
 'use client'
 
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { useCallback, memo } from 'react'
 import { useChart } from '@/store/chart.store'

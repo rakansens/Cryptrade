@@ -12,7 +12,7 @@ describe('useAnalysisFormatting', () => {
       if (args.length === 0) {
         return mockDate;
       }
-      return new originalDate(...args);
+      return new (originalDate as any)(...args);
     }) as any;
     global.Date.now = originalDate.now;
     global.Date.parse = originalDate.parse;

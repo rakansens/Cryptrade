@@ -10,12 +10,10 @@ import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { useMessageHandling } from '@/hooks/chat/use-message-handling'
 import { useProposalManagement } from '@/hooks/chat/use-proposal-management'
-import { FullHeightLayout } from '@/components/layout/FullHeightLayout'
 import { logger } from '@/lib/utils/logger'
 
 export default function ChatPanel() {
   const { 
-    sessions,
     currentSessionId,
     messages, 
     inputValue, 
@@ -23,7 +21,6 @@ export default function ChatPanel() {
     isStreaming, 
     isLoading,
     setInputValue,
-    createSession,
     error
   } = useChat()
   
@@ -61,8 +58,6 @@ export default function ChatPanel() {
     }
   }, [isInputFromHomeScreen, inputValue, hasAutoSent, isReady, handleSendMessage])
 
-  const currentSession = sessions[currentSessionId || '']
-  const sessionTitle = currentSession?.title || 'Trading Assistant'
 
   // Tab header component
   const TabHeader = (

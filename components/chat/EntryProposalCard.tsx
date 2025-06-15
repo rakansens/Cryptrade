@@ -144,8 +144,10 @@ export const EntryProposalCard = React.memo(function EntryProposalCard({
               key={proposal.id}
               proposal={proposal}
               status={status}
-              onApprove={status === 'pending' ? () => handleApprove(proposal.id) : undefined}
-              onReject={status === 'pending' ? () => handleReject(proposal.id) : undefined}
+              {...(status === 'pending' && {
+                onApprove: () => handleApprove(proposal.id),
+                onReject: () => handleReject(proposal.id)
+              })}
             />
           )
         })}

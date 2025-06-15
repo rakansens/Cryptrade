@@ -8,7 +8,6 @@
  */
 
 import { enhancedLineAnalysisTool } from '@/lib/mastra/tools/enhanced-line-analysis.tool';
-import { multiTimeframeLineDetector } from '@/lib/analysis/multi-timeframe-line-detector';
 import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
 
 async function runDemo(): Promise<void> {
@@ -25,12 +24,17 @@ async function runDemo(): Promise<void> {
       context: {
         symbol,
         analysisType: 'full',
+        returnRawData: false,
         config: {
           minTimeframes: 2,
+          priceTolerancePercent: 0.5,
+          minTouchCount: 3,
+          confluenceZoneWidth: 1.0,
           strengthThreshold: 0.6,
-          minTouchCount: 3
+          recencyWeight: 0.3
         }
-      }
+      },
+      runtimeContext: {} as any
     });
     
     console.log('📈 ANALYSIS RESULTS');
@@ -220,7 +224,8 @@ async function showMultiTimeframeComparison(): Promise<void> {
       console.log(`\n${interval}:`);
       console.log(`  Data Points: ${data.data.length}`);
       console.log(`  Weight: ${data.weight}`);
-      console.log(`  Latest Price: $${data.data[data.data.length - 1].close.toFixed(2)}`);
+      const lastCandle = data.data[data.data.length - 1];
+      console.log(`  Latest Price: $${lastCandle?.close.toFixed(2) ?? 'N/A'}`);
     }
     
     // Find support/resistance levels

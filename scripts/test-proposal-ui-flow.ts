@@ -4,7 +4,12 @@
  */
 
 // Set test environment - bypass env validation
-process.env.NODE_ENV = 'test';
+Object.defineProperty(process.env, 'NODE_ENV', {
+  value: 'test',
+  writable: true,
+  enumerable: true,
+  configurable: true
+});
 process.env['SKIP_ENV_VALIDATION'] = 'true';
 
 // Direct imports to avoid env validation
@@ -17,7 +22,6 @@ const logger = {
 import { UIEventDispatcher } from '../lib/utils/ui-event-dispatcher';
 const uiEventDispatcher = UIEventDispatcher.getInstance();
 import type { ProposalUIEvent, ChartUIEvent } from '../lib/utils/ui-event-dispatcher';
-import type { DrawingProposalGroup, EntryProposalGroup } from '../types/proposals';
 
 interface UITestResult {
   step: string;

@@ -82,7 +82,7 @@ export function HomeView({ onTransitionComplete }: HomeViewProps) {
     // Only create new session if there's no current session
     let sessionId = currentSessionId
     if (!sessionId) {
-      sessionId = createSession()
+      sessionId = await createSession()
     }
     
     // Set the input value in chat store with home screen flag
@@ -122,7 +122,7 @@ export function HomeView({ onTransitionComplete }: HomeViewProps) {
         onMouseMove={handleMouseMove}
       >
         {/* Floating Sidebar Toggle */}
-        <FloatingSidebarToggle onTransitionToChat={onTransitionComplete} />
+        <FloatingSidebarToggle {...(onTransitionComplete && { onTransitionToChat: onTransitionComplete })} />
         
         {/* Animated Background */}
         <div className="absolute inset-0">

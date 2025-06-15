@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'dotenv/config';
 import { config } from 'dotenv';
-import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
+import { executeImprovedOrchestrator, type OrchestratorRuntimeContext } from '../lib/mastra/agents/orchestrator.agent';
 import { logger } from '../lib/utils/logger';
 
 // .env.localを読み込む
@@ -13,7 +13,7 @@ config({ path: '.env.local' });
  */
 
 async function testOrchestratorComplete() {
-  logger.info('=== Orchestrator Complete Integration Test ===');
+  logger.info('=== Orchestrator Complete Integration Test ===', {});
   
   // 同じセッションIDで会話を続ける
   const sessionId = `test-session-${Date.now()}`;
@@ -42,7 +42,9 @@ async function testOrchestratorComplete() {
   ];
   
   for (let i = 0; i < conversationFlow.length; i++) {
-    const { query, description } = conversationFlow[i];
+    const item = conversationFlow[i];
+    if (!item) continue;
+    const { query, description } = item;
     logger.info(`\n--- Step ${i + 1}: ${description} ---`);
     logger.info(`Query: "${query}"`);
     
@@ -53,43 +55,43 @@ async function testOrchestratorComplete() {
         {
           userLevel: 'intermediate',
           marketStatus: 'open',
-        }
+        } as OrchestratorRuntimeContext
       );
       
-      logger.info('Intent:', result.analysis.intent);
-      logger.info('Confidence:', result.analysis.confidence);
+      logger.info('Intent:', { intent: result.analysis.intent });
+      logger.info('Confidence:', { confidence: result.analysis.confidence });
       
       if (result.executionResult) {
-        const response = result.executionResult.response || 
-                        result.executionResult.executionResult?.response || 
-                        result.executionResult.message || 
+        const response = (result.executionResult as any).response || 
+                        (result.executionResult as any).executionResult?.response || 
+                        (result.executionResult as any).message || 
                         'No response';
                         
-        logger.info('Response:', response);
+        logger.info('Response:', { response });
         
         // どこで処理されたかチェック
         if (result.executionResult.metadata?.['processedBy']) {
-          logger.info('Processed by:', result.executionResult.metadata['processedBy']);
+          logger.info('Processed by:', { processedBy: result.executionResult.metadata['processedBy'] });
         }
       }
       
       // メモリコンテキストの長さをチェック
       if (result.memoryContext) {
-        logger.info('Memory context length:', result.memoryContext.length);
+        logger.info('Memory context length:', { length: result.memoryContext.length });
       }
       
     } catch (error) {
-      logger.error('Test failed:', error);
+      logger.error('Test failed:', { error: error instanceof Error ? error.message : String(error) });
     }
     
     // 各ステップ間に少し待機
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   
-  logger.info('\n=== Conversation Flow Complete ===');
+  logger.info('\n=== Conversation Flow Complete ===', {});
   
   // ConversationalAgentなしでの会話機能の確認
-  logger.info('\n=== Checking Conversation Capabilities Without ConversationalAgent ===');
+  logger.info('\n=== Checking Conversation Capabilities Without ConversationalAgent ===', {});
   
   const conversationalQueries = [
     'おはよう！今日も頑張ろう',
@@ -109,30 +111,30 @@ async function testOrchestratorComplete() {
         {
           userLevel: 'intermediate',
           marketStatus: 'open',
-        }
+        } as OrchestratorRuntimeContext
       );
       
       const isConversational = ['market_chat', 'small_talk', 'greeting', 'help_request', 'conversational'].includes(result.analysis.intent);
       
-      logger.info('Intent:', result.analysis.intent);
-      logger.info('Is handled directly by Orchestrator?', isConversational);
+      logger.info('Intent:', { intent: result.analysis.intent });
+      logger.info('Is handled directly by Orchestrator?', { isConversational });
       
       if (result.executionResult?.metadata?.['processedBy'] === 'orchestrator-direct') {
-        logger.info('✅ Successfully handled by Orchestrator directly');
+        logger.info('✅ Successfully handled by Orchestrator directly', {});
       } else {
-        logger.info('❌ Delegated to:', result.executionResult?.metadata?.['processedBy'] || 'unknown');
+        logger.info('❌ Delegated to:', { delegatedTo: result.executionResult?.metadata?.['processedBy'] || 'unknown' });
       }
       
     } catch (error) {
-      logger.error('Query failed:', error);
+      logger.error('Query failed:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
   
-  logger.info('\n=== Test Complete ===');
+  logger.info('\n=== Test Complete ===', {});
 }
 
 // 実行
 testOrchestratorComplete().catch(error => {
-  logger.error('Test script failed:', error);
+  logger.error('Test script failed:', { error });
   process.exit(1);
 });

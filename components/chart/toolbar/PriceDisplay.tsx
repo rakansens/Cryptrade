@@ -10,7 +10,7 @@ interface PriceDisplayProps {
   symbolName: string
 }
 
-const PriceDisplay = memo(function PriceDisplay({ symbol, symbolName }: PriceDisplayProps) {
+const PriceDisplay = memo(function PriceDisplay({ symbol }: PriceDisplayProps) {
   const { currentPrice, change, changePercent, isConnected } = usePriceStream(symbol)
   const { high24h, low24h, volume } = useMarketTicker(symbol)
   const [prevPrice, setPrevPrice] = useState(currentPrice)
@@ -42,6 +42,8 @@ const PriceDisplay = memo(function PriceDisplay({ symbol, symbolName }: PriceDis
       const timer = setTimeout(() => setPriceAnimation(false), 500)
       return () => clearTimeout(timer)
     }
+    // Add explicit return for all code paths
+    return undefined
   }, [currentPrice, prevPrice])
 
   return (

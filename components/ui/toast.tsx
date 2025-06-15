@@ -28,6 +28,7 @@ const ToastItem: React.FC<ToastItemProps> = ({
       }, duration);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [id, duration, onClose]);
 
   const typeStyles = {

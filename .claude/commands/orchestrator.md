@@ -87,3 +87,7 @@ Adapted Plan: Step 1 → Step 2 → Skip Step 3 → Simplified Step 4 (just comm
 After Step 2: "Found critical architectural issue"
 Adapted Plan: Step 1 → Step 2 → New Step 2.5 (analyze architecture) → Modified Step 3
 ```
+
+
+===============================================================
+# Remember: keep summaries crisp (in Japanese), run subtasks

@@ -38,6 +38,9 @@ const EnvSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   KV_REST_API_URL: z.string().url().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   
   // Application URLs
   NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
@@ -46,9 +49,17 @@ const EnvSchema = z.object({
   // Feature flags
   USE_NEW_WS_MANAGER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
   ENABLE_ORCHESTRATOR_AGENT: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
+  NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
+  NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
   
   // Telemetry configuration
   TELEMETRY_SAMPLING_RATE: z.coerce.number().min(0).max(1).default(0.001).optional(),
+  TELEMETRY_ENDPOINT: z.string().url().optional(),
+  TELEMETRY_API_KEY: z.string().optional(),
+  
+  // Sentry configuration
+  SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   
   // Server configuration
   PORT: z.coerce.number().min(1).max(65535).default(3000),

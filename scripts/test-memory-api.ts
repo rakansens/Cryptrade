@@ -7,7 +7,7 @@
  */
 
 // Chalk v5はESMのみなので、色付けの代替実装
-const colors = {
+const testColors = {
   yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
   cyan: (text: string) => `\x1b[36m${text}\x1b[0m`,
   green: (text: string) => `\x1b[32m${text}\x1b[0m`,
@@ -20,7 +20,7 @@ const colors = {
     green: (text: string) => `\x1b[1m\x1b[32m${text}\x1b[0m`,
   }
 };
-const chalk = colors;
+const chalk = testColors;
 // const fetch = require('node-fetch'); // fetch is now a global in Node.js 18+
 
 const BASE_URL = process.env['API_URL'] || 'http://localhost:3000';

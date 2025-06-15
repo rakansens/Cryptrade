@@ -7,9 +7,7 @@ import { ChatMessage } from '@/store/chat.store'
 import { ProposalCard } from './ProposalCard'
 import { EntryProposalCard } from './EntryProposalCard'
 import { AnalysisResultCard } from './AnalysisResultCard'
-import type { ProposalMessage } from '@/types/proposal'
-import type { EntryProposalGroup } from '@/types/trading'
-import { cn } from '@/lib/utils'
+import type { ProposalMessage } from '@/types/proposals'
 import { parseAnalysisText, isAnalysisMessage } from '@/lib/utils/parse-analysis'
 
 interface MessageItemProps {
@@ -78,21 +76,37 @@ export const MessageItem = React.memo(function MessageItem({
       <div className="flex-1 max-w-[80%]">
         {message.type === 'proposal' && message.proposalGroup ? (
           <ProposalCard
-            proposalGroup={message.proposalGroup}
-            onApprove={(proposalId) => onApproveProposal?.(message as ProposalMessage, proposalId)}
-            onReject={(proposalId) => onRejectProposal?.(message as ProposalMessage, proposalId)}
-            onApproveAll={() => onApproveAllProposals?.(message as ProposalMessage)}
-            onRejectAll={() => onRejectAllProposals?.(message as ProposalMessage)}
-            onCancel={onCancelDrawing}
+            proposalGroup={message.proposalGroup as any}
+            onApprove={(proposalId) => {
+              if (onApproveProposal) {
+                onApproveProposal(message as unknown as ProposalMessage, proposalId)
+              }
+            }}
+            onReject={(proposalId) => {
+              if (onRejectProposal) {
+                onRejectProposal(message as unknown as ProposalMessage, proposalId)
+              }
+            }}
+            onApproveAll={() => {
+              if (onApproveAllProposals) {
+                onApproveAllProposals(message as unknown as ProposalMessage)
+              }
+            }}
+            onRejectAll={() => {
+              if (onRejectAllProposals) {
+                onRejectAllProposals(message as unknown as ProposalMessage)
+              }
+            }}
+            {...(onCancelDrawing && { onCancel: onCancelDrawing })}
             approvedDrawingIds={approvedDrawingIds}
           />
         ) : message.type === 'entry' && message.entryProposalGroup ? (
           <EntryProposalCard
-            proposalGroup={message.entryProposalGroup}
-            onApprove={(proposalId) => onApproveProposal?.(message as ProposalMessage, proposalId)}
-            onReject={(proposalId) => onRejectProposal?.(message as ProposalMessage, proposalId)}
-            onApproveAll={() => onApproveAllProposals?.(message as ProposalMessage)}
-            onRejectAll={() => onRejectAllProposals?.(message as ProposalMessage)}
+            proposalGroup={message.entryProposalGroup as any}
+            onApprove={onApproveProposal ? (proposalId) => onApproveProposal(message as unknown as ProposalMessage, proposalId) : () => {}}
+            onReject={onRejectProposal ? (proposalId) => onRejectProposal(message as unknown as ProposalMessage, proposalId) : () => {}}
+            onApproveAll={onApproveAllProposals ? () => onApproveAllProposals(message as unknown as ProposalMessage) : () => {}}
+            onRejectAll={onRejectAllProposals ? () => onRejectAllProposals(message as unknown as ProposalMessage) : () => {}}
           />
         ) : (() => {
           // Check if this is an analysis message
@@ -113,7 +127,6 @@ export const MessageItem = React.memo(function MessageItem({
                 // Create a proper ProposalMessage object
                 const proposalMessage: ProposalMessage = {
                   id: message.id,
-                  role: 'assistant',
                   content: 'トレンドライン提案が生成されました',
                   type: 'proposal',
                   proposalGroup: parsed.data,
@@ -127,20 +140,20 @@ export const MessageItem = React.memo(function MessageItem({
                     onApprove={onApproveProposal ? (proposalId) => {
                       console.log('[MessageItem] Approving proposal from JSON', { proposalId, proposalMessage });
                       onApproveProposal(proposalMessage, proposalId);
-                    } : undefined}
+                    } : () => {}}
                     onReject={onRejectProposal ? (proposalId) => {
                       console.log('[MessageItem] Rejecting proposal from JSON', { proposalId, proposalMessage });
                       onRejectProposal(proposalMessage, proposalId);
-                    } : undefined}
+                    } : () => {}}
                     onApproveAll={onApproveAllProposals ? () => {
                       console.log('[MessageItem] Approving all proposals from JSON', { proposalMessage });
                       onApproveAllProposals(proposalMessage);
-                    } : undefined}
+                    } : () => {}}
                     onRejectAll={onRejectAllProposals ? () => {
                       console.log('[MessageItem] Rejecting all proposals from JSON', { proposalMessage });
                       onRejectAllProposals(proposalMessage);
-                    } : undefined}
-                    onCancel={onCancelDrawing}
+                    } : () => {}}
+                    {...(onCancelDrawing && { onCancel: onCancelDrawing })}
                     approvedDrawingIds={approvedDrawingIds}
                   />
                 )
@@ -152,47 +165,43 @@ export const MessageItem = React.memo(function MessageItem({
                     onApprove={onApproveProposal ? (proposalId) => {
                       const proposalMessage: ProposalMessage = {
                         id: message.id,
-                        role: 'assistant',
                         content: 'エントリー提案が生成されました',
                         type: 'proposal',
                         proposalGroup: parsed.data,
                         timestamp: message.timestamp
                       };
                       onApproveProposal(proposalMessage, proposalId);
-                    } : undefined}
+                    } : () => {}}
                     onReject={onRejectProposal ? (proposalId) => {
                       const proposalMessage: ProposalMessage = {
                         id: message.id,
-                        role: 'assistant',
                         content: 'エントリー提案が生成されました',
                         type: 'proposal',
                         proposalGroup: parsed.data,
                         timestamp: message.timestamp
                       };
                       onRejectProposal(proposalMessage, proposalId);
-                    } : undefined}
+                    } : () => {}}
                     onApproveAll={onApproveAllProposals ? () => {
                       const proposalMessage: ProposalMessage = {
                         id: message.id,
-                        role: 'assistant',
                         content: 'エントリー提案が生成されました',
                         type: 'proposal',
                         proposalGroup: parsed.data,
                         timestamp: message.timestamp
                       };
                       onApproveAllProposals(proposalMessage);
-                    } : undefined}
+                    } : () => {}}
                     onRejectAll={onRejectAllProposals ? () => {
                       const proposalMessage: ProposalMessage = {
                         id: message.id,
-                        role: 'assistant',
                         content: 'エントリー提案が生成されました',
                         type: 'proposal',
                         proposalGroup: parsed.data,
                         timestamp: message.timestamp
                       };
                       onRejectAllProposals(proposalMessage);
-                    } : undefined}
+                    } : () => {}}
                   />
                 )
               }

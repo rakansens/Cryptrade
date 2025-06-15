@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * リアルタイムデータ更新のE2Eテスト
@@ -96,7 +96,6 @@ test.describe('Real-time Data Updates', () => {
         return false;
       }
 
-      const chart = (chartElement as any).__chart;
       const series = (chartElement as any).__mainSeries;
       
       if (!series) {
@@ -218,7 +217,7 @@ test.describe('Real-time Data Updates', () => {
 
         // MA系列を探す
         const chart = (chartElement as any).__chart;
-        let maSeries = null;
+        let maSeries: any = null;
         
         // チャート内の全系列をチェック
         if (chart._private__seriesMap) {
@@ -367,16 +366,16 @@ test.describe('Real-time Data Updates', () => {
 });
 
 // ヘルパー関数
-async function waitForPriceUpdate(page: Page, initialPrice: string | null, timeout: number = 10000): Promise<boolean> {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < timeout) {
-    const currentPrice = await page.locator('[data-testid="price-display"]').textContent();
-    if (currentPrice !== initialPrice && currentPrice !== '') {
-      return true;
-    }
-    await page.waitForTimeout(500);
-  }
-  
-  return false;
-}
+// async function waitForPriceUpdate(page: Page, initialPrice: string | null, timeout: number = 10000): Promise<boolean> {
+//   const startTime = Date.now();
+//   
+//   while (Date.now() - startTime < timeout) {
+//     const currentPrice = await page.locator('[data-testid="price-display"]').textContent();
+//     if (currentPrice !== initialPrice && currentPrice !== '') {
+//       return true;
+//     }
+//     await page.waitForTimeout(500);
+//   }
+//   
+//   return false;
+// }

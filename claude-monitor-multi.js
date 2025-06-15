@@ -11,7 +11,6 @@ const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
-const crypto = require('crypto');
 const chokidar = require('chokidar');
 
 // スクリーンを作成（UTF-8対応）
@@ -638,7 +637,7 @@ function updateInstanceHistoryPanels() {
     });
   let currentTop = 36; // File Operations Matrixの下から開始
   
-  instances.forEach((instance, index) => {
+  instances.forEach((instance) => {
     const panelId = `history_${instance.id}`;
     let panel = instanceHistoryPanels.get(panelId);
     
@@ -827,7 +826,7 @@ function startClaudeOutputMonitor() {
     // まず、すべてのファイルの現在の状態を記録
     const currentFiles = new Map(); // filePath -> { mtime, pids, isOpen }
     
-    for (const [pid, instance] of claudeInstances) {
+    for (const [pid] of claudeInstances) {
       try {
         // lsofでプロセスが開いているファイルを確認（REGタイプのみ）
         const { stdout } = await execPromise(`lsof -p ${pid} 2>/dev/null | grep REG | grep -E "\\.(js|ts|tsx|jsx|json|md|css|html|py|sh|yml|yaml|txt|log|xml|env)$"`);
@@ -1113,7 +1112,7 @@ async function init() {
 }
 
 // キーバインド
-screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+screen.key(['escape', 'q', 'C-c'], function() {
   return process.exit(0);
 });
 

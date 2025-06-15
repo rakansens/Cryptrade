@@ -73,7 +73,7 @@ test.describe('AI Chart Control Functionality', () => {
     // チャートタイトルの変更を確認
     const chartTitle = page.locator('[data-testid="chart-symbol"]');
     if (await chartTitle.isVisible()) {
-      await expect(chartTitle).toContain('ETH');
+      await expect(chartTitle).toContainText('ETH');
     }
   });
 
@@ -89,10 +89,9 @@ test.describe('AI Chart Control Functionality', () => {
     await page.waitForTimeout(3000);
     
     // DrawingRendererのログを確認
-    let trendlineCreated = false;
     page.on('console', msg => {
       if (msg.text().includes('[DrawingRenderer] Trendline created and stored')) {
-        trendlineCreated = true;
+        // Trendline created
       }
     });
     

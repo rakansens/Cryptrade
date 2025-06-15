@@ -29,12 +29,12 @@ export default function MacdChart({ height }: MacdChartProps) {
     cleanupChart,
   } = useIndicatorChartInit({
     chartId: 'macd-chart',
-    height,
+    ...(height !== undefined && { height }),
     showTimeScale: false,
   })
   
   // Fast data updates using setData()
-  const { updateChartData, hasData } = useMacdChartData({
+  useMacdChartData({
     chartId: 'macd-chart',
     priceData,
     seriesRefs,

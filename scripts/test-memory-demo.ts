@@ -14,7 +14,6 @@ config({ path: '.env' }); // .envも読み込む（.env.localが優先される�
 
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
 import { useConversationMemory, semanticSearch } from '../lib/store/conversation-memory.store';
-import { logger } from '../lib/utils/logger';
 import { env } from '../config/env';
 // Chalk v5はESMのみなので、色付けの代替実装
 const colors = {
@@ -161,7 +160,7 @@ async function runMemoryDemo() {
   
   // 埋め込みキャッシュ情報
   console.log(chalk.cyan('\n=== 埋め込みキャッシュ情報 ==='));
-  console.log(`キャッシュサイズ: ${(embeddingService as { embeddingCache?: { size: number } }).embeddingCache?.size || 0}`);
+  console.log(`キャッシュサイズ: ${(embeddingService as unknown as { embeddingCache?: { size: number } }).embeddingCache?.size || 0}`);
   
   console.log(chalk.yellow('\n✨ デモンストレーション完了！\n'));
 }

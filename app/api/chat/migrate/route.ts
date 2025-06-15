@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService, type ChatMessage } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
-import { DrawingProposalGroup, EntryProposalGroup, ProposalType } from '@/types/proposals';
+import { DrawingProposalGroup, EntryProposalGroup } from '@/types/proposals';
 
 interface MigrateSession {
   title: string;
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
                   ...(p.metadata?.['targetPrice'] !== undefined && { takeProfit: p.metadata?.['targetPrice'] as number }),
                 })) as any,
                 summary: drawingGroup.description,
-                totalConfidence: drawingGroup.summary?.averageConfidence,
+                totalConfidence: 'summary' in drawingGroup && drawingGroup.summary ? (drawingGroup.summary as any).averageConfidence : undefined,
                 timestamp: drawingGroup.createdAt,
               };
             }

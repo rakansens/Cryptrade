@@ -33,7 +33,17 @@ async function testFinalIntegration() {
     { query: 'トレンドラインを描いて', expectedProcessedBy: 'tradingAnalysisAgent', category: '提案' },
   ];
   
-  const results = [];
+  const results: Array<{
+    query: string;
+    category: string;
+    intent?: string;
+    confidence?: number;
+    expectedProcessedBy?: string;
+    actualProcessedBy?: string;
+    correct?: boolean;
+    hasResponse?: boolean;
+    error?: boolean;
+  }> = [];
   
   for (const testCase of testCases) {
     try {
@@ -45,7 +55,7 @@ async function testFinalIntegration() {
         { userLevel: 'intermediate', marketStatus: 'open' }
       );
       
-      const actualProcessedBy = result.executionResult?.metadata?.['processedBy'] || 'unknown';
+      const actualProcessedBy = String(result.executionResult?.metadata?.['processedBy'] || 'unknown');
       const isCorrect = actualProcessedBy === testCase.expectedProcessedBy;
       
       results.push({
@@ -54,7 +64,7 @@ async function testFinalIntegration() {
         intent: result.analysis.intent,
         confidence: result.analysis.confidence,
         expectedProcessedBy: testCase.expectedProcessedBy,
-        actualProcessedBy,
+        actualProcessedBy: actualProcessedBy as string,
         correct: isCorrect,
         hasResponse: !!result.executionResult?.response,
       });
@@ -67,11 +77,11 @@ async function testFinalIntegration() {
       });
       
       if (result.executionResult?.response) {
-        logger.info('Response preview:', result.executionResult.response.substring(0, 100) + '...');
+        logger.info('Response preview:', { preview: result.executionResult.response.substring(0, 100) + '...' });
       }
       
     } catch (error) {
-      logger.error(`Failed: ${testCase.query}`, error);
+      logger.error(`Failed: ${testCase.query}`, { error: error instanceof Error ? error.message : String(error) });
       results.push({
         query: testCase.query,
         category: testCase.category,

@@ -10,7 +10,6 @@ import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.a
 import { registerAllAgents } from '../lib/mastra/network/agent-registry.js';
 import { uiEventDispatcher, UIEvent } from '../lib/utils/ui-event-dispatcher.js';
 import { extractProposalGroup } from '../lib/api/helpers/proposal-extractor.js';
-import { logger } from '../lib/utils/logger.js';
 
 // Register event listeners to track UI events
 let dispatchedEvents: UIEvent[] = [];
@@ -18,33 +17,33 @@ let dispatchedEvents: UIEvent[] = [];
 // Add test event listeners
 uiEventDispatcher.addEventListener('proposal:generated', (event: UIEvent) => {
   console.log('✅ UI Event: proposal:generated', {
-    proposalGroupId: event.detail.proposalGroup?.id,
-    proposalCount: event.detail.proposalGroup?.proposals?.length,
+    proposalGroupId: (event as any).detail.proposalGroup?.id,
+    proposalCount: (event as any).detail.proposalGroup?.proposals?.length,
   });
   dispatchedEvents.push(event);
 });
 
 uiEventDispatcher.addEventListener('proposal:execute', (event: UIEvent) => {
   console.log('✅ UI Event: proposal:execute', {
-    proposalId: event.detail.proposal?.id,
+    proposalId: (event as any).detail.proposal?.id,
   });
   dispatchedEvents.push(event);
 });
 
 uiEventDispatcher.addEventListener('chart:drawZone', (event: UIEvent) => {
   console.log('✅ UI Event: chart:drawZone', {
-    type: event.detail.type,
-    start: event.detail.start,
-    end: event.detail.end,
+    type: (event as any).detail.type,
+    start: (event as any).detail.start,
+    end: (event as any).detail.end,
   });
   dispatchedEvents.push(event);
 });
 
 uiEventDispatcher.addEventListener('chart:drawLine', (event: UIEvent) => {
   console.log('✅ UI Event: chart:drawLine', {
-    type: event.detail.type,
-    price: event.detail.price,
-    label: event.detail.label,
+    type: (event as any).detail.type,
+    price: (event as any).detail.price,
+    label: (event as any).detail.label,
   });
   dispatchedEvents.push(event);
 });
@@ -121,7 +120,7 @@ async function testEntryProposalUIFlow() {
   const chartEvents = dispatchedEvents.filter(e => e.type.startsWith('chart:'));
   console.log(`   🎨 Chart drawing events: ${chartEvents.length}`);
   chartEvents.forEach((event, index) => {
-    console.log(`      ${index + 1}. ${event.type} - ${event.detail.label || event.detail.type}`);
+    console.log(`      ${index + 1}. ${event.type} - ${(event as any).detail.label || (event as any).detail.type}`);
   });
 
   // 4. Test entry zone alert

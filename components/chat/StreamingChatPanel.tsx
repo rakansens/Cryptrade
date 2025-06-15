@@ -44,7 +44,7 @@ export default function StreamingChatPanel({
     stopStreaming,
   } = useAIStream({
     agentId,
-    sessionId,
+    ...(sessionId && { sessionId }),
     onStreamStart: () => {
       // Scroll to bottom when streaming starts
       setTimeout(scrollToBottom, 100);

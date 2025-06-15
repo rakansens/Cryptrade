@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { LogViewer } from '@/components/logs/LogViewer'
 
 export default function LogsPage() {

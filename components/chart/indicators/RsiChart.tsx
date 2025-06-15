@@ -28,7 +28,7 @@ export default function RsiChart({ height }: RsiChartProps) {
     cleanupChart,
   } = useIndicatorChartInit({
     chartId: 'rsi-chart',
-    height,
+    ...(height !== undefined && { height }),
     showTimeScale: false,
   })
   

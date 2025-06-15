@@ -53,15 +53,16 @@ function fixError(filePath: string, line: number, column: number, message: strin
       if (objectMatch) {
         // Find the expression at the column position
         let endPos = column - 1;
-        while (endPos < targetLine.length && /[\w\[\].]/.test(targetLine[endPos])) {
+        while (targetLine && endPos < targetLine.length && /[\w\[\].]/.test(targetLine[endPos] || '')) {
           endPos++;
         }
         
         let startPos = column - 1;
-        while (startPos > 0 && /[\w\[\].]/.test(targetLine[startPos - 1])) {
+        while (targetLine && startPos > 0 && /[\w\[\].]/.test(targetLine[startPos - 1] || '')) {
           startPos--;
         }
         
+        if (!targetLine) return false;
         const expression = targetLine.substring(startPos, endPos);
         
         // Add optional chaining or non-null assertion based on context

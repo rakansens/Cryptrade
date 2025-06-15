@@ -2,10 +2,9 @@
 
 import { useCallback } from 'react';
 import { useUIEventPublisher } from '@/store/ui-event.store';
-import { type ProposalMessage } from '@/types/proposal';
+import { type ProposalMessage, type EnhancedProposalActionEvent } from '@/types/proposals';
 import { showProposalRejectionSuccess } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
-import type { EnhancedProposalActionEvent } from '@/types/proposal';
 
 /**
  * Hook for handling proposal rejection logic
@@ -48,12 +47,12 @@ export function useRejectProposal() {
         action: 'reject',
         proposalId: proposalId,
         proposalGroupId: message.proposalGroup.id,
-        symbol,
-        interval: proposalData ? (proposalData as { interval?: string }).interval : undefined,
+        ...(symbol && { symbol }),
+        ...(proposalData && 'interval' in proposalData && { interval: (proposalData as { interval?: string }).interval }),
       }
     };
     
-    publish(rejectionEvent);
+    publish(rejectionEvent as unknown as Record<string, unknown>);
     
     // Show success notification
     showProposalRejectionSuccess(symbol, type);

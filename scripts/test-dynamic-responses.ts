@@ -43,7 +43,7 @@ async function testDynamicResponses() {
       }
       
       const data = await response.json();
-      const responseMessage = data.message || '';
+      const responseMessage = (data as any).message || '';
       
       console.log(`  応答: "${responseMessage}"`);
       responses.push(responseMessage);

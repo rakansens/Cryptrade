@@ -4,13 +4,11 @@
  * Tests all database API routes to ensure they properly save and retrieve data
  */
 
-import { logger } from '@/lib/utils/logger';
 
 const API_BASE_URL = 'http://localhost:3001';
 
 // Test data
 const testSessionId = `test-session-${Date.now()}`;
-const testRecordId = `test-record-${Date.now()}`;
 
 // Color codes for output
 const colors = {
@@ -76,11 +74,11 @@ async function runTests() {
     summary: 'Test Session'
   });
   
-  if (sessionResult?.session) {
-    const chatSessionId = sessionResult.session.id;
+  if (sessionResult && typeof sessionResult === 'object' && 'session' in sessionResult && sessionResult.session) {
+    const chatSessionId = (sessionResult as any).session.id;
     
     // Add message
-    const messageResult = await testAPI('POST', `/api/chat/sessions/${chatSessionId}/messages`, {
+    await testAPI('POST', `/api/chat/sessions/${chatSessionId}/messages`, {
       role: 'user',
       content: 'Test message from API test script',
       metadata: {
@@ -179,7 +177,7 @@ async function runTests() {
   log('info', '\n--- Testing Conversation Memory API ---');
   
   // Add message
-  const memoryMessage = await testAPI('POST', '/api/memory/messages', {
+  await testAPI('POST', '/api/memory/messages', {
     sessionId: testSessionId,
     role: 'user',
     content: 'Test conversation memory message',
@@ -244,9 +242,9 @@ async function runTests() {
     }
   });
   
-  if (analysisResult?.recordId) {
+  if (analysisResult && typeof analysisResult === 'object' && 'recordId' in analysisResult && analysisResult.recordId) {
     // Record touch event
-    await testAPI('POST', `/api/analysis/records/${analysisResult.recordId}/touch`, {
+    await testAPI('POST', `/api/analysis/records/${(analysisResult as any).recordId}/touch`, {
       price: 42100,
       result: 'bounce',
       strength: 0.8,

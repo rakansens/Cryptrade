@@ -6,14 +6,18 @@
  * 提案生成でsymbolがundefinedになる問題をデバッグするためのスクリプト
  */
 
-import { logger } from '../lib/utils/logger';
 import { proposalGenerationTool } from '../lib/mastra/tools/proposal-generation.tool';
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
 import { agentNetwork } from '../lib/mastra/network/agent-network';
 import { registerAllAgents } from '../lib/mastra/network/agent-registry';
 
 // Set debug environment
-process.env.NODE_ENV = 'development';
+Object.defineProperty(process.env, 'NODE_ENV', {
+  value: 'development',
+  writable: true,
+  enumerable: true,
+  configurable: true
+});
 process.env['DEBUG'] = 'true';
 
 async function testDirectProposalGeneration() {
@@ -21,10 +25,12 @@ async function testDirectProposalGeneration() {
   
   try {
     const result = await proposalGenerationTool.execute?.({
-      symbol: 'BTCUSDT',
-      interval: '1h',
-      analysisType: 'trendline',
-      maxProposals: 3,
+      context: {
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        analysisType: 'trendline',
+        maxProposals: 3,
+      }
     });
     
     console.log('✅ Direct tool execution successful');
@@ -85,9 +91,11 @@ async function testProposalGenerationWithUndefined() {
   try {
     // Test with undefined symbol
     const result1 = await proposalGenerationTool.execute?.({
-      symbol: undefined as unknown as string,
-      interval: '1h',
-      analysisType: 'trendline',
+      context: {
+        symbol: undefined as unknown as string,
+        interval: '1h',
+        analysisType: 'trendline',
+      }
     });
     
     console.log('✅ Undefined symbol handled gracefully');
@@ -98,6 +106,7 @@ async function testProposalGenerationWithUndefined() {
       symbol: null as unknown as string,
       interval: '1h',
       analysisType: 'trendline',
+      context: {} as any
     });
     
     console.log('✅ Null symbol handled gracefully');

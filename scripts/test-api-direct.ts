@@ -4,7 +4,6 @@
  * Tests API route handlers directly without HTTP server
  */
 
-import { logger } from '@/lib/utils/logger';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { ChartDrawingDatabaseService } from '@/lib/services/database/chart-drawing.service';
 import { prisma } from '@/lib/db/prisma';
@@ -40,17 +39,13 @@ async function runDirectTests() {
     log('info', 'Adding message to session...');
     const message = await ChatDatabaseService.addMessage(session.id, {
       role: 'user',
-      content: 'Test message from direct API test',
-      metadata: {
-        test: true,
-        timestamp: new Date().toISOString()
-      }
+      content: 'Test message from direct API test'
     });
     log('success', `✓ Added message: ${message.id}`);
     
     // Get messages
     log('info', 'Getting messages from session...');
-    const messages = await ChatDatabaseService.getMessages(session.id, 10);
+    const messages = await ChatDatabaseService.getMessages(session.id);
     log('success', `✓ Retrieved ${messages.length} messages`);
     
     // Update session title
@@ -103,7 +98,6 @@ async function runDirectTests() {
     await ChartDrawingDatabaseService.savePattern({
       id: `pattern-${Date.now()}`,
       type: 'ascendingTriangle',
-      name: 'Ascending Triangle',
       symbol: 'BTCUSDT',
       interval: '1h',
       confidence: 0.85,
@@ -167,7 +161,7 @@ async function runDirectTests() {
     
     // 4. Test Database Health
     log('info', '\n--- Testing Database Health ---');
-    const health = await prisma.$queryRaw`SELECT 1`;
+    await prisma.$queryRaw`SELECT 1`;
     log('success', '✓ Database health check passed');
     
     // Cleanup

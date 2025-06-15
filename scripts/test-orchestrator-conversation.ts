@@ -64,9 +64,9 @@ async function testOrchestrator() {
       });
       
       if (result.executionResult) {
-        const response = result.executionResult.response || 
-                        result.executionResult.executionResult?.response || 
-                        result.executionResult.message || 
+        const response = (result.executionResult as any).response || 
+                        (result.executionResult as any).executionResult?.response || 
+                        (result.executionResult as any).message || 
                         'No response';
                         
         logger.info('Response:', response);
@@ -80,10 +80,10 @@ async function testOrchestrator() {
         }
       }
       
-      logger.info('Execution Time:', `${result.executionTime}ms`);
+      logger.info('Execution Time:', { time: `${result.executionTime}ms` });
       
     } catch (error) {
-      logger.error('Test failed:', error);
+      logger.error('Test failed:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
   

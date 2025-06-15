@@ -1,21 +1,14 @@
 import { z } from 'zod';
+import { DrawingPointSchema as BaseDrawingPointSchema, DrawingStyleSchema } from '@/types/drawing';
 
 // =============================================================================
 // DRAWING DATA SCHEMAS
 // =============================================================================
 
-export const DrawingPointSchema = z.object({
-  time: z.number(),
-  value: z.number(),
+// Extended drawing point schema with additional fields
+export const DrawingPointSchema = BaseDrawingPointSchema.extend({
   type: z.string().optional(),
   label: z.string().optional(),
-});
-
-export const DrawingStyleSchema = z.object({
-  color: z.string().optional(),
-  lineWidth: z.number().optional(),
-  lineStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
-  showLabels: z.boolean().optional(),
 });
 
 export const PatternVisualizationSchema = z.object({
@@ -39,8 +32,10 @@ export const MetricsSchema = z.object({
   areas: z.array(z.any()).optional(),
 });
 
+import { DrawingTypeSchema } from '@/types/drawing';
+
 export const ValidatedDrawingSchema = z.object({
-  type: z.enum(['pattern', 'trendline', 'fibonacci', 'horizontal', 'vertical']),
+  type: DrawingTypeSchema,
   points: z.array(DrawingPointSchema).min(1),
   style: DrawingStyleSchema.optional(),
   price: z.number().optional(),

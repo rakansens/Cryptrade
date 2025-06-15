@@ -2,7 +2,6 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { SemanticEmbeddingService } from '../semantic-embedding.service';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
-import type { ApiResponse } from '@/lib/api/types';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -22,7 +21,7 @@ jest.mock('@/config/env', () => ({
 
 jest.mock('@/lib/api/base-service', () => ({
   BaseService: class {
-    protected async post(url: string, data?: unknown): Promise<any> {
+    protected async post(_url: string, _data?: unknown): Promise<any> {
       throw new Error('Method should be mocked');
     }
   }
@@ -30,7 +29,7 @@ jest.mock('@/lib/api/base-service', () => ({
 
 describe('SemanticEmbeddingService', () => {
   let service: SemanticEmbeddingService;
-  let mockPost: jest.Mock;
+  let mockPost: jest.Mock<Promise<any>, [string, unknown?]>;
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,7 +39,7 @@ describe('SemanticEmbeddingService', () => {
     
     // Mock the post method
     mockPost = jest.fn().mockImplementation(() => Promise.resolve());
-    service['post'] = mockPost as any;
+    service['post'] = mockPost as typeof service['post'];
     
     // Clear cache before each test
     service.clearCache();
@@ -81,7 +80,7 @@ describe('SemanticEmbeddingService', () => {
     it('should generate embedding for text', async () => {
       const text = 'Bitcoin price analysis for support levels';
       
-      mockPost.mockResolvedValue(mockEmbeddingResponse as any);
+      mockPost.mockResolvedValue(mockEmbeddingResponse);
       
       const result = await service.generateEmbedding(text);
       
@@ -101,7 +100,7 @@ describe('SemanticEmbeddingService', () => {
     it('should use cached embedding on second request', async () => {
       const text = 'Bitcoin price analysis';
       
-      mockPost.mockResolvedValue(mockEmbeddingResponse as any);
+      mockPost.mockResolvedValue(mockEmbeddingResponse);
       
       // First call - should hit API
       const result1 = await service.generateEmbedding(text);
@@ -120,7 +119,7 @@ describe('SemanticEmbeddingService', () => {
       const text = 'Test text';
       const error = new Error('API rate limit exceeded');
       
-      mockPost.mockRejectedValue(error as any);
+      mockPost.mockRejectedValue(error);
       
       await expect(service.generateEmbedding(text)).rejects.toThrow('API rate limit exceeded');
       
@@ -172,7 +171,7 @@ describe('SemanticEmbeddingService', () => {
       };
       service.generateEmbedding = limitedGenerateEmbedding;
       
-      mockPost.mockResolvedValue(mockEmbeddingResponse as any);
+      mockPost.mockResolvedValue(mockEmbeddingResponse);
       
       // Generate embeddings for multiple texts
       for (let i = 0; i < 5; i++) {
@@ -211,8 +210,8 @@ describe('SemanticEmbeddingService', () => {
     });
 
     it('should return 0 for invalid embeddings', () => {
-      expect(service.calculateSimilarity(null as any, [1, 2, 3])).toBe(0);
-      expect(service.calculateSimilarity([1, 2, 3], null as any)).toBe(0);
+      expect(service.calculateSimilarity(null!, [1, 2, 3])).toBe(0);
+      expect(service.calculateSimilarity([1, 2, 3], null!)).toBe(0);
       expect(service.calculateSimilarity([1, 2], [1, 2, 3])).toBe(0); // Different lengths
     });
 
@@ -246,7 +245,7 @@ describe('SemanticEmbeddingService', () => {
     it('should find similar items based on query', async () => {
       const query = 'Bitcoin support levels';
       
-      mockPost.mockResolvedValue(mockQueryEmbedding as any);
+      mockPost.mockResolvedValue(mockQueryEmbedding);
       
       const results = await service.findSimilar(query, mockItems, {
         threshold: 0.7,
@@ -277,18 +276,18 @@ describe('SemanticEmbeddingService', () => {
       };
 
       mockPost
-        .mockResolvedValueOnce(mockQueryEmbedding as any)
-        .mockResolvedValueOnce(mockItemEmbedding as any)
-        .mockResolvedValueOnce(mockItemEmbedding as any);
+        .mockResolvedValueOnce(mockQueryEmbedding)
+        .mockResolvedValueOnce(mockItemEmbedding)
+        .mockResolvedValueOnce(mockItemEmbedding);
 
-      const results = await service.findSimilar('Bitcoin', itemsWithoutEmbeddings as any);
+      const results = await service.findSimilar('Bitcoin', itemsWithoutEmbeddings);
 
       expect(mockPost).toHaveBeenCalledTimes(3); // 1 for query + 2 for items
       expect(results).toBeDefined();
     });
 
     it('should apply filter function', async () => {
-      mockPost.mockResolvedValue(mockQueryEmbedding as any);
+      mockPost.mockResolvedValue(mockQueryEmbedding);
       
       const results = await service.findSimilar('support', mockItems, {
         filter: (item) => 'content' in item && typeof item.content === 'string' && item.content.includes('Bitcoin'),
@@ -301,7 +300,7 @@ describe('SemanticEmbeddingService', () => {
     });
 
     it('should respect topK limit', async () => {
-      mockPost.mockResolvedValue(mockQueryEmbedding as any);
+      mockPost.mockResolvedValue(mockQueryEmbedding);
       
       const results = await service.findSimilar('analysis', mockItems, {
         threshold: 0,
@@ -312,7 +311,7 @@ describe('SemanticEmbeddingService', () => {
     });
 
     it('should handle empty items array', async () => {
-      mockPost.mockResolvedValue(mockQueryEmbedding as any);
+      mockPost.mockResolvedValue(mockQueryEmbedding);
       
       const results = await service.findSimilar('test', []);
       
@@ -334,7 +333,7 @@ describe('SemanticEmbeddingService', () => {
     it('should generate embeddings for multiple texts', async () => {
       const texts = ['Text 1', 'Text 2', 'Text 3'];
       
-      mockPost.mockResolvedValue(mockBatchResponse as any);
+      mockPost.mockResolvedValue(mockBatchResponse);
       
       const results = await service.batchGenerateEmbeddings(texts);
       
@@ -350,7 +349,7 @@ describe('SemanticEmbeddingService', () => {
     it('should process in batches to avoid rate limits', async () => {
       const texts = Array(25).fill(0).map((_, i) => `Text ${i}`);
       
-      mockPost.mockResolvedValue(mockBatchResponse as any);
+      mockPost.mockResolvedValue(mockBatchResponse);
       
       const startTime = Date.now();
       const results = await service.batchGenerateEmbeddings(texts);
@@ -394,12 +393,12 @@ describe('SemanticEmbeddingService', () => {
       const texts = ['Text 1', 'Text 2', 'Text 1']; // Changed order to ensure first Text 1 is cached
       
       // Pre-generate embedding for Text 1 to populate cache
-      mockPost.mockResolvedValueOnce(mockBatchResponse as any);
+      mockPost.mockResolvedValueOnce(mockBatchResponse);
       await service.generateEmbedding('Text 1');
       
       // Reset mock call count
       jest.clearAllMocks();
-      mockPost.mockResolvedValue(mockBatchResponse as any);
+      mockPost.mockResolvedValue(mockBatchResponse);
       
       const results = await service.batchGenerateEmbeddings(texts);
       
@@ -442,7 +441,7 @@ describe('SemanticEmbeddingService', () => {
   describe('error handling', () => {
     it('should handle network errors', async () => {
       const error = new Error('Network timeout');
-      mockPost.mockRejectedValue(error as any);
+      mockPost.mockRejectedValue(error);
       
       await expect(service.generateEmbedding('test')).rejects.toThrow('Network timeout');
     });

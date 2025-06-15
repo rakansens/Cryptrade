@@ -59,19 +59,24 @@ export const POST = createApiHandler<ChatRequest>({
       const orchestratorResult: OrchestratorResult = {
         success: orchestratorResponse.success,
         proposalGroup: orchestratorResponse.executionResult?.proposalGroup,
-        error: orchestratorResponse.executionResult?.error,
+        error: orchestratorResponse.executionResult?.error ? {
+          code: orchestratorResponse.executionResult.error.code || 'UNKNOWN_ERROR',
+          message: orchestratorResponse.executionResult.error.message || 'Unknown error occurred',
+          details: orchestratorResponse.executionResult.error.details,
+          stack: orchestratorResponse.executionResult.error.stack
+        } : undefined,
         metadata: orchestratorResponse.executionResult?.metadata,
         analysis: {
           intent: orchestratorResponse.analysis.intent,
           confidence: orchestratorResponse.analysis.confidence,
           reasoning: orchestratorResponse.analysis.reasoning || '',
           analysisDepth: orchestratorResponse.analysis.analysisDepth || 'basic',
-          isProposalMode: orchestratorResponse.analysis.isProposalMode || false,
-          proposalType: orchestratorResponse.analysis.proposalType || undefined,
+          isProposalMode: orchestratorResponse.analysis.isProposalMode === true,
+          proposalType: orchestratorResponse.analysis.proposalType,
         },
         executionTime: orchestratorResponse.executionTime,
-        executionResult: orchestratorResponse.executionResult,
-        memoryContext: orchestratorResponse.memoryContext || undefined,
+        executionResult: orchestratorResponse.executionResult || undefined,
+        memoryContext: orchestratorResponse.memoryContext,
       };
 
       // Orchestratorの結果を処理
@@ -79,7 +84,7 @@ export const POST = createApiHandler<ChatRequest>({
       let proposalGroup = baseProposalGroup;
       
       // 提案モードの場合、ProposalGroupを抽出
-      if (orchestratorResult.analysis.intent === 'proposal_request' || orchestratorResult.analysis.isProposalMode) {
+      if (orchestratorResult.analysis.intent === 'proposal_request' || orchestratorResult.analysis.isProposalMode === true) {
         proposalGroup = extractProposalGroup(orchestratorResult.executionResult);
         
         if (!proposalGroup) {

@@ -17,7 +17,9 @@ async function testEnhancedProposals() {
     console.log('📊 Parameters:', params);
     console.log('\n⏳ Generating proposals...\n');
 
-    const result = await proposalGenerationTool.execute?.(params);
+    const result = await proposalGenerationTool.execute?.({
+      context: params
+    });
 
     if (result?.success && result.proposalGroup) {
       console.log('✅ Proposal Group Generated:', {
@@ -28,7 +30,7 @@ async function testEnhancedProposals() {
 
       console.log('\n📈 Proposals:\n');
 
-      result.proposalGroup.proposals.forEach((proposal, index) => {
+      result.proposalGroup.proposals.forEach((proposal: any, index) => {
         console.log(`\n${index + 1}. ${proposal.title}`);
         console.log('   Description:', proposal.description);
         console.log('   Confidence:', proposal.confidence.toFixed(3));
@@ -67,8 +69,8 @@ async function testEnhancedProposals() {
 
         if (proposal.statistics) {
           console.log('\n   📈 Statistics:');
-          console.log('      - R-squared:', proposal.statistics.rSquared.toFixed(3));
-          console.log('      - Standard Deviation:', proposal.statistics.standardDeviation.toFixed(2));
+          console.log('      - R-squared:', proposal.statistics.r_squared.toFixed(3));
+          console.log('      - Standard Deviation:', (proposal.statistics as any).standardDeviation?.toFixed(2) || 'N/A');
           console.log('      - Outliers:', proposal.statistics.outliers);
         }
 
@@ -85,12 +87,14 @@ async function testEnhancedProposals() {
         maxProposals: 3,
       };
 
-      const srResult = await proposalGenerationTool.execute?.(srParams);
+      const srResult = await proposalGenerationTool.execute?.({
+        context: srParams
+      });
       
       if (srResult?.success && srResult.proposalGroup) {
         console.log('✅ Support/Resistance Proposals Generated:', srResult.proposalGroup.proposals.length);
         
-        srResult.proposalGroup.proposals.forEach((proposal, index) => {
+        srResult.proposalGroup.proposals.forEach((proposal: any, index) => {
           console.log(`\n${index + 1}. ${proposal.title}`);
           console.log('   Price Level:', proposal.drawingData.price?.toFixed(2));
           console.log('   Confidence:', proposal.confidence.toFixed(3));
@@ -103,12 +107,12 @@ async function testEnhancedProposals() {
       }
 
     } else {
-      console.error('❌ Failed to generate proposals:', result.error);
+      console.error('❌ Failed to generate proposals:', result?.error ?? 'Unknown error');
     }
 
   } catch (error) {
     console.error('❌ Error:', error);
-    logger.error('Test failed', error);
+    logger.error('Test failed', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 

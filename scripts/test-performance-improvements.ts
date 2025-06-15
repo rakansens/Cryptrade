@@ -41,6 +41,7 @@ const colors = {
   red: (text: string) => `\x1b[31m${text}\x1b[0m`,
   yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
   blue: (text: string) => `\x1b[34m${text}\x1b[0m`,
+  cyan: (text: string) => `\x1b[36m${text}\x1b[0m`,
 };
 
 async function runTest(
@@ -58,7 +59,7 @@ async function runTest(
       testName,
       success: true,
       duration,
-      response,
+      ...(response && { response }),
     });
     
     console.log(`${colors.green('✓')} Success (${duration}ms)`);
@@ -72,7 +73,7 @@ async function runTest(
       testName,
       success: false,
       duration,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
     
     console.log(`${colors.red('✗')} Failed (${duration}ms)`);
@@ -81,7 +82,7 @@ async function runTest(
 }
 
 // Test 1: 価格照会のレスポンス時間（キャッシュなし）
-async function testPriceInquiryWithoutCache() {
+async function testPriceInquiryWithoutCache(): Promise<TestResult['response']> {
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -96,11 +97,12 @@ async function testPriceInquiryWithoutCache() {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  return data as TestResult['response'];
 }
 
 // Test 2: 価格照会のレスポンス時間（キャッシュあり）
-async function testPriceInquiryWithCache() {
+async function testPriceInquiryWithCache(): Promise<TestResult['response']> {
   // 同じシンボルで2回目のリクエスト（キャッシュヒットを期待）
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
@@ -116,11 +118,12 @@ async function testPriceInquiryWithCache() {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  return data as TestResult['response'];
 }
 
 // Test 2.5: 高ボラティリティ通貨のキャッシュTTL
-async function testHighVolatilityCache() {
+async function testHighVolatilityCache(): Promise<TestResult['response']> {
   console.log(`  ${colors.yellow('→')} Testing dynamic TTL with multiple requests...`);
   
   // First request to get initial data
@@ -165,7 +168,7 @@ async function testHighVolatilityCache() {
 }
 
 // Test 3: エントリー提案の生成時間
-async function testEntryProposalGeneration() {
+async function testEntryProposalGeneration(): Promise<TestResult['response']> {
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -183,15 +186,15 @@ async function testEntryProposalGeneration() {
   const data = await response.json();
   
   // 提案が生成されたか確認
-  if (data.proposals && data.proposals.length > 0) {
-    console.log(`  ${colors.green('→')} Generated ${data.proposals.length} proposals`);
+  if ((data as any).proposals && (data as any).proposals.length > 0) {
+    console.log(`  ${colors.green('→')} Generated ${(data as any).proposals.length} proposals`);
   }
   
-  return data;
+  return data as TestResult['response'];
 }
 
 // Test 4: パターン検出の実行時間
-async function testPatternDetection() {
+async function testPatternDetection(): Promise<TestResult['response']> {
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -206,11 +209,12 @@ async function testPatternDetection() {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  return data as TestResult['response'];
 }
 
 // Test 5: 一般会話の応答時間
-async function testGeneralConversation() {
+async function testGeneralConversation(): Promise<TestResult['response']> {
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -225,11 +229,12 @@ async function testGeneralConversation() {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  return data as TestResult['response'];
 }
 
 // Test 6: 連続リクエストでのメモリ管理
-async function testMemoryManagement() {
+async function testMemoryManagement(): Promise<TestResult['response']> {
   const sessionId = 'perf-test-memory-session';
   const userId = 'test-user-memory';
   
@@ -264,13 +269,13 @@ async function testMemoryManagement() {
   }
   
   const sessions = await memoryResponse.json();
-  console.log(`  ${colors.green('→')} Active sessions: ${sessions.length}`);
+  console.log(`  ${colors.green('→')} Active sessions: ${(sessions as any).length}`);
   
-  return { messagesSent: 10, sessions };
+  return { messagesSent: 10, sessions: Array.isArray(sessions) ? sessions as any : [] };
 }
 
 // Test 7: A2Aタイムアウトのテスト（意図的に遅いリクエスト）
-async function testA2ATimeout() {
+async function testA2ATimeout(): Promise<TestResult['response']> {
   // 複雑な分析リクエストでタイムアウトをテスト
   const response = await fetch(`${API_BASE_URL}/ai/chat`, {
     method: 'POST',
@@ -286,7 +291,8 @@ async function testA2ATimeout() {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  return data as TestResult['response'];
 }
 
 // メイン実行関数

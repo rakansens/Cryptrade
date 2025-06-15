@@ -10,7 +10,7 @@ import { useBinanceAPI } from '@/lib/binance/binance-context';
 import { getBinanceConnection } from '@/lib/ws';
 import { useMarketActions, usePriceData, useSymbolLoading } from '@/store/market.store';
 import { useIsClient } from '@/hooks/use-is-client';
-import type { BinanceKlineMessage, ProcessedKline } from '@/types/market';
+import type { BinanceKlineMessage, ProcessedKline, BinanceTradeMessage } from '@/types/market';
 import { logger } from '@/lib/utils/logger';
 
 interface UseCandlestickDataOptions {
@@ -31,9 +31,10 @@ export function useCandlestickData({
   const priceData = usePriceData(symbol);
   const { 
     setPriceData,
-    updateLatestPrice,
-    appendNewCandle,
-    setMarketStatus,
+    updatePrice,
+    addKline,
+    updateLastKline,
+    setConnectionError,
     setSymbolLoading
   } = useMarketActions();
   
@@ -55,7 +56,17 @@ export function useCandlestickData({
         
         if (data.length > 0) {
           const latestCandle = data[data.length - 1];
-          updateLatestPrice(symbol, parseFloat(latestCandle!.close));
+          // Create a trade message from the latest candle data
+          const tradeMessage: BinanceTradeMessage = {
+            E: Date.now(), // Event time
+            s: symbol,
+            t: Date.now(), // Trade ID
+            p: latestCandle!.close.toString(),
+            q: '0', // Quantity not available from candle data
+            T: latestCandle!.time, // Trade time
+            m: false, // Is buyer maker - default to false
+          };
+          updatePrice(tradeMessage);
         }
         
         logger.info('[useCandlestickData] Historical data set', { 
@@ -66,17 +77,14 @@ export function useCandlestickData({
     } catch (error) {
       logger.error('[useCandlestickData] Failed to fetch historical data', { symbol, interval }, error);
       if (isMountedRef.current) {
-        setMarketStatus({
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Failed to fetch data',
-        });
+        setConnectionError(error instanceof Error ? error.message : 'Failed to fetch data');
       }
     } finally {
       if (isMountedRef.current) {
         setSymbolLoading(symbol, false);
       }
     }
-  }, [symbol, interval, limit, isClient, binanceAPI, setPriceData, updateLatestPrice, setMarketStatus, setSymbolLoading]);
+  }, [symbol, interval, limit, isClient, binanceAPI, setPriceData, setConnectionError, setSymbolLoading]);
 
   // WebSocket message handler
   const handleKlineMessage = useCallback((message: BinanceKlineMessage) => {
@@ -92,9 +100,25 @@ export function useCandlestickData({
       volume: parseFloat(kline.v),
     };
 
-    appendNewCandle(symbol, newCandle, kline.x);
-    updateLatestPrice(symbol, newCandle.close);
-  }, [symbol, appendNewCandle, updateLatestPrice]);
+    // If candle is closed, add it as a new candle, otherwise update the last one
+    if (kline.x) {
+      addKline(symbol, newCandle);
+    } else {
+      updateLastKline(symbol, newCandle);
+    }
+    
+    // Update the real-time price
+    updatePrice({
+      e: 'trade',
+      E: Date.now(),
+      s: symbol,
+      p: kline.c,
+      q: kline.q,
+      T: kline.T,
+      m: true,
+      M: true
+    } as any);
+  }, [symbol, addKline, updateLastKline, updatePrice]);
 
   // Setup WebSocket subscription
   useEffect(() => {
@@ -113,7 +137,7 @@ export function useCandlestickData({
         
         unsubscribeRef.current = connection.subscribe(
           streamName,
-          handleKlineMessage
+          handleKlineMessage as any
         );
         
         logger.info('[useCandlestickData] WebSocket subscription setup', { 

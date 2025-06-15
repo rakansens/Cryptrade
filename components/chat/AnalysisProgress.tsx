@@ -8,9 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle, Circle, Loader2, XCircle } from 'lucide-react';
 import { ProgressIndicator } from '@/components/shared/ui/ProgressIndicator';
-import { AnalysisStep, AnalysisStepStatus, calculateStepDuration } from '@/types/analysis-progress';
+import { AnalysisStep, calculateStepDuration } from '@/types/analysis-progress';
 import { useAnalysisStream } from '@/hooks/use-analysis-stream';
-import { LinearProgress } from '@/components/shared/ui/LinearProgress';
 
 interface AnalysisProgressProps {
   symbol: string;
@@ -38,7 +37,6 @@ export function AnalysisProgress({
 
   const {
     steps,
-    currentStepIndex,
     isAnalyzing,
     error,
     startAnalysis,
@@ -63,7 +61,7 @@ export function AnalysisProgress({
   }, [autoStart, symbol, interval, analysisType, maxProposals, startAnalysis]);
 
   // Get status icon
-  const getStatusIcon = (step: AnalysisStep, index: number) => {
+  const getStatusIcon = (step: AnalysisStep, _index?: number) => {
     if (step.status === 'completed') {
       return <CheckCircle className="w-4 h-4 text-[hsl(var(--color-profit))]" />;
     }
@@ -77,7 +75,7 @@ export function AnalysisProgress({
   };
 
   // Get step style based on status
-  const getStepStyle = (step: AnalysisStep, index: number) => {
+  const getStepStyle = (step: AnalysisStep, _index?: number) => {
     if (step.status === 'completed') {
       return 'bg-[hsl(var(--color-profit)/0.1)] border-[hsl(var(--color-profit)/0.3)]';
     }
@@ -182,19 +180,19 @@ export function AnalysisProgress({
                     {step.status === 'completed' && step.details && !step.finalText && (
                       <div className="mt-2 text-[var(--font-xs)] text-[hsl(var(--text-muted))]">
                         {step.type === 'data-collection' && step.details['dataPoints'] && (
-                          <span>{step.details['dataPoints']}個のデータポイントを収集</span>
+                          <span>{String(step.details['dataPoints'])}個のデータポイントを収集</span>
                         )}
                         {step.type === 'technical-analysis' && step.details['indicators'] && (
                           <span>指標: {(step.details['indicators'] as string[]).join(', ')}</span>
                         )}
                         {step.type === 'pattern-detection' && step.details['patternsFound'] !== undefined && (
-                          <span>{step.details['patternsFound']}個のパターンを検出</span>
+                          <span>{String(step.details['patternsFound'])}個のパターンを検出</span>
                         )}
                         {step.type === 'line-calculation' && step.details['linesCalculated'] && (
-                          <span>{step.details['linesCalculated']}本のラインを計算</span>
+                          <span>{String(step.details['linesCalculated'])}本のラインを計算</span>
                         )}
                         {step.type === 'proposal-creation' && step.details['proposalsCreated'] !== undefined && (
-                          <span>{step.details['proposalsCreated']}個の提案を作成</span>
+                          <span>{String(step.details['proposalsCreated'])}個の提案を作成</span>
                         )}
                       </div>
                     )}

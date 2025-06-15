@@ -12,9 +12,7 @@ dotenv.config({ path: path.join(__dirname, '../.env.local') });
 process.env['OPENAI_API_KEY'] = process.env['OPENAI_API_KEY'] || 'your-openai-api-key-here';
 
 import { executeImprovedOrchestrator } from '../lib/mastra/agents/orchestrator.agent';
-import { entryProposalGenerationTool } from '../lib/mastra/tools/entry-proposal-generation';
 import { extractProposalGroup } from '../lib/api/helpers/proposal-extractor';
-import { logger } from '../lib/utils/logger';
 import { registerAllAgents } from '../lib/mastra/network/agent-registry';
 import * as fs from 'fs';
 
@@ -97,7 +95,7 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
     log(`  意図: ${analysis.intent} (信頼度: ${analysis.confidence})`, colors.cyan);
     log(`  提案タイプ: ${analysis.proposalType || 'なし'}`, colors.cyan);
     log(`  提案モード: ${analysis.isProposalMode ? 'はい' : 'いいえ'}`, colors.cyan);
-    log(`  エントリー提案: ${analysis.isEntryProposal ? 'はい' : 'いいえ'}`, colors.cyan);
+    log(`  エントリー提案: ${analysis.proposalType === 'entry' ? 'はい' : 'いいえ'}`, colors.cyan);
     
     // ProposalGroupの抽出
     const proposalGroup = extractProposalGroup(executionResult);
@@ -110,8 +108,8 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
     if (hasProposalGroup) {
       log(`  提案数: ${proposalCount}個`, colors.blue);
       log(`  グループID: ${proposalGroup.id}`, colors.cyan);
-      log(`  タイトル: ${proposalGroup.title}`, colors.cyan);
-      log(`  説明: ${proposalGroup.description}`, colors.cyan);
+      log(`  タイトル: ${(proposalGroup as any).title || 'N/A'}`, colors.cyan);
+      log(`  説明: ${(proposalGroup as any).description || 'N/A'}`, colors.cyan);
       
       // 各提案の詳細
       if (proposalCount > 0) {
@@ -119,32 +117,32 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
         proposalGroup.proposals.forEach((proposal, index: number) => {
           log(`\n  提案 ${index + 1}:`, colors.magenta);
           log(`    ID: ${proposal.id}`, colors.cyan);
-          log(`    方向: ${proposal.direction === 'long' ? '🔺 ロング' : '🔻 ショート'}`, colors.cyan);
-          log(`    エントリー価格: $${proposal.entryPrice?.toLocaleString() || 'N/A'}`, colors.cyan);
+          log(`    方向: ${(proposal as any).direction === 'long' ? '🔺 ロング' : '🔻 ショート'}`, colors.cyan);
+          log(`    エントリー価格: $${(proposal as any).entryPrice?.toLocaleString() || 'N/A'}`, colors.cyan);
           
           if (proposal.entryZone) {
-            log(`    エントリーゾーン: $${proposal.entryZone.start?.toLocaleString()} - $${proposal.entryZone.end?.toLocaleString()}`, colors.cyan);
+            log(`    エントリーゾーン: $${(proposal.entryZone as any).min?.toLocaleString() || 'N/A'} - $${(proposal.entryZone as any).max?.toLocaleString() || 'N/A'}`, colors.cyan);
           }
           
           if (proposal.riskParameters) {
             log(`    ストップロス: $${proposal.riskParameters.stopLoss?.toLocaleString() || 'N/A'}`, colors.red);
-            log(`    テイクプロフィット: ${proposal.riskParameters.takeProfit?.map((tp: number) => `$${tp.toLocaleString()}`).join(', ') || 'N/A'}`, colors.green);
+            log(`    テイクプロフィット: ${(proposal.riskParameters as any).takeProfitTargets?.map((tp: any) => `$${tp.price?.toLocaleString() || tp}`).join(', ') || 'N/A'}`, colors.green);
             log(`    リスクリワード比: ${proposal.riskParameters.riskRewardRatio || 'N/A'}`, colors.cyan);
-            log(`    ポジションサイズ: ${proposal.riskParameters.positionSize || 'N/A'}`, colors.cyan);
+            log(`    ポジションサイズ: ${(proposal.riskParameters as any).positionSizePercent || 'N/A'}%`, colors.cyan);
           }
           
           log(`    信頼度: ${proposal.confidence ? (proposal.confidence * 100).toFixed(1) : 'N/A'}%`, colors.cyan);
-          log(`    優先度: ${proposal.priority || 'N/A'}`, colors.cyan);
-          log(`    戦略: ${proposal.strategy || 'N/A'}`, colors.cyan);
+          log(`    優先度: ${(proposal as any).priority || 'N/A'}`, colors.cyan);
+          log(`    戦略: ${(proposal as any).strategy || 'N/A'}`, colors.cyan);
           
-          if (proposal.conditions) {
-            log(`    エントリー準備: ${proposal.conditions.readyToEnter ? '✅ 準備完了' : '⏳ 待機中'}`, colors.cyan);
-            log(`    条件スコア: ${(proposal.conditions.score * 100).toFixed(1)}%`, colors.cyan);
+          if ((proposal as any).conditions) {
+            log(`    エントリー準備: ${(proposal as any).conditions.readyToEnter ? '✅ 準備完了' : '⏳ 待機中'}`, colors.cyan);
+            log(`    条件スコア: ${((proposal as any).conditions.score * 100).toFixed(1)}%`, colors.cyan);
           }
           
-          if (proposal.marketContext) {
-            log(`    市場トレンド: ${proposal.marketContext.trend}`, colors.cyan);
-            log(`    ボラティリティ: ${proposal.marketContext.volatility}`, colors.cyan);
+          if ((proposal as any).marketContext) {
+            log(`    市場トレンド: ${(proposal as any).marketContext.trend}`, colors.cyan);
+            log(`    ボラティリティ: ${(proposal as any).marketContext.volatility}`, colors.cyan);
           }
         });
       }
@@ -164,24 +162,26 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
       query,
       success: isExpectedResult,
       intent: analysis.intent,
-      proposalType: analysis.proposalType,
+      ...(analysis.proposalType && { proposalType: analysis.proposalType }),
       hasProposalGroup,
       proposalCount,
-      proposalDetails: proposalGroup ? {
-        id: proposalGroup.id,
-        title: proposalGroup.title || '',
-        description: proposalGroup.description || '',
-        proposals: proposalGroup.proposals.map(p => ({
-          id: p.id,
-          direction: (p as any).direction,
-          entryPrice: (p as any).entryPrice,
-          entryZone: (p as any).entryZone,
-          riskParameters: (p as any).riskParameters,
-          confidence: p.confidence,
-          priority: (p as any).priority,
-          marketContext: (p as any).marketContext
-        }))
-      } : undefined,
+      ...(proposalGroup && {
+        proposalDetails: {
+          id: proposalGroup.id,
+          title: (proposalGroup as any).title || '',
+          description: (proposalGroup as any).description || '',
+          proposals: proposalGroup.proposals.map(p => ({
+            id: p.id,
+            direction: (p as any).direction,
+            entryPrice: (p as any).entryPrice,
+            entryZone: (p as any).entryZone,
+            riskParameters: (p as any).riskParameters,
+            confidence: p.confidence,
+            priority: (p as any).priority,
+            marketContext: (p as any).marketContext
+          }))
+        } as any
+      }),
       executionTime,
     };
     

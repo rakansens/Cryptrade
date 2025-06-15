@@ -23,14 +23,14 @@ jest.mock('@/lib/utils/rate-limiter', () => ({
 jest.mock('@/types/market', () => ({
   validateBinanceTradeMessage: jest.fn((data) => {
     // Return null for invalid messages, data for valid
-    if (data && 'e' in data && data.e === 'trade' && 's' in data && data.s && 'p' in data && data.p && 'q' in data && data.q && 'T' in data && data.T) {
+    if (data && typeof data === 'object' && 'e' in data && data.e === 'trade' && 's' in data && data.s && 'p' in data && data.p && 'q' in data && data.q && 'T' in data && data.T) {
       return data;
     }
     return null;
   }),
   validateBinanceKlineMessage: jest.fn((data: any) => {
     // Return null for invalid messages, data for valid
-    if (data && data.e === 'kline' && data.k) {
+    if (data && typeof data === 'object' && 'e' in data && data.e === 'kline' && 'k' in data && data.k) {
       return data;
     }
     return null;

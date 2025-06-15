@@ -49,7 +49,10 @@ for (const line of lines) {
     // For import errors, only include __tests__ and scripts
     if (errorCode === 'TS2307') {
       if (filePath && (filePath.includes('__tests__') || filePath.includes('scripts/'))) {
-        categories[0].files.add(filePath);
+        const importCategory = categories[0];
+        if (importCategory) {
+          importCategory.files.add(filePath);
+        }
       }
     } else {
       // For other errors, categorize based on error code
@@ -87,5 +90,6 @@ for (const category of categories) {
 console.log('\n\nSUMMARY');
 console.log('='.repeat(80));
 for (const category of categories) {
-  console.log(`${category.name.split('.')[1].trim()}: ${category.files.size} files`);
+  const namePart = category.name.split('.')[1];
+  console.log(`${namePart?.trim() ?? category.name}: ${category.files.size} files`);
 }

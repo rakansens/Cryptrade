@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Palette, Sliders, Sparkles, ChevronDown } from 'lucide-react'
+import { Palette, ChevronDown } from 'lucide-react'
 import { logger } from '@/lib/utils/logger'
 import { showToast } from '@/components/ui/toast'
 import { 
@@ -13,9 +13,7 @@ import {
   PatternStyle, 
   DEFAULT_STYLE_PRESETS,
   ExtendedLineStyle,
-  validateStyleUpdate,
   validatePatternStyleUpdate,
-  StyleUpdateEvent,
   PatternStyleUpdateEvent
 } from '@/types/style-editor'
 import { DrawingStyle } from '@/types/drawing'
@@ -34,10 +32,10 @@ export interface StyleEditorProps {
 
 export function StyleEditor({
   drawingId,
-  proposalId,
+  proposalId: _proposalId,
   currentStyle,
   isPattern = false,
-  patternType,
+  patternType: _patternType,
   onStyleChange,
   onPatternStyleChange,
   embedded = false

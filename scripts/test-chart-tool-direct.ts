@@ -21,7 +21,8 @@ async function testDirectTool() {
           symbol: 'BTCUSDT',
           timeframe: '1h'
         }
-      }
+      },
+      runtimeContext: {} as any
     });
     
     console.log('\n✅ Tool Result:');
@@ -52,7 +53,8 @@ async function testDirectTool() {
     // Check results
     const hasProperDrawEvent = result.operations.some(op => 
       op.clientEvent?.event === 'draw:trendline' && 
-      op.clientEvent?.data?.['points']?.length > 0
+      Array.isArray(op.clientEvent?.data?.['points']) &&
+      op.clientEvent.data['points'].length > 0
     );
     
     console.log('\n🎯 Final Result:');

@@ -2,8 +2,6 @@
 
 import { PrismaClient } from '@prisma/client';
 import type { 
-  ConversationSession as TypeConversationSession,
-  ConversationMessage as TypeConversationMessage,
   ConversationMessageMetadata 
 } from '@/types/conversation-memory';
 
@@ -90,7 +88,7 @@ async function analyzeTypeMappings() {
         sessionId: session.id,
         role: 'assistant',
         content: 'Test message',
-        metadata: messageMetadata
+        metadata: messageMetadata as any
       }
     });
     

@@ -67,13 +67,13 @@ async function testQueries() {
       let processedBy = 'unknown';
       
       if (result.executionResult) {
-        response = result.executionResult.response || 
-                  result.executionResult.executionResult?.response || 
-                  result.executionResult.message || 
+        response = (result.executionResult as any).response || 
+                  (result.executionResult as any).executionResult?.response || 
+                  (result.executionResult as any).message || 
                   'レスポンスなし';
         
         processedBy = result.executionResult.metadata?.['processedBy'] || 
-                     (result.executionResult.executionResult?.metadata?.['processedBy']) || 
+                     ((result.executionResult as any).executionResult?.metadata?.['processedBy']) || 
                      'unknown';
       }
       

@@ -42,7 +42,7 @@ export const POST = createApiHandler({
 
 // Streaming handler
 export const GET = createStreamingHandler({
-  streamHandler: async function* ({ request, context }) {
+  streamHandler: async function* ({ request }) {
     const searchParams = new URL(request.url).searchParams;
     const count = parseInt(searchParams.get('count') || '5');
     

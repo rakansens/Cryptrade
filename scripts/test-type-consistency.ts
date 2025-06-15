@@ -4,25 +4,14 @@
 
 import { prisma } from '@/lib/db/prisma';
 import type { 
-  User, 
-  ConversationSession, 
   ConversationMessage,
-  AnalysisRecord,
-  TouchEvent,
-  ChartDrawing,
-  PatternAnalysis,
   MessageRole,
   AnalysisType,
-  TouchResult,
-  DrawingType,
-  PatternType,
-  TradingImplication
+  TouchResult
 } from '@prisma/client';
 
 // アプリケーションで定義されている型をインポート
-import type { ChatMessage, ChatSession } from '@/lib/services/database/chat.service';
-import type { ChartDrawing as AppChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
-import type { AnalysisRecord as AppAnalysisRecord } from '@/store/analysis-history.store';
+import type { ChatMessage } from '@/lib/services/database/chat.service';
 
 // 型の比較結果を格納
 const typeChecks: { check: string; status: 'pass' | 'fail'; details?: string }[] = [];
@@ -31,7 +20,7 @@ function checkType(check: string, condition: boolean, details?: string) {
   typeChecks.push({
     check,
     status: condition ? 'pass' : 'fail',
-    details
+    ...(details && { details })
   });
 }
 

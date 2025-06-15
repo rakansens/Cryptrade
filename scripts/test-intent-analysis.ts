@@ -37,7 +37,14 @@ async function testIntentAnalysis() {
   ];
   
   let correctCount = 0;
-  const results = [];
+  const results: Array<{
+    query: string;
+    expected: string;
+    actual: string;
+    confidence: number;
+    correct: boolean;
+    category: string;
+  }> = [];
   
   for (const testCase of testCases) {
     try {
@@ -66,7 +73,7 @@ async function testIntentAnalysis() {
       });
       
     } catch (error) {
-      logger.error(`Failed to test: ${testCase.query}`, error);
+      logger.error(`Failed to test: ${testCase.query}`, { error: error instanceof Error ? error.message : String(error) });
     }
   }
   

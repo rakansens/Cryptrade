@@ -1,13 +1,11 @@
 'use client'
 
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
-import { Activity } from 'lucide-react'
 import { ChatMessage } from '@/store/chat.store'
 import { MessageItem } from './MessageItem'
 import { AnalysisProgress } from './AnalysisProgress'
-import type { ProposalMessage } from '@/types/proposal'
+import type { ProposalMessage } from '@/types/proposals'
 
 // Empty map constant to prevent object recreation
 const EMPTY_MAP = new Map<string, string>();
@@ -76,6 +74,11 @@ export function MessageList({
         if (scrollTimeoutRef.current) {
           clearInterval(scrollTimeoutRef.current)
         }
+      }
+    }
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearInterval(scrollTimeoutRef.current)
       }
     }
   }, [analysisInProgress])
