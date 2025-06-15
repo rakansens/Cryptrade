@@ -82,7 +82,7 @@ export interface RetryState {
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
 // WebSocket configuration for RxJS
-export interface WebSocketConfig<T> {
+export interface WebSocketConfig {
   url: string;
   openObserver?: {
     next: (event: Event) => void;

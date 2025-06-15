@@ -17,10 +17,10 @@ export const IntentType = z.enum([
   'unknown',
 ]);
 
-export type IntentType = z.infer<typeof IntentType>;
+export type IntentTypeValue = z.infer<typeof IntentType>;
 
 // Agent response schema
-export const AgentResponseSchema = z.object({
+export const MastraAgentResponseSchema = z.object({
   intent: IntentType,
   confidence: z.number().min(0).max(1),
   response: z.string(),
@@ -33,14 +33,14 @@ export const AgentResponseSchema = z.object({
   }).optional(),
 });
 
-export type AgentResponse = z.infer<typeof AgentResponseSchema>;
+export type MastraAgentResponse = z.infer<typeof MastraAgentResponseSchema>;
 
 // Orchestrator context
 export interface OrchestratorContext {
   sessionId?: string;
   userId?: string;
   memoryContext?: string;
-  previousIntent?: IntentType;
+  previousIntent?: IntentTypeValue;
   conversationMode?: 'casual' | 'professional' | 'technical';
   emotionalTone?: 'positive' | 'neutral' | 'negative';
   relationshipLevel?: 'new' | 'regular' | 'trusted';

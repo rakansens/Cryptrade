@@ -185,7 +185,7 @@ export class StreamingResponseBuilder {
     const { maxRetries, retryDelay } = this.options;
     let retryCount = 0;
     
-    return this.createSSEStream(async function* () {
+    const generatorFunction = async function* (): AsyncGenerator<StreamEvent, void, unknown> {
       // Send initial connection event
       yield {
         event: 'connected',
@@ -198,7 +198,7 @@ export class StreamingResponseBuilder {
       while (retryCount <= maxRetries!) {
         try {
           // Execute the handler
-          const generator = handler({ request, context });
+          const generator = handler({ request, context } as any, {} as any);
           
           for await (const data of generator) {
             // Reset retry count on successful data
@@ -245,11 +245,11 @@ export class StreamingResponseBuilder {
             event: 'retry',
             data: {
               attempt: retryCount,
-              maxRetries,
-              nextRetryIn: retryDelay,
+              maxRetries: maxRetries || undefined,
+              nextRetryIn: retryDelay || 1000,
               timestamp: Date.now(),
             },
-            retry: retryDelay,
+            ...(retryDelay !== undefined && { retry: retryDelay }),
           };
           
           // Wait before retry
@@ -265,7 +265,9 @@ export class StreamingResponseBuilder {
           success: true,
         },
       };
-    });
+    };
+    
+    return this.createSSEStream(generatorFunction as any);
   }
 
   /**

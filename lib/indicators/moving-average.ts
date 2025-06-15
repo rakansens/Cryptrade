@@ -1,5 +1,4 @@
 import type { UTCTimestamp } from 'lightweight-charts';
-import type { MovingAverageData, PriceData } from '@/types/market';
 
 // Lightweight Charts compatibility types
 interface PriceDataLightweight {
@@ -31,23 +30,33 @@ export function calculateSMA(
   // Calculate initial sum for first window
   let sum = 0;
   for (let i = 0; i < period; i++) {
-    sum += data[i].close;
+    const candle = data[i];
+    if (candle) {
+      sum += candle.close;
+    }
   }
   
   // Add first SMA value
-  result.push({
-    time: data[period - 1].time,
-    value: sum / period
-  });
+  const firstCandle = data[period - 1];
+  if (firstCandle) {
+    result.push({
+      time: firstCandle.time,
+      value: sum / period
+    });
+  }
   
   // Use sliding window for remaining values (O(N) complexity)
   for (let i = period; i < data.length; i++) {
-    // Remove oldest value and add newest value
-    sum = sum - data[i - period].close + data[i].close;
-    result.push({
-      time: data[i].time,
-      value: sum / period
-    });
+    const oldCandle = data[i - period];
+    const newCandle = data[i];
+    if (oldCandle && newCandle) {
+      // Remove oldest value and add newest value
+      sum = sum - oldCandle.close + newCandle.close;
+      result.push({
+        time: newCandle.time,
+        value: sum / period
+      });
+    }
   }
   
   return result;
@@ -73,21 +82,31 @@ export function calculateEMA(
   // First EMA value is SMA
   let sum = 0;
   for (let i = 0; i < period; i++) {
-    sum += data[i].close;
+    const candle = data[i];
+    if (candle) {
+      sum += candle.close;
+    }
   }
   const firstEMA = sum / period;
-  result.push({
-    time: data[period - 1].time,
-    value: firstEMA
-  });
+  const firstCandle = data[period - 1];
+  if (firstCandle) {
+    result.push({
+      time: firstCandle.time,
+      value: firstEMA
+    });
+  }
 
   // Calculate subsequent EMA values
   for (let i = period; i < data.length; i++) {
-    const emaValue = (data[i].close - result[result.length - 1].value) * multiplier + result[result.length - 1].value;
-    result.push({
-      time: data[i].time,
-      value: emaValue
-    });
+    const candle = data[i];
+    const lastResult = result[result.length - 1];
+    if (candle && lastResult) {
+      const emaValue = (candle.close - lastResult.value) * multiplier + lastResult.value;
+      result.push({
+        time: candle.time,
+        value: emaValue
+      });
+    }
   }
 
   return result;

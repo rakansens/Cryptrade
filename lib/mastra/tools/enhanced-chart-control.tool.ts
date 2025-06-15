@@ -2,19 +2,51 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { incrementMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 import { chartDataAnalysisTool } from './chart-data-analysis.tool';
 import type { 
   ChartState, 
-  ChartAnalysisResult, 
   ConversationMessage,
   NumberExtractionResult,
   AIAnalysisResult,
   ChartOperation,
   ChartOperationParameters,
-  ClientEventData
+  OperationType,
+  ClientEvent,
+  ChartAnalysisResult,
+  ChartPoint
 } from '@/types/mastra.types';
+
+// Extended interface for enhanced chart analysis
+interface ExtendedChartAnalysisResult extends ChartAnalysisResult {
+  recommendations?: {
+    trendlineDrawing: Array<{
+      points: ChartPoint[];
+      style: any;
+      description: string;
+      confidence: number;
+    }>;
+  };
+  rawData?: {
+    candles: CandleData[];
+  };
+  candles?: CandleData[];
+  trend?: {
+    direction: 'bullish' | 'bearish' | 'neutral';
+  };
+  [key: string]: any;
+}
+
+// Using ChartPoint from @/types/mastra.types
+
+interface CandleData {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
 
 /**
  * Enhanced Chart Control Tool with Multiple Drawing Support
@@ -105,7 +137,6 @@ export const enhancedChartControlTool = createTool({
       
       // Get chart analysis - AIファースト：常にチャートデータを取得
       let chartAnalysis = null;
-      let parsedChartData = null;
       
       try {
         const chartResult = await chartDataAnalysisTool.execute({
@@ -114,12 +145,13 @@ export const enhancedChartControlTool = createTool({
             timeframe: currentState.timeframe || '1h',
             limit: 200,
             analysisType: 'full',
+            lookbackPeriod: 100,
           }
-        });
+        } as any);
         
         // Use the analysis result directly - it's already an object, not a string
         if (chartResult) {
-          chartAnalysis = chartResult;
+          chartAnalysis = chartResult as unknown as ExtendedChartAnalysisResult;
           logger.info('[EnhancedChartControl] Chart analysis completed', {
             candleCount: chartResult.rawData?.candles?.length,
             hasRecommendations: !!chartResult.recommendations,
@@ -139,7 +171,7 @@ export const enhancedChartControlTool = createTool({
       const analysis = await analyzeEnhancedRequest(
         userRequest, 
         conversationHistory, 
-        currentState, 
+        currentState as ChartState, 
         chartAnalysis,
         requestedCount
       );
@@ -147,7 +179,7 @@ export const enhancedChartControlTool = createTool({
       // Generate operations with multiple drawing support
       const operations = await generateEnhancedOperations(
         analysis, 
-        currentState, 
+        currentState as ChartState, 
         chartAnalysis,
         requestedCount
       );
@@ -163,7 +195,7 @@ export const enhancedChartControlTool = createTool({
       
       return {
         success: true,
-        operations,
+        operations: operations as z.infer<typeof EnhancedChartControlOutput>['operations'],
         response,
         reasoning: analysis.reasoning,
         metadata: {
@@ -201,8 +233,8 @@ export const enhancedChartControlTool = createTool({
 function extractNumberFromRequest(request: string): NumberExtractionResult {
   const patterns = [
     // 数字
-    { pattern: /(\d+)\s*本/, extract: (m: RegExpMatchArray) => parseInt(m[1]) },
-    { pattern: /(\d+)\s*つ/, extract: (m: RegExpMatchArray) => parseInt(m[1]) },
+    { pattern: /(\d+)\s*本/, extract: (m: RegExpMatchArray) => parseInt(m[1] || '0') },
+    { pattern: /(\d+)\s*つ/, extract: (m: RegExpMatchArray) => parseInt(m[1] || '0') },
     
     // 日本語数字
     { pattern: /一本|1本/, extract: () => 1 },
@@ -235,17 +267,15 @@ function extractNumberFromRequest(request: string): NumberExtractionResult {
 /**
  * Check if chart data analysis is needed
  */
-function needsChartDataAnalysis(request: string): boolean {
-  const keywords = [
-    'ライン', 'line', '分析', 'analysis', 'サポート', 'support',
-    'レジスタンス', 'resistance', '最適', 'optimal', '自動', 'auto',
-    'おすすめ', 'recommend', '提案', 'suggest'
-  ];
-  
-  const lowerRequest = request.toLowerCase();
-  return keywords.some(keyword => lowerRequest.includes(keyword));
-}
-
+// function _needsChartDataAnalysis(request: string): boolean {
+//   const keywords = [
+//     'ライン', 'line', '分析', 'analysis', 'サポート', 'support',
+//     'レジスタンス', 'resistance', '最適', 'optimal', '自動', 'auto',
+//     'おすすめ', 'recommend', '提案', 'suggest'
+//   ];
+//   
+//   const lowerRequest = request.toLowerCase();
+//   return keywords.some(keyword => lowerRequest.includes(keyword));
 /**
  * Enhanced request analysis with multiple drawing awareness
  */
@@ -253,7 +283,7 @@ async function analyzeEnhancedRequest(
   userRequest: string,
   conversationHistory: ConversationMessage[],
   currentState: ChartState,
-  chartAnalysis: ChartAnalysisResult | null,
+  chartAnalysis: ExtendedChartAnalysisResult | null,
   requestedCount: number
 ): Promise<AIAnalysisResult> {
   const contextPrompt = buildEnhancedContextPrompt(
@@ -333,10 +363,12 @@ IMPORTANT: For any drawing request (トレンドライン, サポートライン
     // If we have chart analysis with recommendations, use them
     if (chartAnalysis && chartAnalysis.recommendations && chartAnalysis.recommendations.trendlineDrawing && chartAnalysis.recommendations.trendlineDrawing.length > 0) {
       const recommendation = chartAnalysis.recommendations.trendlineDrawing[0];
-      fallbackParams.points = recommendation.points;
-      fallbackParams['style'] = recommendation.style;
-      fallbackParams['autoGenerated'] = true;
-      fallbackParams['description'] = recommendation.description;
+      if (recommendation) {
+        fallbackParams['points'] = recommendation.points;
+        fallbackParams['style'] = recommendation.style;
+        fallbackParams['autoGenerated'] = true;
+        fallbackParams['description'] = recommendation.description;
+      }
     }
     
     return {
@@ -345,8 +377,7 @@ IMPORTANT: For any drawing request (トレンドライン, サポートライン
         action: 'draw_trendline',
         parameters: fallbackParams,
         priority: 5,
-        repeatCount: requestedCount > 1 ? requestedCount : 1
-      }],
+      } as any],
       reasoning: 'Fallback to basic operation with chart analysis',
       confidence: 0.5,
       complexity: 'simple',
@@ -362,16 +393,16 @@ IMPORTANT: For any drawing request (トレンドライン, サポートライン
 async function generateEnhancedOperations(
   analysis: AIAnalysisResult,
   currentState: ChartState,
-  chartAnalysis: ChartAnalysisResult | null,
-  requestedCount: number
+  chartAnalysis: ExtendedChartAnalysisResult | null,
+  _requestedCount: number
 ) {
   const operations = [];
   
   for (const op of analysis.operations || []) {
-    const repeatCount = op.repeatCount || 1;
+    const repeatCount = (op as any).repeatCount || 1;
     
     // AIファースト: チャート分析データがある場合は、単一の描画でも同じフローを使用
-    if (op.type === 'drawing_operation' && (repeatCount > 1 || (chartAnalysis && chartAnalysis.recommendations?.trendlineDrawing?.length > 0))) {
+    if (op.type === 'drawing_operation' && (repeatCount > 1 || (chartAnalysis && chartAnalysis.recommendations?.trendlineDrawing && chartAnalysis.recommendations.trendlineDrawing.length > 0))) {
       // Generate drawing operations (single or multiple)
       const multipleOps = await generateMultipleDrawings(
         op,
@@ -395,33 +426,35 @@ async function generateEnhancedOperations(
  */
 async function generateMultipleDrawings(
   baseOp: ChartOperation,
-  chartAnalysis: ChartAnalysisResult | null,
+  chartAnalysis: ExtendedChartAnalysisResult | null,
   count: number,
-  currentState: ChartState
+  _currentState: ChartState
 ): Promise<ChartOperation[]> {
   const allDrawings: ChartOperation[] = [];
   
-  if (chartAnalysis && chartAnalysis.recommendations.trendlineDrawing.length > 0) {
+  if (chartAnalysis && chartAnalysis.recommendations?.trendlineDrawing && chartAnalysis.recommendations.trendlineDrawing.length > 0) {
     // Use AI recommendations
     const recommendations = chartAnalysis.recommendations.trendlineDrawing;
     const availableCount = Math.min(count, recommendations.length);
     
     for (let i = 0; i < availableCount; i++) {
       const rec = recommendations[i];
-      allDrawings.push({
-        type: baseOp.type,
-        action: 'draw_trendline',
-        parameters: {
-          id: `trend-${Date.now()}-${i}`,
-          points: rec.points,
-          style: rec.style,
-          autoGenerated: true,
+      if (rec) {
+        allDrawings.push({
+          type: baseOp.type,
+          action: 'draw_trendline',
+          parameters: {
+            id: `trend-${Date.now()}-${i}`,
+            ['points']: rec.points,
+            ['style']: rec.style,
+            autoGenerated: true,
+            description: rec.description,
+            index: i,
+            total: availableCount,
+          },
           description: rec.description,
-          index: i,
-          total: availableCount,
-        },
-        description: rec.description,
-      } as ChartOperation);
+        } as ChartOperation);
+      }
     }
     
     // If more lines requested than recommendations
@@ -446,8 +479,8 @@ async function generateMultipleDrawings(
     clientEvent: {
       event: 'draw:trendline',
       data: {
-        points: (drawing.parameters as any).points,
-        style: (drawing.parameters as any).style,
+        points: (drawing.parameters as ChartOperationParameters).points,
+        style: (drawing.parameters as ChartOperationParameters)['style'],
       }
     }
   }));
@@ -457,7 +490,7 @@ async function generateMultipleDrawings(
  * Generate synthetic drawing data when no analysis available
  * AIファーストアプローチ：チャートの現在の表示範囲を使用
  */
-function generateSyntheticDrawingData(count: number, startIndex: number, chartAnalysis?: ChartAnalysisResult): ChartOperation[] {
+function generateSyntheticDrawingData(count: number, startIndex: number, chartAnalysis?: ExtendedChartAnalysisResult | null): ChartOperation[] {
   const drawings = [];
   
   // チャート分析データから時間と価格の範囲を取得
@@ -470,11 +503,13 @@ function generateSyntheticDrawingData(count: number, startIndex: number, chartAn
     const lastCandle = candles[candles.length - 1];
     
     // 時間範囲を秒単位で取得（lightweight-chartsは秒単位のUNIXタイムスタンプを使用）
-    timeRange.start = Math.floor(new Date(firstCandle.time).getTime() / 1000);
-    timeRange.end = Math.floor(new Date(lastCandle.time).getTime() / 1000);
+    if (firstCandle && lastCandle) {
+      timeRange.start = Math.floor(new Date(firstCandle.time).getTime() / 1000);
+      timeRange.end = Math.floor(new Date(lastCandle.time).getTime() / 1000);
+    }
     
     // 価格範囲を取得
-    const prices = candles.map((c: { high: number; low: number }) => [c.high, c.low]).flat();
+    const prices = candles.map(c => [c.high, c.low]).flat();
     priceRange.min = Math.min(...prices);
     priceRange.max = Math.max(...prices);
   } else {
@@ -569,13 +604,13 @@ function generateDistinctColor(index: number): string {
     '#795548', // Brown
   ];
   
-  return colors[index % colors.length];
+  return colors[index % colors.length] || '#000000';
 }
 
 /**
  * Enhance single operation
  */
-async function enhanceSingleOperation(op: ChartOperation, chartAnalysis: ChartAnalysisResult | null): Promise<ChartOperation> {
+async function enhanceSingleOperation(op: ChartOperation, chartAnalysis: ExtendedChartAnalysisResult | null): Promise<ChartOperation> {
   let enhancedParameters = op.parameters || {};
   
   // Only enhance if we don't already have points
@@ -583,20 +618,22 @@ async function enhanceSingleOperation(op: ChartOperation, chartAnalysis: ChartAn
     const recommendations = chartAnalysis.recommendations?.trendlineDrawing;
     if (recommendations && recommendations.length > 0) {
       const bestRec = recommendations[0];
-      enhancedParameters = {
-        ...enhancedParameters,
-        points: bestRec.points,
-        style: bestRec.style,
-        autoGenerated: true,
-        description: bestRec.description,
-      };
+      if (bestRec) {
+        enhancedParameters = {
+          ...enhancedParameters,
+          points: bestRec.points,
+          style: bestRec.style,
+          autoGenerated: true,
+          description: bestRec.description,
+        };
+      }
     }
   }
   
   const clientEvent = generateEnhancedClientEvent(op.type, op.action, enhancedParameters);
   
   return {
-    type: op.type,
+    type: op.type || 'chart_operation',
     action: op.action,
     parameters: enhancedParameters,
     description: op.description || `Execute ${op.action}`,
@@ -611,14 +648,14 @@ async function enhanceSingleOperation(op: ChartOperation, chartAnalysis: ChartAn
 function generateEnhancedClientEvent(type: string, action: string, parameters: ChartOperationParameters): ClientEvent | undefined {
   // Similar to original but with batch support
   const eventMap: Record<string, () => ClientEvent> = {
-    'symbol_change': () => ({ event: 'ui:changeSymbol', data: { symbol: parameters.symbol } }),
-    'timeframe_change': () => ({ event: 'ui:changeTimeframe', data: { timeframe: parameters.timeframe } }),
+    'symbol_change': () => ({ event: 'ui:changeSymbol', data: { symbol: parameters.symbol || '' } }),
+    'timeframe_change': () => ({ event: 'ui:changeTimeframe', data: { timeframe: parameters.timeframe || '' } }),
     'drawing_operation': () => ({
       event: parameters.points ? 'draw:trendline' : 'chart:startDrawing',
       data: parameters.points ? {
         points: parameters.points?.map((p) => ({
           time: p.time,
-          price: p.price || p.value,
+          price: p.price,
         })),
         style: parameters['style'],
       } : { type: action }
@@ -626,17 +663,18 @@ function generateEnhancedClientEvent(type: string, action: string, parameters: C
     'batch_operation': () => ({ event: 'chart:batchOperation', data: parameters }),
   };
   
-  return eventMap[type] ? eventMap[type]() : undefined;
+  const eventGenerator = eventMap[type];
+  return eventGenerator ? eventGenerator() : undefined;
 }
 
 /**
  * Generate enhanced response
  */
 async function generateEnhancedResponse(
-  analysis: AIAnalysisResult,
+  _analysis: AIAnalysisResult,
   operations: ChartOperation[],
   userRequest: string,
-  chartAnalysis: ChartAnalysisResult | null,
+  _chartAnalysis: ExtendedChartAnalysisResult | null,
   requestedCount: number
 ) {
   const operationsSummary = operations.length > 1 
@@ -671,9 +709,9 @@ Keep it concise and informative.
  * Build enhanced context prompt
  */
 function buildEnhancedContextPrompt(
-  conversationHistory: ConversationMessage[],
+  _conversationHistory: ConversationMessage[],
   currentState: ChartState,
-  chartAnalysis: ChartAnalysisResult | null,
+  chartAnalysis: ExtendedChartAnalysisResult | null,
   requestedCount: number
 ): string {
   let context = 'Current context:\n';
@@ -686,7 +724,7 @@ function buildEnhancedContextPrompt(
     context += `Timeframe: ${currentState.timeframe}\n`;
   }
   
-  if (currentState.existingDrawings?.length > 0) {
+  if (currentState.existingDrawings && currentState.existingDrawings.length > 0) {
     context += `Existing drawings: ${currentState.existingDrawings.length}\n`;
   }
   

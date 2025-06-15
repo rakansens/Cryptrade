@@ -39,13 +39,21 @@ export class MastraBaseError<
     this.name = options.name || this.constructor.name;
     this.code = options.code;
     this.timestamp = new Date();
-    this.correlationId = options.correlationId;
-    this.data = options.data;
-    this.context = options.context;
+    if (options.correlationId !== undefined) {
+      this.correlationId = options.correlationId;
+    }
+    if (options.data !== undefined) {
+      this.data = options.data;
+    }
+    if (options.context !== undefined) {
+      this.context = options.context;
+    }
     this.category = options.category || 'UNKNOWN';
     this.severity = options.severity || 'ERROR';
     this.retryable = options.retryable || false;
-    this.retryAfter = options.retryAfter;
+    if (options.retryAfter !== undefined) {
+      this.retryAfter = options.retryAfter;
+    }
 
     // Capture stack trace
     Error.captureStackTrace(this, this.constructor);
@@ -60,14 +68,14 @@ export class MastraBaseError<
       message: this.message,
       code: this.code,
       timestamp: this.timestamp.toISOString(),
-      correlationId: this.correlationId,
-      data: this.data,
-      context: this.context,
+      ...(this.correlationId !== undefined && { correlationId: this.correlationId }),
+      ...(this.data !== undefined && { data: this.data }),
+      ...(this.context !== undefined && { context: this.context }),
       category: this.category,
       severity: this.severity,
       retryable: this.retryable,
-      retryAfter: this.retryAfter,
-      stack: this.stack,
+      ...(this.retryAfter !== undefined && { retryAfter: this.retryAfter }),
+      ...(this.stack !== undefined && { stack: this.stack }),
     };
   }
 
@@ -75,7 +83,7 @@ export class MastraBaseError<
    * Log the error with appropriate severity
    */
   log(): void {
-    const errorDetails = this.toJSON();
+    const errorDetails = this.toJSON() as unknown as Record<string, unknown>;
     
     switch (this.severity) {
       case 'WARNING':

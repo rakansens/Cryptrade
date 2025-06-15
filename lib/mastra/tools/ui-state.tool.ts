@@ -1,5 +1,6 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
+import type { IndicatorValue } from '@/types/store.types';
 
 /**
  * UI State Tool - UI状態管理ツール
@@ -89,7 +90,7 @@ export const uiStateTool = createTool({
               symbol: baseStore.symbol,
               timeframe: baseStore.timeframe,
               indicators: indicatorStore.indicators,
-              settings: indicatorStore.settings as Record<string, unknown>,
+              settings: indicatorStore.settings as unknown as Record<string, unknown>,
             },
             message,
           };
@@ -129,7 +130,7 @@ export const uiStateTool = createTool({
           
           // インジケーター設定更新
           Object.entries(settings).forEach(([key, value]) => {
-            indicatorStore.setIndicatorSetting(indicator, key, value);
+            indicatorStore.setIndicatorSetting(indicator, key, value as unknown as IndicatorValue);
             changes.push(`${indicator}.${key}: ${value}`);
           });
           
@@ -145,7 +146,7 @@ export const uiStateTool = createTool({
               symbol: baseStore.symbol,
               timeframe: baseStore.timeframe,
               indicators: indicatorStore.indicators,
-              settings: indicatorStore.settings as Record<string, unknown>,
+              settings: indicatorStore.settings as unknown as Record<string, unknown>,
             },
             message,
           };
@@ -180,7 +181,7 @@ export const uiStateTool = createTool({
           symbol: updatedBaseStore.symbol,
           timeframe: updatedBaseStore.timeframe,
           indicators: updatedIndicatorStore.indicators,
-          settings: updatedIndicatorStore.settings as Record<string, unknown>,
+          settings: updatedIndicatorStore.settings as unknown as Record<string, unknown>,
         },
         changes,
         message,

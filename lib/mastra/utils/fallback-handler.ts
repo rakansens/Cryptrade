@@ -143,15 +143,20 @@ export class FallbackHandler {
   ): FallbackResponse {
     const message = STATIC_FALLBACK_MESSAGES[agentType] || STATIC_FALLBACK_MESSAGES['default'];
     
+    const metadata: FallbackResponse['metadata'] = {
+      model: 'static-fallback',
+      fallbackType: 'static',
+      originalAgent: agentType,
+      timestamp: Date.now(),
+    };
+    
+    if (error) {
+      metadata.error = String(error);
+    }
+    
     return {
-      response: message,
-      metadata: {
-        model: 'static-fallback',
-        fallbackType: 'static',
-        originalAgent: agentType,
-        error: error ? String(error) : undefined,
-        timestamp: Date.now(),
-      },
+      response: message || 'No response available',
+      metadata,
     };
   }
 
@@ -168,6 +173,9 @@ export class FallbackHandler {
     
     // プロンプトの選択
     const promptGenerator = AI_FALLBACK_PROMPTS[agentType] || AI_FALLBACK_PROMPTS['conversational'];
+    if (!promptGenerator) {
+      throw new Error(`No prompt generator found for agent type: ${agentType}`);
+    }
     const prompt = promptGenerator(query, contextStr);
 
     // AI生成

@@ -258,11 +258,16 @@ export function isPeakTroughPoint(obj: unknown): obj is PeakTroughPoint {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    typeof obj.index === 'number' &&
-    typeof obj.time === 'number' &&
-    typeof obj.value === 'number' &&
-    typeof obj.volumeWeight === 'number' &&
-    (obj.type === 'peak' || obj.type === 'trough')
+    'index' in obj &&
+    'time' in obj &&
+    'value' in obj &&
+    'volumeWeight' in obj &&
+    'type' in obj &&
+    typeof (obj as any).index === 'number' &&
+    typeof (obj as any).time === 'number' &&
+    typeof (obj as any).value === 'number' &&
+    typeof (obj as any).volumeWeight === 'number' &&
+    ((obj as any).type === 'peak' || (obj as any).type === 'trough')
   );
 }
 
@@ -270,7 +275,9 @@ export function isMarketCondition(obj: unknown): obj is MarketCondition {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    ['trending', 'ranging', 'volatile'].includes(obj.type) &&
-    typeof obj.strength === 'number'
+    'type' in obj &&
+    'strength' in obj &&
+    ['trending', 'ranging', 'volatile'].includes((obj as any).type) &&
+    typeof (obj as any).strength === 'number'
   );
 }

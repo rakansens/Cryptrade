@@ -8,9 +8,8 @@ import { chartDataAnalysisTool } from './chart-data-analysis.tool';
 import type {
   ChartState,
   ChartAnalysis,
-  Operation,
+  // Operation,
   AIAnalysisResult,
-  DrawingPoint,
   ChartDataPoint,
   OperationParameters,
   ConversationMessage,
@@ -20,7 +19,7 @@ import type {
 } from '@/types/chart-control.types';
 
 // Re-export types for backward compatibility
-export type { ChartState, ChartAnalysis, Operation, AIAnalysisResult, DrawingPoint } from '@/types/chart-control.types';
+export type { ChartState, ChartAnalysis, Operation, AIAnalysisResult } from '@/types/chart-control.types';
 
 /**
  * AI-Powered Unified Chart Control Tool
@@ -121,14 +120,16 @@ export const chartControlTool = createTool({
       if (needsChartData) {
         try {
           logger.info('[ChartControl] Fetching chart analysis for enhanced drawing recommendations');
-          chartAnalysis = await chartDataAnalysisTool.execute({
+          const analysisResult = await chartDataAnalysisTool.execute({
             context: {
               symbol: currentState.symbol || 'BTCUSDT',
               timeframe: currentState.timeframe || '1h',
               limit: 200,
               analysisType: 'full',
+              lookbackPeriod: 100,
             }
-          }) as ChartAnalysis;
+          } as any);
+          chartAnalysis = analysisResult as unknown as ChartAnalysis;
           logger.info('[ChartControl] Chart analysis completed', {
             recommendationCount: chartAnalysis.recommendations.trendlineDrawing.length
           });
@@ -140,24 +141,23 @@ export const chartControlTool = createTool({
       }
       
       // AI-powered request analysis (enhanced with chart data)
-      const analysis = await analyzeChartRequest(userRequest, conversationHistory, currentState, chartAnalysis);
+      const analysis = await analyzeChartRequest(userRequest, conversationHistory, currentState as ChartState, chartAnalysis);
       
       // Generate operations based on AI analysis
-      const operations = await generateChartOperations(analysis, currentState, chartAnalysis);
+      const operations = await generateChartOperations(analysis, currentState as ChartState, chartAnalysis);
       
       // Generate natural language response
       const response = await generateUserResponse(analysis, operations, userRequest, chartAnalysis);
       
       return {
         success: true,
-        operations,
+        operations: operations as z.infer<typeof AIChartControlOutput>['operations'],
         response,
         reasoning: analysis.reasoning,
         metadata: {
           confidence: analysis.confidence,
           complexity: analysis.complexity,
           aiEnhanced: true,
-          chartDataUsed: !!chartAnalysis,
         },
       };
 
@@ -282,7 +282,7 @@ Remember: Output ONLY valid JSON, no markdown code blocks.`;
     
     // Enhanced fallback with basic intent detection
     const lowerRequest = userRequest.toLowerCase();
-    let fallbackType = 'chart_operation';
+    let fallbackType: OperationType = 'chart_operation';
     let fallbackAction = 'general_request';
     
     if (lowerRequest.includes('btc') || lowerRequest.includes('eth')) {
@@ -296,9 +296,10 @@ Remember: Output ONLY valid JSON, no markdown code blocks.`;
       fallbackAction = 'draw_trendline';
     }
     
+    
     return {
       operations: [{
-        type: fallbackType as OperationType,
+        type: fallbackType,
         action: fallbackAction,
         parameters: { request: userRequest },
         priority: 5,
@@ -306,7 +307,7 @@ Remember: Output ONLY valid JSON, no markdown code blocks.`;
       }],
       reasoning: 'Failed to parse AI analysis, using enhanced fallback',
       confidence: 0.3,
-      complexity: 'simple',
+      complexity: 'simple' as const,
       userIntent: userRequest
     };
   }
@@ -315,8 +316,8 @@ Remember: Output ONLY valid JSON, no markdown code blocks.`;
 /**
  * Generate chart operations from AI analysis
  */
-async function generateChartOperations(analysis: AIAnalysisResult, currentState: ChartState, chartAnalysis: ChartAnalysis | null = null): Promise<Array<{
-  type: OperationType;
+async function generateChartOperations(analysis: AIAnalysisResult, _currentState: ChartState, chartAnalysis: ChartAnalysis | null = null): Promise<Array<{
+  type: string;
   action: string;
   parameters: Record<string, unknown>;
   description: string;
@@ -324,7 +325,7 @@ async function generateChartOperations(analysis: AIAnalysisResult, currentState:
   clientEvent?: ClientEvent;
 }>> {
   const operations: Array<{
-    type: OperationType;
+    type: string;
     action: string;
     parameters: Record<string, unknown>;
     description: string;
@@ -361,7 +362,7 @@ async function generateChartOperations(analysis: AIAnalysisResult, currentState:
     const clientEvent = generateClientEvent(op.type, op.action, enhancedParameters);
     
     const operation = {
-      type: op.type as OperationType,
+      type: op.type as "symbol_change" | "timeframe_change" | "chart_operation" | "indicator_control" | "drawing_operation" | "analysis_operation",
       action: op.action,
       parameters: enhancedParameters as Record<string, unknown>,
       description: op.description || `Execute ${op.action}`,
@@ -470,9 +471,9 @@ function getDrawingOperationEvent(action: string, parameters: OperationParameter
       event: parameters.points ? 'draw:trendline' : (parameters.startPoint && parameters.endPoint ? 'chart:addDrawing' : 'chart:startDrawing'), 
       data: parameters.points ? {
         // AIが計算したポイントで自動描画
-        points: (parameters.points as ChartDataPoint[]).map((p: ChartDataPoint) => ({
+        points: (parameters.points as ChartDataPoint[]).map(p => ({
           time: p.time,
-          price: p.price || p.value, // Handle both formats
+          price: p.price ?? p.value ?? 0, // Handle both formats with proper fallback
         })),
         style: parameters.style || { color: '#00e676', lineWidth: 2, lineStyle: 'solid', showLabels: true }
       } : (parameters.startPoint && parameters.endPoint ? {
@@ -489,9 +490,9 @@ function getDrawingOperationEvent(action: string, parameters: OperationParameter
       event: parameters.points ? 'draw:fibonacci' : (parameters.startPoint && parameters.endPoint ? 'chart:addDrawing' : 'chart:startDrawing'),
       data: parameters.points ? {
         // AIが計算したポイントで自動描画
-        points: (parameters.points as ChartDataPoint[]).map((p: ChartDataPoint) => ({
+        points: (parameters.points as ChartDataPoint[]).map(p => ({
           time: p.time,
-          price: p.price || p.value, // Handle both formats
+          price: p.price ?? p.value ?? 0, // Handle both formats with proper fallback
         })),
         levels: parameters.fibonacciLevels || [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0],
         style: parameters.style || { color: '#FF9800', lineWidth: 1, lineStyle: 'dashed', showLabels: true }
@@ -512,7 +513,7 @@ function getDrawingOperationEvent(action: string, parameters: OperationParameter
       data: { 
         id: `horizontal_${Date.now()}`,
         type: 'horizontal', 
-        price: parameters.price,
+        ...(parameters.price !== undefined && { price: parameters.price }),
         style: parameters.style || { color: '#4CAF50', lineWidth: 2, lineStyle: 'solid', showLabels: true }
       } 
     },
@@ -521,7 +522,7 @@ function getDrawingOperationEvent(action: string, parameters: OperationParameter
       data: { 
         id: `vertical_${Date.now()}`,
         type: 'vertical', 
-        time: parameters.time,
+        ...(parameters.time !== undefined && { time: parameters.time }),
         style: parameters.style || { color: '#9C27B0', lineWidth: 2, lineStyle: 'solid', showLabels: true }
       } 
     },
@@ -555,7 +556,7 @@ function getDrawingOperationEvent(action: string, parameters: OperationParameter
 /**
  * Generate natural language response
  */
-async function generateUserResponse(analysis: AIAnalysisResult, operations: Array<{
+async function generateUserResponse(_analysis: AIAnalysisResult, operations: Array<{
   type: string;
   action: string;
   parameters: OperationParameters;
@@ -655,8 +656,8 @@ function buildContextPrompt(
 - Current Price: ${chartAnalysis.currentPrice.price.toFixed(2)}
 - Trend: ${chartAnalysis.technicalAnalysis.trend.direction} (strength: ${Math.round(chartAnalysis.technicalAnalysis.trend.strength * 100)}%)
 - RSI: ${chartAnalysis.technicalAnalysis.momentum.rsi.toFixed(1)}
-- Support Levels: ${chartAnalysis.technicalAnalysis.supportResistance.supports.map((s: { price: number; strength: number }) => s.price.toFixed(2)).join(', ')}
-- Resistance Levels: ${chartAnalysis.technicalAnalysis.supportResistance.resistances.map((r: { price: number; strength: number }) => r.price.toFixed(2)).join(', ')}
+- Support Levels: ${chartAnalysis.technicalAnalysis.supportResistance.supports.map(s => s.price.toFixed(2)).join(', ')}
+- Resistance Levels: ${chartAnalysis.technicalAnalysis.supportResistance.resistances.map(r => r.price.toFixed(2)).join(', ')}
 - Drawing Recommendations: ${chartAnalysis.recommendations.trendlineDrawing.length} available
 - Analysis: ${chartAnalysis.recommendations.analysis}
 `;

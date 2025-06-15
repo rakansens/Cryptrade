@@ -17,8 +17,7 @@ import type {
 } from '../types';
 import { 
   ANALYSIS_PARAMS, 
-  COLOR_PALETTE,
-  THRESHOLDS
+  COLOR_PALETTE
 } from '../utils/constants';
 import { validateDrawingData } from '../validators/drawing-validator';
 import { generateProposalId, calculateStandardDeviation } from '../utils/helpers';
@@ -123,8 +122,12 @@ export class PatternGenerator implements IProposalGenerator {
     );
     if (!secondPeakIndex) return null;
 
-    const firstPeak = data[firstPeakIndex].high;
-    const secondPeak = data[secondPeakIndex].high;
+    const firstPeakData = data[firstPeakIndex];
+    const secondPeakData = data[secondPeakIndex];
+    if (!firstPeakData || !secondPeakData) return null;
+    
+    const firstPeak = firstPeakData.high;
+    const secondPeak = secondPeakData.high;
 
     // ピークの高さが近似しているかチェック
     if (Math.abs(firstPeak - secondPeak) / firstPeak > tolerance) return null;
@@ -138,7 +141,10 @@ export class PatternGenerator implements IProposalGenerator {
     );
     if (!necklineIndex) return null;
 
-    const neckline = data[necklineIndex].low;
+    const necklineData = data[necklineIndex];
+    if (!necklineData) return null;
+    
+    const neckline = necklineData.low;
     const avgPeak = (firstPeak + secondPeak) / 2;
     const patternHeight = avgPeak - neckline;
 
@@ -157,9 +163,9 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex: firstPeakIndex,
       endIndex: secondPeakIndex,
       keyPoints: [
-        { time: data[firstPeakIndex].time, value: firstPeak },
-        { time: data[necklineIndex].time, value: neckline },
-        { time: data[secondPeakIndex].time, value: secondPeak },
+        { time: firstPeakData.time, value: firstPeak },
+        { time: necklineData.time, value: neckline },
+        { time: secondPeakData.time, value: secondPeak },
       ],
       implication: 'bearish',
     };
@@ -192,8 +198,12 @@ export class PatternGenerator implements IProposalGenerator {
     );
     if (!secondTroughIndex) return null;
 
-    const firstTrough = data[firstTroughIndex].low;
-    const secondTrough = data[secondTroughIndex].low;
+    const firstTroughData = data[firstTroughIndex];
+    const secondTroughData = data[secondTroughIndex];
+    if (!firstTroughData || !secondTroughData) return null;
+    
+    const firstTrough = firstTroughData.low;
+    const secondTrough = secondTroughData.low;
 
     // 谷の深さが近似しているかチェック
     if (Math.abs(firstTrough - secondTrough) / firstTrough > tolerance) return null;
@@ -207,7 +217,10 @@ export class PatternGenerator implements IProposalGenerator {
     );
     if (!necklineIndex) return null;
 
-    const neckline = data[necklineIndex].high;
+    const necklineData = data[necklineIndex];
+    if (!necklineData) return null;
+    
+    const neckline = necklineData.high;
     const avgTrough = (firstTrough + secondTrough) / 2;
     const patternHeight = neckline - avgTrough;
 
@@ -226,9 +239,9 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex: firstTroughIndex,
       endIndex: secondTroughIndex,
       keyPoints: [
-        { time: data[firstTroughIndex].time, value: firstTrough },
-        { time: data[necklineIndex].time, value: neckline },
-        { time: data[secondTroughIndex].time, value: secondTrough },
+        { time: firstTroughData.time, value: firstTrough },
+        { time: necklineData.time, value: neckline },
+        { time: secondTroughData.time, value: secondTrough },
       ],
       implication: 'bullish',
     };
@@ -264,7 +277,6 @@ export class PatternGenerator implements IProposalGenerator {
     inverse: boolean
   ): DetectedPattern | null {
     const priceType = inverse ? 'low' : 'high';
-    const oppositeType = inverse ? 'high' : 'low';
 
     // 左肩を探す
     const leftShoulderIndex = this.findLocalPeak(
@@ -293,9 +305,14 @@ export class PatternGenerator implements IProposalGenerator {
     );
     if (!rightShoulderIndex) return null;
 
-    const leftShoulder = data[leftShoulderIndex][priceType];
-    const head = data[headIndex][priceType];
-    const rightShoulder = data[rightShoulderIndex][priceType];
+    const leftShoulderData = data[leftShoulderIndex];
+    const headData = data[headIndex];
+    const rightShoulderData = data[rightShoulderIndex];
+    if (!leftShoulderData || !headData || !rightShoulderData) return null;
+    
+    const leftShoulder = leftShoulderData[priceType];
+    const head = headData[priceType];
+    const rightShoulder = rightShoulderData[priceType];
 
     // パターンの妥当性チェック
     if (inverse) {
@@ -318,9 +335,9 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex: leftShoulderIndex,
       endIndex: rightShoulderIndex,
       keyPoints: [
-        { time: data[leftShoulderIndex].time, value: leftShoulder },
-        { time: data[headIndex].time, value: head },
-        { time: data[rightShoulderIndex].time, value: rightShoulder },
+        { time: leftShoulderData.time, value: leftShoulder },
+        { time: headData.time, value: head },
+        { time: rightShoulderData.time, value: rightShoulder },
       ],
       implication: inverse ? 'bullish' : 'bearish',
     };
@@ -390,8 +407,8 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex,
       endIndex: startIndex + segment.length - 1,
       keyPoints: [
-        { time: segment[0].time, value: segment[0].high },
-        { time: segment[segment.length - 1].time, value: segment[segment.length - 1].low },
+        { time: segment[0]?.time ?? 0, value: segment[0]?.high ?? 0 },
+        { time: segment[segment.length - 1]?.time ?? 0, value: segment[segment.length - 1]?.low ?? 0 },
       ],
       implication: 'neutral',
     };
@@ -425,9 +442,9 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex,
       endIndex: startIndex + segment.length - 1,
       keyPoints: [
-        { time: segment[0].time, value: avgHigh },
-        { time: segment[0].time, value: segment[0].low },
-        { time: segment[segment.length - 1].time, value: segment[segment.length - 1].low },
+        { time: segment[0]?.time ?? 0, value: avgHigh },
+        { time: segment[0]?.time ?? 0, value: segment[0]?.low ?? 0 },
+        { time: segment[segment.length - 1]?.time ?? 0, value: segment[segment.length - 1]?.low ?? 0 },
       ],
       implication: 'bullish',
     };
@@ -461,9 +478,9 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex,
       endIndex: startIndex + segment.length - 1,
       keyPoints: [
-        { time: segment[0].time, value: segment[0].high },
-        { time: segment[segment.length - 1].time, value: segment[segment.length - 1].high },
-        { time: segment[0].time, value: avgLow },
+        { time: segment[0]?.time ?? 0, value: segment[0]?.high ?? 0 },
+        { time: segment[segment.length - 1]?.time ?? 0, value: segment[segment.length - 1]?.high ?? 0 },
+        { time: segment[0]?.time ?? 0, value: avgLow },
       ],
       implication: 'bearish',
     };
@@ -526,10 +543,10 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex,
       endIndex: startIndex + segment.length - 1,
       keyPoints: [
-        { time: segment[0].time, value: segment[0].high },
-        { time: segment[segment.length - 1].time, value: segment[segment.length - 1].high },
-        { time: segment[0].time, value: segment[0].low },
-        { time: segment[segment.length - 1].time, value: segment[segment.length - 1].low },
+        { time: segment[0]?.time ?? 0, value: segment[0]?.high ?? 0 },
+        { time: segment[segment.length - 1]?.time ?? 0, value: segment[segment.length - 1]?.high ?? 0 },
+        { time: segment[0]?.time ?? 0, value: segment[0]?.low ?? 0 },
+        { time: segment[segment.length - 1]?.time ?? 0, value: segment[segment.length - 1]?.low ?? 0 },
       ],
       implication: direction === 'up' ? 'bullish' : 'bearish',
     };
@@ -548,7 +565,9 @@ export class PatternGenerator implements IProposalGenerator {
     let peakValue = type === 'high' ? -Infinity : Infinity;
 
     for (let i = Math.max(0, startIdx); i <= Math.min(data.length - 1, endIdx); i++) {
-      const value = data[i][type];
+      const candle = data[i];
+      if (!candle) continue;
+      const value = candle[type];
       if (type === 'high' && value > peakValue) {
         peakValue = value;
         peakIndex = i;
@@ -574,7 +593,7 @@ export class PatternGenerator implements IProposalGenerator {
 
     const sumX = indices.reduce((a, b) => a + b, 0);
     const sumY = values.reduce((a, b) => a + b, 0);
-    const sumXY = indices.reduce((sum, x, i) => sum + x * values[i], 0);
+    const sumXY = indices.reduce((sum, x, i) => sum + x * (values[i] ?? 0), 0);
     const sumX2 = indices.reduce((sum, x) => sum + x * x, 0);
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
@@ -599,7 +618,7 @@ export class PatternGenerator implements IProposalGenerator {
   private calculateConvergencePoint(
     line1: { slope: number; intercept: number },
     line2: { slope: number; intercept: number },
-    currentLength: number
+    _currentLength: number
   ): number | null {
     if (line1.slope === line2.slope) return null;
 
@@ -619,7 +638,7 @@ export class PatternGenerator implements IProposalGenerator {
 
     // ボリューム確認
     const avgVolume = data.reduce((sum, d) => sum + d.volume, 0) / data.length;
-    const keyVolumes = keyIndices.map(i => data[i].volume);
+    const keyVolumes = keyIndices.map(i => data[i]?.volume ?? 0).filter(v => v > 0);
     const avgKeyVolume = keyVolumes.reduce((a, b) => a + b, 0) / keyVolumes.length;
 
     if (avgKeyVolume > avgVolume * 1.5) confidence += 0.1;
@@ -645,9 +664,9 @@ export class PatternGenerator implements IProposalGenerator {
    * パターンの完全性チェック
    */
   private checkPatternCompleteness(
-    data: CandlestickData[],
-    keyIndices: number[],
-    patternType: string
+    _data: CandlestickData[],
+    _keyIndices: number[],
+    _patternType: string
   ): number {
     // 簡略化された実装
     return 0.8;
@@ -668,22 +687,40 @@ export class PatternGenerator implements IProposalGenerator {
       type: 'pattern',
       title: patternInfo.title,
       description: patternInfo.description,
-      reason: this.generateReason(pattern, data, params),
-      drawingData: validateDrawingData({
-        type: 'pattern',
-        points: pattern.keyPoints,
-        style: {
-          color: COLOR_PALETTE.PATTERN[pattern.implication.toUpperCase() as keyof typeof COLOR_PALETTE.PATTERN],
-          lineWidth: 2,
-          lineStyle: 'solid',
-        },
-      }),
+      // reason: this.generateReason(pattern, data, params), // Not in ProposalData type
+      drawingData: (() => {
+        const validated = validateDrawingData({
+          type: 'pattern',
+          points: pattern.keyPoints,
+          style: {
+            color: COLOR_PALETTE.PATTERN[pattern.implication.toUpperCase() as keyof typeof COLOR_PALETTE.PATTERN],
+            lineWidth: 2,
+            lineStyle: 'solid',
+          },
+        });
+        
+        // Create clean object without undefined values
+        const result: any = {
+          type: validated.type,
+          points: validated.points,
+        };
+        
+        if (validated.style) result.style = validated.style;
+        if ((validated as any).metadata) result.metadata = (validated as any).metadata;
+        
+        return result;
+      })(),
       confidence: pattern.confidence,
       priority: this.calculatePriority(pattern),
       createdAt: Date.now(),
-      symbol: params.symbol,
-      interval: params.interval,
+      analysis: {
+        direction: pattern.implication === 'bullish' || pattern.implication === 'bearish' ? pattern.implication : 'neutral' as 'bullish' | 'bearish' | 'neutral',
+        strength: confidence,
+      },
       metadata: {
+        symbol: params.symbol,
+        interval: params.interval,
+        reason: this.generateReason(pattern, data, params),
         patternType: pattern.type,
         implication: pattern.implication,
         keyPoints: pattern.keyPoints,
@@ -751,8 +788,8 @@ export class PatternGenerator implements IProposalGenerator {
    */
   private generateReason(
     pattern: DetectedPattern,
-    data: CandlestickData[],
-    params: GeneratorParams
+    _data: CandlestickData[],
+    _params: GeneratorParams
   ): string {
     const duration = pattern.endIndex - pattern.startIndex;
     const patternInfo = this.getPatternInfo(pattern.type);

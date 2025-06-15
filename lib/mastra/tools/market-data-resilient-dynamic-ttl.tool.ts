@@ -86,7 +86,6 @@ export function adjustTTLForMarketHours(baseTTL: number): number {
 // 実装例：動的TTLを使用した価格取得
 export const marketDataDynamicTTLExample = createTool({
   id: 'get-market-data-dynamic-ttl',
-  name: 'marketDataDynamicTTL',
   description: 'Get market data with dynamic TTL based on volatility and user context',
   inputSchema: z.object({
     symbol: z.string(),

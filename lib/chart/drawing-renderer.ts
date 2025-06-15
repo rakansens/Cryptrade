@@ -1,8 +1,7 @@
 // Updated: 描画レンダラーにて環境変数の型安全なアクセスを実装
-import { IChartApi, IPriceLine, ISeriesApi, SeriesType, LineWidth, LineStyle } from 'lightweight-charts';
-import { useDrawingStore as useChartStoreBase, type ChartDrawing } from '@/store/chart';
-import type { ChartSeriesApi, DrawingPoint, FibonacciLevel } from '@/types/chart.types';
-import { DEFAULT_FIBONACCI_LEVELS } from '@/types/chart.types';
+import { IChartApi, IPriceLine, ISeriesApi, SeriesType, LineWidth, LineStyle, Time, PriceLineOptions, CreatePriceLineOptions } from 'lightweight-charts';
+import { useDrawingStore, type ChartDrawing } from '@/store/chart';
+// import type { DrawingPoint } from '@/types/chart.types'; // Not needed as DrawingPoint is defined in store/chart/types.ts
 import { env } from '@/config/env';
 
 export class DrawingRenderer {
@@ -16,13 +15,15 @@ export class DrawingRenderer {
     private mainSeries: ISeriesApi<SeriesType>
   ) {
     this.initializeSubscription();
+    // Initialize drawings from storage
+    useDrawingStore.getState().initializeDrawings?.();
   }
 
   private initializeSubscription() {
     // Subscribe to drawing changes with throttling for performance
     let timeoutId: NodeJS.Timeout | null = null;
     
-    this.unsubscribe = useChartStoreBase.subscribe(
+    this.unsubscribe = useDrawingStore.subscribe(
       (state) => state.drawings,
       (drawings) => {
         // Throttle updates to prevent excessive re-renders
@@ -34,7 +35,7 @@ export class DrawingRenderer {
     );
 
     // Initial render
-    const initialDrawings = useChartStoreBase.getState().drawings;
+    const initialDrawings = useDrawingStore.getState().drawings;
     this.renderDrawings(initialDrawings);
   }
 
@@ -48,7 +49,7 @@ export class DrawingRenderer {
     const currentIds = new Set(drawings.map(d => d.id));
     
     // Remove deleted horizontal lines
-    for (const [id, priceLine] of this.priceLines.entries()) {
+    for (const [id, priceLine] of Array.from(this.priceLines.entries())) {
       if (!currentIds.has(id)) {
         this.mainSeries.removePriceLine(priceLine);
         this.priceLines.delete(id);
@@ -56,7 +57,7 @@ export class DrawingRenderer {
     }
     
     // Remove deleted trend lines
-    for (const [id, series] of this.trendLines.entries()) {
+    for (const [id, series] of Array.from(this.trendLines.entries())) {
       if (!currentIds.has(id)) {
         this.chart.removeSeries(series);
         this.trendLines.delete(id);
@@ -64,7 +65,7 @@ export class DrawingRenderer {
     }
     
     // Remove deleted fibonacci sets
-    for (const [id, priceLines] of this.fibonacciSets.entries()) {
+    for (const [id, priceLines] of Array.from(this.fibonacciSets.entries())) {
       if (!currentIds.has(id)) {
         priceLines.forEach(priceLine => this.mainSeries.removePriceLine(priceLine));
         this.fibonacciSets.delete(id);
@@ -89,25 +90,27 @@ export class DrawingRenderer {
   }
 
   private renderHorizontalLine(drawing: ChartDrawing) {
+    if (!drawing.points[0]) return;
+    
     const existingLine = this.priceLines.get(drawing.id);
     
     if (existingLine) {
       // Update existing line
       existingLine.applyOptions({
         price: drawing.points[0].value,
-        color: drawing.style.color,
-        lineWidth: drawing.style.lineWidth as LineWidth,
-        lineStyle: this.convertLineStyle(drawing.style.lineStyle),
-        title: drawing.style.showLabels ? `${drawing.points[0].value.toFixed(2)}` : '',
+        color: drawing.style?.color || '#888888',
+        lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+        lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
+        title: drawing.style?.showLabels ? `${drawing.points[0].value.toFixed(2)}` : '',
       });
     } else {
       // Create new line
       const priceLine = this.mainSeries.createPriceLine({
         price: drawing.points[0].value,
-        color: drawing.style.color,
-        lineWidth: drawing.style.lineWidth as LineWidth,
-        lineStyle: this.convertLineStyle(drawing.style.lineStyle),
-        title: drawing.style.showLabels ? `${drawing.points[0].value.toFixed(2)}` : '',
+        color: drawing.style?.color || '#888888',
+        lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+        lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
+        title: drawing.style?.showLabels ? `${drawing.points[0].value.toFixed(2)}` : '',
         axisLabelVisible: true,
       });
       
@@ -131,31 +134,31 @@ export class DrawingRenderer {
     if (existingSeries) {
       // Update existing trend line
       existingSeries.applyOptions({
-        color: drawing.style.color,
-        lineWidth: drawing.style.lineWidth as LineWidth,
-        lineStyle: this.convertLineStyle(drawing.style.lineStyle),
+        color: drawing.style?.color || '#888888',
+        lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+        lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
       });
       
-      if (drawing.points.length >= 2) {
+      if (drawing.points.length >= 2 && drawing.points[0] && drawing.points[1]) {
         existingSeries.setData([
-          { time: drawing.points[0].time, value: drawing.points[0].value },
-          { time: drawing.points[1].time, value: drawing.points[1].value }
+          { time: drawing.points[0].time as Time, value: drawing.points[0].value },
+          { time: drawing.points[1].time as Time, value: drawing.points[1].value }
         ]);
       }
     } else if (drawing.points.length >= 2) {
       // Create new trend line
       const series = this.chart.addLineSeries({
-        color: drawing.style.color,
-        lineWidth: drawing.style.lineWidth as LineWidth,
-        lineStyle: this.convertLineStyle(drawing.style.lineStyle),
+        color: drawing.style?.color || '#888888',
+        lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+        lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
         crosshairMarkerVisible: false,
         lastValueVisible: false,
         priceLineVisible: false,
       });
       
       const lineData = [
-        { time: drawing.points[0].time, value: drawing.points[0].value },
-        { time: drawing.points[1].time, value: drawing.points[1].value }
+        { time: drawing.points[0]!.time as Time, value: drawing.points[0]!.value },
+        { time: drawing.points[1]!.time as Time, value: drawing.points[1]!.value }
       ];
       console.log('[DrawingRenderer] Setting trendline data:', lineData);
       series.setData(lineData);
@@ -168,7 +171,7 @@ export class DrawingRenderer {
   private renderFibonacci(drawing: ChartDrawing) {
     const existingLines = this.fibonacciSets.get(drawing.id);
     
-    if (drawing.points.length < 2) return;
+    if (drawing.points.length < 2 || !drawing.points[0] || !drawing.points[1]) return;
     
     const startPrice = drawing.points[0].value;
     const endPrice = drawing.points[1].value;
@@ -185,13 +188,17 @@ export class DrawingRenderer {
         if (level !== undefined) {
           const price = startPrice + (diff * level);
           
-          line.applyOptions({
+          const options: Partial<PriceLineOptions> = {
             price,
-            color: drawing.style.color || levelColors[index],
-            lineWidth: drawing.style.lineWidth as LineWidth,
-            lineStyle: this.convertLineStyle(drawing.style.lineStyle),
+            lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+            lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
             title: `${(level * 100).toFixed(1)}%`,
-          });
+          };
+          const color = drawing.style?.color || levelColors[index];
+          if (color) {
+            options.color = color;
+          }
+          line.applyOptions(options);
         }
       });
     } else {
@@ -201,14 +208,18 @@ export class DrawingRenderer {
       levels.forEach((level, index) => {
         const price = startPrice + (diff * level);
         
-        const priceLine = this.mainSeries.createPriceLine({
+        const options: CreatePriceLineOptions = {
           price,
-          color: drawing.style.color || levelColors[index],
-          lineWidth: drawing.style.lineWidth as LineWidth,
-          lineStyle: this.convertLineStyle(drawing.style.lineStyle),
+          lineWidth: (drawing.style?.lineWidth || 1) as LineWidth,
+          lineStyle: this.convertLineStyle(drawing.style?.lineStyle || 'solid'),
           title: `${(level * 100).toFixed(1)}%`,
           axisLabelVisible: true,
-        });
+        };
+        const color = drawing.style?.color || levelColors[index];
+        if (color) {
+          options.color = color;
+        }
+        const priceLine = this.mainSeries.createPriceLine(options);
         
         priceLines.push(priceLine);
       });
@@ -219,19 +230,19 @@ export class DrawingRenderer {
 
   cleanup() {
     // Remove all price lines
-    for (const priceLine of this.priceLines.values()) {
+    for (const priceLine of Array.from(this.priceLines.values())) {
       this.mainSeries.removePriceLine(priceLine);
     }
     this.priceLines.clear();
     
     // Remove all trend lines
-    for (const series of this.trendLines.values()) {
+    for (const series of Array.from(this.trendLines.values())) {
       this.chart.removeSeries(series);
     }
     this.trendLines.clear();
     
     // Remove all fibonacci lines
-    for (const priceLines of this.fibonacciSets.values()) {
+    for (const priceLines of Array.from(this.fibonacciSets.values())) {
       priceLines.forEach(priceLine => this.mainSeries.removePriceLine(priceLine));
     }
     this.fibonacciSets.clear();
@@ -245,8 +256,6 @@ export class DrawingRenderer {
 }
 
 // Feature flag check
-import { env } from '@/config/env';
-
 export function isDrawingRendererEnabled(): boolean {
-  return env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === 'true';
+  return env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === true;
 }

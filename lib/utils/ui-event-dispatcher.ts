@@ -278,3 +278,11 @@ export class UIEventDispatcher {
 
 // Export singleton instance
 export const uiEventDispatcher = UIEventDispatcher.getInstance();
+
+/**
+ * Legacy compatibility function for typed UI event dispatch
+ */
+export function dispatchTypedUIEvent(_event: CustomEvent | { event: string; data?: unknown }): void {
+  // Placeholder implementation for legacy compatibility
+  console.warn('dispatchTypedUIEvent is deprecated, use UIEventDispatcher instead');
+}

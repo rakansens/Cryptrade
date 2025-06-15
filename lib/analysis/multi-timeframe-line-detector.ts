@@ -586,7 +586,7 @@ export class MultiTimeframeLineDetector {
   /**
    * Generate a unique key for trendline deduplication
    */
-  private generateTrendlineKey(trendline: DetectedLine, config: LineDetectionConfig): string {
+  private generateTrendlineKey(trendline: DetectedLine, _config: LineDetectionConfig): string {
     const startPoint = trendline.points[0];
     const endPoint = trendline.points[trendline.points.length - 1];
     

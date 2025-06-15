@@ -58,8 +58,8 @@ export class SharedDataStore {
     namespaceStore.set(key, {
       value,
       timestamp: Date.now(),
-      ttl: options?.ttl,
-      metadata: options?.metadata,
+      ...(options?.ttl !== undefined && { ttl: options.ttl }),
+      ...(options?.metadata !== undefined && { metadata: options.metadata }),
     });
     
     logger.debug('[SharedDataStore] Data stored', {

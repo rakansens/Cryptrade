@@ -95,7 +95,10 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     
     // 高値・安値を収集
     for (let i = 0; i < data.length; i++) {
-      pricePoints.push(data[i].high, data[i].low);
+      const candle = data[i];
+      if (candle) {
+        pricePoints.push(candle.high, candle.low);
+      }
     }
     
     // 価格のヒストグラムを作成
@@ -170,14 +173,14 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       let touchType: 'support' | 'resistance' | 'both' | null = null;
       
       // サポートとしてのタッチ
-      if (Math.abs(candle.low - level) <= tolerance) {
+      if (candle && Math.abs(candle.low - level) <= tolerance) {
         if (candle.close > candle.open) {
           touchType = 'support';
         }
       }
       
       // レジスタンスとしてのタッチ
-      if (Math.abs(candle.high - level) <= tolerance) {
+      if (candle && Math.abs(candle.high - level) <= tolerance) {
         if (candle.close < candle.open) {
           touchType = touchType === 'support' ? 'both' : 'resistance';
         }
@@ -185,9 +188,9 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       
       if (touchType) {
         touches.push({
-          time: candle.time,
+          time: candle?.time ?? 0,
           value: level,
-          volume: candle.volume,
+          volume: candle?.volume ?? 0,
           type: touchType,
         });
       }
@@ -221,7 +224,9 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     
     const clustered: PriceLevel[] = [];
     const used = new Set<number>();
-    const avgPrice = data[data.length - 1].close;
+    const lastCandle = data[data.length - 1];
+    if (!lastCandle) return [];
+    const avgPrice = lastCandle.close;
     const clusterThreshold = avgPrice * 0.005; // 0.5%
     
     for (let i = 0; i < levels.length; i++) {
@@ -300,7 +305,9 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       return null;
     }
     
-    const currentPrice = data[data.length - 1].close;
+    const lastCandle = data[data.length - 1];
+    if (!lastCandle) return null;
+    const currentPrice = lastCandle.close;
     const distance = Math.abs(currentPrice - level.price) / currentPrice;
     const isNearby = distance < 0.05; // 5%以内
     
@@ -321,26 +328,46 @@ export class SupportResistanceGenerator implements IProposalGenerator {
         level.touches.length,
         strengthText
       ),
-      reason: this.generateReason(level, data, params),
-      drawingData: validateDrawingData({
-        type: 'horizontal',
-        price: level.price,
-        points: [{
-          time: data[0].time,
-          value: level.price,
-        }],
-        style: {
-          color: this.getLineColor(level.type),
-          lineWidth: Math.min(3, 1 + level.strength * 2),
-          lineStyle: level.type === 'both' ? 'dashed' : 'solid',
-        },
-      }),
+      // reason: this.generateReason(level, data, params), // Not in ProposalData type
+      drawingData: (() => {
+        const validated = validateDrawingData({
+          type: 'horizontal',
+          price: level.price,
+          points: [{
+            time: data[0]?.time ?? 0,
+            value: level.price,
+          }],
+          style: {
+            color: this.getLineColor(level.type),
+            lineWidth: Math.min(3, 1 + level.strength * 2),
+            lineStyle: level.type === 'both' ? 'dashed' : 'solid',
+          },
+        });
+        
+        // Create clean object without undefined values
+        const result: any = {
+          type: validated.type,
+          points: validated.points,
+        };
+        
+        if (validated.style) result.style = validated.style;
+        if (validated.price !== undefined) result.price = validated.price;
+        if ((validated as any).metadata) result.metadata = (validated as any).metadata;
+        
+        return result;
+      })(),
       confidence,
       priority: this.calculatePriority(confidence, level, isNearby),
       createdAt: Date.now(),
-      symbol: params.symbol,
-      interval: params.interval,
+      analysis: {
+        direction: 'neutral' as const,
+        strength: level.strength,
+        touches: level.touches.length,
+      },
       metadata: {
+        symbol: params.symbol,
+        interval: params.interval,
+        reason: this.generateReason(level, data, params),
         levelType: level.type,
         touches: level.touches.length,
         strength: level.strength,
@@ -358,9 +385,14 @@ export class SupportResistanceGenerator implements IProposalGenerator {
   private generateReason(
     level: PriceLevel,
     data: CandlestickData[],
-    params: GeneratorParams
+    _params: GeneratorParams
   ): string {
-    const currentPrice = data[data.length - 1].close;
+    const lastCandle = data[data.length - 1];
+    if (!lastCandle) {
+      return `${level.price.toFixed(2)}のレベルは過去に${level.touches.length}回テストされています。`;
+    }
+    
+    const currentPrice = lastCandle.close;
     const position = currentPrice > level.price ? '下' : '上';
     const distance = Math.abs(currentPrice - level.price) / currentPrice * 100;
     

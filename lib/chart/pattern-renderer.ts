@@ -117,7 +117,12 @@ export class PatternRenderer {
       // 4. Add metric lines (target, stop loss, breakout)
       if (metrics) {
         const baseStyle = visualization.lines?.[0]?.style;
-        renderMetricLines(id, visualization, metrics, baseStyle, {
+        const metricBaseStyle = baseStyle ? {
+          color: baseStyle.color || undefined,
+          lineWidth: baseStyle.lineWidth || undefined,
+          lineStyle: baseStyle.lineStyle || undefined
+        } : undefined;
+        renderMetricLines(id, visualization, metrics, metricBaseStyle as any, {
           chart: this.chart,
           convertLineStyle: this.convertLineStyle.bind(this),
           globalAllSeries: this.stateManager.allSeriesMap,
@@ -204,28 +209,28 @@ export class PatternRenderer {
   /**
    * Draw pattern areas (filled regions)
    */
-  private drawPatternAreas(id: string, visualization: PatternVisualization): void {
-    // For areas, we can use area series or background rectangles
-    // This is a simplified implementation using semi-transparent lines
-    
-    visualization.areas?.forEach((area) => {
-      if (area.points.length < 3) return;
-      
-      // Get the boundary points
-      const points = area.points.map(idx => visualization.keyPoints[idx]).filter(Boolean);
-      if (points.length < 3) return;
-      
-      // Find min/max values for the area
-      const minValue = Math.min(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
-      const maxValue = Math.max(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
-      const minTime = Math.min(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
-      const maxTime = Math.max(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
-      
-      // Skip area rendering for now to avoid the red vertical bar issue
-      // TODO: Implement proper area highlighting using a different approach
-      logger.info('[PatternRenderer] Skipping area rendering to avoid visual artifacts');
-    });
-  }
+  // private drawPatternAreas(_id: string, _visualization: PatternVisualization): void {
+  //   // For areas, we can use area series or background rectangles
+  //   // This is a simplified implementation using semi-transparent lines
+  //   
+  //   _visualization.areas?.forEach((area) => {
+  //     if (area.points.length < 3) return;
+  //     
+  //     // Get the boundary points
+  //     const points = area.points.map(idx => _visualization.keyPoints[idx]).filter(Boolean);
+  //     if (points.length < 3) return;
+  //     
+  //     // Find min/max values for the area
+  //     // const minValue = Math.min(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
+  //     // const maxValue = Math.max(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
+  //     // const minTime = Math.min(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
+  //     // const maxTime = Math.max(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
+  //     
+  //     // Skip area rendering for now to avoid the red vertical bar issue
+  //     // TODO: Implement proper area highlighting using a different approach
+  //     logger.info('[PatternRenderer] Skipping area rendering to avoid visual artifacts');
+  //   });
+  // }
   
   
   /**
@@ -301,7 +306,8 @@ export class PatternRenderer {
         
         // Search in both maps
         for (const [key, value] of this.stateManager.metricLinesMap.entries()) {
-          if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(idParts[idParts.length - 1]))) {
+          const lastPart = idParts[idParts.length - 1] || '';
+          if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(lastPart))) {
             logger.info('[PatternRenderer] Found metric lines with fuzzy match', { 
               requestedId: id, 
               foundId: key,
@@ -363,7 +369,8 @@ export class PatternRenderer {
         
         // Clean up any entries that might match
         for (const key of Array.from(this.stateManager.metricLinesMap.keys())) {
-          if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(idParts[idParts.length - 1]))) {
+          const lastPart = idParts[idParts.length - 1] || '';
+          if (key.includes(uniquePart) || (key.includes('pattern') && key.endsWith(lastPart))) {
             logger.info('[PatternRenderer] Also removing similar ID from global map', { key });
             this.stateManager.metricLinesMap.delete(key);
           }
@@ -408,7 +415,7 @@ export class PatternRenderer {
       const remainingSeries: string[] = [];
       for (const [seriesId, seriesInfo] of this.stateManager.allSeriesMap.entries()) {
         if (seriesInfo.patternId === id || 
-            (id.includes('pattern') && seriesInfo.patternId.includes(id.split('_').slice(-1)[0]))) {
+            (id.includes('pattern') && seriesInfo.patternId.includes(id.split('_').slice(-1)[0] || ''))) {
           remainingSeries.push(seriesId);
           try {
             logger.info('[PatternRenderer] Removing series from globalAllSeries', { 
@@ -518,7 +525,7 @@ export class PatternRenderer {
           this.chart.removeSeries(line);
           logger.info(`[PatternRenderer] DEBUG: Removed line ${index + 1} for pattern ${id}`);
         } catch (e) {
-          logger.error(`[PatternRenderer] DEBUG: Failed to remove line ${index + 1} for pattern ${id}`, e);
+          logger.error(`[PatternRenderer] DEBUG: Failed to remove line ${index + 1} for pattern ${id}`, { error: e });
         }
       });
     });
@@ -551,182 +558,57 @@ export class PatternRenderer {
     }
   }
   
-  /**
-   * Draw metric lines (target, stop loss, breakout)
-   */
-  private drawMetricLines(
-    id: string,
-    visualization: PatternVisualization,
-    metrics: {
-      target_level?: number;
-      stop_loss?: number;
-      breakout_level?: number;
-    },
-    baseStyle?: {
-      color?: string;
-      lineWidth?: number;
-      lineStyle?: string;
-    }
-  ): void {
-    const metricLines: ISeriesApi<SeriesType>[] = [];
-    
-    // Get time range from keyPoints
-    if (!visualization.keyPoints || visualization.keyPoints.length === 0) return;
-    
-    const times = visualization.keyPoints.map(p => p.time);
-    const minTime = Math.min(...times);
-    const maxTime = Math.max(...times);
-    
-    // Extend the lines beyond the pattern for better visibility
-    const timeExtension = (maxTime - minTime) * 0.5;
-    const startTime = minTime - timeExtension;
-    const endTime = maxTime + timeExtension;
-    
-    // Target level (green dashed line)
-    if (metrics.target_level) {
-      const targetSeries = this.chart.addLineSeries({
-        color: baseStyle?.color || '#4CAF50',
-        lineWidth: baseStyle?.lineWidth ?? 2,
-        lineStyle: this.convertLineStyle(baseStyle?.lineStyle || 'dashed'),
-        priceLineVisible: false,
-        lastValueVisible: true,
-        crosshairMarkerVisible: false,
-        title: `目標: $${metrics.target_level.toLocaleString()}`,
-      });
-      
-      targetSeries.setData([
-        { time: startTime as Time, value: metrics.target_level },
-        { time: endTime as Time, value: metrics.target_level },
-      ]);
-      
-      // Don't add markers - just use the line with title
-      // The lastValueVisible will show the price
-      
-      metricLines.push(targetSeries);
-      
-      // Track in global series map
-      const targetSeriesId = `${id}_metric_target_${Date.now()}`;
-      this.stateManager.allSeriesMap.set(targetSeriesId, {
-        patternId: id,
-        series: targetSeries,
-        type: 'metric',
-        createdAt: Date.now()
-      });
-    }
-    
-    // Stop loss level (red dashed line)
-    if (metrics.stop_loss) {
-      const stopLossSeries = this.chart.addLineSeries({
-        color: baseStyle?.color || '#F44336',
-        lineWidth: baseStyle?.lineWidth ?? 2,
-        lineStyle: this.convertLineStyle(baseStyle?.lineStyle || 'dashed'),
-        priceLineVisible: false,
-        lastValueVisible: true,
-        crosshairMarkerVisible: false,
-        title: `SL: $${metrics.stop_loss.toLocaleString()}`,
-      });
-      
-      stopLossSeries.setData([
-        { time: startTime as Time, value: metrics.stop_loss },
-        { time: endTime as Time, value: metrics.stop_loss },
-      ]);
-      
-      // Don't add markers - just use the line with title
-      // The lastValueVisible will show the price
-      
-      metricLines.push(stopLossSeries);
-      
-      // Track in global series map
-      const stopLossSeriesId = `${id}_metric_stoploss_${Date.now()}`;
-      this.stateManager.allSeriesMap.set(stopLossSeriesId, {
-        patternId: id,
-        series: stopLossSeries,
-        type: 'metric',
-        createdAt: Date.now()
-      });
-    }
-    
-    // Breakout level (orange dotted line)
-    if (metrics.breakout_level) {
-      const breakoutSeries = this.chart.addLineSeries({
-        color: baseStyle?.color || '#FF9800',
-        lineWidth: baseStyle?.lineWidth ?? 2,
-        lineStyle: this.convertLineStyle(baseStyle?.lineStyle || 'dotted'),
-        priceLineVisible: false,
-        lastValueVisible: true,
-        crosshairMarkerVisible: false,
-        title: `BO: $${metrics.breakout_level.toLocaleString()}`,
-      });
-      
-      breakoutSeries.setData([
-        { time: startTime as Time, value: metrics.breakout_level },
-        { time: endTime as Time, value: metrics.breakout_level },
-      ]);
-      
-      // Don't add markers - just use the line with title
-      // The lastValueVisible will show the price
-      
-      metricLines.push(breakoutSeries);
-      
-      // Track in global series map
-      const breakoutSeriesId = `${id}_metric_breakout_${Date.now()}`;
-      this.stateManager.allSeriesMap.set(breakoutSeriesId, {
-        patternId: id,
-        series: breakoutSeries,
-        type: 'metric',
-        createdAt: Date.now()
-      });
-    }
-    
-    // Store metric lines for later removal
-    if (metricLines.length > 0) {
-      // Store in both instance map and global map
-      this.metricLines.set(id, metricLines);
-      this.stateManager.metricLinesMap.set(id, {
-        series: metricLines,
-        instanceId: this.instanceId,
-        createdAt: Date.now()
-      });
-      
-      logger.info('[PatternRenderer] Metric lines stored in maps', {
-        instanceId: this.instanceId,
-        id,
-        count: metricLines.length,
-        targetLevel: metrics.target_level,
-        stopLoss: metrics.stop_loss,
-        breakoutLevel: metrics.breakout_level,
-        allPatternIds: Array.from(this.metricLines.keys()),
-        mapSize: this.metricLines.size,
-        globalMapSize: this.stateManager.metricLinesMap.size,
-        globalPatternIds: Array.from(this.stateManager.metricLinesMap.keys())
-      });
-      
-      // Debug: Verify the lines were actually stored
-      const storedLines = this.metricLines.get(id);
-      const globalStoredLines = this.stateManager.metricLinesMap.get(id);
-      logger.info('[PatternRenderer] Verification - metric lines retrieved:', {
-        id,
-        retrieved: !!storedLines,
-        retrievedCount: storedLines?.length || 0,
-        globalRetrieved: !!globalStoredLines,
-        globalRetrievedCount: globalStoredLines?.series.length || 0
-      });
-    } else {
-      logger.warn('[PatternRenderer] No metric lines created for pattern', { id, metrics });
-    }
-  }
   
   /**
    * Add opacity to color
    */
-  private addOpacity(color: string, opacity: number): string {
-    // Convert hex to rgba
-    if (color.startsWith('#')) {
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  // private _addOpacity(color: string, opacity: number): string {
+  //   // Convert hex to rgba
+  //   if (color.startsWith('#')) {
+  //     const r = parseInt(color.slice(1, 3), 16);
+  //     const g = parseInt(color.slice(3, 5), 16);
+  //     const b = parseInt(color.slice(5, 7), 16);
+  //     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  //   }
+  //   return color;
+  // }
+
+  /**
+   * Destroy the renderer and clean up resources
+   */
+  destroy(): void {
+    logger.info('[PatternRenderer] Destroying renderer', {
+      instanceId: this.instanceId
+    });
+
+    // Clear all patterns by removing each one
+    for (const id of this.patternSeries.keys()) {
+      this.removePattern(id);
     }
-    return color;
+
+    // Clear all internal maps
+    this.patternSeries.clear();
+    this.markers.clear();
+    this.metricLines.clear();
+
+    // Remove from global debug registry if present
+    if (typeof window !== 'undefined') {
+      const windowWithDebug = window as any;
+      if (windowWithDebug.__debugPatternRenderers) {
+        const index = windowWithDebug.__debugPatternRenderers.findIndex(
+          (r: any) => r.instanceId === this.instanceId
+        );
+        if (index >= 0) {
+          windowWithDebug.__debugPatternRenderers.splice(index, 1);
+        }
+      }
+      if (windowWithDebug.__debugPatternRenderer?.instanceId === this.instanceId) {
+        delete windowWithDebug.__debugPatternRenderer;
+      }
+    }
+
+    logger.info('[PatternRenderer] Renderer destroyed', {
+      instanceId: this.instanceId
+    });
   }
 }

@@ -4,7 +4,7 @@ import { agentNetwork, registerCryptradeAgent } from './message-router';
 import { logger } from '@/lib/utils/logger';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { enhancedChartControlTool } from '../tools/enhanced-chart-control.tool';
-import { chartControlTool } from '../tools/chart-control.tool';
+// import { chartControlTool } from '../tools/chart-control.tool';
 import { uiStateTool } from '../tools/ui-state.tool';
 import { proposalGenerationTool } from '../tools/proposal-generation.tool';
 import { EntryProposalGenerationTool } from '../tools/entry-proposal-generation';
@@ -55,7 +55,7 @@ User: "BTCの価格は？"
 3. 応答: "BTCの現在価格は $105,372.23 です。24時間変化率は 0.17% です。"
 `,
   tools: {
-    marketDataResilientTool,
+    marketDataResilientTool: marketDataResilientTool as any,
   },
 });
 
@@ -126,10 +126,10 @@ proposalGenerationTool({
 - 提案モード：proposalGroup形式で複数の描画候補を返す
 `,
   tools: {
-    marketData: marketDataResilientTool,
-    chartAnalysis: chartDataAnalysisTool,
-    proposalGeneration: proposalGenerationTool,
-    entryProposalGeneration: EntryProposalGenerationTool,
+    marketData: marketDataResilientTool as any,
+    chartAnalysis: chartDataAnalysisTool as any,
+    proposalGeneration: proposalGenerationTool as any,
+    entryProposalGeneration: EntryProposalGenerationTool as any,
   },
 });
 
@@ -225,32 +225,32 @@ export function registerAllAgents(): void {
 /**
  * 初期健全性チェック
  */
-async function performInitialHealthCheck(): Promise<void> {
-  try {
-    logger.info('[AgentRegistry] Starting initial health check...');
-    
-    const healthResults = await agentNetwork.healthCheck();
-    const healthyAgents = Object.entries(healthResults).filter(([, isHealthy]) => isHealthy);
-    const unhealthyAgents = Object.entries(healthResults).filter(([, isHealthy]) => !isHealthy);
-
-    logger.info('[AgentRegistry] Health check completed', {
-      total: Object.keys(healthResults).length,
-      healthy: healthyAgents.length,
-      unhealthy: unhealthyAgents.length,
-      healthyAgents: healthyAgents.map(([id]) => id),
-      unhealthyAgents: unhealthyAgents.map(([id]) => id),
-    });
-
-    // 統計情報をログ出力
-    const networkStats = agentNetwork.getNetworkStats();
-    logger.info('[AgentRegistry] Network statistics', networkStats);
-
-  } catch (error) {
-    logger.error('[AgentRegistry] Health check failed', {
-      error: String(error),
-    });
-  }
-}
+// async function _performInitialHealthCheck(): Promise<void> {
+//   try {
+//     logger.info('[AgentRegistry] Starting initial health check...');
+//     
+//     const healthResults = await agentNetwork.healthCheck();
+//     const healthyAgents = Object.entries(healthResults).filter(([, isHealthy]) => isHealthy);
+//     const unhealthyAgents = Object.entries(healthResults).filter(([, isHealthy]) => !isHealthy);
+// 
+//     logger.info('[AgentRegistry] Health check completed', {
+//       total: Object.keys(healthResults).length,
+//       healthy: healthyAgents.length,
+//       unhealthy: unhealthyAgents.length,
+//       healthyAgents: healthyAgents.map(([id]) => id),
+//       unhealthyAgents: unhealthyAgents.map(([id]) => id),
+//     });
+// 
+//     // 統計情報をログ出力
+//     const networkStats = agentNetwork.getNetworkStats();
+//     logger.info('[AgentRegistry] Network statistics', networkStats);
+// 
+//   } catch (error) {
+//     logger.error('[AgentRegistry] Health check failed', {
+//       error: String(error),
+//     });
+//   }
+// }
 
 /**
  * エージェント自動再登録（起動時・エラー回復時）

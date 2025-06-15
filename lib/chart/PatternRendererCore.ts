@@ -51,7 +51,7 @@ export class PatternRendererCore {
       mainSeries: this.mainSeries,
       registry: this.registry,
       instanceId: this.instanceId,
-      utilities: this.utilities,
+      utilities: this.utilities as any,
     };
     
     // プラグインレジストリの初期化
@@ -115,8 +115,9 @@ export class PatternRendererCore {
         patternId: id,
         seriesCreated: renderResult.successes.length,
         errors: renderResult.failures.map(f => f.error),
-        warnings: renderResult.failures.length > 0 ? 
-          [`${renderResult.failures.length} plugins failed`] : undefined,
+        ...(renderResult.failures.length > 0 && { 
+          warnings: [`${renderResult.failures.length} plugins failed`]
+        }),
         metadata: {
           patternType,
           renderTime: Date.now(),

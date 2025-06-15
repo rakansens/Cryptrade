@@ -91,7 +91,7 @@ type SerializableData =
 // Helper function to handle BigInt serialization
 export function serializeBigInt<T extends SerializableData>(data: T): T {
   return JSON.parse(
-    JSON.stringify(data, (key, value) =>
+    JSON.stringify(data, (_key, value) =>
       typeof value === 'bigint' ? value.toString() : value
     )
   ) as T
@@ -115,5 +115,5 @@ export async function withTransaction<T>(
   fn: (tx: PrismaTransactionClient) => Promise<T>,
   options?: TransactionOptions
 ): Promise<T> {
-  return prisma.$transaction(fn, options)
+  return prisma.$transaction(fn as any, options) as Promise<T>
 }

@@ -4,7 +4,8 @@
  * Example of using error tracking in agents
  */
 
-import { createAgent } from '@mastra/core';
+import { Agent } from '@mastra/core';
+import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { AgentError } from '@/lib/errors/base-error';
 import { trackAgentError, trackException } from '@/lib/errors/error-tracker';
@@ -34,23 +35,20 @@ const tradingAgentSchema = z.object({
   model: z.enum(['gpt-4', 'o1-preview', 'claude-3']).optional().default('gpt-4'),
 });
 
-export const tradingAgentWithErrors = createAgent({
+export const tradingAgentWithErrors = new Agent({
   name: 'trading-agent-with-errors',
-  description: 'Trading agent with comprehensive error handling',
-  inputSchema: tradingAgentSchema,
+  model: openai('gpt-4o'),
+  instructions: 'You are a trading agent with comprehensive error handling. Analyze market data and provide insights.',
   
   // モデルに応じたツール選択
-  tools: ({ model }) => {
-    switch (model) {
-      case 'o1-preview':
-        return [marketDataToolForO1];
-      default:
-        return [marketDataToolForOpenAI];
-    }
-  },
-  
-  // エラーハンドリング付き実行
-  async execute({ query, symbol, model }) {
+  tools: {
+    marketDataOpenAI: marketDataToolForOpenAI as any,
+    marketDataO1: marketDataToolForO1 as any
+  } as any,
+});
+
+// Error handling wrapper function
+export async function executeWithErrorHandling({ query, symbol, model }: { query: string; symbol: string; model: string }) {
     const sessionId = `agent-session-${Date.now()}`;
     
     try {
@@ -62,10 +60,11 @@ export const tradingAgentWithErrors = createAgent({
       });
 
       // マーケットデータ取得
-      const marketData = await this.tools.enhancedMarketData({
+      const toolToUse = model === 'o1-preview' ? marketDataToolForO1 : marketDataToolForOpenAI;
+      const marketData = await toolToUse.execute({
         symbol,
         interval: '1h',
-      }).catch((error: any) => {
+      }).catch((error: Error) => {
         // ツールエラーの詳細なトラッキング
         const agentError = new AgentError(
           `Market data tool failed: ${error.message}`,
@@ -81,7 +80,7 @@ export const tradingAgentWithErrors = createAgent({
               model,
             },
             severity: 'ERROR',
-            retryable: error.retryable || false,
+            retryable: error instanceof Error && 'retryable' in error ? (error as any).retryable : false,
           }
         );
         
@@ -90,7 +89,7 @@ export const tradingAgentWithErrors = createAgent({
       });
 
       // 分析実行
-      const analysis = await this.analyzeMarket(marketData, query);
+      const analysis = await analyzeMarket(marketData as MarketAnalysisData, query);
       
       logger.info('[TradingAgent] Analysis completed', {
         sessionId,
@@ -108,7 +107,7 @@ export const tradingAgentWithErrors = createAgent({
         },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       // エージェントレベルのエラーハンドリング
       if (error instanceof AgentError) {
         // 既知のエラーはそのまま再スロー
@@ -117,7 +116,7 @@ export const tradingAgentWithErrors = createAgent({
 
       // 未知のエラーをトラッキング
       const unexpectedError = new AgentError(
-        `Unexpected error in trading agent: ${error.message}`,
+        `Unexpected error in trading agent: ${(error as Error).message}`,
         'trading-agent-with-errors',
         {
           correlationId: sessionId,
@@ -132,8 +131,8 @@ export const tradingAgentWithErrors = createAgent({
       
       trackAgentError(unexpectedError, 'trading-agent-with-errors', {
         sessionId,
-        errorType: error.constructor.name,
-        stack: error.stack,
+        errorType: (error as Error).constructor.name,
+        stack: (error as Error).stack,
       });
       
       // フォールバックレスポンス
@@ -152,21 +151,23 @@ export const tradingAgentWithErrors = createAgent({
     }
   },
 
-  // 分析ロジック
-  async analyzeMarket(marketData: MarketAnalysisData, query: string) {
-    try {
-      // 価格トレンド分析
-      const prices = marketData.klines.map(k => k.close);
-      const trend = this.calculateTrend(prices);
-      
-      // ボラティリティ計算
-      const volatility = this.calculateVolatility(prices);
-      
-      // 推奨事項生成
-      const recommendations = this.generateRecommendations(
-        trend,
-        volatility,
-        query
+});
+
+// 分析ロジック関数
+async function analyzeMarket(marketData: MarketAnalysisData, query: string) {
+  try {
+    // 価格トレンド分析
+    const prices = marketData.klines.map(k => k.close);
+    const trend = calculateTrend(prices);
+    
+    // ボラティリティ計算
+    const volatility = calculateVolatility(prices);
+    
+    // 推奨事項生成
+    const recommendations = generateRecommendations(
+      trend,
+      volatility,
+      query
       );
       
       return {
@@ -176,19 +177,19 @@ export const tradingAgentWithErrors = createAgent({
         summary: `Based on the analysis of ${marketData.symbol}, the market shows ${trend} trend with ${volatility} volatility.`,
       };
       
-    } catch (error) {
+    } catch (error: any) {
       // 分析エラーをトラッキング
-      trackException(error, {
+      trackException(error as Error, {
         method: 'analyzeMarket',
         agent: 'trading-agent-with-errors',
       });
       
       throw error;
     }
-  },
+}
 
-  // トレンド計算
-  calculateTrend(prices: number[]): string {
+// トレンド計算
+function calculateTrend(prices: number[]): string {
     if (prices.length < 2) return 'neutral';
     
     const recentPrices = prices.slice(-10);
@@ -200,10 +201,10 @@ export const tradingAgentWithErrors = createAgent({
     if (change > 2) return 'bullish';
     if (change < -2) return 'bearish';
     return 'neutral';
-  },
+}
 
-  // ボラティリティ計算
-  calculateVolatility(prices: number[]): string {
+// ボラティリティ計算
+function calculateVolatility(prices: number[]): string {
     const returns = prices.slice(1).map((price, i) => 
       ((price - prices[i]!) / prices[i]!) * 100
     );
@@ -218,14 +219,14 @@ export const tradingAgentWithErrors = createAgent({
     if (stdDev > 5) return 'high';
     if (stdDev > 2) return 'medium';
     return 'low';
-  },
+}
 
-  // 推奨事項生成
-  generateRecommendations(
-    trend: string,
-    volatility: string,
-    query: string
-  ): string[] {
+// 推奨事項生成
+function generateRecommendations(
+  trend: string,
+  volatility: string,
+  query: string
+): string[] {
     const recommendations: string[] = [];
     
     if (trend === 'bullish' && volatility === 'low') {
@@ -245,5 +246,4 @@ export const tradingAgentWithErrors = createAgent({
     }
     
     return recommendations;
-  },
-});
+}

@@ -24,10 +24,12 @@ export function cleanTimeSeriesData<T extends TimeSeriesData>(
   const seen = new Set<number>();
   
   for (let i = sorted.length - 1; i >= 0; i--) {
-    const time = Number(sorted[i][timeKey]);
+    const item = sorted[i];
+    if (!item) continue;
+    const time = Number(item[timeKey]);
     if (!seen.has(time)) {
       seen.add(time);
-      cleaned.unshift(sorted[i]);
+      cleaned.unshift(item);
     }
   }
   
@@ -44,8 +46,11 @@ export function validateTimeSeriesOrder<T extends TimeSeriesData>(
   if (data.length <= 1) return true;
   
   for (let i = 1; i < data.length; i++) {
-    const prevTime = Number(data[i - 1][timeKey]);
-    const currTime = Number(data[i][timeKey]);
+    const prev = data[i - 1];
+    const curr = data[i];
+    if (!prev || !curr) continue;
+    const prevTime = Number(prev[timeKey]);
+    const currTime = Number(curr[timeKey]);
     
     if (currTime <= prevTime) {
       console.warn(`Time series order violation at index ${i}: current=${currTime}, previous=${prevTime}`);

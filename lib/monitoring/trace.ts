@@ -82,7 +82,7 @@ class TraceManager {
     this.activeTraces.delete(correlationId);
   }
   
-  private recordPrometheusMetrics(trace: TraceContext, metrics: TraceMetrics, duration: number) {
+  private recordPrometheusMetrics(_trace: TraceContext, _metrics: TraceMetrics, _duration: number) {
     // TODO: Phase2で実装
     // prometheus.register.histogram('agent_latency_seconds', {
     //   name: 'agent_latency_seconds',
@@ -201,7 +201,7 @@ export interface TradingAnalysisResult extends TraceableResult {
 export const tracedExecuteTradingAnalysis = withTrace(
   'trading-workflow', 
   'workflow_step', 
-  async (input: TradingAnalysisInput): Promise<TradingAnalysisResult> => {
+  async (_input: TradingAnalysisInput): Promise<TradingAnalysisResult> => {
     // 既存のexecuteTradingAnalysis実装
     return { analysis: 'mock result' };
   }

@@ -41,12 +41,17 @@ async function vercelKVRateLimit(
     const resetTime = (Math.floor(now / config.windowSec) + 1) * config.windowSec;
     const remainingRequests = Math.max(0, config.maxRequests - current);
     
-    return {
+    const result: RateLimitResult = {
       success: current <= config.maxRequests,
       remainingRequests,
       resetTime,
-      retryAfter: current > config.maxRequests ? resetTime - now : undefined,
     };
+    
+    if (current > config.maxRequests) {
+      result.retryAfter = resetTime - now;
+    }
+    
+    return result;
   } catch (error) {
     console.warn('[RateLimit] Vercel KV unavailable, falling back to memory');
     throw error;
@@ -84,12 +89,17 @@ async function upstashRedisRateLimit(
     const resetTime = (Math.floor(now / config.windowSec) + 1) * config.windowSec;
     const remainingRequests = Math.max(0, config.maxRequests - current);
     
-    return {
+    const result: RateLimitResult = {
       success: current <= config.maxRequests,
       remainingRequests,
       resetTime,
-      retryAfter: current > config.maxRequests ? resetTime - now : undefined,
     };
+    
+    if (current > config.maxRequests) {
+      result.retryAfter = resetTime - now;
+    }
+    
+    return result;
   } catch (error) {
     console.warn('[RateLimit] Upstash Redis unavailable, falling back to memory');
     throw error;
@@ -130,12 +140,17 @@ function memoryRateLimit(
   entry.count++;
   const remainingRequests = Math.max(0, config.maxRequests - entry.count);
   
-  return {
+  const result: RateLimitResult = {
     success: entry.count <= config.maxRequests,
     remainingRequests,
     resetTime,
-    retryAfter: entry.count > config.maxRequests ? resetTime - now : undefined,
   };
+  
+  if (entry.count > config.maxRequests) {
+    result.retryAfter = resetTime - now;
+  }
+  
+  return result;
 }
 
 // Export for testing purposes
@@ -187,15 +202,38 @@ export function createRateLimitMiddleware(config?: RateLimitConfig) {
  */
 export function getClientIdentifier(request: NextRequest | Request | { headers: Headers | Record<string, string | string[]> }): string {
   // Try to get real IP from various headers
-  const forwarded = request.headers?.get?.('x-forwarded-for') || request.headers?.['x-forwarded-for'];
-  const realIp = request.headers?.get?.('x-real-ip') || request.headers?.['x-real-ip'];
-  const cfConnectingIp = request.headers?.get?.('cf-connecting-ip') || request.headers?.['cf-connecting-ip'];
+  let forwarded: string | string[] | null | undefined;
+  let realIp: string | string[] | null | undefined;
+  let cfConnectingIp: string | string[] | null | undefined;
+  let userAgent: string | string[] | undefined = '';
   
-  const ip = forwarded?.split(',')[0] || realIp || cfConnectingIp || 'unknown';
+  if ('headers' in request) {
+    const headers = request.headers;
+    if ('get' in headers && typeof headers.get === 'function') {
+      // NextRequest or standard Headers
+      forwarded = headers.get('x-forwarded-for');
+      realIp = headers.get('x-real-ip');
+      cfConnectingIp = headers.get('cf-connecting-ip');
+      userAgent = headers.get('user-agent') || '';
+    } else {
+      // Plain object headers
+      const h = headers as Record<string, string | string[]>;
+      forwarded = h['x-forwarded-for'];
+      realIp = h['x-real-ip'];
+      cfConnectingIp = h['cf-connecting-ip'];
+      userAgent = h['user-agent'] || '';
+    }
+  }
+  
+  const forwardedStr = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const realIpStr = Array.isArray(realIp) ? realIp[0] : realIp;
+  const cfStr = Array.isArray(cfConnectingIp) ? cfConnectingIp[0] : cfConnectingIp;
+  const userAgentStr = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+  
+  const ip = forwardedStr?.split(',')[0] || realIpStr || cfStr || 'unknown';
   
   // For additional security, combine IP with User-Agent (truncated)
-  const userAgent = request.headers?.get?.('user-agent') || request.headers?.['user-agent'] || '';
-  return `${ip}:${userAgent.slice(0, 50)}`;
+  return `${ip}:${userAgentStr?.slice(0, 50) ?? ''}`;
 }
 
 // Export types for external use

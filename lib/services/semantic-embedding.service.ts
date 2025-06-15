@@ -19,7 +19,7 @@ export interface EmbeddingResult {
 export interface SimilaritySearchOptions {
   threshold?: number;
   topK?: number;
-  filter?: (item: any) => boolean;
+  filter?: <T extends object>(item: T) => boolean;
 }
 
 export class SemanticEmbeddingService extends BaseService {
@@ -32,8 +32,7 @@ export class SemanticEmbeddingService extends BaseService {
   }
 
   // Override the post method to add OpenAI specific headers
-  protected async post<T>(url: string, data?: any) {
-    const originalHeaders = this.client['config']?.headers || {};
+  protected override async post<T>(url: string, data?: unknown) {
     
     // We need to add the Authorization header for OpenAI
     const apiKey = env.OPENAI_API_KEY;
@@ -79,7 +78,11 @@ export class SemanticEmbeddingService extends BaseService {
         input: text,
       });
       
-      const embedding = response.data.data[0].embedding;
+      const firstData = response.data.data[0];
+      if (!firstData) {
+        throw new Error('No embedding data received');
+      }
+      const embedding = firstData.embedding;
       
       // Cache the result
       this.embeddingCache.set(cacheKey, embedding);
@@ -124,9 +127,13 @@ export class SemanticEmbeddingService extends BaseService {
     let norm2 = 0;
     
     for (let i = 0; i < embedding1.length; i++) {
-      dotProduct += embedding1[i] * embedding2[i];
-      norm1 += embedding1[i] * embedding1[i];
-      norm2 += embedding2[i] * embedding2[i];
+      const val1 = embedding1[i];
+      const val2 = embedding2[i];
+      if (val1 !== undefined && val2 !== undefined) {
+        dotProduct += val1 * val2;
+        norm1 += val1 * val1;
+        norm2 += val2 * val2;
+      }
     }
     
     const similarity = dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));

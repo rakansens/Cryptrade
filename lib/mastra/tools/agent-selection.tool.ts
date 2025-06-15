@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
-import { agentNetwork, routeToAgent } from '../network/agent-network';
+import { agentNetwork } from '../network/agent-network';
 import { logger } from '@/lib/utils/logger';
 import { FallbackHandler } from '../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
@@ -68,13 +68,13 @@ export const agentSelectionTool = createTool({
       const a2aResult = await executeWithA2ACommunication(
         agentType, 
         query, 
-        userContext, 
+        userContext || {}, 
         correlationId || `tool-${Date.now()}`
       );
 
       if (a2aResult.success) {
         // 🚀 UI Control Agent の operations を配信
-        await broadcastUIOperations(agentType, a2aResult, correlationId);
+        await broadcastUIOperations(agentType, a2aResult as AgentResult, correlationId);
         
         logger.info('[agentSelectionTool] A2A result details', {
           targetAgent: a2aResult.targetAgent,
@@ -96,10 +96,10 @@ export const agentSelectionTool = createTool({
               toolsUsed: a2aResult.metadata?.['toolsUsed'] || [],
             },
             // A2A通信の完全な結果を含める
-            ...(a2aResult.steps && { steps: a2aResult.steps }),
-            ...(a2aResult.toolResults && { toolResults: a2aResult.toolResults }),
+            ...((a2aResult as any).steps && { steps: (a2aResult as any).steps }),
+            ...((a2aResult as any).toolResults && { toolResults: (a2aResult as any).toolResults }),
             // proposalGroupを含める
-            ...(a2aResult.proposalGroup && { proposalGroup: a2aResult.proposalGroup }),
+            ...((a2aResult as any).proposalGroup && { proposalGroup: (a2aResult as any).proposalGroup }),
           },
           message: a2aResult.response || `A2A communication successful: ${a2aResult.targetAgent}`,
         };
@@ -114,12 +114,12 @@ export const agentSelectionTool = createTool({
         const fallbackResult = await FallbackHandler.handle({
           agentType,
           query,
-          context: userContext,
-          error: a2aResult.error,
+          ...(userContext !== undefined && { context: userContext }),
+          ...(a2aResult.error !== undefined && { error: a2aResult.error }),
         });
         
         // フォールバックでもUI操作を配信
-        await broadcastUIOperations(agentType, fallbackResult, correlationId);
+        await broadcastUIOperations(agentType, fallbackResult as unknown as AgentResult, correlationId);
         
         return {
           success: true,
@@ -208,10 +208,10 @@ async function executeWithA2ACommunication(
         },
         correlationId
       ),
-      new Promise((_, reject) => 
+      new Promise<null>((_, reject) => 
         setTimeout(() => reject(new Error('A2A communication timeout')), 10000)
       )
-    ]);
+    ]) as any; // TODO: Add proper A2AMessage type from @/types
 
     if (!a2aMessage) {
       return {
@@ -277,68 +277,6 @@ async function executeWithA2ACommunication(
 }
 
 
-/**
- * UI Control Agent専用の直接実行関数
- */
-async function executeDirectUIControl(
-  query: string, 
-  conversationHistory: Array<{role: string; content: string}>,
-  userContext: Record<string, unknown> | undefined
-): Promise<{
-  response: string;
-  data?: unknown;
-  metadata: unknown;
-}> {
-  try {
-    // Chart Control Toolを直接インポート・実行
-    const { chartControlTool } = await import('./chart-control.tool');
-    
-    const toolResult = await chartControlTool.execute({
-      context: {
-        userRequest: query,
-        conversationHistory,
-        currentState: userContext?.['currentState'] || {},
-      }
-    });
-
-    logger.info('[agentSelectionTool] Direct UI control executed', {
-      success: toolResult.success,
-      operationsCount: toolResult.operations?.length || 0,
-      queryLength: query.length,
-    });
-
-    return {
-      response: toolResult.response,
-      data: {
-        operations: toolResult.operations,
-        metadata: toolResult.metadata,
-      },
-      metadata: {
-        model: 'chart-control-tool',
-        executionTime: Date.now(),
-        toolsUsed: ['chartControlTool'],
-        fallbackType: 'direct_tool',
-        directTool: true,
-      }
-    };
-
-  } catch (error) {
-    logger.error('[agentSelectionTool] Direct UI control failed', {
-      error: String(error),
-    });
-
-    return {
-      response: 'UI操作の処理中にエラーが発生しました。しばらく時間をおいて再度お試しください。',
-      metadata: {
-        model: 'error-fallback',
-        executionTime: 0,
-        toolsUsed: [],
-        fallbackType: 'error',
-        error: String(error),
-      }
-    };
-  }
-}
 
 // UI操作の型定義
 interface UIOperation {
@@ -443,14 +381,14 @@ async function broadcastUIOperations(
     
     // デバッグ用：agentResultの全体構造をログ
     if (agentType === 'ui_control') {
-      logger.info('[Agent Selection Tool] Full agent result keys', Object.keys(agentResult || {}));
+      logger.info('[Agent Selection Tool] Full agent result keys', { keys: Object.keys(agentResult || {}) });
       
       // 最初の呼び出しのみ詳細ログ
       if (!(global as typeof globalThis & { _debuggedAgentResult?: boolean })._debuggedAgentResult) {
         (global as typeof globalThis & { _debuggedAgentResult?: boolean })._debuggedAgentResult = true;
-        logger.info('[Agent Selection Tool] Full agent result structure (first call only)', 
-          JSON.stringify(agentResult, null, 2).substring(0, 1000) + '...'
-        );
+        logger.info('[Agent Selection Tool] Full agent result structure (first call only)', {
+          result: JSON.stringify(agentResult, null, 2).substring(0, 1000) + '...'
+        });
       }
     }
     
@@ -463,7 +401,7 @@ async function broadcastUIOperations(
     
     logger.info('[Agent Selection Tool] Broadcasting UI operations', {
       agentType,
-      operationsCount: operations.length,
+      operationsCount: operations?.length || 0,
       correlationId,
       resultStructure: {
         hasOperations: !!agentResult.operations,
@@ -473,7 +411,7 @@ async function broadcastUIOperations(
         hasToolResults: fromToolResults.length > 0,
         hasStepsToolResults: fromSteps.length > 0,
       },
-      operationsSource: operations.length > 0 
+      operationsSource: (operations?.length || 0) > 0 
         ? (fromSteps.length > 0 ? 'steps->toolResults' 
           : fromToolResults.length > 0 ? 'toolResults' 
           : 'other')
@@ -481,8 +419,8 @@ async function broadcastUIOperations(
     });
 
     // 各operation のclientEventを配信
-    for (let index = 0; index < operations.length; index++) {
-      const operation = operations[index];
+    for (let index = 0; index < (operations?.length || 0); index++) {
+      const operation = operations?.[index];
       if (operation?.clientEvent) {
         const { event, data } = operation.clientEvent;
         
@@ -506,7 +444,7 @@ async function broadcastUIOperations(
           });
         } else {
           // サーバー環境ではSSE経由で配信
-          await emitUIEvent({ event, data: data || {} });
+          await emitUIEvent({ event: event as string, data: (data || {}) as Record<string, any> } as any);
           
           logger.info('[Agent Selection Tool] UI event emitted to SSE', {
             event,
@@ -519,9 +457,9 @@ async function broadcastUIOperations(
     }
 
     // 統計情報をログ
-    const dispatchedEvents = operations.filter((op: UIOperation) => op.clientEvent).length;
+    const dispatchedEvents = operations?.filter((op) => op?.clientEvent).length || 0;
     logger.info('[Agent Selection Tool] UI operations broadcast complete', {
-      totalOperations: operations.length,
+      totalOperations: operations?.length || 0,
       dispatchedEvents,
       correlationId,
     });

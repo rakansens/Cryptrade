@@ -21,7 +21,10 @@ export function calculateRSI(
 
   // Calculate price changes
   for (let i = 1; i < data.length; i++) {
-    const change = data[i].close - data[i - 1].close;
+    const current = data[i];
+    const previous = data[i - 1];
+    if (!current || !previous) continue;
+    const change = current.close - previous.close;
     gains.push(change > 0 ? change : 0);
     losses.push(change < 0 ? Math.abs(change) : 0);
   }
@@ -34,10 +37,13 @@ export function calculateRSI(
   const firstRS = avgLoss === 0 ? 100 : avgGain / avgLoss;
   const firstRSI = 100 - (100 / (1 + firstRS));
   
-  rsiData.push({
-    time: data[period].time,
-    rsi: firstRSI
-  });
+  const firstCandle = data[period];
+  if (firstCandle) {
+    rsiData.push({
+      time: firstCandle.time,
+      rsi: firstRSI
+    });
+  }
 
   // Calculate subsequent RSI values using Wilder's smoothing
   for (let i = period + 1; i < data.length; i++) {
@@ -53,10 +59,13 @@ export function calculateRSI(
     const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
     const rsi = 100 - (100 / (1 + rs));
 
-    rsiData.push({
-      time: data[i].time,
-      rsi: rsi
-    });
+    const candle = data[i];
+    if (candle) {
+      rsiData.push({
+        time: candle.time,
+        rsi: rsi
+      });
+    }
   }
 
   return rsiData;

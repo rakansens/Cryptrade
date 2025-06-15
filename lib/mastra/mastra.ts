@@ -27,7 +27,8 @@ export async function getTradingAgent() {
  * @deprecated Use runTradingAnalysis with A2A communication instead
  */
 export function getTradingAnalysisWorkflow() {
-  return mastra.getWorkflow('tradingAnalysis');
+  // @ts-ignore - getWorkflow not available in current mastra version
+  return mastra.getWorkflow?.('tradingAnalysis');
 }
 
 /**

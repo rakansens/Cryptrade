@@ -89,7 +89,6 @@ export class BinanceConnectionMigration {
    * Get performance metrics for comparison
    */
   public getPerformanceMetrics() {
-    const current = this.getConnectionManager();
     
     if (this.useNewImplementation) {
       const debugInfo = binanceConnectionManagerShim.getDebugInfo();
@@ -146,7 +145,7 @@ export function createBinanceConnectionAPI(): BinanceConnectionAPI {
   const manager = getBinanceConnection();
   
   return {
-    subscribe: manager.subscribe.bind(manager),
+    subscribe: manager.subscribe.bind(manager) as <T = unknown>(streamName: string, handler: MessageHandler<T>) => () => void,
     getConnectionStatus: manager.getConnectionStatus.bind(manager),
     disconnect: manager.disconnect.bind(manager)
   };

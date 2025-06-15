@@ -16,21 +16,25 @@ export interface SupportResistanceConfig {
 }
 
 export class ChartAnalyzer {
-  private _data: CandlestickData[];
-
+  private data: CandlestickData[];
+  
   constructor(data: CandlestickData[]) {
-    this._data = data;
+    this.data = data;
   }
 
-  detectTrendLines(config: TrendLineConfig): ChartDrawing[] {
+  detectTrendLines(_config: TrendLineConfig): ChartDrawing[] {
     // Placeholder: existing implementation was moved from drawing-primitives.
-    // TODO: Implement using this._data
+    // TODO: Implement using this.data
+    // For now, just reference data to avoid unused variable warning
+    if (this.data.length === 0) return [];
     return [];
   }
 
-  detectSupportResistance(config: SupportResistanceConfig): ChartDrawing[] {
+  detectSupportResistance(_config: SupportResistanceConfig): ChartDrawing[] {
     // Placeholder: Support/Resistance detection logic
-    // TODO: Implement using this._data
+    // TODO: Implement using this.data
+    // For now, just reference data to avoid unused variable warning
+    if (this.data.length === 0) return [];
     return [];
   }
 

@@ -7,14 +7,8 @@
 
 import type { 
   ErrorDetails, 
-  ValidationErrorDetails, 
   NetworkErrorDetails,
-  DatabaseErrorDetails,
-  AuthErrorDetails,
-  RateLimitErrorDetails,
-  ConfigurationErrorDetails,
-  ValidationFieldError,
-  ErrorCode 
+  ValidationFieldError
 } from '@/types/error.types';
 
 /**
@@ -43,7 +37,9 @@ export class AppError extends Error {
     this.name = this.constructor.name;
     this.code = code;
     this.statusCode = statusCode;
-    this.details = details;
+    if (details !== undefined) {
+      this.details = details;
+    }
     this.timestamp = new Date();
     this.isOperational = isOperational;
   }
@@ -57,9 +53,9 @@ export class AppError extends Error {
       message: this.message,
       code: this.code,
       statusCode: this.statusCode,
-      details: this.details,
       timestamp: this.timestamp,
-      stack: this.stack
+      ...(this.details !== undefined && { details: this.details }),
+      ...(this.stack !== undefined && { stack: this.stack })
     };
   }
 
@@ -101,8 +97,12 @@ export class ValidationError extends AppError {
       { field, value, ...details }
     );
     
-    this.field = field;
-    this.value = value;
+    if (field !== undefined) {
+      this.field = field;
+    }
+    if (value !== undefined) {
+      this.value = value;
+    }
   }
 
   static fromZodError(zodError: { errors: Array<{ path: string[]; message: string; code: string }> }) {
@@ -146,9 +146,15 @@ export class ApiError extends AppError {
       { endpoint, method, responseData, ...details }
     );
     
-    this.endpoint = endpoint;
-    this.method = method;
-    this.responseData = responseData;
+    if (endpoint !== undefined) {
+      this.endpoint = endpoint;
+    }
+    if (method !== undefined) {
+      this.method = method;
+    }
+    if (responseData !== undefined) {
+      this.responseData = responseData;
+    }
   }
 
   static fromResponse(
@@ -226,8 +232,12 @@ export class StreamingError extends AppError {
     );
     
     this.streamType = streamType;
-    this.streamId = streamId;
-    this.reconnectAttempt = reconnectAttempt;
+    if (streamId !== undefined) {
+      this.streamId = streamId;
+    }
+    if (reconnectAttempt !== undefined) {
+      this.reconnectAttempt = reconnectAttempt;
+    }
   }
 
   static connectionFailed(
@@ -308,8 +318,12 @@ export class NotFoundError extends AppError {
     
     super(message, 'NOT_FOUND', 404, { resource, id, ...details });
     
-    this.resource = resource;
-    this.id = id;
+    if (resource !== undefined) {
+      this.resource = resource;
+    }
+    if (id !== undefined) {
+      this.id = id;
+    }
   }
 }
 
@@ -336,7 +350,9 @@ export class RateLimitError extends AppError {
     
     this.limit = limit;
     this.windowMs = windowMs;
-    this.retryAfter = retryAfter;
+    if (retryAfter !== undefined) {
+      this.retryAfter = retryAfter;
+    }
   }
 }
 
@@ -359,7 +375,9 @@ export class ConfigurationError extends AppError {
       false // Not operational - indicates programmer error
     );
     
-    this.configKey = configKey;
+    if (configKey !== undefined) {
+      this.configKey = configKey;
+    }
   }
 }
 
@@ -427,14 +445,14 @@ export interface SerializedError {
  */
 export function serializeError(error: unknown): SerializedError {
   if (error instanceof AppError) {
-    return error.toJSON();
+    return error.toJSON() as SerializedError;
   }
   
   if (error instanceof Error) {
     return {
       name: error.name,
       message: error.message,
-      stack: error.stack
+      ...(error.stack !== undefined && { stack: error.stack }),
     };
   }
   

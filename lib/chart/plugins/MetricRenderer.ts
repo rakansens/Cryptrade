@@ -12,7 +12,7 @@ import type {
   MetricStyle 
 } from './interfaces';
 import { PluginError } from './interfaces';
-import { ValidationUtils, TimeUtils, NumberUtils } from './utils';
+import { ValidationUtils, NumberUtils } from './utils';
 import { logger } from '@/lib/utils/logger';
 
 interface MetricLineData {
@@ -255,7 +255,7 @@ export class MetricRenderer implements IMetricRendererPlugin {
     
     // 内部状態をクリア
     this.metricSeries.clear();
-    this.context = undefined;
+    delete this.context;
     
     logger.info('[MetricRenderer] Plugin disposed');
   }
@@ -268,25 +268,27 @@ export class MetricRenderer implements IMetricRendererPlugin {
     
     // extraパラメータからメトリックを取得（既存のAPIとの互換性）
     if (extra && typeof extra === 'object') {
-      if (typeof extra.target_level === 'number') {
-        metrics.target_level = extra.target_level;
+      const extraObj = extra as any;
+      if (typeof extraObj.target_level === 'number') {
+        metrics.target_level = extraObj.target_level;
       }
-      if (typeof extra.stop_loss === 'number') {
-        metrics.stop_loss = extra.stop_loss;
+      if (typeof extraObj.stop_loss === 'number') {
+        metrics.stop_loss = extraObj.stop_loss;
       }
-      if (typeof extra.breakout_level === 'number') {
-        metrics.breakout_level = extra.breakout_level;
+      if (typeof extraObj.breakout_level === 'number') {
+        metrics.breakout_level = extraObj.breakout_level;
       }
     }
     
     // データ内のメトリック情報をチェック
-    if (data.metrics) {
-      Object.assign(metrics, data.metrics);
+    const dataWithMetrics = data as any;
+    if (dataWithMetrics.metrics) {
+      Object.assign(metrics, dataWithMetrics.metrics);
     }
     
     // patterns配列内のメトリック情報をチェック
-    if (data.patterns && Array.isArray(data.patterns)) {
-      for (const pattern of data.patterns) {
+    if (dataWithMetrics.patterns && Array.isArray(dataWithMetrics.patterns)) {
+      for (const pattern of dataWithMetrics.patterns) {
         if (pattern.metrics) {
           Object.assign(metrics, pattern.metrics);
         }
@@ -296,7 +298,7 @@ export class MetricRenderer implements IMetricRendererPlugin {
     logger.debug('[MetricRenderer] Extracted metrics', {
       metrics,
       hasExtra: !!extra,
-      hasDataMetrics: !!data.metrics,
+      hasDataMetrics: !!dataWithMetrics.metrics,
     });
     
     return metrics;
@@ -458,7 +460,7 @@ export class MetricRenderer implements IMetricRendererPlugin {
         lineWidth: 2,
         lineStyle: this.context.utilities.convertLineStyle(style.lineStyle),
         priceLineVisible: false,
-        lastValueVisible: this.metricStyle.showLabels,
+        lastValueVisible: this.metricStyle.showLabels ?? true,
         crosshairMarkerVisible: false,
         title: style.title,
       });

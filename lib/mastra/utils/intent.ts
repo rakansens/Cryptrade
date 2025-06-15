@@ -70,7 +70,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   };
 }
 
-export function detectShortInput(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+export function detectShortInput(userQuery: string, _queryLower: string): IntentAnalysisResult | null {
   const shortInputExceptions = /^(hi|ok|はい|いえ|yes|no|分析|価格|値段)$/i;
   if (userQuery.trim().length <= 2 && !shortInputExceptions.test(userQuery.trim())) {
     return {
@@ -125,14 +125,18 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
   const symbolWithUIAction = extractSymbol(userQuery) && (hasUIKeyword || hasChartSwitchPattern);
 
   if (symbolWithUIAction && !queryLower.includes('価格') && !queryLower.includes('いくら')) {
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'ui_control',
       confidence: 0.95,
       reasoning: 'UIチャート操作コマンド検出',
       analysisDepth: 'basic',
-      extractedSymbol: extractSymbol(userQuery),
       requiresWorkflow: false
     };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
   return null;
 }
@@ -148,14 +152,18 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
       /btc|eth|ada|sol|usdt|price|コイン/i.test(queryLower)) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
         hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'price_inquiry',
       confidence: 0.9,
       reasoning: '価格照会キーワード検出',
       analysisDepth: 'basic',
-      extractedSymbol: extractSymbol(userQuery),
       requiresWorkflow: false
     };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
   return null;
 }
@@ -187,15 +195,19 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
       proposalType = 'pattern';
     }
 
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'proposal_request',
       confidence: 0.95,
       reasoning: '提案リクエストキーワード検出',
       analysisDepth: 'detailed',
-      extractedSymbol: extractSymbol(userQuery),
       isProposalMode: true,
       proposalType
     };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
   return null;
 }
@@ -241,15 +253,19 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
       proposalType = 'pattern';
     }
 
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'proposal_request',
       confidence: 0.95,
       reasoning: '描画コマンドを自動的に提案モードで処理',
       analysisDepth: 'detailed',
-      extractedSymbol: extractSymbol(userQuery),
       isProposalMode: true,
       proposalType
     };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
   return null;
 }
@@ -276,7 +292,7 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
   return null;
 }
 
-export function detectGreeting(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
     /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey)\.?$/i,
     /^(お疲れ様|よろしく|どうも)\.?$/i
@@ -295,7 +311,7 @@ export function detectGreeting(userQuery: string, queryLower: string): IntentAna
   return null;
 }
 
-export function detectHelpRequest(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+export function detectHelpRequest(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   if (queryLower.includes('ヘルプ') || queryLower.includes('使い方') ||
       queryLower.includes('help') || queryLower.includes('how')) {
     return {
@@ -417,7 +433,10 @@ export function extractSymbol(query: string): string | undefined {
   
   // More complex pattern matching
   const symbolMatch = query.match(/\b([A-Z]{2,5}(?:USDT?|BTC|ETH))\b/i);
-  return symbolMatch ? symbolMatch[1].toUpperCase() : undefined;
+  if (symbolMatch && symbolMatch[1]) {
+    return symbolMatch[1].toUpperCase();
+  }
+  return undefined;
 }
 
 /**

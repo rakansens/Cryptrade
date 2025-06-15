@@ -18,8 +18,12 @@ function calculateEMA(data: number[], period: number): number[] {
 
   // Calculate subsequent EMA values
   for (let i = period; i < data.length; i++) {
-    const emaValue = (data[i] - ema[ema.length - 1]) * multiplier + ema[ema.length - 1];
-    ema.push(emaValue);
+    const currentValue = data[i];
+    const lastEma = ema[ema.length - 1];
+    if (currentValue !== undefined && lastEma !== undefined) {
+      const emaValue = (currentValue - lastEma) * multiplier + lastEma;
+      ema.push(emaValue);
+    }
   }
 
   return ema;
@@ -68,12 +72,15 @@ export function calculateMACD(
     
     const dataIndex = resultStartIndex + i;
     if (dataIndex < data.length) {
-      result.push({
-        time: data[dataIndex].time,
-        macd: macdValue,
-        signal: signalValue,
-        histogram: histogram
-      });
+      const candle = data[dataIndex];
+      if (candle) {
+        result.push({
+          time: candle.time,
+          macd: macdValue,
+          signal: signalValue,
+          histogram: histogram
+        });
+      }
     }
   }
 

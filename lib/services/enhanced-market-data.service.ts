@@ -126,7 +126,7 @@ export class EnhancedMarketDataService extends BaseService {
         } else {
           logger.warn('[EnhancedMarketData] Timeframe fetch failed', {
             symbol,
-            interval: timeframeConfigs[index].interval,
+            interval: timeframeConfigs[index]?.interval || 'unknown',
             reason: result.status === 'rejected' ? result.reason : 'No data returned'
           });
         }
@@ -147,7 +147,7 @@ export class EnhancedMarketDataService extends BaseService {
       logger.info('[EnhancedMarketData] Multi-timeframe data fetched successfully', {
         symbol,
         timeframesCount: Object.keys(timeframeData).length,
-        totalDataPoints: Object.values(timeframeData).reduce((sum, tf: any) => sum + tf.data.length, 0)
+        totalDataPoints: Object.values(timeframeData).reduce((sum, tf) => sum + tf.data.length, 0)
       });
       
       return multiTimeframeData;
@@ -403,11 +403,13 @@ export class EnhancedMarketDataService extends BaseService {
     
     for (let i = lookback; i < data.length - lookback; i++) {
       const current = data[i];
+      if (!current) continue;
       
       // Check for swing high (resistance)
       let isSwingHigh = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].high >= current.high) {
+        const compareData = data[j];
+        if (j !== i && compareData && compareData.high >= current.high) {
           isSwingHigh = false;
           break;
         }
@@ -425,7 +427,8 @@ export class EnhancedMarketDataService extends BaseService {
       // Check for swing low (support)
       let isSwingLow = true;
       for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j !== i && data[j].low <= current.low) {
+        const compareData = data[j];
+        if (j !== i && compareData && compareData.low <= current.low) {
           isSwingLow = false;
           break;
         }
@@ -441,7 +444,7 @@ export class EnhancedMarketDataService extends BaseService {
       }
     }
     
-    return swingPoints;
+    return swingPoints as Array<{ price: number; time: number; type: 'support' | 'resistance'; index: number }>;
   }
   
   /**
@@ -461,6 +464,7 @@ export class EnhancedMarketDataService extends BaseService {
       if (processed.has(i)) continue;
       
       const point = swingPoints[i];
+      if (!point) continue;
       const group = [point];
       processed.add(i);
       
@@ -469,7 +473,7 @@ export class EnhancedMarketDataService extends BaseService {
         if (processed.has(j)) continue;
         
         const otherPoint = swingPoints[j];
-        if (otherPoint.type === point.type && 
+        if (otherPoint && otherPoint.type === point.type && 
             Math.abs(otherPoint.price - point.price) <= tolerance) {
           group.push(otherPoint);
           processed.add(j);
@@ -500,7 +504,7 @@ export class EnhancedMarketDataService extends BaseService {
   private calculateLevelConfidence(
     points: Array<{ price: number; time: number; type: 'support' | 'resistance'; index: number }>,
     timeframeWeight: number,
-    interval: string
+    _interval: string
   ): number {
     let confidence = 0.5; // Base confidence
     
@@ -539,6 +543,7 @@ export class EnhancedMarketDataService extends BaseService {
       if (processed.has(i)) continue;
       
       const level = levels[i];
+      if (!level) continue;
       const tolerance = level.price * (tolerancePercent / 100);
       const similarLevels = [level];
       processed.add(i);
@@ -548,7 +553,7 @@ export class EnhancedMarketDataService extends BaseService {
         if (processed.has(j)) continue;
         
         const otherLevel = levels[j];
-        if (otherLevel.type === level.type &&
+        if (otherLevel && otherLevel.type === level.type &&
             Math.abs(otherLevel.price - level.price) <= tolerance) {
           similarLevels.push(otherLevel);
           processed.add(j);
@@ -557,11 +562,11 @@ export class EnhancedMarketDataService extends BaseService {
       
       if (similarLevels.length > 1) {
         // Merge similar levels
-        const avgPrice = similarLevels.reduce((sum, l) => sum + l.price, 0) / similarLevels.length;
-        const totalStrength = similarLevels.reduce((sum, l) => sum + l.strength, 0);
-        const totalTouchCount = similarLevels.reduce((sum, l) => sum + l.touchCount, 0);
-        const allTimeframes = Array.from(new Set(similarLevels.flatMap(l => l.timeframeSupport)));
-        const avgConfidence = similarLevels.reduce((sum, l) => sum + l.confidenceScore, 0) / similarLevels.length;
+        const avgPrice = similarLevels.reduce((sum, l) => sum + (l?.price ?? 0), 0) / similarLevels.length;
+        const totalStrength = similarLevels.reduce((sum, l) => sum + (l?.strength ?? 0), 0);
+        const totalTouchCount = similarLevels.reduce((sum, l) => sum + (l?.touchCount ?? 0), 0);
+        const allTimeframes = Array.from(new Set(similarLevels.flatMap(l => l?.timeframeSupport ?? [])));
+        const avgConfidence = similarLevels.reduce((sum, l) => sum + (l?.confidenceScore ?? 0), 0) / similarLevels.length;
         
         grouped.push({
           price: avgPrice,
@@ -569,9 +574,9 @@ export class EnhancedMarketDataService extends BaseService {
           touchCount: totalTouchCount,
           timeframeSupport: allTimeframes,
           confidenceScore: avgConfidence * (allTimeframes.length / 4), // Boost for multi-timeframe support
-          firstSeen: Math.min(...similarLevels.map(l => l.firstSeen)),
-          lastSeen: Math.max(...similarLevels.map(l => l.lastSeen)),
-          type: level.type
+          firstSeen: Math.min(...similarLevels.map(l => l?.firstSeen ?? Infinity).filter(x => x !== Infinity)) || 0,
+          lastSeen: Math.max(...similarLevels.map(l => l?.lastSeen ?? -Infinity).filter(x => x !== -Infinity)) || 0,
+          type: level?.type ?? 'support'
         });
       } else {
         grouped.push(level);

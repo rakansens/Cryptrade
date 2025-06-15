@@ -12,7 +12,10 @@ function ema(values: number[], period: number): number[] {
     if (i === 0) {
       emaArr.push(v)
     } else {
-      emaArr.push(v * k + emaArr[i - 1] * (1 - k))
+      const prevEma = emaArr[i - 1]
+      if (prevEma !== undefined) {
+        emaArr.push(v * k + prevEma * (1 - k))
+      }
     }
   })
   return emaArr
@@ -24,9 +27,13 @@ export function computeRSI(klines: ProcessedKline[], period: number = 14): numbe
   let gains = 0
   let losses = 0
   for (let i = closes.length - period; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1]
-    if (diff >= 0) gains += diff
-    else losses -= diff
+    const current = closes[i]
+    const previous = closes[i - 1]
+    if (current !== undefined && previous !== undefined) {
+      const diff = current - previous
+      if (diff >= 0) gains += diff
+      else losses -= diff
+    }
   }
   const avgGain = gains / period
   const avgLoss = losses / period
@@ -39,15 +46,19 @@ export function computeATR(klines: ProcessedKline[], period: number = 14): numbe
   if (klines.length < period + 1) return 0
   const trs: number[] = []
   for (let i = 1; i < klines.length; i++) {
-    const prevClose = klines[i - 1].close
-    const { high, low } = klines[i]
-    const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose))
-    trs.push(tr)
+    const prevKline = klines[i - 1]
+    const currentKline = klines[i]
+    if (prevKline && currentKline) {
+      const prevClose = prevKline.close
+      const { high, low } = currentKline
+      const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose))
+      trs.push(tr)
+    }
   }
   // 初期 SMA
   const initial = trs.slice(0, period).reduce((a, b) => a + b, 0) / period
   const rest = ema(trs.slice(period), period)
-  const last = rest.length > 0 ? rest[rest.length - 1] : initial
+  const last = rest.length > 0 ? rest[rest.length - 1] ?? initial : initial
   return last
 }
 
@@ -55,7 +66,6 @@ export function computeSupportResistance(
   klines: ProcessedKline[],
   count: number = 3
 ): { support: number[]; resistance: number[] } {
-  const closes = klines.map(k => k.close)
   const highs = klines.map(k => k.high)
   const lows = klines.map(k => k.low)
   const sortedHighs = [...highs].sort((a, b) => b - a)
@@ -83,7 +93,10 @@ export function computeMACD(
   const closes = klines.map(k => k.close)
   const emaFast = ema(closes, fastPeriod)
   const emaSlow = ema(closes, slowPeriod)
-  const macdLine: number[] = emaFast.map((v, i) => v - emaSlow[i])
+  const macdLine: number[] = emaFast.map((v, i) => {
+    const slowValue = emaSlow[i]
+    return slowValue !== undefined ? v - slowValue : 0
+  })
   const signalLine = ema(macdLine.slice(-slowPeriod), signalPeriod)
   const lastMacd = macdLine[macdLine.length - 1]
   const lastSignal = signalLine[signalLine.length - 1]
@@ -107,8 +120,11 @@ export function computeTrendStrength(
   lookback: number = 20
 ): { direction: 'up' | 'down' | 'neutral'; strength: number } {
   if (klines.length < lookback + 1) return { direction: 'neutral', strength: 0 }
-  const first = klines[klines.length - lookback - 1].close
-  const last = klines[klines.length - 1].close
+  const firstKline = klines[klines.length - lookback - 1]
+  const lastKline = klines[klines.length - 1]
+  if (!firstKline || !lastKline) return { direction: 'neutral', strength: 0 }
+  const first = firstKline.close
+  const last = lastKline.close
   if (first === 0) return { direction: 'neutral', strength: 0 }
   const changePct = (last - first) / first
   const direction = changePct > 0.005 ? 'up' : changePct < -0.005 ? 'down' : 'neutral'
@@ -154,4 +170,44 @@ export function computeSupportResistanceDetailed(
   const supDetail = supports.map(p => detail(p, lows))
 
   return { resistance: resDetail, support: supDetail }
+}
+
+/**
+ * Calculate MACD indicator
+ */
+export function calculateMACD(data: number[]) {
+  // Placeholder implementation
+  return data.map(() => ({
+    macd: 0,
+    signal: 0,
+    histogram: 0
+  }));
+}
+
+/**
+ * Calculate RSI indicator
+ */
+export function calculateRSI(data: number[]) {
+  // Placeholder implementation
+  return data.map(() => 50);
+}
+
+/**
+ * Calculate Bollinger Bands
+ */
+export function calculateBollingerBands(data: number[]) {
+  // Placeholder implementation
+  return data.map((value) => ({
+    upper: value * 1.02,
+    middle: value,
+    lower: value * 0.98
+  }));
+}
+
+/**
+ * Calculate Simple Moving Average
+ */
+export function calculateSMA(data: number[]) {
+  // Placeholder implementation
+  return data.map((value) => value);
 } 

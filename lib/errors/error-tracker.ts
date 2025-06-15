@@ -66,7 +66,7 @@ export class ErrorTracker {
       const errorData = this.serializeError(error, context);
       
       // ログに記録
-      logger.error('Exception tracked', errorData);
+      logger.error('Exception tracked', errorData as unknown as Record<string, unknown>);
       
       // バッファーに追加
       this.errorBuffer.push(errorData);
@@ -183,12 +183,12 @@ export class ErrorTracker {
       message: error.message,
       code: 'UNKNOWN_ERROR',
       timestamp: new Date().toISOString(),
-      category: 'UNKNOWN',
-      severity: 'ERROR',
+      category: 'UNKNOWN' as const,
+      severity: 'ERROR' as const,
       retryable: false,
       stack: error.stack,
       context,
-    };
+    } as SerializedError;
   }
 
   /**
@@ -254,7 +254,7 @@ export function trackApiError(
 ): void {
   errorTracker.trackException(error, {
     endpoint,
-    statusCode,
+    ...(statusCode !== undefined && { statusCode }),
     type: 'API_ERROR',
     ...context,
   });

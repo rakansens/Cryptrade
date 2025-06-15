@@ -1,7 +1,7 @@
 // Feature extraction for ML line validation
 
-import { logger } from '@/lib/utils/logger';
-import type { LineFeatures, FEATURE_RANGES } from './line-validation-types';
+import type { LineFeatures } from './line-validation-types';
+import { FEATURE_RANGES } from './line-validation-types';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
 
@@ -17,12 +17,14 @@ export class FeatureExtractor {
   /**
    * Extract all features from a detected line
    */
-  extractFeatures(line: DetectedLine, symbol: string): LineFeatures {
+  extractFeatures(line: DetectedLine, _symbol: string): LineFeatures {
     const marketContext = this.analyzeMarketContext();
     const touchQuality = this.analyzeTouchQuality(line);
     const volumeFeatures = this.extractVolumeFeatures(line);
     const timeFeatures = this.extractTimeFeatures(line);
     const priceContext = this.analyzePriceContext(line);
+    
+    const patternType = this.getNearbyPatternType(line);
     
     return {
       // Basic features
@@ -48,7 +50,7 @@ export class FeatureExtractor {
       
       // Pattern context
       nearPattern: this.checkNearbyPatterns(line),
-      patternType: this.getNearbyPatternType(line),
+      ...(patternType !== undefined && { patternType }),
       
       // Price context
       ...priceContext
@@ -168,7 +170,15 @@ export class FeatureExtractor {
   private extractTimeFeatures(line: DetectedLine): Pick<LineFeatures, 'ageInCandles' | 'recentTouchCount' | 'timeSinceLastTouch'> {
     const firstTouch = Math.min(...line.touchPoints.map(t => t.time));
     const lastTouch = Math.max(...line.touchPoints.map(t => t.time));
-    const currentTime = this.priceData[this.priceData.length - 1].time;
+    const lastCandle = this.priceData[this.priceData.length - 1];
+    if (!lastCandle) {
+      return {
+        ageInCandles: 0,
+        recentTouchCount: 0,
+        timeSinceLastTouch: 0
+      };
+    }
+    const currentTime = lastCandle.time;
     
     // Count candles
     const firstIndex = this.priceData.findIndex(p => p.time >= firstTouch);
@@ -190,7 +200,6 @@ export class FeatureExtractor {
     // Calculate trend using SMA
     const sma20 = this.calculateSMA(20);
     const sma50 = this.calculateSMA(50);
-    const currentClose = this.priceData[this.priceData.length - 1].close;
     
     // Trend strength
     let trendStrength = 0;
@@ -213,7 +222,8 @@ export class FeatureExtractor {
     }
     
     // Time features
-    const currentDate = new Date(this.priceData[this.priceData.length - 1].time * 1000);
+    const lastCandle = this.priceData[this.priceData.length - 1];
+    const currentDate = lastCandle ? new Date(lastCandle.time * 1000) : new Date();
     
     return {
       marketCondition,
@@ -225,7 +235,8 @@ export class FeatureExtractor {
   }
 
   private analyzePriceContext(line: DetectedLine): Pick<LineFeatures, 'distanceFromPrice' | 'priceRoundness' | 'nearPsychological'> {
-    const linePrice = line.price || line.touchPoints[0].value;
+    const firstTouch = line.touchPoints[0];
+    const linePrice = line.price || firstTouch?.value || 0;
     const distance = Math.abs(this.currentPrice - linePrice) / this.currentPrice;
     
     // Check price roundness
@@ -252,19 +263,19 @@ export class FeatureExtractor {
     };
   }
 
-  private calculateTimeframeConfluence(line: DetectedLine): number {
+  private calculateTimeframeConfluence(_line: DetectedLine): number {
     // Simplified confluence calculation
     // In real implementation, would check multiple timeframes
     return Math.random() * 0.3 + 0.5; // Placeholder: 0.5-0.8
   }
 
-  private checkHigherTimeframeAlignment(line: DetectedLine): boolean {
+  private checkHigherTimeframeAlignment(_line: DetectedLine): boolean {
     // Simplified check
     // In real implementation, would check if line exists on higher timeframes
     return Math.random() > 0.5; // Placeholder
   }
 
-  private checkNearbyPatterns(line: DetectedLine): boolean {
+  private checkNearbyPatterns(_line: DetectedLine): boolean {
     // Check if any patterns are near this line
     // Placeholder implementation
     return Math.random() > 0.7;
@@ -294,7 +305,9 @@ export class FeatureExtractor {
     for (let i = 1; i < period; i++) {
       const curr = this.priceData[this.priceData.length - i];
       const prev = this.priceData[this.priceData.length - i - 1];
-      returns.push((curr.close - prev.close) / prev.close);
+      if (curr && prev && prev.close !== 0) {
+        returns.push((curr.close - prev.close) / prev.close);
+      }
     }
     
     const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;

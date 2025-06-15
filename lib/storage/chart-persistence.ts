@@ -36,7 +36,7 @@ export class ChartPersistenceManager {
    */
   static configure(config: Partial<PersistenceConfig>): void {
     this.config = { ...this.config, ...config };
-    logger.info('[ChartPersistence] Configuration updated', this.config);
+    logger.info('[ChartPersistence] Configuration updated', this.config as Record<string, unknown>);
   }
 
   /**
@@ -44,7 +44,9 @@ export class ChartPersistenceManager {
    */
   static async enableDatabase(sessionId?: string): Promise<void> {
     this.config.useDatabase = true;
-    this.config.sessionId = sessionId;
+    if (sessionId !== undefined) {
+      this.config.sessionId = sessionId;
+    }
     
     // Migrate existing localStorage data to database
     if (this.config.fallbackToLocal) {
@@ -70,7 +72,7 @@ export class ChartPersistenceManager {
    */
   static disableDatabase(): void {
     this.config.useDatabase = false;
-    this.config.sessionId = undefined;
+    delete (this.config as any).sessionId;
   }
 
   /**
@@ -249,7 +251,7 @@ export class ChartPersistenceManager {
       } else {
         localStorage.setItem(STORAGE_KEYS.TIMEFRAME_STATE, JSON.stringify(state));
       }
-      logger.info('[ChartPersistence] Timeframe state saved', state);
+      logger.info('[ChartPersistence] Timeframe state saved', { state });
     } catch (error) {
       logger.error('[ChartPersistence] Failed to save timeframe state', { error });
     }
@@ -383,7 +385,11 @@ export class ChartPersistenceManager {
    * Set session ID for database operations
    */
   static setSessionId(sessionId: string | undefined): void {
-    this.config.sessionId = sessionId;
+    if (sessionId === undefined) {
+      delete (this.config as any).sessionId;
+    } else {
+      this.config.sessionId = sessionId;
+    }
     logger.info('[ChartPersistence] Session ID updated', { sessionId });
   }
 

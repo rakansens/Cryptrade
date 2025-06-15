@@ -47,7 +47,10 @@ export async function analyzeMultipleTimeframes(
         if (isConfirmed) confirmedCount++;
       }
     } catch (error) {
-      logger.warn(`Failed to fetch ${tf} data for multi-timeframe analysis`, error);
+      logger.warn(`Failed to fetch ${tf} data for multi-timeframe analysis`, { 
+        timeframe: tf,
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   }
 
@@ -81,12 +84,12 @@ function confirmTrendOnTimeframe(
   const currentTrend = calculateTrendDirection(currentData);
   const higherTrend = calculateTrendDirection(
     higherData.map(k => ({
-      time: 'time' in k ? k.time : Math.floor(k.openTime / 1000),
-      open: parseFloat(k.open),
-      high: parseFloat(k.high),
-      low: parseFloat(k.low),
-      close: parseFloat(k.close),
-      volume: parseFloat(k.volume),
+      time: 'time' in k ? k.time : Math.floor((k.openTime ?? 0) / 1000),
+      open: parseFloat(String(k.open)),
+      high: parseFloat(String(k.high)),
+      low: parseFloat(String(k.low)),
+      close: parseFloat(String(k.close)),
+      volume: parseFloat(String(k.volume)),
     }))
   );
 
@@ -133,17 +136,21 @@ export function findVolumeWeightedPeaks(
   const avgVolume = data.reduce((sum, d) => sum + d.volume, 0) / data.length;
 
   for (let i = windowSize; i < data.length - windowSize; i++) {
-    const current = data[i][type];
+    const currentCandle = data[i];
+    if (!currentCandle) continue;
+    const current = currentCandle[type];
     let isPeak = true;
 
     // Check if it's a peak
     for (let j = i - windowSize; j <= i + windowSize; j++) {
       if (j !== i) {
-        if (type === 'high' && data[j].high >= current) {
+        const compareCandle = data[j];
+        if (!compareCandle) continue;
+        if (type === 'high' && compareCandle.high >= current) {
           isPeak = false;
           break;
         }
-        if (type === 'low' && data[j].low <= current) {
+        if (type === 'low' && compareCandle.low <= current) {
           isPeak = false;
           break;
         }
@@ -151,11 +158,11 @@ export function findVolumeWeightedPeaks(
     }
 
     if (isPeak) {
-      const volumeWeight = data[i].volume / avgVolume;
+      const volumeWeight = currentCandle.volume / avgVolume;
       peaks.push({
         index: i,
         price: current,
-        volume: data[i].volume,
+        volume: currentCandle.volume,
         volumeWeight,
       });
     }
@@ -176,7 +183,8 @@ export function detectCandlePatterns(
 
   const curr = data[index];
   const prev = data[index - 1];
-  const prev2 = index >= 2 ? data[index - 2] : null;
+  
+  if (!curr || !prev) return patterns;
 
   // Calculate body and wick sizes
   const body = Math.abs(curr.close - curr.open);
@@ -200,7 +208,8 @@ export function detectCandlePatterns(
   }
 
   // Bullish engulfing
-  if (prev.close < prev.open && // Previous is bearish
+  if (prev && curr &&
+      prev.close < prev.open && // Previous is bearish
       curr.close > curr.open && // Current is bullish
       curr.open <= prev.close && // Opens at or below previous close
       curr.close > prev.open) { // Closes above previous open
@@ -208,7 +217,8 @@ export function detectCandlePatterns(
   }
 
   // Hammer
-  if (lowerWick >= body * 2 && 
+  if (curr &&
+      lowerWick >= body * 2 && 
       upperWick < body * 0.3 &&
       curr.close > curr.open) {
     patterns.push('hammer');
@@ -275,7 +285,6 @@ export function calculateLinearRegression(
   const sumY = points.reduce((sum, p) => sum + p.y, 0);
   const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0);
   const sumX2 = points.reduce((sum, p) => sum + p.x * p.x, 0);
-  const sumY2 = points.reduce((sum, p) => sum + p.y * p.y, 0);
 
   // Calculate slope and intercept
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
@@ -337,9 +346,13 @@ export function calculateATR(data: CandlestickData[], period: number = 14): numb
   const trueRanges: number[] = [];
 
   for (let i = 1; i < data.length; i++) {
-    const high = data[i].high;
-    const low = data[i].low;
-    const prevClose = data[i - 1].close;
+    const current = data[i];
+    const previous = data[i - 1];
+    if (!current || !previous) continue;
+    
+    const high = current.high;
+    const low = current.low;
+    const prevClose = previous.close;
 
     const tr = Math.max(
       high - low,
@@ -362,7 +375,10 @@ export function detectMarketCondition(
 
   // Calculate ADX or use simple trend strength
   const prices = data.map(d => d.close);
-  const priceChanges = prices.slice(1).map((p, i) => p - prices[i]);
+  const priceChanges = prices.slice(1).map((p, i) => {
+    const prevPrice = prices[i];
+    return prevPrice !== undefined ? p - prevPrice : 0;
+  });
   
   // Calculate directional movement
   let positiveMoves = 0;

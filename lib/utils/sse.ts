@@ -94,13 +94,13 @@ function broadcastEvent(event: SSEEvent) {
       id: event.id || `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     };
 
-    for (const pushEvent of globalThis.__clientStreams as Set<(event: SSEEvent) => void>) {
+    for (const pushEvent of globalThis.__clientStreams) {
       try {
         pushEvent(eventData);
       } catch (error) {
         console.error('[SSE] Failed to broadcast to client:', error);
         // エラーのあるクライアントを削除
-        (globalThis.__clientStreams as Set<(event: SSEEvent) => void>).delete(pushEvent);
+        globalThis.__clientStreams.delete(pushEvent);
       }
     }
   }

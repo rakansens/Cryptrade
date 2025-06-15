@@ -15,12 +15,7 @@ import type { PriceData as CandlestickData } from '@/types/market';
 import type { 
   EntryProposal, 
   EntryProposalGroup,
-  MarketContext,
-  RiskParameters,
-  EntryConditions,
-  EntryReasoning,
-  calculatePositionSize,
-  calculateRiskReward
+  MarketContext
 } from '@/types/trading';
 
 // Import calculators
@@ -57,7 +52,6 @@ export type EntryProposalGenerationOutput = z.infer<typeof EntryProposalGenerati
 
 export const EntryProposalGenerationTool = createTool({
   id: 'entry-proposal-generation',
-  name: 'Entry Proposal Generation',
   description: 'Generates specific trade entry proposals with entry points, stop loss, and take profit levels',
   inputSchema: EntryProposalGenerationInputSchema,
   outputSchema: EntryProposalGenerationOutputSchema,
@@ -103,7 +97,7 @@ export const EntryProposalGenerationTool = createTool({
       // 3. エントリーポイントの計算
       const entryPoints = await calculateEntryPoints({
         marketData,
-        analysisResults: input.analysisResults,
+        analysisResults: input.analysisResults as any,
         marketContext,
         strategyPreference: input.strategyPreference,
       });
@@ -130,10 +124,13 @@ export const EntryProposalGenerationTool = createTool({
         });
 
         // エントリー条件の評価
+        const lastCandle = marketData[marketData.length - 1];
+        if (!lastCandle) continue;
+        
         const conditions = await evaluateEntryConditions({
           entryPoint,
           marketContext,
-          currentPrice: marketData[marketData.length - 1].close,
+          currentPrice: lastCandle.close,
         });
 
         // 提案の作成

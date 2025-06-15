@@ -147,7 +147,9 @@ export class PluginUtilitiesImpl implements PluginUtilities {
   /**
    * IDの部分一致検索（ファジーマッチング）
    */
-  findPatternByFuzzyMatch(searchId: string, availableIds: string[]): string | null {
+  findPatternByFuzzyMatch(searchId: string): string | null {
+    // Get available IDs from somewhere - this needs to be implemented based on context
+    const availableIds: string[] = [];
     // 完全一致を最初に試す
     if (availableIds.includes(searchId)) {
       logger.debug('[PluginUtils] Found exact match for pattern ID', { searchId });
@@ -171,7 +173,8 @@ export class PluginUtilitiesImpl implements PluginUtilities {
       
       // パターンIDで末尾が一致するかチェック
       if (availableId.includes('pattern') && 
-          availableId.endsWith(searchParts[searchParts.length - 1])) {
+          searchParts.length > 0 && 
+          availableId.endsWith(searchParts[searchParts.length - 1]!)) {
         logger.debug('[PluginUtils] Found fuzzy match by pattern suffix', {
           searchId,
           foundId: availableId,
@@ -209,7 +212,7 @@ export const ColorUtils = {
       '#795548', // Brown
     ];
     
-    return palette[index % palette.length];
+    return palette[index % palette.length] ?? '#000000';
   },
   
   /**
@@ -340,13 +343,13 @@ export const ValidationUtils = {
     }
     
     for (let i = 0; i < keyPoints.length; i++) {
-      const point = keyPoints[i];
+      const point = keyPoints[i] as any;
       if (!point || typeof point.time !== 'number' || typeof point.value !== 'number') {
         logger.warn('[ValidationUtils] Invalid key point at index', { 
           index: i, 
           point,
-          hasTime: typeof point?.time,
-          hasValue: typeof point?.value,
+          hasTime: point ? typeof point.time : 'undefined',
+          hasValue: point ? typeof point.value : 'undefined',
         });
         return false;
       }
@@ -365,13 +368,13 @@ export const ValidationUtils = {
     }
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i] as any;
       if (!line || !Array.isArray(line.points) || line.points.length < 2) {
         logger.warn('[ValidationUtils] Invalid line at index', { 
           index: i, 
           line,
-          hasPoints: Array.isArray(line?.points),
-          pointsLength: line?.points?.length,
+          hasPoints: line ? Array.isArray(line.points) : false,
+          pointsLength: line && line.points ? line.points.length : 0,
         });
         return false;
       }

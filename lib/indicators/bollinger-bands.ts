@@ -1,5 +1,5 @@
 import type { UTCTimestamp } from 'lightweight-charts';
-import type { BollingerBandsData, BollingerBandsConfig } from '@/types/market';
+import type { BollingerBandsConfig } from '@/types/market';
 
 // Lightweight Charts compatibility types
 interface PriceDataLightweight {
@@ -39,8 +39,10 @@ export function calculateBollingerBands(
   let sumSquares = 0;
   
   for (let i = 0; i < period; i++) {
-    sum += data[i].close;
-    sumSquares += data[i].close * data[i].close;
+    const candle = data[i];
+    if (!candle) continue;
+    sum += candle.close;
+    sumSquares += candle.close * candle.close;
   }
 
   // Calculate first point
@@ -48,18 +50,25 @@ export function calculateBollingerBands(
   const firstVariance = (sumSquares / period) - (firstSma * firstSma);
   const firstStdDev = Math.sqrt(firstVariance);
   
-  result.push({
-    time: data[period - 1].time,
-    upper: firstSma + (firstStdDev * stdDev),
-    middle: firstSma,
-    lower: firstSma - (firstStdDev * stdDev),
-  });
+  const firstCandle = data[period - 1];
+  if (firstCandle) {
+    result.push({
+      time: firstCandle.time,
+      upper: firstSma + (firstStdDev * stdDev),
+      middle: firstSma,
+      lower: firstSma - (firstStdDev * stdDev),
+    });
+  }
 
   // Use sliding window for remaining values (O(N) complexity)
   for (let i = period; i < data.length; i++) {
     // Update sliding window sums
-    const oldValue = data[i - period].close;
-    const newValue = data[i].close;
+    const oldCandle = data[i - period];
+    const newCandle = data[i];
+    if (!oldCandle || !newCandle) continue;
+    
+    const oldValue = oldCandle.close;
+    const newValue = newCandle.close;
     
     sum = sum - oldValue + newValue;
     sumSquares = sumSquares - (oldValue * oldValue) + (newValue * newValue);
@@ -70,7 +79,7 @@ export function calculateBollingerBands(
     const standardDeviation = Math.sqrt(variance);
 
     result.push({
-      time: data[i].time,
+      time: newCandle.time,
       upper: sma + (standardDeviation * stdDev),
       middle: sma,
       lower: sma - (standardDeviation * stdDev),
@@ -119,7 +128,7 @@ export function getBollingerSignal(
   signal: 'buy' | 'sell' | 'neutral';
   strength: number; // 0-1, proximity to bands
 } {
-  const { upper, middle, lower } = bollingerData;
+  const { upper, lower } = bollingerData;
   const bandWidth = upper - lower;
   const pricePosition = (currentPrice - lower) / bandWidth;
 
@@ -178,12 +187,24 @@ export function detectBollingerSqueeze(
   }
 
   const recent = bollingerData.slice(-lookbackPeriod - 1);
-  const currentWidth = recent[recent.length - 1].upper - recent[recent.length - 1].lower;
+  const lastData = recent[recent.length - 1];
+  if (!lastData) {
+    return {
+      isSqueeze: false,
+      currentWidth: 0,
+      averageWidth: 0,
+      ratio: 0,
+    };
+  }
+  const currentWidth = lastData.upper - lastData.lower;
   
   // Calculate average width over lookback period
   let totalWidth = 0;
   for (let i = 0; i < lookbackPeriod; i++) {
-    totalWidth += recent[i].upper - recent[i].lower;
+    const bbData = recent[i];
+    if (bbData) {
+      totalWidth += bbData.upper - bbData.lower;
+    }
   }
   const averageWidth = totalWidth / lookbackPeriod;
   

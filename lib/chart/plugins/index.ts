@@ -5,7 +5,10 @@
  */
 
 // Core classes
-export { PatternRendererCore } from '../PatternRendererCore';
+import { PatternRendererCore } from '../PatternRendererCore';
+import { PatternRenderer } from '../pattern-renderer';
+import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
+export { PatternRendererCore };
 export { SeriesRegistry, GlobalStateManager } from '../SeriesRegistry';
 
 // Plugin interfaces
@@ -47,19 +50,19 @@ export {
 } from './utils';
 
 // Backward compatibility - 既存のコードとの互換性のため
-export { PatternRenderer } from '../pattern-renderer';
+export { PatternRenderer };
 
 /**
  * Factory function for creating PatternRendererCore
  */
-export function createPatternRenderer(chart: unknown, mainSeries: unknown) {
+export function createPatternRenderer(chart: IChartApi, mainSeries: ISeriesApi<SeriesType>) {
   return new PatternRendererCore(chart, mainSeries);
 }
 
 /**
  * Factory function for backward compatibility
  */
-export function createLegacyPatternRenderer(chart: unknown, mainSeries: unknown) {
+export function createLegacyPatternRenderer(chart: IChartApi, mainSeries: ISeriesApi<SeriesType>) {
   return new PatternRenderer(chart, mainSeries);
 }
 
@@ -67,8 +70,8 @@ export function createLegacyPatternRenderer(chart: unknown, mainSeries: unknown)
  * Migration helper - gradually replace old with new
  */
 export function createPatternRendererWithMigration(
-  chart: unknown, 
-  mainSeries: unknown, 
+  chart: IChartApi, 
+  mainSeries: ISeriesApi<SeriesType>, 
   useNewCore: boolean = false
 ) {
   if (useNewCore) {

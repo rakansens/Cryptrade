@@ -80,7 +80,12 @@ export async function calculateEntryPoints(
   input: CalculateEntryPointsInput
 ): Promise<EntryPoint[]> {
   const { marketData, analysisResults, marketContext, strategyPreference } = input;
-  const currentPrice = marketData[marketData.length - 1].close;
+  const lastCandle = marketData[marketData.length - 1];
+  if (!lastCandle) {
+    logger.warn('[EntryCalculator] No market data available');
+    return [];
+  }
+  const currentPrice = lastCandle.close;
   const entryPoints: EntryPoint[] = [];
 
   logger.debug('[EntryCalculator] Starting calculation', {
@@ -183,7 +188,7 @@ function calculateSRBasedEntries(
   level: SupportResistanceLevel,
   currentPrice: number,
   marketContext: MarketContext,
-  marketData: PriceData[]
+  _marketData: PriceData[]
 ): EntryPoint[] {
   const entries: EntryPoint[] = [];
   const levelPrice = level.price || level.value;
@@ -267,13 +272,16 @@ function calculateSRBasedEntries(
 function calculateTrendlineBasedEntries(
   trendline: Trendline,
   currentPrice: number,
-  marketContext: MarketContext,
+  _marketContext: MarketContext,
   marketData: PriceData[]
 ): EntryPoint[] {
   const entries: EntryPoint[] = [];
   
   // トレンドラインの現在価格を計算
-  const currentTime = marketData[marketData.length - 1].time;
+  const lastCandle = marketData[marketData.length - 1];
+  if (!lastCandle) return entries;
+  
+  const currentTime = lastCandle.time;
   const trendlinePrice = calculateTrendlinePrice(trendline, currentTime);
   
   if (!trendlinePrice) return entries;
@@ -282,7 +290,7 @@ function calculateTrendlineBasedEntries(
 
   // トレンドラインに近い場合（2%以内）
   if (priceDistance < 0.02) {
-    const isUptrend = trendline.direction === '上昇' || trendline.slope > 0;
+    const isUptrend = trendline.direction === '上昇' || (trendline.slope ?? 0) > 0;
     
     if (isUptrend && currentPrice > trendlinePrice) {
       entries.push({
@@ -360,6 +368,10 @@ function calculateTrendlinePrice(trendline: Trendline, currentTime: number): num
 
   const point1 = trendline.points[0];
   const point2 = trendline.points[1];
+  
+  if (!point1 || !point2) {
+    return 0;
+  }
   
   // 線形補間で現在時刻の価格を計算
   const slope = (point2.value - point1.value) / (point2.time - point1.time);

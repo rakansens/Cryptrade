@@ -15,12 +15,10 @@ import type {
 } from '../unified-logger';
 
 export class UnifiedMemoryStorage implements IUnifiedStorage {
-  private config: UnifiedLoggerConfig;
   private entries: UnifiedLogEntry[] = [];
   private initialized = false;
 
-  constructor(config: UnifiedLoggerConfig) {
-    this.config = config;
+  constructor(_config: UnifiedLoggerConfig) {
   }
 
   async init(): Promise<void> {
@@ -56,9 +54,9 @@ export class UnifiedMemoryStorage implements IUnifiedStorage {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
       
-      if (aVal === undefined && bVal === undefined) return 0;
-      if (aVal === undefined) return order === 'asc' ? -1 : 1;
-      if (bVal === undefined) return order === 'asc' ? 1 : -1;
+      if ((aVal === undefined || aVal === null) && (bVal === undefined || bVal === null)) return 0;
+      if (aVal === undefined || aVal === null) return order === 'asc' ? -1 : 1;
+      if (bVal === undefined || bVal === null) return order === 'asc' ? 1 : -1;
       
       if (aVal < bVal) return order === 'asc' ? -1 : 1;
       if (aVal > bVal) return order === 'asc' ? 1 : -1;
@@ -139,9 +137,9 @@ export class UnifiedMemoryStorage implements IUnifiedStorage {
       const durations = perfEntries.map(e => e.duration!).sort((a, b) => a - b);
       stats.performance = {
         avgDuration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
-        p50Duration: durations[Math.floor(durations.length * 0.5)],
-        p95Duration: durations[Math.floor(durations.length * 0.95)],
-        p99Duration: durations[Math.floor(durations.length * 0.99)],
+        p50Duration: durations[Math.min(Math.floor(durations.length * 0.5), durations.length - 1)] ?? 0,
+        p95Duration: durations[Math.min(Math.floor(durations.length * 0.95), durations.length - 1)] ?? 0,
+        p99Duration: durations[Math.min(Math.floor(durations.length * 0.99), durations.length - 1)] ?? 0,
       };
     }
     

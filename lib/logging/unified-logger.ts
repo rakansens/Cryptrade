@@ -52,6 +52,7 @@ export interface UnifiedLoggerConfig {
   storage: 'memory' | 'sqlite' | 'postgres';
   bufferSize: number;
   flushInterval: number;
+  connectionString?: string; // Database connection string for sqlite/postgres
   
   // Retention policy
   retention?: {
@@ -511,17 +512,20 @@ export class UnifiedLogger {
 
     // Add context information
     const context = this.getCurrentContext();
-    entry.correlationId = context['correlationId'];
-    entry.userId = context['userId'];
-    entry.sessionId = context['sessionId'];
-    entry.agentName = meta?.['agentName'] || context['agentName'];
-    entry.toolName = meta?.['toolName'] || context['toolName'];
-    entry.duration = meta?.['duration'];
-    entry.tags = meta?.['tags'];
+    entry.correlationId = context['correlationId'] as string;
+    entry.userId = context['userId'] as string;
+    entry.sessionId = context['sessionId'] as string;
+    entry.agentName = (meta?.['agentName'] || context['agentName']) as string;
+    entry.toolName = (meta?.['toolName'] || context['toolName']) as string;
+    entry.duration = meta?.['duration'] as number;
+    entry.tags = meta?.['tags'] as string[];
 
     // Add stack trace for errors
     if (this.config.enableStackTrace && (level === 'error' || level === 'critical')) {
-      entry.stack = new Error().stack;
+      const stack = new Error().stack;
+      if (stack) {
+        entry.stack = stack;
+      }
     }
 
     return entry;

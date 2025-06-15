@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
-import { tradingAgent } from '../agents/trading.agent';
 import { agentNetwork } from '../network/agent-network';
 
 /**
@@ -17,6 +16,25 @@ export const TradingAnalysisInput = z.object({
   sessionId: z.string().optional(),
   userIntent: z.string().optional(),
 });
+
+// Type definitions
+type MarketData = {
+  symbol: string;
+  currentPrice: number;
+  priceChangePercent24h: number;
+  trend: 'bullish' | 'bearish' | 'neutral';
+  volatility: 'low' | 'medium' | 'high';
+};
+
+type TechnicalAnalysis = {
+  response?: string;
+  analysis?: string;
+  recommendations?: string[];
+  riskAssessment?: {
+    level: 'low' | 'medium' | 'high';
+    factors: string[];
+  };
+};
 
 export const TradingAnalysisOutput = z.object({
   analysis: z.string(),
@@ -79,7 +97,7 @@ export async function executeTradingAnalysisA2A(
       correlationId,
     });
 
-    let marketData = null;
+    let marketData: MarketData | null = null;
     try {
       // A2A通信でマーケットデータエージェントを呼び出し
       const marketResponse = await agentNetwork.sendMessage(
@@ -91,7 +109,7 @@ export async function executeTradingAnalysisA2A(
       );
 
       if (marketResponse && marketResponse.type !== 'error') {
-        marketData = marketResponse.result;
+        marketData = marketResponse.result as MarketData;
         runtimeContext.set('marketData', marketData);
       }
     } catch (error) {
@@ -109,7 +127,7 @@ export async function executeTradingAnalysisA2A(
       hasMarketData: !!marketData,
     });
 
-    let technicalAnalysis = null;
+    let technicalAnalysis: TechnicalAnalysis | null = null;
     try {
       // Trading Agentを直接呼び出し（動的コンテキスト付き）
       const analysisResponse = await agentNetwork.sendMessage(
@@ -130,7 +148,7 @@ export async function executeTradingAnalysisA2A(
       );
 
       if (analysisResponse && analysisResponse.type !== 'error') {
-        technicalAnalysis = analysisResponse.result;
+        technicalAnalysis = analysisResponse.result as TechnicalAnalysis;
         runtimeContext.set('technicalAnalysis', technicalAnalysis);
       }
     } catch (error) {
@@ -147,14 +165,18 @@ export async function executeTradingAnalysisA2A(
     });
 
     // 最終的な分析結果を生成
-    const analysisResult = technicalAnalysis || marketData || {};
+    const analysisResult = technicalAnalysis || {};
     
     // デフォルト値を準備
+    const analysisText = 
+      (technicalAnalysis && (technicalAnalysis.response || technicalAnalysis.analysis)) || 
+      `Trading analysis for ${input.symbol} completed.`;
+    
     const defaultOutput: z.infer<typeof TradingAnalysisOutput> = {
-      analysis: analysisResult.response || analysisResult.analysis || `Trading analysis for ${input.symbol} completed.`,
+      analysis: analysisText,
       marketData: marketData,
-      recommendations: extractRecommendations(analysisResult),
-      riskAssessment: assessRisk(marketData, analysisResult),
+      recommendations: extractRecommendations(analysisResult as AnalysisResult),
+      riskAssessment: assessRisk(marketData, analysisResult as AnalysisResultWithRisk),
       executionTime: Date.now() - startTime,
       stepsCompleted: ['market_data', 'technical_analysis', 'recommendations'],
     };
@@ -224,7 +246,7 @@ function extractRecommendations(analysisResult: AnalysisResult): string[] {
   return recommendations.slice(0, 5);
 }
 
-interface MarketData {
+interface MarketDataRisk {
   volatility?: 'low' | 'medium' | 'high';
   priceChangePercent24h?: number;
 }
@@ -237,7 +259,7 @@ interface AnalysisResultWithRisk {
 }
 
 function assessRisk(
-  marketData: MarketData | null,
+  marketData: MarketDataRisk | null,
   analysisResult: AnalysisResultWithRisk
 ): { level: 'low' | 'medium' | 'high'; factors: string[] } {
   const factors: string[] = [];

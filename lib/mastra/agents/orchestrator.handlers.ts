@@ -8,8 +8,9 @@ import { Agent } from '@mastra/core';
 import { openai } from '@ai-sdk/openai';
 import { logger } from '@/lib/utils/logger';
 import { agentNetwork } from '../network/agent-network';
-import { IntentType, AgentResponse, OrchestratorContext } from './orchestrator.types';
-import { OrchestratorError } from '@/types/orchestrator.types';
+// import { IntentType, AgentResponse, OrchestratorContext } from './orchestrator.types';
+// import { OrchestratorError } from '@/types/orchestrator.types';
+import type { OrchestratorContext } from './orchestrator.types';
 import { formatAgentResponse, createErrorResponse } from './orchestrator.utils';
 
 /**
@@ -18,7 +19,7 @@ import { formatAgentResponse, createErrorResponse } from './orchestrator.utils';
 export async function handlePriceInquiry(
   query: string,
   context: OrchestratorContext
-): Promise<AgentResponse> {
+): Promise<any> {
   try {
     const a2aResponse = await agentNetwork.sendMessage(
       'orchestratorAgent',
@@ -33,7 +34,7 @@ export async function handlePriceInquiry(
 
     return formatAgentResponse(
       'price_inquiry',
-      a2aResponse?.result || '価格情報を取得できませんでした。',
+      String(a2aResponse?.result || '価格情報を取得できませんでした。'),
       a2aResponse?.toolResults,
       { processedBy: 'priceInquiryAgent' }
     );
@@ -50,7 +51,7 @@ export async function handlePriceInquiry(
 export async function handleTradingAnalysis(
   query: string,
   context: OrchestratorContext
-): Promise<AgentResponse> {
+): Promise<any> {
   try {
     const a2aResponse = await agentNetwork.sendMessage(
       'orchestratorAgent',
@@ -65,7 +66,7 @@ export async function handleTradingAnalysis(
 
     return formatAgentResponse(
       'trading_analysis',
-      a2aResponse?.result || '分析を完了できませんでした。',
+      String(a2aResponse?.result || '分析を完了できませんでした。'),
       a2aResponse?.proposalGroup || a2aResponse?.toolResults,
       { processedBy: 'tradingAnalysisAgent' }
     );
@@ -82,7 +83,7 @@ export async function handleTradingAnalysis(
 export async function handleUIControl(
   query: string,
   context: OrchestratorContext
-): Promise<AgentResponse> {
+): Promise<any> {
   try {
     const a2aResponse = await agentNetwork.sendMessage(
       'orchestratorAgent',
@@ -97,7 +98,7 @@ export async function handleUIControl(
 
     return formatAgentResponse(
       'ui_control',
-      a2aResponse?.result || 'UI操作を実行できませんでした。',
+      String(a2aResponse?.result || 'UI操作を実行できませんでした。'),
       a2aResponse?.toolResults,
       { processedBy: 'uiControlAgent' }
     );
@@ -113,8 +114,8 @@ export async function handleUIControl(
  */
 export async function handleGeneralConversation(
   query: string,
-  context: OrchestratorContext
-): Promise<AgentResponse> {
+  _context: OrchestratorContext
+): Promise<any> {
   try {
     // シンプルな会話エージェントを作成
     const conversationAgent = new Agent({
@@ -162,7 +163,7 @@ export async function handleGeneralConversation(
 export async function handlePatternDetection(
   query: string,
   context: OrchestratorContext
-): Promise<AgentResponse> {
+): Promise<any> {
   try {
     // パターン検出は取引分析エージェントに委譲
     const enhancedContext = {
@@ -184,7 +185,7 @@ export async function handlePatternDetection(
 
     return formatAgentResponse(
       'pattern_detection',
-      a2aResponse?.result || 'パターン検出を完了できませんでした。',
+      String(a2aResponse?.result || 'パターン検出を完了できませんでした。'),
       a2aResponse?.proposalGroup || a2aResponse?.toolResults,
       { processedBy: 'tradingAnalysisAgent' }
     );
@@ -201,7 +202,7 @@ export async function handlePatternDetection(
 export async function handleEntryProposal(
   query: string,
   context: OrchestratorContext
-): Promise<AgentResponse> {
+): Promise<any> {
   try {
     // エントリー提案は取引分析エージェントに委譲
     const enhancedContext = {
@@ -224,7 +225,7 @@ export async function handleEntryProposal(
 
     return formatAgentResponse(
       'entry_proposal',
-      a2aResponse?.result || 'エントリー提案を生成できませんでした。',
+      String(a2aResponse?.result || 'エントリー提案を生成できませんでした。'),
       a2aResponse?.proposalGroup || a2aResponse?.toolResults,
       { processedBy: 'tradingAnalysisAgent' }
     );

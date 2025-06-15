@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { applyCorsHeaders, applySecurityHeaders } from '@/lib/api/middleware';
-import { UnifiedProposal, toUnifiedProposal, extractUnifiedProposals } from '@/types/proposals';
+import { UnifiedProposal, toUnifiedProposal, ProposalType } from '@/types/proposals';
 import type { OrchestratorResult, ProposalGroup, ToolResult } from '@/lib/api/types';
 
 /**
@@ -55,10 +55,10 @@ export function buildChatResponse(params: ChatResponseParams): ChatResponse {
   const unifiedProposals: UnifiedProposal[] = [];
   
   if (proposalGroup) {
-    unifiedProposals.push(toUnifiedProposal(proposalGroup, 'trendline'));
+    unifiedProposals.push(toUnifiedProposal(proposalGroup as any, ProposalType.TRENDLINE));
   }
   if (processedResult.entryProposalGroup) {
-    unifiedProposals.push(toUnifiedProposal(processedResult.entryProposalGroup, 'entry'));
+    unifiedProposals.push(toUnifiedProposal(processedResult.entryProposalGroup as any, ProposalType.ENTRY));
   }
   
   // Legacy support: Include old format for backward compatibility
@@ -76,7 +76,7 @@ export function buildChatResponse(params: ChatResponseParams): ChatResponse {
       reasoning: orchestratorResult.analysis.reasoning,
       analysisDepth: orchestratorResult.analysis.analysisDepth,
       isProposalMode: orchestratorResult.analysis.isProposalMode,
-      proposalType: orchestratorResult.analysis.proposalType,
+      ...(orchestratorResult.analysis.proposalType !== undefined && { proposalType: orchestratorResult.analysis.proposalType }),
     },
     execution: {
       success: orchestratorResult.success,
@@ -121,10 +121,10 @@ export function processOrchestratorResult(orchestratorResult: OrchestratorResult
   
   // executionResultがオブジェクトの場合、responseフィールドを探す
   if (orchestratorResult.executionResult && typeof orchestratorResult.executionResult === 'object') {
-    const execResult = orchestratorResult.executionResult as Record<string, unknown>;
-    responseMessage = execResult['response'] || 
-                     execResult['executionResult']?.['response'] || 
-                     execResult['message'];
+    const execResult = orchestratorResult.executionResult as any;
+    responseMessage = execResult.response || 
+                     execResult.executionResult?.response || 
+                     execResult.message;
   }
   
   // 提案モードで応答がない場合の処理

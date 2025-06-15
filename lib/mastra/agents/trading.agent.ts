@@ -6,6 +6,18 @@ import { enhancedLineAnalysisTool } from '../tools/enhanced-line-analysis.tool';
 import { proposalGenerationTool } from '../tools/proposal-generation.tool';
 import { entryProposalGenerationTool } from '../tools/entry-proposal-generation';
 
+// Context type for trading agent
+interface TradingAgentContext {
+  marketVolatility?: string;
+  userLevel?: string;
+  analysisType?: string;
+  isProposalMode?: boolean;
+  tradingStyle?: string;
+  language?: string;
+  proposalType?: string;
+  runtimeContext?: any;
+}
+
 /**
  * Cryptrade Trading Agent - Professional Cryptocurrency Analysis Assistant
  * 
@@ -21,10 +33,11 @@ export const tradingAgent = new Agent({
   name: 'cryptrade-trading-assistant',
   // 動的モデル選択: 市場状況とユーザーレベルに応じて最適化
   model: (context) => {
-    const marketVolatility = context?.marketVolatility || 'normal';
-    const userLevel = context?.userLevel || 'intermediate';
-    const analysisType = context?.analysisType || 'basic';
-    const isProposalMode = context?.isProposalMode || false;
+    const ctx = context as TradingAgentContext;
+    const marketVolatility = ctx?.marketVolatility || 'normal';
+    const userLevel = ctx?.userLevel || 'intermediate';
+    const analysisType = ctx?.analysisType || 'basic';
+    const isProposalMode = ctx?.isProposalMode || false;
     
     // 提案モードや詳細分析の場合は高性能モデル
     if (isProposalMode || analysisType === 'comprehensive') {
@@ -46,11 +59,12 @@ export const tradingAgent = new Agent({
   },
   // 動的インストラクション: 市場状況とユーザーレベルに応じて調整
   instructions: (context) => {
-    const userLevel = context?.userLevel || 'intermediate';
-    const marketVolatility = context?.marketVolatility || 'normal';
-    const tradingStyle = context?.tradingStyle || 'balanced';
-    const language = context?.language || 'ja';
-    const isProposalMode = context?.isProposalMode || false;
+    const ctx = context as TradingAgentContext;
+    const userLevel = ctx?.userLevel || 'intermediate';
+    const marketVolatility = ctx?.marketVolatility || 'normal';
+    const tradingStyle = ctx?.tradingStyle || 'balanced';
+    const language = ctx?.language || 'ja';
+    const isProposalMode = ctx?.isProposalMode || false;
     
     // 基本的な指示
     const baseInstructions = `
@@ -181,7 +195,7 @@ You are a professional cryptocurrency trading analysis assistant for the Cryptra
 - Return the proposalGroup data directly
 - Keywords: エントリー提案, エントリーポイント, entry proposal, entry point, trade setup
 
-${isProposalMode ? context?.proposalType === 'entry' ? '⚠️ ENTRY PROPOSAL MODE ACTIVE: Use entryProposalGeneration tool immediately!' : '⚠️ PROPOSAL MODE ACTIVE: Use proposalGeneration tool immediately!' : ''}
+${isProposalMode ? ctx?.proposalType === 'entry' ? '⚠️ ENTRY PROPOSAL MODE ACTIVE: Use entryProposalGeneration tool immediately!' : '⚠️ PROPOSAL MODE ACTIVE: Use proposalGeneration tool immediately!' : ''}
 
 ## Core Expertise:
 - Real-time market data analysis and interpretation
@@ -207,67 +221,11 @@ Remember: You are providing educational analysis, not financial advice.
            standardGuidelines;
   },
   // 動的ツール選択: ユーザーレベルと分析タイプに応じて最適化
-  tools: (context) => {
-    const userLevel = context?.userLevel || 'intermediate';
-    const analysisType = context?.analysisType || 'basic';
-    const isProposalMode = context?.isProposalMode || false;
-    const proposalType = context?.proposalType || 'all';
-    const isEntryProposal = context?.isEntryProposal || false;
-    
-    // デバッグログ: ツール選択のコンテキスト
-    console.log('[TradingAgent] Tool selection context:', {
-      isProposalMode,
-      proposalType,
-      isEntryProposal,
-      userLevel,
-      analysisType,
-      contextKeys: Object.keys(context || {}),
-    });
-    
-    // 基本ツールセット
-    const baseTools = {
-      marketData: marketDataResilientTool,
-      proposalGeneration: proposalGenerationTool,
-      entryProposalGeneration: entryProposalGenerationTool,
-    };
-    
-    // 提案モードでは提案ツールのみ
-    if (isProposalMode) {
-      // エントリー提案の場合は専用ツールのみ提供
-      if (proposalType === 'entry' || isEntryProposal) {
-        console.log('[TradingAgent] Providing ONLY entryProposalGeneration tool');
-        return {
-          entryProposalGeneration: entryProposalGenerationTool,
-        };
-      }
-      // 通常の提案の場合
-      console.log('[TradingAgent] Providing ONLY proposalGeneration tool');
-      return {
-        proposalGeneration: proposalGenerationTool,
-      };
-    }
-    
-    // 初心者には基本的なツールのみ
-    if (userLevel === 'beginner') {
-      return {
-        ...baseTools,
-        chartAnalysis: chartDataAnalysisTool,
-      };
-    }
-    
-    // エキスパートや詳細分析には全ツール
-    if (userLevel === 'expert' || analysisType === 'comprehensive') {
-      return {
-        ...baseTools,
-        chartAnalysis: chartDataAnalysisTool,
-        enhancedLineAnalysis: enhancedLineAnalysisTool,
-      };
-    }
-    
-    // 中級者には標準ツールセット
-    return {
-      ...baseTools,
-      chartAnalysis: chartDataAnalysisTool,
-    };
+  tools: {
+    marketData: marketDataResilientTool as any,
+    proposalGeneration: proposalGenerationTool as any,
+    entryProposalGeneration: entryProposalGenerationTool as any,
+    chartAnalysis: chartDataAnalysisTool as any,
+    enhancedLineAnalysis: enhancedLineAnalysisTool as any,
   },
 });

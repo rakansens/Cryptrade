@@ -8,8 +8,8 @@
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
 import type { MarketCondition, MultiTimeframeAnalysis } from '../types';
-import { THRESHOLDS, TIME_CONSTANTS } from '../utils/constants';
-import { calculateMovingAverage, calculateStandardDeviation } from '../utils/helpers';
+import { TIME_CONSTANTS } from '../utils/constants';
+import { calculateMovingAverage } from '../utils/helpers';
 
 /**
  * 市場状態の分析
@@ -83,15 +83,16 @@ function analyzeTrend(closes: number[]): {
   const currentPrice = closes[closes.length - 1];
 
   // トレンドの方向
-  const direction = currentMa20 > currentMa50 ? 'bullish' : 'bearish';
+  const direction = currentMa20 && currentMa50 && currentMa20 > currentMa50 ? 'bullish' : 'bearish';
 
   // トレンドの強さ（価格と移動平均の乖離率）
-  const priceAboveMa20 = (currentPrice - currentMa20) / currentMa20;
-  const ma20AboveMa50 = (currentMa20 - currentMa50) / currentMa50;
+  const priceAboveMa20 = currentPrice && currentMa20 ? (currentPrice - currentMa20) / currentMa20 : 0;
+  const ma20AboveMa50 = currentMa20 && currentMa50 ? (currentMa20 - currentMa50) / currentMa50 : 0;
   
   // 線形回帰による傾き
   const slope = calculateTrendSlope(closes.slice(-50));
-  const normalizedSlope = Math.abs(slope) / (closes[closes.length - 1] / 100);
+  const lastClose = closes[closes.length - 1];
+  const normalizedSlope = lastClose ? Math.abs(slope) / (lastClose / 100) : 0;
 
   // 強さの総合評価
   const strength = Math.min(1, (
@@ -117,8 +118,12 @@ function analyzeVolatility(data: CandlestickData[]): {
     return { absolute: 0, normalized: 0, trend: 'stable' };
   }
 
-  const currentATR = atr[atr.length - 1];
-  const avgPrice = data[data.length - 1].close;
+  const currentATR = atr[atr.length - 1] ?? 0;
+  const lastCandle = data[data.length - 1];
+  if (!lastCandle) {
+    return { absolute: currentATR, normalized: 0, trend: 'stable' };
+  }
+  const avgPrice = lastCandle.close;
   const normalizedATR = currentATR / avgPrice;
 
   // ボラティリティのトレンド
@@ -147,9 +152,6 @@ function analyzeRange(data: CandlestickData[]): {
   upperBound: number;
   lowerBound: number;
 } {
-  const highs = data.map(d => d.high);
-  const lows = data.map(d => d.low);
-
   // 最近50本のデータでレンジを判定
   const recentData = data.slice(-50);
   const recentHighs = recentData.map(d => d.high);
@@ -158,7 +160,6 @@ function analyzeRange(data: CandlestickData[]): {
   const maxHigh = Math.max(...recentHighs);
   const minLow = Math.min(...recentLows);
   const range = maxHigh - minLow;
-  const avgPrice = (maxHigh + minLow) / 2;
 
   // レンジの強さ（価格がどれだけレンジ内に収まっているか）
   let bounces = 0;
@@ -289,9 +290,13 @@ function calculateATR(data: CandlestickData[], period: number): number[] {
   
   // True Rangeの計算
   for (let i = 1; i < data.length; i++) {
-    const high = data[i].high;
-    const low = data[i].low;
-    const prevClose = data[i - 1].close;
+    const current = data[i];
+    const previous = data[i - 1];
+    if (!current || !previous) continue;
+    
+    const high = current.high;
+    const low = current.low;
+    const prevClose = previous.close;
     
     const tr = Math.max(
       high - low,
@@ -318,7 +323,10 @@ function calculateTrendSlope(values: number[]): number {
   
   const sumX = xValues.reduce((a, b) => a + b, 0);
   const sumY = values.reduce((a, b) => a + b, 0);
-  const sumXY = xValues.reduce((sum, x, i) => sum + x * values[i], 0);
+  const sumXY = xValues.reduce((sum, x, i) => {
+    const value = values[i];
+    return value !== undefined ? sum + x * value : sum;
+  }, 0);
   const sumX2 = xValues.reduce((sum, x) => sum + x * x, 0);
 
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
@@ -339,7 +347,8 @@ export function detectCandlePatterns(
 
   const current = data[index];
   const prev = data[index - 1];
-  const prevPrev = data[index - 2];
+  
+  if (!current || !prev) return patterns;
 
   // ピンバー
   const bodySize = Math.abs(current.close - current.open);

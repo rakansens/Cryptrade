@@ -60,7 +60,7 @@ export class SeriesRegistry {
         patternId,
         type,
         createdAt: Date.now(),
-        metadata
+        ...(metadata && { metadata })
       });
     });
     
@@ -85,7 +85,7 @@ export class SeriesRegistry {
       series,
       instanceId: this.instanceId,
       createdAt: Date.now(),
-      metadata
+      ...(metadata && { metadata })
     });
     
     // メトリックラインも通常のシリーズとして登録
@@ -309,7 +309,7 @@ export class SeriesRegistry {
     // パターンシリーズから検索
     for (const patternId of this.patternSeries.keys()) {
       if (patternId.includes(uniquePart) || 
-          (patternId.includes('pattern') && patternId.endsWith(searchParts[searchParts.length - 1]))) {
+          (patternId.includes('pattern') && searchParts.length > 0 && patternId.endsWith(searchParts[searchParts.length - 1]!))) {
         logger.info('[SeriesRegistry] Found pattern with fuzzy match', {
           searchId,
           foundId: patternId,
@@ -322,7 +322,7 @@ export class SeriesRegistry {
     // メトリックラインから検索
     for (const patternId of this.metricLines.keys()) {
       if (patternId.includes(uniquePart) || 
-          (patternId.includes('pattern') && patternId.endsWith(searchParts[searchParts.length - 1]))) {
+          (patternId.includes('pattern') && searchParts.length > 0 && patternId.endsWith(searchParts[searchParts.length - 1]!))) {
         logger.info('[SeriesRegistry] Found metric pattern with fuzzy match', {
           searchId,
           foundId: patternId,
@@ -367,7 +367,7 @@ export class GlobalStateManager {
       totalInstances: this.registries.size
     });
     
-    for (const [instanceId, registry] of this.registries.entries()) {
+    for (const [_instanceId, registry] of this.registries.entries()) {
       registry.dispose();
     }
     

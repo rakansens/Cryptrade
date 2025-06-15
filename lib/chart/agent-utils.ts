@@ -7,7 +7,7 @@
 import { logger } from '@/lib/utils/logger';
 import { showToast } from '@/components/ui/toast';
 import type { PatternRenderer } from './pattern-renderer';
-import type { DrawingPoint, DrawingStyle, FibonacciLevel, ChartDrawing, DrawingType } from '@/types/chart.types';
+import type { DrawingPoint, DrawingStyle, ChartDrawing, DrawingType } from '@/types/chart.types';
 
 /**
  * エージェントイベントのエラーハンドリング
@@ -112,14 +112,14 @@ export function prepareDrawingData(data: {
   style?: Partial<DrawingStyle>;
   price?: number;
   time?: number;
-  levels?: FibonacciLevel[];
+  levels?: number[];
 }): ChartDrawing & { price?: number; time?: number } {
   const { id, type, points, style, price, time, levels } = data;
 
   const drawing: ChartDrawing & { price?: number; time?: number } = {
     id,
     type: type as DrawingType,
-    points: points || (price !== undefined ? [{ time: Date.now() / 1000, value: price }] : []),
+    points: points || (price !== undefined ? [{ time: Date.now() / 1000, value: price }] : []) as DrawingPoint[],
     style: {
       color: style?.color || '#2196F3',
       lineWidth: style?.lineWidth || 2,
@@ -129,7 +129,7 @@ export function prepareDrawingData(data: {
     } as DrawingStyle,
     visible: true,
     interactive: true,
-    metadata: levels ? { levels } : undefined,
+    ...(levels && { metadata: { levels } }),
   };
 
   // Handle special cases for horizontal/vertical lines
@@ -143,27 +143,22 @@ export function prepareDrawingData(data: {
   return drawing;
 }
 
-/**
- * バリデーションエラーのハンドリング
- */
-interface ValidationError {
-  success: false;
-  error: {
-    errors: Array<{ message: string; path?: string[] }>;
-  };
-}
 
 export function handleValidationError(
-  validation: ValidationError,
+  validation: { success: false; error: unknown },
   context: {
     eventType: string;
     operation: string;
     payload: unknown;
   }
 ) {
+  // Zodエラーの場合は、errorsプロパティを持つ
+  const zodError = validation.error as any;
+  const errors = zodError?.errors || [{ message: 'Validation failed' }];
+  
   logger.error(`[Agent Event] Invalid ${context.operation} payload`, {
     eventType: context.eventType,
-    error: validation.error.errors,
+    error: errors,
     payload: context.payload,
   });
   showToast('Invalid event data', 'error');

@@ -18,7 +18,7 @@ export class AgentNetwork {
   private agents: Map<string, RegisteredAgent> = new Map();
   private messageQueue: A2AMessage[] = [];
   private config: AgentNetworkConfig;
-  private routingAgent: Agent<unknown, unknown>;
+  private routingAgent: Agent;
 
   constructor(config: Partial<AgentNetworkConfig> = {}) {
     this.config = {
@@ -56,7 +56,7 @@ If unclear, default to "orchestratorAgent".
 
   registerAgent(
     id: string,
-    agent: Agent<unknown, unknown>,
+    agent: Agent,
     capabilities: string[],
     description: string
   ): void {
@@ -250,18 +250,18 @@ Respond with ONLY the agent ID, no explanation:`;
         generateOptions['toolChoice'] = 'required';
       }
 
-      if (targetId === 'tradingAnalysisAgent' && (agentContext as AgentContext).isProposalMode) {
+      if (targetId === 'tradingAnalysisAgent' && 'isProposalMode' in agentContext && agentContext.isProposalMode) {
         generateOptions['toolChoice'] = 'required';
         logger.info('[AgentNetwork] Forcing tool usage for proposal mode', {
           targetId,
           isProposalMode: true,
-          proposalType: (agentContext as AgentContext).proposalType,
-          isEntryProposal: (agentContext as AgentContext).isEntryProposal,
-          extractedSymbol: (agentContext as AgentContext).extractedSymbol,
+          proposalType: ('proposalType' in agentContext ? agentContext.proposalType : undefined),
+          isEntryProposal: ('isEntryProposal' in agentContext ? agentContext.isEntryProposal : undefined),
+          extractedSymbol: ('extractedSymbol' in agentContext ? agentContext.extractedSymbol : undefined),
         });
       }
 
-      const response = await target.agent.generate(messages, generateOptions);
+      const response = await (target.agent as any).generate(messages, generateOptions);
 
       logger.debug('[AgentNetwork] Agent response structure', {
         targetId,
@@ -393,7 +393,7 @@ Respond with ONLY the agent ID, no explanation:`;
         ...(response as { toolResults?: unknown[] }).toolResults && {
           toolResults: (response as { toolResults?: unknown[] }).toolResults,
         },
-        ...(extractedProposalGroup && { proposalGroup: extractedProposalGroup }),
+        ...(extractedProposalGroup ? { proposalGroup: extractedProposalGroup } : {}),
       };
 
       if (this.config.enableLogging) {
@@ -453,12 +453,15 @@ Respond with ONLY the agent ID, no explanation:`;
       if (result.status === 'fulfilled' && result.value) {
         responses.push(result.value);
       } else {
-        logger.warn('[AgentNetwork] Broadcast message failed', {
-          sourceId,
-          targetId: targets[index].id,
-          method,
-          error: result.status === 'rejected' ? String(result.reason) : 'No response',
-        });
+        const target = targets[index];
+        if (target) {
+          logger.warn('[AgentNetwork] Broadcast message failed', {
+            sourceId,
+            targetId: target.id,
+            method,
+            error: result.status === 'rejected' ? String(result.reason) : 'No response',
+          });
+        }
       }
     });
 
@@ -538,7 +541,7 @@ export const agentNetwork = new AgentNetwork({
 
 export function registerCryptradeAgent(
   id: string,
-  agent: Agent<unknown, unknown>,
+  agent: Agent,
   capabilities: string[],
   description: string
 ): void {
@@ -551,7 +554,7 @@ export async function sendAgentMessage(
   method: string,
   params?: ProcessQueryParams | Record<string, unknown>
 ): Promise<A2AMessage | null> {
-  return agentNetwork.sendMessage(sourceId, targetId, method, params);
+  return agentNetwork.sendMessage(sourceId, targetId, method, params as Record<string, unknown> | undefined);
 }
 
 export async function routeToAgent(

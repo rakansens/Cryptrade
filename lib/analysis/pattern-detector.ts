@@ -1,6 +1,5 @@
 // Pattern detection algorithms
 
-import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
 import type { 
   PatternAnalysis, 
@@ -214,8 +213,8 @@ export class PatternDetector {
       throw new Error('Invalid neckline points');
     }
     
-    const leftValleyIdx = validation.necklinePoints[0];
-    const rightValleyIdx = validation.necklinePoints[1];
+    const leftValleyIdx = validation.necklinePoints[0]!;
+    const rightValleyIdx = validation.necklinePoints[1]!;
     
     // Create key points
     const keyPoints: PatternKeyPoint[] = [
@@ -238,8 +237,8 @@ export class PatternDetector {
         label: 'H'
       },
       {
-        time: data[rightValleyIdx]?.time ?? 0,
-        value: data[rightValleyIdx]?.[inverse ? 'high' : 'low'] ?? 0,
+        time: rightValleyIdx !== undefined ? (data[rightValleyIdx]?.time ?? 0) : 0,
+        value: rightValleyIdx !== undefined ? (data[rightValleyIdx]?.[inverse ? 'high' : 'low'] ?? 0) : 0,
         type: 'trough',
         label: 'RV'
       },
@@ -286,8 +285,6 @@ export class PatternDetector {
       type: inverse ? 'inverseHeadAndShoulders' : 'headAndShoulders',
       startTime: data[leftShoulderIdx]!.time,
       endTime: data[rightShoulderIdx]!.time,
-      startIndex: leftShoulderIdx,
-      endIndex: rightShoulderIdx,
       confidence: validation.confidence,
       visualization,
       metrics: {
@@ -447,8 +444,6 @@ export class PatternDetector {
       type: patternType,
       startTime: data[startIdx]?.time ?? 0,
       endTime: data[endIdx]?.time ?? 0,
-      startIndex: startIdx,
-      endIndex: endIdx,
       confidence,
       visualization,
       metrics: {
@@ -486,7 +481,7 @@ export class PatternDetector {
         const betweenIdx = this.findValleyBetween(data, first!.index, second!.index, type === 'bottom');
         if (betweenIdx === -1) continue;
         
-        const pattern = this.createDoublePattern(data, first, second, betweenIdx, type);
+        const pattern = this.createDoublePattern(data, first!, second!, betweenIdx, type);
         if (pattern.confidence >= 0.6) {
           patterns.push(pattern);
         }
@@ -552,18 +547,13 @@ export class PatternDetector {
       type: type === 'top' ? 'doubleTop' : 'doubleBottom',
       startTime: data[first.index]!.time,
       endTime: data[second.index]!.time,
-      startIndex: first.index,
-      endIndex: second.index,
       confidence,
       visualization,
       metrics: {
         formation_period: second.index - first.index + 1,
         breakout_level: necklinePrice,
         target_level: targetPrice,
-        stop_loss: type === 'top' ? Math.max(first.value, second.value) : Math.min(first.value, second.value),
-        firstPeakPrice: first.value,
-        secondPeakPrice: second.value,
-        valleyPrice: necklinePrice
+        stop_loss: type === 'top' ? Math.max(first.value, second.value) : Math.min(first.value, second.value)
       },
       description: `ダブル${type === 'top' ? 'トップ' : 'ボトム'}パターン。ネックライン: $${necklinePrice.toFixed(2)}`,
       trading_implication: type === 'top' ? 'bearish' : 'bullish'

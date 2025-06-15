@@ -22,7 +22,9 @@ export class PluginRegistry implements IPluginRegistry {
   private context?: PluginContext;
   
   constructor(context?: PluginContext) {
-    this.context = context;
+    if (context !== undefined) {
+      this.context = context;
+    }
     logger.info('[PluginRegistry] Created registry', {
       hasContext: !!context,
       instanceId: context?.instanceId,
@@ -243,7 +245,7 @@ export class PluginRegistry implements IPluginRegistry {
     this.plugins.clear();
     this.pluginMetadata.clear();
     this.pluginOptions.clear();
-    this.context = undefined;
+    delete (this as any).context;
     
     logger.info('[PluginRegistry] All plugins disposed', {
       disposalErrors: disposalErrors.length > 0 ? disposalErrors : undefined,
@@ -395,14 +397,28 @@ export class PluginRegistry implements IPluginRegistry {
     return {
       pluginCount: this.plugins.size,
       hasContext: !!this.context,
-      instanceId: this.context?.instanceId,
-      plugins: Array.from(this.plugins.entries()).map(([name, plugin]) => ({
-        name,
-        metadata: this.pluginMetadata.get(name),
-        options: this.pluginOptions.get(name),
-        hasInitialize: typeof plugin.initialize === 'function',
-        hasDispose: typeof plugin.dispose === 'function',
-      })),
+      ...(this.context?.instanceId !== undefined && { instanceId: this.context.instanceId }),
+      plugins: Array.from(this.plugins.entries()).map(([name, plugin]) => {
+        const result: {
+          name: string;
+          metadata?: PluginMetadata;
+          options?: PluginOptions;
+          hasInitialize: boolean;
+          hasDispose: boolean;
+        } = {
+          name,
+          hasInitialize: typeof plugin.initialize === 'function',
+          hasDispose: typeof plugin.dispose === 'function',
+        };
+        
+        const metadata = this.pluginMetadata.get(name);
+        if (metadata) result.metadata = metadata;
+        
+        const options = this.pluginOptions.get(name);
+        if (options) result.options = options;
+        
+        return result;
+      }),
     };
   }
 }

@@ -49,8 +49,8 @@ const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
   backoffMultiplier: 2,
   shouldRetry: (error: unknown) => {
     // Retry on network errors and 5xx status codes
-    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') return true;
-    if (error.status && error.status >= 500) return true;
+    if ((error as any).code === 'ECONNRESET' || (error as any).code === 'ETIMEDOUT') return true;
+    if ((error as any).status && (error as any).status >= 500) return true;
     return false;
   }
 };
@@ -61,8 +61,8 @@ const DEFAULT_CIRCUIT_CONFIG: Required<CircuitBreakerConfig> = {
   halfOpenAttempts: 3,
   errorFilter: (error: unknown) => {
     // Count only significant errors for circuit breaker
-    if (error.status && error.status >= 500) return true;
-    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') return true;
+    if ((error as any).status && (error as any).status >= 500) return true;
+    if ((error as any).code === 'ECONNRESET' || (error as any).code === 'ETIMEDOUT') return true;
     return false;
   }
 };
@@ -220,7 +220,7 @@ export async function retryWithCircuitBreaker<T>(
       cb.recordFailure(error);
 
       logger.warn(`[Retry] Attempt ${attempt}/${retryConfig.maxAttempts} failed`, {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         willRetry: attempt < retryConfig.maxAttempts && retryConfig.shouldRetry(error)
       });
 
@@ -274,17 +274,19 @@ export interface CircuitBreakerMetrics {
 export class MonitoredCircuitBreaker extends CircuitBreaker {
   private successCount: number = 0;
 
-  recordSuccess(): void {
+  override recordSuccess(): void {
     super.recordSuccess();
     this.successCount++;
   }
 
-  getMetrics(): CircuitBreakerMetrics {
+  override getMetrics() {
+    const baseMetrics = super.getMetrics();
     return {
-      state: this.getState(),
-      failureCount: (this as { failureCount: number }).failureCount,
+      state: baseMetrics.state,
+      failureCount: baseMetrics.failureCount,
       successCount: this.successCount,
-      lastFailureTime: (this as { lastFailureTime: number }).lastFailureTime || null
+      lastFailureTime: baseMetrics.lastFailureTime || null,
+      halfOpenAttempts: baseMetrics.halfOpenAttempts
     };
   }
 }

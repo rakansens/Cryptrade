@@ -36,14 +36,14 @@ export class ChartDrawingDatabaseService {
             sessionId,
             type: drawing.type as DrawingType,
             points: drawing.points,
-            style: drawing.style,
+            style: drawing.style as any,
             price: drawing.price ? drawing.price : null,
             time: drawing.time ? BigInt(drawing.time) : null,
-            levels: drawing.levels || null,
-            metadata: drawing.metadata || null,
+            levels: drawing.levels as any || null,
+            metadata: drawing.metadata as any || null,
             visible: drawing.visible ?? true,
             interactive: drawing.interactive ?? true,
-          })),
+          })) as any,
         });
       }
 
@@ -105,24 +105,24 @@ export class ChartDrawingDatabaseService {
         update: {
           type: drawing.type as DrawingType,
           points: drawing.points,
-          style: drawing.style,
+          style: drawing.style as any,
           price: drawing.price ? drawing.price : null,
           time: drawing.time ? BigInt(drawing.time) : null,
-          levels: drawing.levels || null,
-          metadata: drawing.metadata || null,
+          levels: drawing.levels as any ?? null,
+          metadata: drawing.metadata as any ?? null,
           visible: drawing.visible ?? true,
           interactive: drawing.interactive ?? true,
         },
         create: {
           id: drawing.id,
-          sessionId,
+          ...(sessionId && { sessionId }),
           type: drawing.type as DrawingType,
           points: drawing.points,
-          style: drawing.style,
+          style: drawing.style as any,
           price: drawing.price ? drawing.price : null,
           time: drawing.time ? BigInt(drawing.time) : null,
-          levels: drawing.levels || null,
-          metadata: drawing.metadata || null,
+          levels: drawing.levels as any ?? null,
+          metadata: drawing.metadata as any ?? null,
           visible: drawing.visible ?? true,
           interactive: drawing.interactive ?? true,
         },
@@ -176,20 +176,25 @@ export class ChartDrawingDatabaseService {
     }
     
     try {
+      const data: any = {
+        type: pattern.type,
+        symbol: pattern.symbol,
+        interval: pattern.interval,
+        startTime: BigInt(pattern.startTime),
+        endTime: BigInt(pattern.endTime),
+        confidence: pattern.confidence,
+        visualization: pattern.visualization,
+        metrics: pattern.metrics || {},
+        description: pattern.description,
+        tradingImplication: pattern.tradingImplication,
+      };
+      
+      if (sessionId) {
+        data.sessionId = sessionId;
+      }
+      
       const dbPattern = await prisma.patternAnalysis.create({
-        data: {
-          sessionId,
-          type: pattern.type,
-          symbol: pattern.symbol,
-          interval: pattern.interval,
-          startTime: BigInt(pattern.startTime),
-          endTime: BigInt(pattern.endTime),
-          confidence: pattern.confidence,
-          visualization: pattern.visualization,
-          metrics: pattern.metrics || {},
-          description: pattern.description,
-          tradingImplication: pattern.tradingImplication,
-        },
+        data,
       });
 
       logger.info('[ChartDrawingDB] Pattern saved', { 
@@ -279,7 +284,7 @@ export class ChartDrawingDatabaseService {
   static convertToPatternData(dbPattern: PatternAnalysis): PatternData {
     return {
       id: dbPattern.id,
-      type: dbPattern.type,
+      type: dbPattern.type as any,
       symbol: dbPattern.symbol,
       interval: dbPattern.interval,
       startTime: Number(dbPattern.startTime),
@@ -346,7 +351,7 @@ export class ChartDrawingDatabaseService {
     try {
       const dbDrawings = await prisma.chartDrawing.findMany({
         where: {
-          sessionId,
+          ...(sessionId && { sessionId }),
           metadata: {
             path: ['symbol'],
             equals: symbol,

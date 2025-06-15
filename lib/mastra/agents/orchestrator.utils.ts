@@ -5,10 +5,11 @@
  */
 
 import { logger } from '@/lib/utils/logger';
-import { AgentResponse, IntentType } from './orchestrator.types';
+import type { IntentTypeValue as IntentType } from './orchestrator.types';
 import type { 
   AgentResponseData, 
-  AgentResponseMetadata
+  AgentResponseMetadata,
+  AgentResponse
 } from '@/types/orchestrator.types';
 import { INTENT_KEYWORDS } from '@/types/orchestrator.types';
 
@@ -86,7 +87,7 @@ export function calculateIntentConfidence(
   
   // 明確なキーワードがある場合は高信頼度
   const patterns = INTENT_KEYWORDS[detectedIntent] || [];
-  const hasPattern = patterns.some(pattern => queryLower.includes(pattern));
+  const hasPattern = patterns.some((pattern: string) => queryLower.includes(pattern));
   
   if (hasPattern) {
     return 0.9 + Math.random() * 0.1; // 0.9-1.0

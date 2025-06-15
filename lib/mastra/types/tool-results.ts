@@ -127,25 +127,25 @@ export interface AgentResult {
 export function extractOperations(agentResult: AgentResult): UIControlOperation[] {
   // Direct toolResults
   const fromToolResults = agentResult?.toolResults?.flatMap((tr) =>
-    Array.isArray(tr?.result?.operations) ? tr.result.operations : []
-  ) || [];
+    Array.isArray((tr?.result as any)?.operations) ? (tr.result as any)?.operations ?? [] : []
+  ) ?? [];
   
   // Steps → toolResults
   const fromSteps = agentResult?.steps?.flatMap((step) =>
     step?.toolResults?.flatMap((tr) =>
-      Array.isArray(tr?.result?.operations) ? tr.result.operations : []
-    ) || []
-  ) || [];
+      Array.isArray((tr?.result as any)?.operations) ? (tr.result as any)?.operations ?? [] : []
+    ) ?? []
+  ) ?? [];
   
   // Priority order for extraction
   return Array.isArray(agentResult.operations) 
     ? agentResult.operations
-    : Array.isArray(agentResult.data?.operations)
-    ? agentResult.data.operations
-    : Array.isArray(agentResult.result?.operations)
-    ? agentResult.result.operations
-    : Array.isArray(agentResult.executionResult?.data?.operations)
-    ? agentResult.executionResult.data.operations
+    : Array.isArray(agentResult?.data?.operations)
+    ? agentResult.data?.operations ?? []
+    : Array.isArray(agentResult?.result?.operations)
+    ? agentResult.result?.operations ?? []
+    : Array.isArray(agentResult?.executionResult?.data?.operations)
+    ? agentResult.executionResult?.data?.operations ?? []
     : fromToolResults.length > 0
     ? fromToolResults
     : fromSteps.length > 0

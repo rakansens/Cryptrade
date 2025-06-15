@@ -25,7 +25,6 @@ export async function calculateRiskManagement(
 
   // ATR（Average True Range）の計算
   const atr = calculateATR(marketData, 14);
-  const currentPrice = marketData[marketData.length - 1].close;
 
   // 戦略とボラティリティに基づくストップロス距離の計算
   const stopLossDistance = calculateStopLossDistance(
@@ -52,7 +51,8 @@ export async function calculateRiskManagement(
   );
 
   // リスクリワード比の計算
-  const primaryTarget = takeProfitTargets[0].price;
+  const firstTarget = takeProfitTargets[0];
+  const primaryTarget = firstTarget?.price ?? entryPrice * 1.02; // Default to 2% if no targets
   const reward = Math.abs(primaryTarget - entryPrice);
   const risk = stopLossDistance;
   const riskRewardRatio = reward / risk;
@@ -98,9 +98,9 @@ function calculateATR(marketData: PriceData[], period: number): number {
     const current = marketData[i];
     const previous = marketData[i - 1];
 
-    const highLow = current.high - current.low;
-    const highClose = Math.abs(current.high - previous.close);
-    const lowClose = Math.abs(current.low - previous.close);
+    const highLow = (current?.high ?? 0) - (current?.low ?? 0);
+    const highClose = Math.abs((current?.high ?? 0) - (previous?.close ?? 0));
+    const lowClose = Math.abs((current?.low ?? 0) - (previous?.close ?? 0));
 
     const trueRange = Math.max(highLow, highClose, lowClose);
     trueRanges.push(trueRange);
@@ -187,6 +187,7 @@ function calculateTakeProfitTargets(
 
   for (let i = 0; i < rrRatios.length; i++) {
     const ratio = rrRatios[i];
+    if (!ratio) continue;
     const targetDistance = stopLossDistance * ratio.rr;
     
     let targetPrice = direction === 'long'

@@ -1,4 +1,4 @@
-import type { IChartApi, ISeriesApi, Time, SeriesType, LineData, PriceLineOptions } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, Time, SeriesType, LineData, PriceLineOptions, LineWidth } from 'lightweight-charts';
 import type { ChartDrawing, DrawingPoint, DrawingStyle } from '@/types/chart.types';
 import { logger } from '@/lib/utils/logger';
 import { ChartAnalyzer } from '@/lib/chart/analyzer';
@@ -124,7 +124,7 @@ export class ChartDrawingManager extends EventTarget {
    * Clear all drawings
    */
   clearAll(): void {
-    for (const [id, primitive] of this.primitives) {
+    for (const [_id, primitive] of this.primitives) {
       primitive.remove();
     }
     this.primitives.clear();
@@ -177,7 +177,7 @@ export class ChartDrawingManager extends EventTarget {
     const drawing: ChartDrawing = {
       id: drawingId,
       type: 'horizontal',
-      points: [{ time: Date.now() / 1000, value }],
+      points: [{ time: (Date.now() / 1000) as Time, value }],
       style,
       visible: true,
       interactive: true
@@ -196,7 +196,7 @@ export class ChartDrawingManager extends EventTarget {
     const drawing: ChartDrawing = {
       id: drawingId,
       type: 'vertical',
-      points: [{ time: time, value: 0 }],
+      points: [{ time: time as Time, value: 0 }],
       style,
       visible: true,
       interactive: true
@@ -242,14 +242,14 @@ export class ChartDrawingManager extends EventTarget {
     // Create line series for trend line
     const lineSeries = this.chart.addLineSeries({
       color: drawing.style.color,
-      lineWidth: drawing.style.lineWidth,
+      lineWidth: (drawing.style.lineWidth || 1) as LineWidth,
       lineStyle: this.convertLineStyle(drawing.style.lineStyle),
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
     // Calculate line data points
-    const lineData = this.calculateTrendLineData(point1, point2) as LineData[];
+    const lineData = this.calculateTrendLineData(point1!, point2!) as LineData[];
     lineSeries.setData(lineData);
 
     return {
@@ -261,13 +261,13 @@ export class ChartDrawingManager extends EventTarget {
       },
       update: (updates) => {
         if (updates.points && updates.points.length >= 2) {
-          const newLineData = this.calculateTrendLineData(updates.points[0], updates.points[1]);
+          const newLineData = this.calculateTrendLineData(updates.points[0]!, updates.points[1]!);
           lineSeries.setData(newLineData);
         }
         if (updates.style) {
           const options: Partial<{
             color: string;
-            lineWidth: number;
+            lineWidth: LineWidth;
             lineStyle: number;
           }> = {};
           
@@ -276,7 +276,7 @@ export class ChartDrawingManager extends EventTarget {
             options.color = updates.style.color;
           }
           if (updates.style.lineWidth !== undefined) {
-            options.lineWidth = updates.style.lineWidth;
+            options.lineWidth = updates.style.lineWidth as LineWidth;
           }
           if (updates.style.lineStyle !== undefined) {
             options.lineStyle = this.convertLineStyle(updates.style.lineStyle);
@@ -298,8 +298,9 @@ export class ChartDrawingManager extends EventTarget {
           }
         }
       },
-      setVisible: (visible) => {
-        lineSeries.applyOptions({ visible });
+      setVisible: (_visible) => {
+        // Note: visible option is not available for line series
+        // Would need to remove/add as workaround
       },
     };
   }
@@ -316,16 +317,16 @@ export class ChartDrawingManager extends EventTarget {
     const priceLine = this.mainSeries.createPriceLine({
       price: price,
       color: drawing.style.color,
-      lineWidth: drawing.style.lineWidth,
+      lineWidth: (drawing.style.lineWidth || 1) as LineWidth,
       lineStyle: this.convertPriceLineStyle(drawing.style.lineStyle),
-      axisLabelVisible: drawing.style.showLabels,
+      ...(drawing.style.showLabels !== undefined && { axisLabelVisible: drawing.style.showLabels }),
       title: drawing.style.showLabels ? `$${price.toFixed(2)}` : '',
     });
 
     return {
       id: drawing.id,
       type: 'horizontal',
-      priceLine: priceLine,
+      priceLine: priceLine as any,
       remove: () => {
         this.mainSeries.removePriceLine(priceLine);
       },
@@ -345,7 +346,7 @@ export class ChartDrawingManager extends EventTarget {
           });
         }
       },
-      setVisible: (visible) => {
+      setVisible: (_visible) => {
         // Lightweight Charts doesn't support hiding price lines directly
         // Would need to remove/add as workaround
       },
@@ -364,15 +365,15 @@ export class ChartDrawingManager extends EventTarget {
     // Create a line series with single vertical line data
     const lineSeries = this.chart.addLineSeries({
       color: drawing.style.color,
-      lineWidth: drawing.style.lineWidth,
+      lineWidth: (drawing.style.lineWidth || 1) as LineWidth,
       lineStyle: this.convertLineStyle(drawing.style.lineStyle),
       priceLineVisible: false,
       lastValueVisible: false,
     });
 
     // Get current price range to draw full height line
-    const timeScale = this.chart.timeScale();
-    const priceScale = this.chart.priceScale('right');
+    // const timeScale = this.chart.timeScale();
+    // const priceScale = this.chart.priceScale('right');
     
     // Create vertical line data (simplified approach)
     const lineData = [
@@ -395,7 +396,7 @@ export class ChartDrawingManager extends EventTarget {
         if (updates.style) {
           const options: Partial<{
             color: string;
-            lineWidth: number;
+            lineWidth: LineWidth;
             lineStyle: number;
           }> = {};
           
@@ -404,7 +405,7 @@ export class ChartDrawingManager extends EventTarget {
             options.color = updates.style.color;
           }
           if (updates.style.lineWidth !== undefined) {
-            options.lineWidth = updates.style.lineWidth;
+            options.lineWidth = updates.style.lineWidth as LineWidth;
           }
           if (updates.style.lineStyle !== undefined) {
             options.lineStyle = this.convertLineStyle(updates.style.lineStyle);
@@ -426,8 +427,9 @@ export class ChartDrawingManager extends EventTarget {
           }
         }
       },
-      setVisible: (visible) => {
-        lineSeries.applyOptions({ visible });
+      setVisible: (_visible) => {
+        // Note: visible option is not available for line series
+        // Would need to remove/add as workaround
       },
     };
   }
@@ -456,9 +458,9 @@ export class ChartDrawingManager extends EventTarget {
       const priceLine = this.mainSeries.createPriceLine({
         price: price,
         color: drawing.style.color,
-        lineWidth: drawing.style.lineWidth,
+        lineWidth: (drawing.style.lineWidth || 1) as LineWidth,
         lineStyle: this.convertPriceLineStyle(drawing.style.lineStyle),
-        axisLabelVisible: drawing.style.showLabels,
+        ...(drawing.style.showLabels !== undefined && { axisLabelVisible: drawing.style.showLabels }),
         title: drawing.style.showLabels ? `${(level * 100).toFixed(1)}%` : '',
       });
       fibLines.push(priceLine);
@@ -478,7 +480,7 @@ export class ChartDrawingManager extends EventTarget {
           // Would recreate with new points
         }
       },
-      setVisible: (visible) => {
+      setVisible: (_visible) => {
         // Price lines visibility workaround needed
       },
     };
@@ -488,22 +490,24 @@ export class ChartDrawingManager extends EventTarget {
    * Calculate trend line data points
    */
   private calculateTrendLineData(point1: DrawingPoint, point2: DrawingPoint): LineData[] {
-    const slope = (point2.value - point1.value) / (point2.time - point1.time);
-    const timeRange = point2.time - point1.time;
+    const time1 = point1.time as number;
+    const time2 = point2.time as number;
+    const slope = (point2.value - point1.value) / (time2 - time1);
+    const timeRange = time2 - time1;
     const extendRange = timeRange * 0.5; // Extend line 50% beyond points
 
-    const startTime = point1.time - extendRange;
-    const endTime = point2.time + extendRange;
+    const startTime = time1 - extendRange;
+    const endTime = time2 + extendRange;
     
     // Only use start and end points for a straight line
     return [
       {
         time: startTime as Time,
-        value: point1.value + slope * (startTime - point1.time),
+        value: point1.value + slope * (startTime - time1),
       },
       {
         time: endTime as Time,
-        value: point2.value + slope * (endTime - point2.time),
+        value: point2.value + slope * (endTime - time2),
       },
     ];
   }

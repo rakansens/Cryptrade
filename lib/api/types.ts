@@ -52,7 +52,7 @@ export interface ApiRequest<T = unknown> {
 }
 
 // Handler Types
-export type ApiHandler<TRequest = unknown, TResponse = unknown> = (
+export type ApiHandler<_TRequest = unknown, TResponse = unknown> = (
   req: NextRequest,
   context?: ApiHandlerContext
 ) => Promise<Response | ApiResponse<TResponse>>;
@@ -91,6 +91,7 @@ export type RetryCondition = (error: Error | ApiError, attempt: number) => boole
 
 // Proposal Types
 export interface ProposalGroup {
+  id: string; // Added id property for compatibility
   groupId: string;
   timestamp: number;
   symbol: string;
@@ -107,6 +108,22 @@ export interface Proposal {
   reasoning?: string;
   confidence?: number;
   metadata?: Record<string, unknown>;
+  // Extended properties for compatibility
+  entryZone?: {
+    min: number;
+    max: number;
+  };
+  riskParameters?: {
+    stopLoss: number;
+    stopLossPercent: number;
+    takeProfitTargets: Array<{
+      price: number;
+      percentage: number;
+    }>;
+    riskRewardRatio: number;
+    positionSizePercent: number;
+    maxRiskPercent: number;
+  };
 }
 
 export interface ProposalMetadata {
@@ -122,6 +139,17 @@ export interface OrchestratorResult {
   proposalGroup?: ProposalGroup;
   error?: ApiError;
   metadata?: Record<string, unknown>;
+  analysis: {
+    intent: string;
+    confidence: number;
+    reasoning: string;
+    analysisDepth: string;
+    isProposalMode: boolean;
+    proposalType?: string | undefined;
+  };
+  executionTime: number;
+  memoryContext?: string | undefined;
+  executionResult?: ExecutionResult;
 }
 
 // Tool Result Types
@@ -130,15 +158,27 @@ export interface ToolResult {
   success: boolean;
   data?: unknown;
   error?: string;
+  result?: {
+    proposalGroup?: ProposalGroup;
+    [key: string]: unknown;
+  };
 }
 
 // Execution Result Types
 export interface ExecutionResult {
-  success: boolean;
+  success?: boolean;
   data?: unknown;
   error?: ApiError;
   toolResults?: ToolResult[];
   metadata?: Record<string, unknown>;
+  response?: string;
+  proposalGroup?: ProposalGroup;
+  entryProposalGroup?: ProposalGroup;
+  executionResult?: ExecutionResult;
+  steps?: Array<{
+    toolResults?: ToolResult[];
+    [key: string]: unknown;
+  }>;
 }
 
 // Analysis Types

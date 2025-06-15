@@ -301,13 +301,13 @@ export class UnifiedSQLiteStorage implements IUnifiedStorage {
     `;
     const perfResults = this.db!.prepare(perfQuery).all(params) as Array<{ avg_duration: number; value: number | null }>;
     if (perfResults.length > 0) {
-      const durations = perfResults.map(r => r.value).filter(d => d !== null);
+      const durations = perfResults.map(r => r.value).filter((d): d is number => d !== null);
       if (durations.length > 0) {
         stats.performance = {
           avgDuration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
-          p50Duration: durations[Math.floor(durations.length * 0.5)],
-          p95Duration: durations[Math.floor(durations.length * 0.95)],
-          p99Duration: durations[Math.floor(durations.length * 0.99)],
+          p50Duration: durations[Math.min(Math.floor(durations.length * 0.5), durations.length - 1)] ?? 0,
+          p95Duration: durations[Math.min(Math.floor(durations.length * 0.95), durations.length - 1)] ?? 0,
+          p99Duration: durations[Math.min(Math.floor(durations.length * 0.99), durations.length - 1)] ?? 0,
         };
       }
     }
@@ -428,16 +428,16 @@ export class UnifiedSQLiteStorage implements IUnifiedStorage {
       source: row.source,
       message: row.message,
       environment: row.environment,
-      meta: row.meta ? JSON.parse(row.meta) : undefined,
-      error: row.error ? JSON.parse(row.error) : undefined,
-      correlationId: row.correlation_id,
-      userId: row.user_id,
-      sessionId: row.session_id,
-      agentName: row.agent_name,
-      toolName: row.tool_name,
-      stack: row.stack,
-      duration: row.duration,
-      tags: row.tags ? JSON.parse(row.tags) : undefined,
+      ...(row.meta && { meta: JSON.parse(row.meta) }),
+      ...(row.error && { error: JSON.parse(row.error) }),
+      ...(row.correlation_id && { correlationId: row.correlation_id }),
+      ...(row.user_id && { userId: row.user_id }),
+      ...(row.session_id && { sessionId: row.session_id }),
+      ...(row.agent_name && { agentName: row.agent_name }),
+      ...(row.tool_name && { toolName: row.tool_name }),
+      ...(row.stack && { stack: row.stack }),
+      ...(row.duration != null && { duration: row.duration }),
+      ...(row.tags && { tags: JSON.parse(row.tags) }),
     };
   }
 }

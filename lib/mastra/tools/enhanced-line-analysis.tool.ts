@@ -1,31 +1,10 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
-import { multiTimeframeLineDetector, type LineDetectionConfig, type DetectedLine, type LineDetectionResult } from '@/lib/analysis/multi-timeframe-line-detector';
-import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
+import { multiTimeframeLineDetector, type DetectedLine, type LineDetectionResult } from '@/lib/analysis/multi-timeframe-line-detector';
+import { enhancedMarketDataService, type MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 
 // Type definitions for enhanced line analysis
-interface TimeframeDataPoint {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
-interface TimeframeData {
-  data: TimeframeDataPoint[];
-  timeframe: string;
-  lastUpdate: number;
-}
-
-interface MultiTimeframeData {
-  timeframes: Record<string, TimeframeData>;
-  symbol: string;
-  timestamp: number;
-}
-
 interface ConfluenceZone {
   type: 'support' | 'resistance' | 'pivot';
   priceRange: {
@@ -60,24 +39,8 @@ interface EnhancedLine extends DetectedLine {
   tradingImplication: string;
 }
 
-interface DrawingAction {
-  action: 'draw_line' | 'draw_zone' | 'highlight_confluence';
-  type: 'support' | 'resistance' | 'trendline' | 'zone';
-  coordinates: {
-    startTime: number;
-    startPrice: number;
-    endTime?: number;
-    endPrice?: number;
-  };
-  style: {
-    color: string;
-    lineWidth: number;
-    lineStyle: 'solid' | 'dashed' | 'dotted';
-    opacity?: number;
-  };
-  priority: number;
-  description: string;
-}
+// Removed unused interface DrawingAction
+// Drawing actions are generated inline in the tool response
 
 /**
  * Enhanced Line Analysis Tool
@@ -85,6 +48,15 @@ interface DrawingAction {
  * Uses multi-timeframe analysis to detect high-accuracy support/resistance lines
  * and trendlines with cross-timeframe validation and confluence zone identification.
  */
+
+const DEFAULT_CONFIG = {
+  minTimeframes: 2,
+  priceTolerancePercent: 0.5,
+  minTouchCount: 3,
+  confluenceZoneWidth: 1.0,
+  strengthThreshold: 0.6,
+  recencyWeight: 0.3
+};
 
 const LineDetectionConfigSchema = z.object({
   minTimeframes: z.number().min(1).max(4).default(2).describe('Minimum number of timeframes that must support a line'),
@@ -364,7 +336,7 @@ export const enhancedLineAnalysisTool = createTool({
 
       const result = {
         symbol,
-        config: detectionResult.config,
+        config: config || DEFAULT_CONFIG,
         analysisTimestamp: Date.now(),
         horizontalLines: enhancedHorizontalLines,
         trendlines: enhancedTrendlines,
@@ -398,14 +370,7 @@ export const enhancedLineAnalysisTool = createTool({
       const fallbackPrice = 50000; // Default BTC price
       return {
         symbol,
-        config: {
-          minTimeframes: 2,
-          priceTolerancePercent: 0.5,
-          minTouchCount: 3,
-          confluenceZoneWidth: 1.0,
-          strengthThreshold: 0.6,
-          recencyWeight: 0.3
-        },
+        config: config || DEFAULT_CONFIG,
         analysisTimestamp: Date.now(),
         horizontalLines: [],
         trendlines: [],
@@ -418,7 +383,7 @@ export const enhancedLineAnalysisTool = createTool({
           detectionTime: Date.now() - startTime
         },
         marketStructure: {
-          currentTrend: 'sideways',
+          currentTrend: 'sideways' as const,
           trendStrength: 0.5,
           keyLevels: [],
           priceAction: {
@@ -429,13 +394,12 @@ export const enhancedLineAnalysisTool = createTool({
           drawingActions: [],
           analysis: 'データの取得に失敗しました。しばらく時間をおいて再度お試しください。',
           tradingSetup: {
-            bias: 'neutral',
+            bias: 'neutral' as const,
             entryZones: [],
             stopLossLevels: [],
             targetLevels: []
           }
         },
-        config: config || multiTimeframeLineDetector.getConfig()
       };
     }
   },
@@ -448,9 +412,16 @@ function getCurrentPrice(multiTimeframeData: MultiTimeframeData): number {
   // Use the highest timeframe's latest price for accuracy
   const timeframes = Object.keys(multiTimeframeData.timeframes).sort();
   const latestTimeframe = timeframes[timeframes.length - 1];
+  if (!latestTimeframe) return 50000; // Default BTC price
+  
   const timeframeData = multiTimeframeData.timeframes[latestTimeframe];
+  if (!timeframeData) return 50000;
+  
   const data = timeframeData.data;
-  return data[data.length - 1].close;
+  if (!data || data.length === 0) return 50000;
+  
+  const lastCandle = data[data.length - 1];
+  return lastCandle?.close || 50000;
 }
 
 /**
@@ -459,9 +430,9 @@ function getCurrentPrice(multiTimeframeData: MultiTimeframeData): number {
 function analyzeMarketStructure(
   horizontalLines: DetectedLine[],
   trendlines: DetectedLine[],
-  confluenceZones: ConfluenceZone[],
+  _confluenceZones: ConfluenceZone[],
   currentPrice: number
-) {
+): MarketStructure {
   const supports = horizontalLines.filter(line => line.type === 'support');
   const resistances = horizontalLines.filter(line => line.type === 'resistance');
 
@@ -484,8 +455,10 @@ function analyzeMarketStructure(
 
   if (recentTrendlines.length > 0) {
     const avgSlope = recentTrendlines.reduce((sum, tl) => {
+      if (tl.points.length < 2) return sum;
       const startPoint = tl.points[0];
       const endPoint = tl.points[tl.points.length - 1];
+      if (!startPoint || !endPoint) return sum;
       const slope = (endPoint.price - startPoint.price) / (endPoint.time - startPoint.time);
       return sum + slope;
     }, 0) / recentTrendlines.length;
@@ -521,12 +494,14 @@ function analyzeMarketStructure(
     keyLevels: keyLevels.slice(0, 5),
     priceAction: {
       currentPrice,
-      nearestSupport: nearestSupport?.price,
-      nearestResistance: nearestResistance?.price,
-      distanceToSupport: nearestSupport ? 
-        ((currentPrice - nearestSupport.price) / currentPrice) * 100 : undefined,
-      distanceToResistance: nearestResistance ? 
-        ((nearestResistance.price - currentPrice) / currentPrice) * 100 : undefined
+      ...(nearestSupport && { nearestSupport: nearestSupport.price }),
+      ...(nearestResistance && { nearestResistance: nearestResistance.price }),
+      ...(nearestSupport && { 
+        distanceToSupport: ((currentPrice - nearestSupport.price) / currentPrice) * 100 
+      }),
+      ...(nearestResistance && { 
+        distanceToResistance: ((nearestResistance.price - currentPrice) / currentPrice) * 100 
+      })
     }
   };
 }
@@ -576,19 +551,23 @@ function enhanceDetectedLines(
       }
     } else {
       // Trendline
-      const startPoint = line.points[0];
-      const endPoint = line.points[line.points.length - 1];
-      const slope = (endPoint.price - startPoint.price) / (endPoint.time - startPoint.time);
-      
-      if (slope > 0) {
-        tradingImplication = 'bullish';
-        description = `上昇トレンドライン - ${line.touchCount}回タッチ`;
-      } else {
-        tradingImplication = 'bearish';
-        description = `下降トレンドライン - ${line.touchCount}回タッチ`;
+      if (line.points.length >= 2) {
+        const startPoint = line.points[0];
+        const endPoint = line.points[line.points.length - 1];
+        if (startPoint && endPoint) {
+          const slope = (endPoint.price - startPoint.price) / (endPoint.time - startPoint.time);
+          
+          if (slope > 0) {
+            tradingImplication = 'bullish';
+            description = `上昇トレンドライン - ${line.touchCount}回タッチ`;
+          } else {
+            tradingImplication = 'bearish';
+            description = `下降トレンドライン - ${line.touchCount}回タッチ`;
+          }
+          
+          description += `、${line.supportingTimeframes.length}つの時間足で確認`;
+        }
       }
-      
-      description += `、${line.supportingTimeframes.length}つの時間足で確認`;
     }
 
     return {
@@ -681,27 +660,31 @@ function generateAdvancedRecommendations(
 
   // Add trendlines
   for (const trendline of trendlines.slice(0, 3)) { // Top 3 trendlines
-    const startPoint = trendline.points[0];
-    const endPoint = trendline.points[trendline.points.length - 1];
-    
-    drawingActions.push({
-      action: 'draw_line' as const,
-      type: 'trendline' as const,
-      coordinates: {
-        startTime: startPoint.time,
-        startPrice: startPoint.price,
-        endTime: endPoint.time,
-        endPrice: endPoint.price
-      },
+    if (trendline.points.length >= 2) {
+      const startPoint = trendline.points[0];
+      const endPoint = trendline.points[trendline.points.length - 1];
+      
+      if (startPoint && endPoint) {
+        drawingActions.push({
+          action: 'draw_line' as const,
+          type: 'trendline' as const,
+          coordinates: {
+            startTime: startPoint.time,
+            startPrice: startPoint.price,
+            endTime: endPoint.time,
+            endPrice: endPoint.price
+          },
       style: {
         color: trendline.tradingImplication === 'bullish' ? '#00E676' : '#FF5722',
         lineWidth: 2,
         lineStyle: 'solid' as const,
         opacity: trendline.confidence
       },
-      priority: Math.round(trendline.confidence * 10),
-      description: trendline.description
-    });
+          priority: Math.round(trendline.confidence * 10),
+          description: trendline.description
+        });
+      }
+    }
   }
 
   // Add confluence zones
@@ -747,10 +730,10 @@ function generateAdvancedRecommendations(
  */
 function generateAnalysisText(
   horizontalLines: EnhancedLine[],
-  trendlines: EnhancedLine[],
+  _trendlines: EnhancedLine[],
   confluenceZones: ConfluenceZone[],
   marketStructure: MarketStructure,
-  currentPrice: number
+  _currentPrice: number
 ): string {
   let analysis = `${marketStructure.priceAction.currentPrice.toFixed(2)}での多時間足分析結果:\n\n`;
 
@@ -806,9 +789,9 @@ function generateTradingSetup(
   const resistances = horizontalLines.filter(line => line.type === 'resistance').slice(0, 3);
 
   let bias: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-  const entryZones = [];
-  const stopLossLevels = [];
-  const targetLevels = [];
+  const entryZones: Array<{ price: number; type: 'buy' | 'sell'; confidence: number }> = [];
+  const stopLossLevels: number[] = [];
+  const targetLevels: number[] = [];
 
   if (marketStructure.currentTrend === 'bullish' && supports.length > 0) {
     bias = 'bullish';

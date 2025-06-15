@@ -3,6 +3,9 @@
  */
 
 import { z } from 'zod';
+import { DrawingPointSchema, DrawingTypeSchema as DrawingTypeEnumSchema } from '@/types/drawing';
+import { EntryProposalSchema as BaseEntryProposalSchema, EntryProposalGroupSchema as BaseEntryProposalGroupSchema } from '@/types/trading';
+import { ChatMessageSchema as BaseChatMessageSchema } from '@/lib/services/database/chat.validation';
 
 // ===== Base Schemas =====
 
@@ -48,23 +51,9 @@ export const ProposalGroupSchema = z.object({
   timestamp: TimestampSchema,
 });
 
-export const EntryProposalSchema = z.object({
-  id: UUIDSchema,
-  entryType: z.enum(['market', 'limit', 'stop']),
-  direction: z.enum(['long', 'short']),
-  entryPrice: PriceSchema,
-  stopLoss: PriceSchema,
-  takeProfit: PriceSchema,
-  riskRewardRatio: z.number().positive().finite(),
-  positionSize: z.number().positive().finite(),
-  reasoning: z.string().min(1).max(2000),
-});
-
-export const EntryProposalGroupSchema = z.object({
-  id: UUIDSchema,
-  entries: z.array(EntryProposalSchema).min(1),
-  timestamp: TimestampSchema,
-});
+// Re-export from main types
+export const EntryProposalSchema = BaseEntryProposalSchema;
+export const EntryProposalGroupSchema = BaseEntryProposalGroupSchema;
 
 export const ChatMessageMetadataSchema = z.object({
   type: ChatMessageTypeSchema.optional(),
@@ -73,14 +62,8 @@ export const ChatMessageMetadataSchema = z.object({
   isTyping: z.boolean().optional(),
 }).strict();
 
-export const ChatMessageSchema = z.object({
-  content: z.string().min(1).max(10000),
-  role: ChatRoleSchema,
-  type: ChatMessageTypeSchema.optional(),
-  proposalGroup: ProposalGroupSchema.optional(),
-  entryProposalGroup: EntryProposalGroupSchema.optional(),
-  isTyping: z.boolean().optional(),
-});
+// Re-export from main types
+export const ChatMessageSchema = BaseChatMessageSchema;
 
 // ===== Analysis Schemas =====
 
@@ -204,7 +187,9 @@ export const AlertMetadataSchema = z.object({
 
 // ===== Chart Drawing Schemas =====
 
-export const DrawingTypeSchema = z.enum([
+// Note: DrawingTypeSchema and DrawingPointSchema are imported from @/types/drawing
+// Creating a different enum for extended drawing types
+export const ExtendedDrawingTypeSchema = z.enum([
   'line',
   'horizontalLine',
   'verticalLine',
@@ -214,11 +199,6 @@ export const DrawingTypeSchema = z.enum([
   'text',
   'arrow',
 ]);
-
-export const DrawingPointSchema = z.object({
-  time: TimestampSchema,
-  price: PriceSchema,
-});
 
 export const DrawingPropertiesSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
@@ -240,7 +220,7 @@ export const ChartIndicatorSchema = z.object({
 });
 
 export const ChartDrawingDataSchema = z.object({
-  type: DrawingTypeSchema,
+  type: ExtendedDrawingTypeSchema,
   points: z.array(DrawingPointSchema).min(1),
   properties: DrawingPropertiesSchema,
   indicators: z.array(ChartIndicatorSchema).optional(),
@@ -291,11 +271,11 @@ export function validateWithSchema<T>(
   return result.data;
 }
 
-export function validatePartialWithSchema<T>(
-  schema: z.ZodSchema<T>,
+export function validatePartialWithSchema<T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>,
   data: unknown,
   errorMessage?: string
-): Partial<T> {
+): Partial<z.infer<z.ZodObject<T>>> {
   const partialSchema = schema.partial();
   return validateWithSchema(partialSchema, data, errorMessage);
 }
@@ -336,7 +316,7 @@ export type TradePerformanceMetrics = z.infer<typeof TradePerformanceMetricsSche
 export type AlertConditions = z.infer<typeof AlertConditionsSchema>;
 export type AlertMetadata = z.infer<typeof AlertMetadataSchema>;
 
-export type DrawingType = z.infer<typeof DrawingTypeSchema>;
+export type DrawingType = z.infer<typeof DrawingTypeEnumSchema>;
 export type DrawingPoint = z.infer<typeof DrawingPointSchema>;
 export type DrawingProperties = z.infer<typeof DrawingPropertiesSchema>;
 export type ChartIndicator = z.infer<typeof ChartIndicatorSchema>;

@@ -73,7 +73,9 @@ export class AgentError extends Error {
       ...context,
       timestamp: this.timestamp,
     };
-    this.originalError = originalError;
+    if (originalError !== undefined) {
+      this.originalError = originalError;
+    }
 
     // Ensure proper prototype chain
     Object.setPrototypeOf(this, AgentError.prototype);
@@ -242,7 +244,11 @@ export class AgentError extends Error {
     return new AgentError(
       AgentErrorType.RATE_LIMIT_EXCEEDED,
       'Rate limit exceeded',
-      { ...context, retryAfter, retryable: true }
+      { 
+        ...context, 
+        ...(retryAfter !== undefined && { retryAfter }), 
+        retryable: true 
+      }
     );
   }
 
@@ -266,7 +272,7 @@ export function isRetryableError(error: unknown): boolean {
     return error.isRetryable();
   }
   // Check for common retryable errors
-  if (error?.code) {
+  if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string') {
     const retryableCodes = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'];
     return retryableCodes.includes(error.code);
   }

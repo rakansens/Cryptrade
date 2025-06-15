@@ -4,8 +4,7 @@
  * Helps migrate from existing logging implementations to unified logger
  */
 
-import type { LogLevel, UnifiedLoggerConfig } from './unified-logger';
-import type { UnifiedLogEntry, LogFilter } from '@/types/logging.types';
+import type { LogLevel, UnifiedLoggerConfig, UnifiedLogEntry, LogFilter } from './unified-logger';
 import { env } from '@/config/env';
 
 // Type definitions for legacy configurations

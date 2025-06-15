@@ -1,5 +1,5 @@
 import { logger } from '@/lib/utils/logger';
-import { incrementMetric, recordHistogram } from '@/lib/monitoring/metrics';
+import { incrementMetric, observeMetric } from '@/lib/monitoring/metrics';
 
 /**
  * Performance Measurement Decorator
@@ -38,7 +38,7 @@ export function measurePerformance(options: PerformanceOptions = {}): MethodDeco
   ) {
     const originalMethod = descriptor.value;
     const methodName = options.name || String(propertyKey);
-    const className = target.constructor.name;
+    const className = (target as any).constructor.name;
     const fullName = `${className}.${methodName}`;
 
     descriptor.value = async function (...args: unknown[]) {
@@ -59,22 +59,19 @@ export function measurePerformance(options: PerformanceOptions = {}): MethodDeco
 
         // Record success metrics
         if (options.metric) {
-          recordHistogram(options.metric, duration);
+          observeMetric(options.metric, duration);
         }
-        recordHistogram('method_execution_duration_ms', duration, {
-          method: fullName,
-          status: 'success',
-        });
+        observeMetric('method_execution_duration_ms', duration);
 
         // Log performance
-        const logData = {
+        const logData: Record<string, unknown> = {
           ...context,
           duration,
           status: 'success',
         };
 
         if (options.includeResult) {
-          logData.result = result;
+          logData['result'] = result;
         }
 
         const logMethod = logger[options.logLevel || 'debug'];
@@ -86,13 +83,10 @@ export function measurePerformance(options: PerformanceOptions = {}): MethodDeco
 
         // Record error metrics
         if (options.metric) {
-          recordHistogram(options.metric, duration);
+          observeMetric(options.metric, duration);
         }
-        recordHistogram('method_execution_duration_ms', duration, {
-          method: fullName,
-          status: 'error',
-        });
-        incrementMetric('method_execution_errors_total', { method: fullName });
+        observeMetric('method_execution_duration_ms', duration);
+        incrementMetric('method_execution_errors_total');
 
         // Log error
         logger.error(`[Performance] ${fullName} failed`, {
@@ -141,22 +135,19 @@ export function measureFunction<T extends (...args: unknown[]) => unknown>(
 
       // Record metrics
       if (options.metric) {
-        recordHistogram(options.metric, duration);
+        observeMetric(options.metric, duration);
       }
-      recordHistogram('function_execution_duration_ms', duration, {
-        function: name,
-        status: 'success',
-      });
+      observeMetric('function_execution_duration_ms', duration);
 
       // Log performance
-      const logData = {
+      const logData: Record<string, unknown> = {
         ...context,
         duration,
         status: 'success',
       };
 
       if (options.includeResult) {
-        logData.result = result;
+        logData['result'] = result;
       }
 
       const logMethod = logger[options.logLevel || 'debug'];
@@ -168,13 +159,10 @@ export function measureFunction<T extends (...args: unknown[]) => unknown>(
 
       // Record error metrics
       if (options.metric) {
-        recordHistogram(options.metric, duration);
+        observeMetric(options.metric, duration);
       }
-      recordHistogram('function_execution_duration_ms', duration, {
-        function: name,
-        status: 'error',
-      });
-      incrementMetric('function_execution_errors_total', { function: name });
+      observeMetric('function_execution_duration_ms', duration);
+      incrementMetric('function_execution_errors_total');
 
       // Log error
       logger.error(`[Performance] ${name} failed`, {
@@ -233,9 +221,9 @@ export class PerformanceTimer {
 
     // Record metrics
     if (this.options.metric) {
-      recordHistogram(this.options.metric, duration);
+      observeMetric(this.options.metric, duration);
     }
-    recordHistogram('timer_duration_ms', duration, { timer: this.name });
+    observeMetric('timer_duration_ms', duration);
 
     // Prepare marks data
     const marksData: Record<string, number> = {};

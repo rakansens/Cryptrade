@@ -5,7 +5,7 @@
  * by adapting schemas and handling provider-specific quirks
  */
 
-import { z } from 'zod';
+import { z, ZodType, ZodTypeDef } from 'zod';
 import { logger } from '@/lib/utils/logger';
 import { ToolError } from '@/lib/errors/base-error';
 
@@ -92,7 +92,15 @@ export class ToolCompatibilityAdapter {
 
   constructor(provider: string) {
     this.provider = provider;
-    this.config = PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS['openai'];
+    this.config = PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS['openai'] || {
+      name: 'Default',
+      supportsOptionalProperties: true,
+      supportsEnums: true,
+      supportsArrays: true,
+      supportsNullable: true,
+      maxDepth: 5,
+      requiresExplicitTypes: false,
+    };
     
     logger.info(`[ToolCompatibility] Initialized for provider: ${this.provider}`, {
       config: this.config,
@@ -117,8 +125,11 @@ export class ToolCompatibilityAdapter {
         `Failed to adapt schema for ${this.provider}`,
         'schema-adaptation',
         {
-          provider: this.provider,
-          error: String(error),
+          correlationId: `schema-${Date.now()}`,
+          data: {
+            provider: this.provider,
+            error: String(error),
+          }
         }
       );
     }
@@ -180,15 +191,15 @@ export class ToolCompatibilityAdapter {
       const options = schema._def.options as ZodTypeAny[];
       const transformedOptions = options.map(opt => 
         this.transformSchema(opt, depth + 1)
-      );
+      ).filter((opt): opt is ZodTypeAny => opt !== undefined);
       
       // 2つのオプションのみサポート
       if (transformedOptions.length === 2) {
-        return z.union([transformedOptions[0], transformedOptions[1]]);
+        return z.union([transformedOptions[0]!, transformedOptions[1]!]);
       }
       
       // それ以上は最初のオプションを使用
-      return transformedOptions[0];
+      return transformedOptions[0] || z.unknown();
     }
 
     // デフォルト: そのまま返す
@@ -285,7 +296,7 @@ export class ToolCompatibilityAdapter {
     
     // Enumっぽい値は文字列に
     if (typeof params === 'symbol') {
-      return String(params) as ToolParams;
+      return String(params) as unknown as ToolParams;
     }
     
     return params;
@@ -332,7 +343,7 @@ export function createCompatibleTool<TInput, TOutput>(
   
   return {
     ...tool,
-    inputSchema: adapter.adaptSchema(tool.inputSchema),
+    inputSchema: adapter.adaptSchema(tool.inputSchema) as ZodType<TInput, ZodTypeDef, TInput>,
     execute: async (params: TInput) => {
       const adaptedParams = adapter.adaptParameters(params as ToolParams);
       const result = await tool.execute(adaptedParams as TInput);

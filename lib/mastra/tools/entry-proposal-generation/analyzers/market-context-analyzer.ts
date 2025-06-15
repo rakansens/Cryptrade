@@ -13,7 +13,7 @@ export async function analyzeMarketContext(
   symbol: string
 ): Promise<MarketContext> {
   const currentCandle = marketData[marketData.length - 1];
-  const currentPrice = currentCandle.close;
+  const currentPrice = currentCandle?.close ?? 0;
 
   // トレンド分析
   const trend = analyzeTrend(marketData);
@@ -56,7 +56,9 @@ function analyzeTrend(marketData: PriceData[]): 'bullish' | 'bearish' | 'neutral
   // 複数の時間枠でトレンドを確認
   const ma20 = calculateSMA(marketData.slice(-20).map(d => d.close));
   const ma50 = calculateSMA(marketData.slice(-50).map(d => d.close));
-  const currentPrice = marketData[marketData.length - 1].close;
+  const lastCandle = marketData[marketData.length - 1];
+  if (!lastCandle) return 'neutral';
+  const currentPrice = lastCandle.close;
 
   // 価格と移動平均線の位置関係
   const priceAboveMa20 = currentPrice > ma20;
@@ -103,7 +105,10 @@ function analyzeVolatility(marketData: PriceData[]): 'low' | 'normal' | 'high' {
   const returns = [];
 
   for (let i = 1; i < recent.length; i++) {
-    const returnRate = (recent[i].close - recent[i - 1].close) / recent[i - 1].close;
+    const current = recent[i];
+    const previous = recent[i - 1];
+    if (!current || !previous) continue;
+    const returnRate = (current.close - previous.close) / previous.close;
     returns.push(returnRate);
   }
 
@@ -130,7 +135,9 @@ function analyzeVolume(marketData: PriceData[]): 'low' | 'average' | 'high' {
   }
 
   const recent = marketData.slice(-20);
-  const currentVolume = recent[recent.length - 1].volume;
+  const lastCandle = recent[recent.length - 1];
+  if (!lastCandle) return 'average';
+  const currentVolume = lastCandle.volume;
   const averageVolume = recent.reduce((sum, d) => sum + d.volume, 0) / recent.length;
 
   const volumeRatio = currentVolume / averageVolume;
@@ -144,7 +151,16 @@ function analyzeVolume(marketData: PriceData[]): 'low' | 'average' | 'high' {
  * キーレベルの特定
  */
 function identifyKeyLevels(marketData: PriceData[]): MarketContext['keyLevels'] {
-  const currentPrice = marketData[marketData.length - 1].close;
+  const lastCandle = marketData[marketData.length - 1];
+  if (!lastCandle) {
+    return {
+      nearestSupport: undefined,
+      nearestResistance: undefined,
+      dailyHigh: 0,
+      dailyLow: 0,
+    };
+  }
+  const currentPrice = lastCandle.close;
   const dayData = marketData.slice(-24); // 24時間分（1時間足の場合）
 
   // 日足の高値・安値
@@ -175,7 +191,9 @@ function calculateSMA(prices: number[]): number {
 function countHigherHighs(data: PriceData[]): number {
   let count = 0;
   for (let i = 1; i < data.length; i++) {
-    if (data[i].high > data[i - 1].high) {
+    const current = data[i];
+    const previous = data[i - 1];
+    if (current && previous && current.high > previous.high) {
       count++;
     }
   }
@@ -188,7 +206,9 @@ function countHigherHighs(data: PriceData[]): number {
 function countLowerLows(data: PriceData[]): number {
   let count = 0;
   for (let i = 1; i < data.length; i++) {
-    if (data[i].low < data[i - 1].low) {
+    const current = data[i];
+    const previous = data[i - 1];
+    if (current && previous && current.low < previous.low) {
       count++;
     }
   }
@@ -217,8 +237,9 @@ function findNearestSR(
   // 現在価格より下の最も近い価格（サポート候補）
   let nearestSupport: number | undefined;
   for (let i = pricePoints.length - 1; i >= 0; i--) {
-    if (pricePoints[i] < currentPrice * 0.995) { // 0.5%以上離れている
-      nearestSupport = pricePoints[i];
+    const point = pricePoints[i];
+    if (point !== undefined && point < currentPrice * 0.995) { // 0.5%以上離れている
+      nearestSupport = point;
       break;
     }
   }
@@ -226,11 +247,15 @@ function findNearestSR(
   // 現在価格より上の最も近い価格（レジスタンス候補）
   let nearestResistance: number | undefined;
   for (let i = 0; i < pricePoints.length; i++) {
-    if (pricePoints[i] > currentPrice * 1.005) { // 0.5%以上離れている
-      nearestResistance = pricePoints[i];
+    const point = pricePoints[i];
+    if (point !== undefined && point > currentPrice * 1.005) { // 0.5%以上離れている
+      nearestResistance = point;
       break;
     }
   }
 
-  return { nearestSupport, nearestResistance };
+  return { 
+    ...(nearestSupport !== undefined && { nearestSupport }),
+    ...(nearestResistance !== undefined && { nearestResistance })
+  };
 }

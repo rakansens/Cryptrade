@@ -57,7 +57,7 @@ export async function evaluateEntryConditions(
 function determineEntryTrigger(
   entryPoint: EntryPoint,
   currentPrice: number,
-  marketContext: MarketContext
+  _marketContext: MarketContext
 ): EntryConditions['trigger'] {
   const priceDistance = Math.abs(entryPoint.price - currentPrice) / currentPrice;
 

@@ -62,7 +62,7 @@ export class BinanceConnectionManagerShim {
     const rxjsSubscription = this.wsManager.subscribe<T extends object ? T : Record<string, unknown>>(streamName).subscribe({
       next: (data) => {
         try {
-          handler(data);
+          handler(data as T);
         } catch (error) {
           logger.error('[BinanceWS-Shim] Error in subscription handler', {
             streamName,
@@ -96,7 +96,7 @@ export class BinanceConnectionManagerShim {
     if (!this.subscriptions.has(streamName)) {
       this.subscriptions.set(streamName, []);
     }
-    this.subscriptions.get(streamName)!.push(subscription);
+    this.subscriptions.get(streamName)!.push(subscription as StreamSubscription<unknown>);
 
     logger.info('[BinanceWS-Shim] Added subscription', {
       streamName,
@@ -164,7 +164,7 @@ export class BinanceConnectionManagerShim {
     logger.info('[BinanceWS-Shim] Disconnecting all streams...');
     
     // Unsubscribe all active subscriptions
-    for (const [streamName, subscribers] of this.subscriptions.entries()) {
+    for (const [_streamName, subscribers] of this.subscriptions.entries()) {
       subscribers.forEach(sub => {
         sub.rxjsSubscription.unsubscribe();
       });

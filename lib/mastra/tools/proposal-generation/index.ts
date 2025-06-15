@@ -8,7 +8,6 @@
  */
 
 import { createTool } from '@mastra/core';
-import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
 import { binanceAPI } from '@/lib/binance/api-service';
 import type { PriceData as CandlestickData } from '@/types/market';
@@ -20,7 +19,8 @@ import {
   type ProposalGenerationInput,
   type ProposalGenerationOutput,
   type GeneratorParams,
-  type ProposalGroup
+  type ProposalGroup,
+  type MarketCondition
 } from './types';
 
 // Generators
@@ -37,7 +37,6 @@ import { ANALYSIS_PARAMS, MESSAGE_TEMPLATES } from './utils/constants';
 
 export const ProposalGenerationTool = createTool({
   id: 'proposal-generation',
-  name: 'Proposal Generation',
   description: 'Analyzes charts and generates drawing proposals for trend lines, support/resistance, fibonacci levels, and patterns',
   inputSchema: ProposalGenerationInputSchema,
   outputSchema: ProposalGenerationOutputSchema,
@@ -143,7 +142,7 @@ export const ProposalGenerationTool = createTool({
         symbol: input.symbol,
         interval: input.interval,
         maxProposals: input.maxProposals || 5,
-        excludeIds: input.excludeIds,
+        excludeIds: input.excludeIds || [],
         marketCondition,
         multiTimeframeAnalysis,
       };
@@ -235,7 +234,7 @@ function generateGroupTitle(analysisType: string, symbol: string): string {
  */
 function generateGroupDescription(
   proposalCount: number,
-  marketCondition: { type?: string },
+  marketCondition: MarketCondition,
   interval: string
 ): string {
   const conditionMap: Record<string, string> = {

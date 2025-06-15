@@ -29,7 +29,7 @@ const DrawingDataSchema = z.object({
   fontSize: z.number().min(10).max(50).optional(),
 });
 
-export type ValidatedDrawingData = z.infer<typeof DrawingDataSchema>;
+export type ValidatedDrawingData = z.infer<typeof DrawingDataSchema> & { metadata?: Record<string, unknown> };
 
 /**
  * 描画データの検証
@@ -67,14 +67,8 @@ export function validateDrawingData(data: unknown): ValidatedDrawingData {
         }
         break;
         
-      case 'text':
-        if (!validated.text || validated.text.trim() === '') {
-          throw new Error('Text annotation must have text content');
-        }
-        if (validated.points.length !== 1) {
-          throw new Error('Text annotation must have exactly 1 point');
-        }
-        break;
+      // Note: 'text' is not a valid drawing type in the current schema
+      // If we need text annotations, they should be added as metadata to other drawing types
     }
     
     // デフォルトスタイルの適用
@@ -82,7 +76,20 @@ export function validateDrawingData(data: unknown): ValidatedDrawingData {
       validated.style = getDefaultStyle(validated.type);
     }
     
-    return validated;
+    // Remove undefined values to satisfy exactOptionalPropertyTypes
+    const cleanedData: any = {
+      type: validated.type,
+      points: validated.points,
+    };
+    
+    if (validated.style) cleanedData.style = validated.style;
+    if (validated.price !== undefined) cleanedData.price = validated.price;
+    if (validated.time !== undefined) cleanedData.time = validated.time;
+    if (validated.levels !== undefined) cleanedData.levels = validated.levels;
+    if (validated.text !== undefined) cleanedData.text = validated.text;
+    if (validated.fontSize !== undefined) cleanedData.fontSize = validated.fontSize;
+    
+    return cleanedData as ValidatedDrawingData;
   } catch (error) {
     logger.error('[DrawingValidator] Validation failed', { error, data });
     throw error;
@@ -144,10 +151,7 @@ function getDefaultStyle(type: DrawingType): ValidatedDrawingData['style'] {
         showLabels: false,
       };
       
-    case 'text':
-      return {
-        color: '#ffffff',
-      };
+    // Text type is not supported in current DrawingType enum
       
     default:
       return {
@@ -182,6 +186,7 @@ export function validatePriceValue(price: number, symbol: string): boolean {
   };
   
   const range = ranges[symbol] || ranges['DEFAULT'];
+  if (!range) return false;
   return price >= range.min && price <= range.max;
 }
 

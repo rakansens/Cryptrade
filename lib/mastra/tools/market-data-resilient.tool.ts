@@ -1,11 +1,10 @@
 import { createTool } from '@mastra/core';
-import { env } from '@/config/env';
 import { z } from 'zod';
 import { BaseService } from '@/lib/api/base-service';
-import { APP_CONSTANTS } from '@/config/app-constants';
 import { incrementMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 import { CircuitBreaker } from '@/lib/utils/retry-with-circuit-breaker';
+import type { BinanceTicker24hr } from '@/types/market';
 
 /**
  * Resilient Market Data Tool - With Retry and Circuit Breaker
@@ -43,6 +42,8 @@ const MarketDataOutput = z.object({
     latency: z.number().optional(),
   }).optional(),
 });
+
+type MarketStatsResult = z.infer<typeof MarketDataOutput>;
 
 // Market data service instance using BaseService
 class MarketDataService extends BaseService {
@@ -137,7 +138,6 @@ export const getCacheConfig = () => ({
 
 export const marketDataResilientTool = createTool({
   id: 'get-market-data-resilient',
-  name: 'marketDataResilientTool',  // エージェントが参照する名前
   description: `
     Fetch real-time market data with enhanced resilience.
     Features retry logic, circuit breaker pattern, and caching.
@@ -174,10 +174,8 @@ export const marketDataResilientTool = createTool({
           ...cached.data,
           metadata: {
             fromCache: true,
-            latency: Date.now() - startTime,
-            cacheAge: age,
-            cacheTtl: cached.ttl,
-          }
+            latency: Date.now() - startTime
+          } as { fromCache?: boolean; retryCount?: number; latency?: number }
         };
       } else {
         logger.debug(`[Market Data Resilient] Cache expired for ${symbol}`, {
@@ -232,7 +230,6 @@ export const marketDataResilientTool = createTool({
 
       const analysis = analyzeMarketData({
         priceChangePercent24h,
-        volume24h,
         high24h,
         low24h,
         currentPrice,
@@ -297,13 +294,13 @@ export const marketDataResilientTool = createTool({
       // Log circuit breaker metrics
       const cbMetrics = marketDataCircuitBreaker.getMetrics();
       logger.error(`[Market Data Resilient] Failed to fetch ${symbol}`, {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         circuitBreakerState: cbMetrics.state,
         failureCount: cbMetrics.failureCount,
       });
 
       // If circuit is open, return degraded response immediately
-      if (error.code === 'CIRCUIT_OPEN') {
+      if (error instanceof Error && (error as any).code === 'CIRCUIT_OPEN') {
         incrementMetric('market_data_circuit_open');
         
         // Try to use stale cache if available
@@ -319,9 +316,7 @@ export const marketDataResilientTool = createTool({
             ...staleCache.data,
             metadata: {
               fromCache: true,
-              isStale: true,
-              latency: Date.now() - startTime,
-              cacheAge: age,
+              latency: Date.now() - startTime
             }
           };
         }
@@ -398,7 +393,7 @@ export function getCacheStats(): {
       symbol,
       age,
       ttl: entry.ttl,
-      volatility: entry.volatility,
+      ...(entry.volatility !== undefined && { volatility: entry.volatility }),
       isExpired: age >= entry.ttl,
     };
   });
@@ -414,13 +409,11 @@ export function getCacheStats(): {
  */
 function analyzeMarketData({
   priceChangePercent24h,
-  volume24h,
   high24h,
   low24h,
   currentPrice,
 }: {
   priceChangePercent24h: number;
-  volume24h: number;
   high24h: number;
   low24h: number;
   currentPrice: number;

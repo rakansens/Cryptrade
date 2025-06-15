@@ -4,13 +4,12 @@
  * パターンのライン（接続線、トレンドライン等）を描画
  */
 
-import type { ISeriesApi, Time, SeriesType } from 'lightweight-charts';
+import type { ISeriesApi, Time, SeriesType, LineWidth } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
 import type { 
   ILineRendererPlugin, 
   PluginContext, 
-  LineStyle, 
-  RenderResult 
+  LineStyle
 } from './interfaces';
 import { PluginError } from './interfaces';
 import { ValidationUtils, ColorUtils, TimeUtils } from './utils';
@@ -103,7 +102,7 @@ export class LineRenderer implements ILineRendererPlugin {
         throw new PluginError(this.name, 'render', `Invalid pattern ID: ${id}`);
       }
       
-      if (!ValidationUtils.validateLines(data.lines)) {
+      if (data.lines && !ValidationUtils.validateLines(data.lines)) {
         throw new PluginError(this.name, 'render', 'Invalid lines data');
       }
       
@@ -236,7 +235,7 @@ export class LineRenderer implements ILineRendererPlugin {
     
     // 内部状態をクリア
     this.lineSeries.clear();
-    this.context = undefined;
+    delete this.context;
     
     logger.info('[LineRenderer] Plugin disposed');
   }
@@ -260,7 +259,7 @@ export class LineRenderer implements ILineRendererPlugin {
       
       try {
         // ラインデータの生成
-        const lineData = this.generateLineData(line, keyPoints);
+        const lineData = this.generateLineData(line as any, keyPoints);
         if (lineData.length < 2) {
           logger.warn('[LineRenderer] Insufficient line data points', {
             patternId,
@@ -271,17 +270,17 @@ export class LineRenderer implements ILineRendererPlugin {
         }
         
         // ラインスタイルの決定
-        const lineStyle = this.resolveLineStyle(line, lineIndex);
+        const lineStyle = this.resolveLineStyle(line as any, lineIndex);
         
         // ラインシリーズの作成
         const series = this.context.chart.addLineSeries({
           color: lineStyle.color,
-          lineWidth: lineStyle.width,
+          lineWidth: lineStyle.width as LineWidth,
           lineStyle: this.context.utilities.convertLineStyle(lineStyle.style || 'solid'),
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false,
-          title: this.generateLineTitle(line, lineIndex),
+          title: this.generateLineTitle(line as any, lineIndex),
         });
         
         // データを設定
@@ -315,31 +314,45 @@ export class LineRenderer implements ILineRendererPlugin {
    * ラインデータを生成
    */
   private generateLineData(
-    line: { points?: number[]; extend?: boolean }, 
+    line: { from: number; to: number } | { points?: number[]; extend?: boolean }, 
     keyPoints: Array<{ time: number; value: number }>
   ): LineData[] {
-    if (!line.points || !Array.isArray(line.points) || line.points.length < 2) {
-      return [];
-    }
-    
     const lineData: LineData[] = [];
     
-    // ポイントインデックスから実際の座標に変換
-    for (const pointIndex of line.points) {
-      const keyPoint = keyPoints[pointIndex];
-      if (keyPoint) {
-        lineData.push({
-          time: TimeUtils.normalizeTime(keyPoint.time),
-          value: keyPoint.value,
-        });
+    // PatternLine format (from/to)
+    if ('from' in line && 'to' in line) {
+      const fromPoint = keyPoints[line.from];
+      const toPoint = keyPoints[line.to];
+      
+      if (fromPoint && toPoint) {
+        lineData.push(
+          { time: TimeUtils.normalizeTime(fromPoint.time), value: fromPoint.value },
+          { time: TimeUtils.normalizeTime(toPoint.time), value: toPoint.value }
+        );
       }
+    } 
+    // Legacy format (points array)
+    else if ('points' in line && line.points && Array.isArray(line.points)) {
+      for (const pointIndex of line.points) {
+        const keyPoint = keyPoints[pointIndex];
+        if (keyPoint) {
+          lineData.push({
+            time: TimeUtils.normalizeTime(keyPoint.time),
+            value: keyPoint.value,
+          });
+        }
+      }
+    }
+    
+    if (lineData.length < 2) {
+      return [];
     }
     
     // 時間順にソート
     lineData.sort((a, b) => a.time - b.time);
     
     // ライン延長処理（必要に応じて）
-    if (line.extend === true && lineData.length >= 2) {
+    if ('extend' in line && line.extend === true) {
       const extendedData = this.extendLine(lineData);
       return extendedData;
     }

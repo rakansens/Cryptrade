@@ -10,12 +10,12 @@ export function parseAnalysisText(text: string): AnalysisResultData | null {
     const symbolMatch = text.match(/^(.+?)の(\d+[分時間日週月]+).*チャート/m)
     if (!symbolMatch) return null
 
-    const symbol = symbolMatch[1]
-    const timeframe = symbolMatch[2]
+    const symbol = symbolMatch[1] ?? ''
+    const timeframe = symbolMatch[2] ?? ''
 
     // Extract current price
     const priceMatch = text.match(/(?:現在値|現値|現在価格|価格)[:\s]*\$?\s*([\d,]+\.?\d*)/i)
-    const currentPrice = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : 0
+    const currentPrice = priceMatch && priceMatch[1] ? parseFloat(priceMatch[1].replace(/,/g, '')) : 0
 
     // Extract trend information
     const trendMatch = text.match(/トレンド方向[:\s]*(.+?)(?:\s|$)/)
@@ -31,15 +31,15 @@ export function parseAnalysisText(text: string): AnalysisResultData | null {
     const resistanceMatches = text.matchAll(/レジスタンスライン[:\s]*\$?([\d,]+\.?\d*)\s*\(強度:\s*(\d+)%.*?タッチ回数:\s*(\d+)/g)
 
     const support = Array.from(supportMatches).map(match => ({
-      price: parseFloat(match[1].replace(/,/g, '')),
-      strength: parseInt(match[2]),
-      touches: parseInt(match[3])
+      price: parseFloat(match[1]?.replace(/,/g, '') ?? '0'),
+      strength: parseInt(match[2] ?? '0'),
+      touches: parseInt(match[3] ?? '0')
     }))
 
     const resistance = Array.from(resistanceMatches).map(match => ({
-      price: parseFloat(match[1].replace(/,/g, '')),
-      strength: parseInt(match[2]),
-      touches: parseInt(match[3])
+      price: parseFloat(match[1]?.replace(/,/g, '') ?? '0'),
+      strength: parseInt(match[2] ?? '0'),
+      touches: parseInt(match[3] ?? '0')
     }))
 
     // Extract volatility
@@ -67,10 +67,11 @@ export function parseAnalysisText(text: string): AnalysisResultData | null {
     const patterns: Array<{name: string, description: string}> = [];
     
     if (patternSection) {
-      const patternLines = patternSection[1].split('\n').filter(line => line.trim());
+      const patternContent = patternSection[1] ?? '';
+      const patternLines = patternContent.split('\n').filter(line => line.trim());
       patternLines.forEach(line => {
         const match = line.match(/(.+?)[：:]\s*(.+)/);
-        if (match) {
+        if (match && match[1] && match[2]) {
           patterns.push({
             name: match[1].trim(),
             description: match[2].trim()
@@ -84,7 +85,8 @@ export function parseAnalysisText(text: string): AnalysisResultData | null {
     const recommendations: string[] = []
     
     if (recommendationSection) {
-      const lines = recommendationSection[1].split('\n')
+      const recommendationContent = recommendationSection[1] ?? '';
+      const lines = recommendationContent.split('\n')
       lines.forEach(line => {
         // Handle various bullet formats: -, *, ・, or plain text
         const cleaned = line.trim().replace(/^[-\*・]\s*/, '')
@@ -132,9 +134,9 @@ export function parseAnalysisText(text: string): AnalysisResultData | null {
           trend: macdTrend
         }
       },
-      patterns: patterns.length > 0 ? patterns : undefined,
-      recommendations: recommendations.length > 0 ? recommendations : undefined,
-      nextActions: nextActions.length > 0 ? nextActions : undefined
+      ...(patterns.length > 0 && { patterns }),
+      ...(recommendations.length > 0 && { recommendations }),
+      ...(nextActions.length > 0 && { nextActions })
     }
   } catch (error) {
     console.error('Failed to parse analysis text:', error)

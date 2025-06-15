@@ -163,7 +163,10 @@ export function calculateWeightedAverage(
     return 0;
   }
   
-  const weightedSum = values.reduce((sum, val, i) => sum + val * weights[i], 0);
+  const weightedSum = values.reduce((sum, val, i) => {
+    const weight = weights[i];
+    return weight !== undefined ? sum + val * weight : sum;
+  }, 0);
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   
   return safeDivide(weightedSum, totalWeight);

@@ -101,7 +101,7 @@ class MetricsCollector {
     logger.info('[Metrics] Registered metric', { name, type: metric.type });
   }
 
-  increment(name: string, value: number = 1, labels?: Record<string, string>): void {
+  increment(name: string, value: number = 1, _labels?: Record<string, string>): void {
     const metric = this.metrics.get(name);
     if (!metric) {
       logger.warn('[Metrics] Attempted to increment unknown metric', { name });
@@ -117,7 +117,7 @@ class MetricsCollector {
     logger.debug('[Metrics] Incremented counter', { name, value: metric.value, increment: value });
   }
 
-  set(name: string, value: number, labels?: Record<string, string>): void {
+  set(name: string, value: number, _labels?: Record<string, string>): void {
     const metric = this.metrics.get(name);
     if (!metric) {
       logger.warn('[Metrics] Attempted to set unknown metric', { name });
@@ -128,7 +128,7 @@ class MetricsCollector {
     logger.debug('[Metrics] Set metric value', { name, value });
   }
 
-  observe(name: string, value: number, labels?: Record<string, string>): void {
+  observe(name: string, value: number, _labels?: Record<string, string>): void {
     const metric = this.metrics.get(name);
     if (!metric) {
       logger.warn('[Metrics] Attempted to observe unknown metric', { name });
@@ -187,7 +187,7 @@ class MetricsCollector {
    * Reset all counters (useful for testing)
    */
   reset(): void {
-    for (const [name, metric] of this.metrics) {
+    for (const [_name, metric] of this.metrics) {
       if (metric.type === 'counter') {
         metric.value = 0;
       }

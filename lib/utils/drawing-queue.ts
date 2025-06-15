@@ -20,7 +20,6 @@ export interface QueuedOperation<T = unknown> {
 
 export class DrawingOperationQueue {
   private queue: QueuedOperation[] = [];
-  private isProcessing = false;
   private maxConcurrency = 1; // Sequential processing by default
   private activeOperations = 0;
   private retryWrapper: RetryWrapper;
@@ -54,7 +53,7 @@ export class DrawingOperationQueue {
         timestamp: Date.now(),
       };
       
-      this.queue.push(queuedOp);
+      this.queue.push(queuedOp as QueuedOperation<unknown>);
       logger.info('[DrawingQueue] Operation enqueued', { 
         id, 
         queueLength: this.queue.length 

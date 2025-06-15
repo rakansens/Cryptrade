@@ -4,7 +4,7 @@
  * Provides backward compatibility and convenience functions
  */
 
-import { unifiedLogger, UnifiedLogger, type LogLevel, type UnifiedLoggerConfig } from './unified-logger';
+import { unifiedLogger, UnifiedLogger, type LogLevel } from './unified-logger';
 import type { LogMetadata, AgentLogMetadata, ToolLogMetadata } from '@/types/logging.types';
 
 /**

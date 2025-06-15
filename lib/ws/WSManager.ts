@@ -3,7 +3,7 @@
  * Provides connection sharing, automatic reconnection with jitter, and resource cleanup
  */
 
-import { Observable, Subject, BehaviorSubject, EMPTY, timer } from 'rxjs';
+import { Observable, Subject, BehaviorSubject, timer } from 'rxjs';
 import { 
   webSocket, 
   WebSocketSubject, 
@@ -12,23 +12,18 @@ import {
 import { 
   map,
   tap,
-  retry,
   retryWhen,
   scan,
   delayWhen,
-  takeUntil,
-  share,
   shareReplay,
   finalize,
-  catchError,
-  switchMap
+  catchError
 } from 'rxjs/operators';
 import { logger } from '@/lib/utils/logger';
 import type { 
   WSMessage, 
   WSManagerOptions, 
-  StreamState, 
-  ReconnectionState,
+  StreamState,
   WebSocketError,
   WebSocketMetrics,
   StreamInfo,
@@ -165,7 +160,7 @@ export class WSManager {
             ...acc, 
             attempt: acc.attempt + 1, 
             error 
-          }), { attempt: 0, error: null } as RetryState),
+          }), { attempt: 0, error: null as unknown as WebSocketError } as RetryState),
           tap(({ attempt, error }) => {
             if (this.options.debug) {
               logger.warn('[WSManager] Stream error, preparing retry', { 
@@ -316,17 +311,6 @@ export class WSManager {
     return Math.round(finalDelay);
   }
 
-  /**
-   * Note: refCount is now managed by shareReplay({ refCount: true })
-   * This method is kept for backward compatibility but is largely unused
-   */
-  private decrementRefCount(streamName: string): void {
-    // With shareReplay({ refCount: true }), reference counting is handled automatically
-    // This method is mainly for debugging purposes now
-    if (this.options.debug) {
-      logger.debug('[WSManager] RefCount decrement (handled by shareReplay)', { streamName });
-    }
-  }
 
   /**
    * Handle stream cleanup when no more subscribers
@@ -424,6 +408,7 @@ export class WSManager {
       // Primary monitoring metrics
       activeConnections: this.streams.size,
       retryCount: this.metrics.totalRetryAttempts,
+      totalRetryAttempts: this.metrics.totalRetryAttempts,
       
       // Extended metrics 
       totalReconnections: this.metrics.totalReconnections,
@@ -514,7 +499,7 @@ export class WSManager {
   private stopPeriodicCleanup(): void {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      this.cleanupTimer = undefined;
+      delete this.cleanupTimer;
       
       if (this.options.debug) {
         logger.debug('[WSManager] Stopped periodic cleanup');

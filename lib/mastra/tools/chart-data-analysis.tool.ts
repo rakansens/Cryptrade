@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
-import { logger } from '@/lib/utils/logger';
+import { logger } from '../../utils/logger';
 
 // Type definitions for chart data analysis
 interface Candle {
@@ -21,7 +21,7 @@ interface TechnicalAnalysis {
   momentum: {
     rsi: number;
     macd: {
-      value: number;
+      macd: number;
       signal: number;
       histogram: number;
     };
@@ -46,10 +46,10 @@ interface TechnicalAnalysis {
     }>;
   };
   movingAverages: {
-    ma20: number;
-    ma50: number;
-    ema12: number;
-    ema26: number;
+    ma20?: number;
+    ma50?: number;
+    ema12?: number;
+    ema26?: number;
   };
 }
 
@@ -215,7 +215,7 @@ export const chartDataAnalysisTool = createTool({
       limit = 200, 
       analysisType = 'full',
       lookbackPeriod = 100 
-    } = context;
+    } = context as z.infer<typeof ChartDataAnalysisInput>;
 
     try {
       logger.info('[ChartDataAnalysis] Starting analysis', {
@@ -248,13 +248,13 @@ export const chartDataAnalysisTool = createTool({
         symbol,
         timeframe,
         dataRange: {
-          startTime: candleData[0].time,
-          endTime: candleData[candleData.length - 1].time,
+          startTime: candleData[0]?.time || 0,
+          endTime: candleData[candleData.length - 1]?.time || 0,
           candleCount: candleData.length,
         },
         currentPrice: {
-          price: candleData[candleData.length - 1].close,
-          timestamp: candleData[candleData.length - 1].time,
+          price: candleData[candleData.length - 1]?.close || 0,
+          timestamp: candleData[candleData.length - 1]?.time || 0,
         },
         technicalAnalysis,
         recommendations,
@@ -354,7 +354,7 @@ async function fetchCandlestickData(symbol: string, timeframe: string, limit: nu
 /**
  * Calculate comprehensive technical analysis
  */
-async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: number) {
+async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: number): Promise<TechnicalAnalysis> {
   const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
@@ -382,8 +382,17 @@ async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: num
   
   // Calculate volatility level
   const currentPrice = closes[closes.length - 1];
+  if (currentPrice === undefined) {
+    return {
+      trend: { direction: 'sideways', strength: 0.5, confidence: 0.5 },
+      supportResistance: { supports: [], resistances: [] },
+      volatility: { atr: 0, volatilityLevel: 'low', atrPercent: 0 },
+      momentum: { rsi: 50, macd: { macd: 0, signal: 0, histogram: 0 } },
+      movingAverages: {},
+    };
+  }
   const atrPercent = (atr / currentPrice) * 100;
-  const volatilityLevel = atrPercent > 4 ? 'high' : atrPercent > 2 ? 'medium' : 'low';
+  const volatilityLevel: 'high' | 'medium' | 'low' = atrPercent > 4 ? 'high' : atrPercent > 2 ? 'medium' : 'low';
   
   return {
     trend,
@@ -402,10 +411,10 @@ async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: num
       },
     },
     movingAverages: {
-      ma20: ma20[ma20.length - 1],
-      ma50: ma50[ma50.length - 1],
-      ema12: ema12[ema12.length - 1],
-      ema26: ema26[ema26.length - 1],
+      ...(ma20[ma20.length - 1] !== undefined && { ma20: ma20[ma20.length - 1] }),
+      ...(ma50[ma50.length - 1] !== undefined && { ma50: ma50[ma50.length - 1] }),
+      ...(ema12[ema12.length - 1] !== undefined && { ema12: ema12[ema12.length - 1] }),
+      ...(ema26[ema26.length - 1] !== undefined && { ema26: ema26[ema26.length - 1] }),
     },
   };
 }
@@ -413,16 +422,14 @@ async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: num
 /**
  * Detect chart patterns
  */
-async function detectChartPatterns(candles: Candle[], timeframe: string) {
-  const patterns = [];
+async function detectChartPatterns(candles: Candle[], timeframe: string): Promise<Pattern[]> {
+  const patterns: Pattern[] = [];
   
   // Simple pattern detection (can be enhanced)
-  const closes = candles.map(c => c.close);
   const recentCandles = candles.slice(-20);
   
   // Detect double top/bottom patterns
-  const highs = recentCandles.map(c => c.high);
-  const lows = recentCandles.map(c => c.low);
+  // Pattern detection logic can be enhanced here
   
   // Example: Ascending triangle pattern
   if (isAscendingTriangle(recentCandles)) {
@@ -445,14 +452,44 @@ async function generateDrawingRecommendations(
   technicalAnalysis: TechnicalAnalysis, 
   patterns: Pattern[], 
   timeframe: string
-) {
-  const recommendations = [];
-  const currentPrice = candles[candles.length - 1].close;
-  const currentTime = candles[candles.length - 1].time;
+): Promise<{
+  trendlineDrawing: Array<{
+    type: 'trendline' | 'fibonacci' | 'horizontal';
+    description: string;
+    points: Array<{ time: number; price: number }>;
+    style: {
+      color: string;
+      lineWidth: number;
+      lineStyle: 'solid' | 'dashed' | 'dotted';
+    };
+    priority: number;
+  }>;
+  analysis: string;
+  nextAction: string;
+}> {
+  const recommendations: Array<{
+    type: 'trendline' | 'fibonacci' | 'horizontal';
+    description: string;
+    points: Array<{ time: number; price: number }>;
+    style: {
+      color: string;
+      lineWidth: number;
+      lineStyle: 'solid' | 'dashed' | 'dotted';
+    };
+    priority: number;
+  }> = [];
+  const lastCandle = candles[candles.length - 1];
+  if (!lastCandle) return {
+    trendlineDrawing: [],
+    analysis: 'データが不足しています。',
+    nextAction: 'チャートデータの取得を確認してください。',
+  };
+  const currentPrice = lastCandle.close;
   
   // Recommend trendlines based on support/resistance
-  if (technicalAnalysis.supportResistance.supports.length > 0) {
-    const strongestSupport = technicalAnalysis.supportResistance.supports[0];
+  const { supports, resistances } = technicalAnalysis.supportResistance;
+  if (supports.length > 0 && supports[0]) {
+    const strongestSupport = supports[0];
     
     // Find historical points that touched this support level
     const supportPoints = findTouchPoints(candles, strongestSupport.price, 'support');
@@ -472,8 +509,8 @@ async function generateDrawingRecommendations(
     }
   }
   
-  if (technicalAnalysis.supportResistance.resistances.length > 0) {
-    const strongestResistance = technicalAnalysis.supportResistance.resistances[0];
+  if (resistances.length > 0 && resistances[0]) {
+    const strongestResistance = resistances[0];
     
     const resistancePoints = findTouchPoints(candles, strongestResistance.price, 'resistance');
     
@@ -525,14 +562,17 @@ async function generateDrawingRecommendations(
 // Helper functions for technical analysis calculations
 
 function calculateRSI(prices: number[], period: number = 14): number[] {
-  const rsi = [];
+  const rsi: number[] = [];
   
   for (let i = period; i < prices.length; i++) {
     let gains = 0;
     let losses = 0;
     
     for (let j = i - period + 1; j <= i; j++) {
-      const change = prices[j] - prices[j - 1];
+      const prev = prices[j - 1];
+      const curr = prices[j];
+      if (prev === undefined || curr === undefined) continue;
+      const change = curr - prev;
       if (change > 0) gains += change;
       else losses -= change;
     }
@@ -550,72 +590,102 @@ function calculateMACD(prices: number[]) {
   const ema12 = calculateEMA(prices, 12);
   const ema26 = calculateEMA(prices, 26);
   
-  const macd = [];
+  const macd: number[] = [];
   for (let i = 0; i < Math.min(ema12.length, ema26.length); i++) {
-    macd.push(ema12[i] - ema26[i]);
+    const val12 = ema12[i];
+    const val26 = ema26[i];
+    if (val12 !== undefined && val26 !== undefined) {
+      macd.push(val12 - val26);
+    }
   }
   
   const signal = calculateEMA(macd, 9);
-  const histogram = [];
+  const histogram: number[] = [];
   
   for (let i = 0; i < Math.min(macd.length, signal.length); i++) {
-    histogram.push(macd[i] - signal[i]);
+    const macdVal = macd[i];
+    const signalVal = signal[i];
+    if (macdVal !== undefined && signalVal !== undefined) {
+      histogram.push(macdVal - signalVal);
+    }
   }
   
   return { macd, signal, histogram };
 }
 
 function calculateSMA(prices: number[], period: number): number[] {
-  const sma = [];
+  const sma: number[] = [];
   
   for (let i = period - 1; i < prices.length; i++) {
-    const sum = prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
-    sma.push(sum / period);
+    const slice = prices.slice(i - period + 1, i + 1);
+    if (slice.length === period) {
+      const sum = slice.reduce((a, b) => a + b, 0);
+      sma.push(sum / period);
+    }
   }
   
   return sma;
 }
 
 function calculateEMA(prices: number[], period: number): number[] {
-  const ema = [];
+  const ema: number[] = [];
   const multiplier = 2 / (period + 1);
+  
+  if (prices.length < period) return ema;
   
   // Start with SMA for first value
   let sum = 0;
   for (let i = 0; i < period; i++) {
-    sum += prices[i];
+    const price = prices[i];
+    if (price === undefined) return ema;
+    sum += price;
   }
   ema.push(sum / period);
   
   // Calculate EMA for remaining values
   for (let i = period; i < prices.length; i++) {
-    ema.push((prices[i] - ema[ema.length - 1]) * multiplier + ema[ema.length - 1]);
+    const currentPrice = prices[i];
+    const prevEMA = ema[ema.length - 1];
+    if (currentPrice !== undefined && prevEMA !== undefined) {
+      ema.push((currentPrice - prevEMA) * multiplier + prevEMA);
+    }
   }
   
   return ema;
 }
 
 function calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
-  const trueRanges = [];
+  const trueRanges: number[] = [];
   
   for (let i = 1; i < highs.length; i++) {
-    const tr1 = highs[i] - lows[i];
-    const tr2 = Math.abs(highs[i] - closes[i - 1]);
-    const tr3 = Math.abs(lows[i] - closes[i - 1]);
+    const high = highs[i];
+    const low = lows[i];
+    const prevClose = closes[i - 1];
+    
+    if (high === undefined || low === undefined || prevClose === undefined) continue;
+    
+    const tr1 = high - low;
+    const tr2 = Math.abs(high - prevClose);
+    const tr3 = Math.abs(low - prevClose);
     trueRanges.push(Math.max(tr1, tr2, tr3));
   }
   
-  return trueRanges.slice(-period).reduce((a, b) => a + b, 0) / period;
+  const recentRanges = trueRanges.slice(-period);
+  return recentRanges.length > 0 ? recentRanges.reduce((a, b) => a + b, 0) / recentRanges.length : 0;
 }
 
-function analyzeTrend(closes: number[], ma20: number[], ma50: number[]) {
-  const recentCloses = closes.slice(-10);
-  const recentMA20 = ma20.slice(-10);
-  const recentMA50 = ma50.slice(-10);
-  
+function analyzeTrend(closes: number[], ma20: number[], ma50: number[]): {
+  direction: 'bullish' | 'bearish' | 'sideways';
+  strength: number;
+  confidence: number;
+} {
   const currentPrice = closes[closes.length - 1];
   const currentMA20 = ma20[ma20.length - 1];
   const currentMA50 = ma50[ma50.length - 1];
+  
+  if (currentPrice === undefined || currentMA20 === undefined || currentMA50 === undefined) {
+    return { direction: 'sideways', strength: 0.5, confidence: 0.5 };
+  }
   
   let direction: 'bullish' | 'bearish' | 'sideways' = 'sideways';
   let strength = 0.5;
@@ -635,7 +705,20 @@ function analyzeTrend(closes: number[], ma20: number[], ma50: number[]) {
   return { direction, strength, confidence };
 }
 
-function findSupportResistanceLevels(candles: Candle[], lookbackPeriod: number) {
+function findSupportResistanceLevels(candles: Candle[], lookbackPeriod: number): {
+  supports: Array<{
+    price: number;
+    strength: number;
+    touchCount: number;
+    lastTouch: number;
+  }>;
+  resistances: Array<{
+    price: number;
+    strength: number;
+    touchCount: number;
+    lastTouch: number;
+  }>;
+} {
   const supports = [];
   const resistances = [];
   
@@ -649,6 +732,8 @@ function findSupportResistanceLevels(candles: Candle[], lookbackPeriod: number) 
     const prev1 = recentCandles[i - 1];
     const next1 = recentCandles[i + 1];
     const next2 = recentCandles[i + 2];
+    
+    if (!current || !prev2 || !prev1 || !next1 || !next2) continue;
     
     // Swing high
     if (current.high > prev2.high && current.high > prev1.high && 
@@ -701,11 +786,13 @@ function findSupportResistanceLevels(candles: Candle[], lookbackPeriod: number) 
   };
 }
 
-function findTouchPoints(candles: Candle[], targetPrice: number, type: 'support' | 'resistance') {
+function findTouchPoints(candles: Candle[], targetPrice: number, type: 'support' | 'resistance'): Array<{ time: number; price: number }> {
   const tolerance = targetPrice * 0.005; // 0.5% tolerance
-  const touchPoints = [];
+  const touchPoints: Array<{ time: number; price: number }> = [];
   
   for (const candle of candles) {
+    if (!candle) continue;
+    
     if (type === 'support' && Math.abs(candle.low - targetPrice) <= tolerance) {
       // 時間をミリ秒のまま保持（FloatingChatPanelで秒に変換される）
       touchPoints.push({ time: candle.time, price: candle.low });
@@ -718,9 +805,9 @@ function findTouchPoints(candles: Candle[], targetPrice: number, type: 'support'
   return touchPoints.slice(0, 5); // Return max 5 touch points
 }
 
-function findTrendPoints(candles: Candle[], direction: 'bullish' | 'bearish' | 'sideways') {
+function findTrendPoints(candles: Candle[], direction: 'bullish' | 'bearish' | 'sideways'): Array<{ time: number; price: number }> {
   const recentCandles = candles.slice(-50);
-  const points = [];
+  const points: Array<{ time: number; price: number }> = [];
   
   if (direction === 'bullish') {
     // Find swing lows for uptrend line
@@ -730,6 +817,8 @@ function findTrendPoints(candles: Candle[], direction: 'bullish' | 'bearish' | '
       const prev2 = recentCandles[i - 2];
       const next1 = recentCandles[i + 1];
       const next2 = recentCandles[i + 2];
+      
+      if (!current || !prev1 || !prev2 || !next1 || !next2) continue;
       
       if (current.low < prev1.low && current.low < prev2.low &&
           current.low < next1.low && current.low < next2.low) {
@@ -744,6 +833,8 @@ function findTrendPoints(candles: Candle[], direction: 'bullish' | 'bearish' | '
       const prev2 = recentCandles[i - 2];
       const next1 = recentCandles[i + 1];
       const next2 = recentCandles[i + 2];
+      
+      if (!current || !prev1 || !prev2 || !next1 || !next2) continue;
       
       if (current.high > prev1.high && current.high > prev2.high &&
           current.high > next1.high && current.high > next2.high) {
@@ -823,7 +914,7 @@ function generateNextActionRecommendation(technicalAnalysis: TechnicalAnalysis, 
     return 'RSIが買われすぎ水準。利確または調整待ちを検討してください。';
   } else if (momentum.rsi < 20) {
     return 'RSIが売られすぎ水準。反発の可能性があります。';
-  } else if (supportResistance.supports.length > 0) {
+  } else if (supportResistance.supports.length > 0 && supportResistance.supports[0]) {
     const nearestSupport = supportResistance.supports[0];
     const distanceToSupport = ((currentPrice - nearestSupport.price) / currentPrice) * 100;
     

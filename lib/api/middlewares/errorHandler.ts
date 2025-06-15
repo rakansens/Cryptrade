@@ -15,12 +15,24 @@ export const createErrorHandlerMiddleware = (): ApiMiddleware =>
       error.statusText = result.response.statusText;
       
       try {
-        error.response = await result.response.clone().json();
+        const jsonData = await result.response.clone().json();
+        error.response = {
+          data: jsonData,
+          status: result.response.status,
+          statusText: result.response.statusText,
+          headers: result.response.headers
+        };
       } catch {
         try {
-          error.response = await result.response.clone().text();
+          const text = await result.response.clone().text();
+          error.response = {
+            data: text,
+            status: result.response.status,
+            statusText: result.response.statusText,
+            headers: result.response.headers
+          };
         } catch {
-          error.response = null;
+          delete error.response;
         }
       }
       

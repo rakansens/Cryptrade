@@ -9,7 +9,6 @@ import type {
   FeatureImportance,
   ModelMetrics 
 } from './line-validation-types';
-import { FeatureExtractor } from './feature-extractor';
 
 export class LineQualityPredictor {
   private model: tf.LayersModel | null = null;
@@ -72,7 +71,7 @@ export class LineQualityPredictor {
       this.isModelReady = true;
       logger.info('[LinePredictor] Model initialized successfully');
     } catch (error) {
-      logger.error('[LinePredictor] Failed to initialize model', error);
+      logger.error('[LinePredictor] Failed to initialize model', { error: error instanceof Error ? error.message : String(error) });
       // Fallback to rule-based predictions
       this.isModelReady = false;
     }
@@ -103,10 +102,10 @@ export class LineQualityPredictor {
       // Success probability based on key features
       const successProb = Math.min(1, Math.max(0,
         0.3 + 
-        touchCountNorm * 0.2 +
-        rSquared * 0.3 +
-        volumeStrength * 0.1 +
-        timeframeConfluence * 0.2 +
+        (touchCountNorm ?? 0) * 0.2 +
+        (rSquared ?? 0) * 0.3 +
+        (volumeStrength ?? 0) * 0.1 +
+        (timeframeConfluence ?? 0) * 0.2 +
         (Math.random() - 0.5) * 0.1
       ));
       
@@ -116,7 +115,7 @@ export class LineQualityPredictor {
       ));
       
       // Confidence interval
-      const confWidth = 0.1 + (1 - rSquared) * 0.2;
+      const confWidth = 0.1 + (1 - (rSquared ?? 0)) * 0.2;
       const confLow = Math.max(0, successProb - confWidth);
       const confHigh = Math.min(1, successProb + confWidth);
       
@@ -175,28 +174,32 @@ export class LineQualityPredictor {
       input.dispose();
       prediction.dispose();
       
-      const [successProb, expectedBouncesNorm, confLow, confHigh] = values[0];
+      const firstValue = values[0];
+      if (!firstValue || firstValue.length < 4) {
+        throw new Error('Invalid prediction output');
+      }
+      const [successProb, expectedBouncesNorm, confLow, confHigh] = firstValue;
       
       // Generate reasoning
-      const reasoning = this.generateReasoning(features, successProb);
+      const reasoning = this.generateReasoning(features, successProb ?? 0);
       
       // Calculate risk score
-      const riskScore = this.calculateRiskScore(features, successProb);
+      const riskScore = this.calculateRiskScore(features, successProb ?? 0);
       
       // Suggest SL/TP based on prediction
-      const { stopLoss, takeProfit } = this.suggestRiskManagement(features, successProb);
+      const { stopLoss, takeProfit } = this.suggestRiskManagement(features, successProb ?? 0);
       
       return {
-        successProbability: successProb,
-        expectedBounces: Math.round(expectedBouncesNorm * 5), // Denormalize to 0-5
-        confidenceInterval: [confLow, confHigh],
+        successProbability: successProb ?? 0,
+        expectedBounces: Math.round((expectedBouncesNorm ?? 0) * 5), // Denormalize to 0-5
+        confidenceInterval: [confLow ?? 0, confHigh ?? 1],
         riskScore,
-        suggestedStopLoss: stopLoss,
-        suggestedTakeProfit: takeProfit,
+        ...(stopLoss !== undefined && { suggestedStopLoss: stopLoss }),
+        ...(takeProfit !== undefined && { suggestedTakeProfit: takeProfit }),
         reasoning
       };
     } catch (error) {
-      logger.error('[LinePredictor] Prediction error', error);
+      logger.error('[LinePredictor] Prediction error', { error: error instanceof Error ? error.message : String(error) });
       return this.ruleBasedPrediction(features);
     }
   }
@@ -251,7 +254,7 @@ export class LineQualityPredictor {
   /**
    * Generate human-readable reasoning
    */
-  private generateReasoning(features: LineFeatures, successProb: number): MLReasoning[] {
+  private generateReasoning(features: LineFeatures, _successProb: number): MLReasoning[] {
     const reasoning: MLReasoning[] = [];
     
     // Touch count reasoning
@@ -359,7 +362,7 @@ export class LineQualityPredictor {
    * Suggest stop loss and take profit
    */
   private suggestRiskManagement(
-    features: LineFeatures, 
+    _features: LineFeatures, 
     successProb: number
   ): { stopLoss?: number; takeProfit?: number } {
     // This would be more sophisticated in production

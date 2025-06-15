@@ -128,7 +128,9 @@ export class StreamingMLAnalyzer {
       return adjustedPrediction;
       
     } catch (error) {
-      logger.error('[StreamingMLAnalyzer] Analysis error', error);
+      logger.error('[StreamingMLAnalyzer] Analysis error', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
       yield {
         stage: 'complete',
         progress: 100,

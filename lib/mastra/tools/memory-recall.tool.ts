@@ -125,10 +125,12 @@ export const memoryRecallTool = createTool({
             };
           }
           
+          const { metadata, ...messageProps } = input.message;
           await memoryStore.addMessage({
             sessionId: input.sessionId,
-            ...input.message,
-          });
+            ...messageProps,
+            metadata: metadata || undefined,
+          } as Parameters<typeof memoryStore.addMessage>[0]);
           
           return {
             success: true,
@@ -171,7 +173,7 @@ export function formatConversationContext(
   // Process messages in reverse order (most recent first)
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    const formattedMsg = `${msg.role}: ${msg.content}\n\n`;
+    const formattedMsg = `${msg!.role}: ${msg!.content}\n\n`;
     const msgTokens = Math.ceil(formattedMsg.length / 4); // Rough token estimate
     
     if (tokenCount + msgTokens > maxTokens) {

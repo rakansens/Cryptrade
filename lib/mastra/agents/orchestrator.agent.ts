@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
+// import { z } from 'zod';
 import { generateCorrelationId } from '@/types/agent-payload';
 import { traceManager } from '@/lib/monitoring/trace';
 import { logger } from '@/lib/utils/logger';
@@ -10,6 +10,17 @@ import { marketSnapshotTool, trendingTopicsTool } from '../tools/market-snapshot
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/store/enhanced-conversation-memory.store';
 import { registerAllAgents } from '../network/agent-registry';
+
+// Context type for orchestrator agent
+interface OrchestratorAgentContext {
+  queryComplexity?: string;
+  userTier?: string;
+  isProposalMode?: boolean;
+  userLevel?: string;
+  marketStatus?: string;
+  language?: string;
+  runtimeContext?: any;
+}
 
 /**
  * Orchestrator Agent - Unified Implementation
@@ -29,34 +40,35 @@ export interface IntentAnalysisResult {
   reasoning: string;
   analysisDepth: 'basic' | 'detailed' | 'comprehensive';
   isProposalMode?: boolean;
-  proposalType?: 'trendline' | 'support-resistance' | 'pattern' | 'all';
+  proposalType?: 'trendline' | 'support-resistance' | 'pattern' | 'fibonacci' | 'entry' | 'all';
   conversationMode?: 'formal' | 'casual' | 'friendly';
   emotionalTone?: 'positive' | 'neutral' | 'concerned' | 'excited';
 }
 
-// 簡潔なスキーマ定義
-const IntentAnalysisOutput = z.object({
-  intent: z.enum(['price_inquiry', 'ui_control', 'trading_analysis', 'conversational', 'proposal_request', 'market_chat', 'small_talk', 'greeting', 'help_request']),
-  confidence: z.number().min(0).max(1),
-  extractedSymbol: z.string().optional(),
-  reasoning: z.string(),
-  analysisDepth: z.enum(['basic', 'detailed', 'comprehensive']),
-  selectedAgent: z.string(),
-  executionResult: z.unknown().optional(),
-  isProposalMode: z.boolean().optional(),
-  proposalType: z.enum(['trendline', 'support-resistance', 'pattern', 'all']).optional(),
-  conversationMode: z.enum(['formal', 'casual', 'friendly']).optional(),
-  emotionalTone: z.enum(['positive', 'neutral', 'concerned', 'excited']).optional(),
-});
+// 簡潔なスキーマ定義 - not used currently
+// const IntentAnalysisOutput = z.object({
+//   intent: z.enum(['price_inquiry', 'ui_control', 'trading_analysis', 'conversational', 'proposal_request', 'market_chat', 'small_talk', 'greeting', 'help_request']),
+//   confidence: z.number().min(0).max(1),
+//   extractedSymbol: z.string().optional(),
+//   reasoning: z.string(),
+//   analysisDepth: z.enum(['basic', 'detailed', 'comprehensive']),
+//   selectedAgent: z.string(),
+//   executionResult: z.unknown().optional(),
+//   isProposalMode: z.boolean().optional(),
+//   proposalType: z.enum(['trendline', 'support-resistance', 'pattern', 'all']).optional(),
+//   conversationMode: z.enum(['formal', 'casual', 'friendly']).optional(),
+//   emotionalTone: z.enum(['positive', 'neutral', 'concerned', 'excited']).optional(),
+// });
 
 export const orchestratorAgent = new Agent({
   name: 'cryptrade-orchestrator-v2',
   // 動的モデル選択: コンテキストに応じてモデルを切り替え
   model: (context) => {
     // コンテキストから情報を取得
-    const queryComplexity = context?.queryComplexity || 'simple';
-    const userTier = context?.userTier || 'free';
-    const isProposalMode = context?.isProposalMode || false;
+    const ctx = context as OrchestratorAgentContext;
+    const queryComplexity = ctx?.queryComplexity || 'simple';
+    const userTier = ctx?.userTier || 'free';
+    const isProposalMode = ctx?.isProposalMode || false;
     
     // 提案モードや複雑なクエリの場合は高性能モデルを使用
     if (isProposalMode || queryComplexity === 'complex') {
@@ -78,9 +90,10 @@ export const orchestratorAgent = new Agent({
   // },
   // 動的インストラクション: ユーザーレベルに応じて指示を調整
   instructions: (context) => {
-    const userLevel = context?.userLevel || 'intermediate';
-    const marketStatus = context?.marketStatus || 'open';
-    const language = context?.language || 'ja';
+    const ctx = context as OrchestratorAgentContext;
+    const userLevel = ctx?.userLevel || 'intermediate';
+    const marketStatus = ctx?.marketStatus || 'open';
+    // const language = ctx?.language || 'ja';
     
     const baseInstructions = `
 あなたはCryptrade暗号通貨取引プラットフォームの意図分析専門エージェントです。
@@ -180,26 +193,17 @@ export const orchestratorAgent = new Agent({
            agentDescriptions;
   },
   // 動的ツール選択: 状況に応じて利用可能なツールを変更
-  tools: (context) => {
-    const baseTools = {
-      agentSelectionTool,
-      memoryRecallTool,
-    };
-    
-    // 会話用ツール（軽量）
-    const conversationTools = {
-      marketSnapshot: marketSnapshotTool,
-      trendingTopics: trendingTopicsTool,
-      quickPrice: marketDataResilientTool, // 価格確認が必要な場合
-    };
-    
-    // 全てのツールを含める（Orchestratorが判断）
-    return { ...baseTools, ...conversationTools };
+  tools: {
+    agentSelectionTool: agentSelectionTool as any,
+    memoryRecallTool: memoryRecallTool as any,
+    marketSnapshot: marketSnapshotTool as any,
+    trendingTopics: trendingTopicsTool as any,
+    quickPrice: marketDataResilientTool as any, // 価格確認が必要な場合
   },
 });
 
 // Import unified intent analysis
-import { analyzeIntent, type IntentAnalysisResult as UnifiedIntentResult } from '../utils/intent';
+import { analyzeIntent } from '../utils/intent';
 
 // Export for backward compatibility with tests
 export const analyzeUserIntent = analyzeIntent;
@@ -223,6 +227,8 @@ export interface OrchestratorExecutionResult {
   metadata?: Record<string, unknown>;
   toolResults?: Array<{ toolName: string; result: unknown }>;
   error?: Error;
+  proposalGroup?: any; // Added for proposal group support
+  entryProposalGroup?: any; // Added for entry proposal support
 }
 
 // Execution response type
@@ -234,10 +240,46 @@ export interface OrchestratorExecutionResponse {
   memoryContext?: string;
 }
 
+// Export OrchestratorResult type to match API types
+export interface OrchestratorResult {
+  success: boolean;
+  proposalGroup?: any;
+  error?: any;
+  metadata?: Record<string, unknown>;
+  analysis: {
+    intent: string;
+    confidence: number;
+    reasoning: string;
+    analysisDepth: string;
+    isProposalMode: boolean;
+    proposalType?: string;
+  };
+  executionTime: number;
+  memoryContext?: string;
+  executionResult?: ExecutionResult;
+}
+
+// Re-export ExecutionResult type for compatibility
+export interface ExecutionResult {
+  success?: boolean;
+  data?: unknown;
+  error?: any;
+  toolResults?: any[];
+  metadata?: Record<string, unknown>;
+  response?: string;
+  proposalGroup?: any;
+  entryProposalGroup?: any;
+  executionResult?: ExecutionResult;
+  steps?: Array<{
+    toolResults?: any[];
+    [key: string]: unknown;
+  }>;
+}
+
 export async function executeImprovedOrchestrator(
   userQuery: string, 
   sessionId?: string,
-  runtimeContext?: OrchestratorRuntimeContext
+  _runtimeContext?: OrchestratorRuntimeContext
 ): Promise<OrchestratorExecutionResponse> {
   const startTime = Date.now();
   const correlationId = generateCorrelationId();
@@ -250,11 +292,11 @@ export async function executeImprovedOrchestrator(
       excludeTools: ['marketDataTool', 'chartControlTool'], // Heavy tools
     });
   
-  const trace = traceManager.startTrace({
-    sessionId: activeSessionId,
-    agentId: 'improved-orchestrator',
-    operationType: 'agent_call',
-  });
+  // const trace = traceManager.startTrace({
+  //   sessionId: activeSessionId,
+  //   agentId: 'improved-orchestrator',
+  //   operationType: 'agent_call',
+  // });
 
   // A2A通信のためのエージェント登録確認
   try {
@@ -312,11 +354,11 @@ export async function executeImprovedOrchestrator(
     const analysis: IntentAnalysisResult = {
       intent: unifiedAnalysis.intent,
       confidence: unifiedAnalysis.confidence,
-      extractedSymbol: unifiedAnalysis.extractedSymbol,
       reasoning: unifiedAnalysis.reasoning,
       analysisDepth: unifiedAnalysis.analysisDepth,
-      isProposalMode: unifiedAnalysis.isProposalMode,
-      proposalType: unifiedAnalysis.proposalType,
+      ...(unifiedAnalysis.extractedSymbol !== undefined && { extractedSymbol: unifiedAnalysis.extractedSymbol }),
+      ...(unifiedAnalysis.isProposalMode !== undefined && { isProposalMode: unifiedAnalysis.isProposalMode }),
+      ...(unifiedAnalysis.proposalType !== undefined && { proposalType: unifiedAnalysis.proposalType }),
     };
     
     // Extract metadata for memory
@@ -353,29 +395,29 @@ export async function executeImprovedOrchestrator(
           intent: analysis.intent,
           userQuery,
           relationshipLevel,
-          emotionalTone: (unifiedAnalysis as { emotionalTone?: string }).emotionalTone,
-          conversationMode: (unifiedAnalysis as { conversationMode?: string }).conversationMode,
-          extractedSymbol: analysis.extractedSymbol,
           correlationId,
+          ...((unifiedAnalysis as { emotionalTone?: string }).emotionalTone !== undefined && { emotionalTone: (unifiedAnalysis as { emotionalTone?: string }).emotionalTone }),
+          ...((unifiedAnalysis as { conversationMode?: string }).conversationMode !== undefined && { conversationMode: (unifiedAnalysis as { conversationMode?: string }).conversationMode }),
+          ...(analysis.extractedSymbol !== undefined && { extractedSymbol: analysis.extractedSymbol }),
         });
         
       } else {
         // 専門的な質問は従来通りエージェントへ委譲
-        let targetAgent: string;
+        let targetAgent: 'price_inquiry' | 'ui_control' | 'trading_analysis';
         
         switch (analysis.intent) {
           case 'price_inquiry':
-            targetAgent = 'priceInquiryAgent';
+            targetAgent = 'price_inquiry';
             break;
           case 'ui_control':
-            targetAgent = 'uiControlAgent';
+            targetAgent = 'ui_control';
             break;
           case 'trading_analysis':
           case 'proposal_request':
-            targetAgent = 'tradingAnalysisAgent';
+            targetAgent = 'trading_analysis';
             break;
           default:
-            targetAgent = 'tradingAnalysisAgent'; // デフォルトは分析エージェント
+            targetAgent = 'trading_analysis'; // デフォルトは分析エージェント
         }
         
         logger.info('[Improved Orchestrator] Delegating to specialized agent', {
@@ -404,13 +446,13 @@ export async function executeImprovedOrchestrator(
             },
             correlationId,
           },
-        });
+        } as any);
         
         // 専門エージェントの結果にメタデータを追加
         executionResult = {
           ...agentResult,
           metadata: {
-            ...agentResult.metadata,
+            ...(agentResult as any).metadata,
             processedBy: targetAgent,
             intent: analysis.intent,
             delegatedFrom: 'orchestrator',
@@ -424,11 +466,11 @@ export async function executeImprovedOrchestrator(
         
         if (typeof executionResult === 'object' && executionResult !== null) {
           if ('response' in executionResult) {
-            responseContent = String(executionResult.response);
-          } else if ('executionResult' in executionResult && executionResult.executionResult?.response) {
-            responseContent = String(executionResult.executionResult.response);
+            responseContent = String((executionResult as any).response);
+          } else if ('executionResult' in executionResult && (executionResult as any).executionResult?.response) {
+            responseContent = String((executionResult as any).executionResult.response);
           } else if ('message' in executionResult) {
-            responseContent = String(executionResult.message);
+            responseContent = String((executionResult as any).message);
           }
         }
         
@@ -443,7 +485,6 @@ export async function executeImprovedOrchestrator(
               confidence: analysis.confidence,
               symbols,
               topics,
-              processedBy: executionResult.metadata?.processedBy || 'unknown',
             },
           });
         }
@@ -467,8 +508,19 @@ export async function executeImprovedOrchestrator(
     });
 
     return {
-      analysis,
-      executionResult,
+      analysis: {
+        intent: analysis.intent as any,
+        confidence: analysis.confidence,
+        requiresProposal: analysis.isProposalMode,
+        extractedSymbol: analysis.extractedSymbol,
+        extractedInterval: undefined,
+        // Store the full analysis result in executionResult for compatibility
+        reasoning: analysis.reasoning,
+        analysisDepth: analysis.analysisDepth,
+        isProposalMode: analysis.isProposalMode,
+        proposalType: analysis.proposalType,
+      } as any,
+      executionResult: executionResult as OrchestratorExecutionResult,
       executionTime,
       success: true,
       memoryContext,

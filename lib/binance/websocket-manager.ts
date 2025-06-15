@@ -120,7 +120,7 @@ export class BinanceWebSocketManager {
   closeAll(): void {
     logger.info('[BinanceWS] Closing all connections');
     
-    this.connections.forEach((ws, symbol) => {
+    this.connections.forEach((ws) => {
       ws.close();
     });
     

@@ -1,21 +1,5 @@
 import { z } from 'zod';
-
-// Drawing Point Schema
-export const DrawingPointSchema = z.object({
-  time: z.number().int().positive(),
-  value: z.number()
-});
-
-// Drawing Style Schema
-export const DrawingStyleSchema = z.object({
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-  lineWidth: z.number().int().min(1).max(10),
-  lineStyle: z.enum(['solid', 'dashed', 'dotted']),
-  showLabels: z.boolean()
-});
-
-// Drawing Type Schema
-export const DrawingTypeSchema = z.enum(['trendline', 'fibonacci', 'horizontal', 'vertical', 'pattern']);
+import { DrawingPointSchema, DrawingStyleSchema, DrawingTypeSchema, DrawingModeSchema } from '@/types/drawing';
 
 // Chart Drawing Schema
 export const ChartDrawingSchema = z.object({
@@ -37,8 +21,11 @@ export const ChartDrawingSchema = z.object({
   ])).optional()
 });
 
-// Pattern Type Schema
-export const PatternTypeSchema = z.enum([
+// Re-import from types/pattern.ts to avoid duplication
+import { PatternTypeSchema } from '@/types/pattern';
+
+// Additional pattern types not in main schema (if needed)
+export const ExtendedPatternTypeSchema = z.enum([
   'headAndShoulders',
   'inverseHeadAndShoulders',
   'doubleTop',
@@ -109,9 +96,6 @@ export const PatternDataSchema = z.object({
   tradingImplication: TradingImplicationSchema,
   confidence: z.number().min(0).max(1)
 });
-
-// Drawing Mode Schema
-export const DrawingModeSchema = z.enum(['none', 'trendline', 'fibonacci', 'horizontal', 'vertical']);
 
 // Validation helpers
 export function validateDrawing(drawing: unknown): ChartDrawing {

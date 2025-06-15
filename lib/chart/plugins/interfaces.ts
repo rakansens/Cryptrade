@@ -246,7 +246,7 @@ export class PluginError extends Error {
     public readonly pluginName: string,
     public readonly operation: string,
     message: string,
-    public readonly cause?: Error
+    public override readonly cause?: Error
   ) {
     super(`[${pluginName}] ${operation}: ${message}`);
     this.name = 'PluginError';

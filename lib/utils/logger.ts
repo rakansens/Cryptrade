@@ -95,34 +95,27 @@ function getDefaultLogLevel(): LogLevel {
   }
 }
 
-// Logger configuration
-const config: LoggerConfig = {
-  level: getLogLevel(),
-  enableConsole: getEnvVar('DISABLE_CONSOLE_LOGS') !== 'true',
-  enableThrottling: getEnvVar('NODE_ENV') === 'production',
-  throttleInterval: 5000, // 5 seconds in production
-};
 
 // Throttling mechanism to prevent log spam
-const throttleMap = new Map<string, number>();
+// const throttleMap = new Map<string, number>();
 
-function shouldThrottle(key: string): boolean {
-  if (!config.enableThrottling) return false;
-  
-  const now = Date.now();
-  const lastLog = throttleMap.get(key);
-  
-  if (!lastLog || now - lastLog > config.throttleInterval) {
-    throttleMap.set(key, now);
-    return false;
-  }
-  
-  return true;
-}
+// function shouldThrottle(key: string): boolean {
+//   if (!config.enableThrottling) return false;
+//   
+//   const now = Date.now();
+//   const lastLog = throttleMap.get(key);
+//   
+//   if (!lastLog || now - lastLog > config.throttleInterval) {
+//     throttleMap.set(key, now);
+//     return false;
+//   }
+//   
+//   return true;
+// }
 
-function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[config.level];
-}
+// function shouldLog(level: LogLevel): boolean {
+//   return LOG_LEVELS[level] >= LOG_LEVELS[config.level];
+// }
 
 // Transport implementations
 class ConsoleTransport implements ILogTransport {
@@ -166,13 +159,13 @@ class ConsoleTransport implements ILogTransport {
         stack: getEnvVar('NODE_ENV') === 'development' ? error.stack : undefined,
         ...Object.getOwnPropertyNames(error).reduce((acc, prop) => {
           if (!['name', 'message', 'stack'].includes(prop)) {
-            acc[prop] = (error as Record<string, unknown>)[prop];
+            acc[prop] = (error as unknown as Record<string, unknown>)[prop];
           }
           return acc;
         }, {} as Record<string, unknown>)
       };
     }
-    return error;
+    return error as Record<string, unknown>;
   }
 
   private formatMessage(entry: LogEntry): string {
@@ -190,7 +183,7 @@ class ConsoleTransport implements ILogTransport {
     return formatted;
   }
 
-  private errorReplacer(key: string, value: unknown): unknown {
+  private errorReplacer(_key: string, value: unknown): unknown {
     if (value instanceof Error) {
       return {
         name: value.name,
@@ -198,7 +191,7 @@ class ConsoleTransport implements ILogTransport {
         stack: getEnvVar('NODE_ENV') === 'development' ? value.stack : undefined,
         ...Object.getOwnPropertyNames(value).reduce((acc, prop) => {
           if (!['name', 'message', 'stack'].includes(prop)) {
-            acc[prop] = (value as Record<string, unknown>)[prop];
+            acc[prop] = (value as unknown as Record<string, unknown>)[prop];
           }
           return acc;
         }, {} as Record<string, unknown>)
@@ -275,14 +268,22 @@ class Logger implements ILogger {
   }
 
   private createLogEntry(level: LogLevel, message: string, meta?: Record<string, unknown>, error?: Error | unknown): LogEntry {
-    return {
+    const entry: LogEntry = {
       level,
       message,
-      meta,
-      error,
       timestamp: new Date(),
       environment: getEnvVar('NODE_ENV') || 'development'
     };
+    
+    if (meta !== undefined) {
+      entry.meta = meta;
+    }
+    
+    if (error !== undefined) {
+      entry.error = error;
+    }
+    
+    return entry;
   }
 
   private logToTransports(entry: LogEntry): void {

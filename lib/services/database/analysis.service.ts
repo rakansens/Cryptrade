@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db/prisma'
-import type { AnalysisRecord, TouchEvent } from '@prisma/client'
 import type { DrawingProposal, EntryProposal } from '@/types/proposals'
 
 export class AnalysisService {
@@ -26,12 +25,12 @@ export class AnalysisService {
   }) {
     return await prisma.analysisRecord.create({
       data: {
-        sessionId: data.sessionId,
+        ...(data.sessionId && { sessionId: data.sessionId }),
         timestamp: BigInt(Date.now()),
         symbol: data.symbol,
         interval: data.interval,
         type: data.type,
-        proposalData: data.proposalData,
+        proposalData: data.proposalData as any,
         trackingData: {
           status: 'monitoring',
           touches: 0,
@@ -59,7 +58,7 @@ export class AnalysisService {
         price: data.price,
         result: data.result,
         strength: data.strength,
-        volume: data.volume
+        ...(data.volume !== undefined && { volume: data.volume })
       }
     })
 
@@ -101,7 +100,7 @@ export class AnalysisService {
   static async getActiveAnalyses(symbol?: string) {
     return await prisma.analysisRecord.findMany({
       where: {
-        symbol: symbol,
+        ...(symbol && { symbol }),
         trackingData: {
           path: ['status'],
           equals: 'monitoring'

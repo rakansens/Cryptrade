@@ -1,6 +1,14 @@
 import type { ApiMiddleware } from '@/types/api';
 import { logger } from '@/lib/utils/logger';
-import type { RetryCondition } from '@/lib/api/types';
+import type { ApiError } from '@/lib/api/types';
+
+// Extended error type that includes status
+export interface RetryableError extends Error {
+  status?: number;
+  code?: string;
+}
+
+export type RetryCondition = (error: RetryableError | ApiError, attempt: number) => boolean;
 
 export interface RetryConfig {
   maxAttempts: number;
@@ -13,18 +21,23 @@ export interface RetryConfig {
  * Default retry condition: retry on 5xx errors, 429 (rate limit), and network errors.
  * Don't retry on 4xx client errors (except 429).
  */
-const defaultRetryCondition: RetryCondition = (error, attempt) => {
+const defaultRetryCondition: RetryCondition = (error, _attempt) => {
+  // Check if it's a retryable error with status
+  if ('status' in error && error.status !== undefined) {
+    // Server errors (5xx) and rate limiting (429)
+    if (error.status >= 500 || error.status === 429) {
+      return true;
+    }
+    // Don't retry client errors (4xx except 429)
+    return false;
+  }
+  
   // Network errors (no response)
-  if (!error.status && error.name !== 'TimeoutError') {
+  if ('name' in error && error.name !== 'TimeoutError') {
     return true;
   }
 
-  // Server errors (5xx) and rate limiting (429)
-  if (error.status >= 500 || error.status === 429) {
-    return true;
-  }
-
-  // Don't retry client errors (4xx except 429)
+  // Default: don't retry
   return false;
 };
 
@@ -59,7 +72,8 @@ export const createRetryMiddleware = (config: RetryConfig): ApiMiddleware => {
         }
 
         // Check if we should retry this error
-        if (!retryCondition(error, attempt)) {
+        const retryableError = error as ApiError | RetryableError;
+        if (!retryCondition(retryableError, attempt)) {
           logger.debug('[RetryMiddleware] Error not retryable', {
             url: ctx.request.url,
             attempt,
@@ -113,7 +127,7 @@ export const createRateLimitRetryMiddleware = (): ApiMiddleware =>
     exponentialBackoff: true,
     retryCondition: (error, attempt) => {
       // Always retry rate limits (429)
-      if (error.status === 429) {
+      if ('status' in error && error.status === 429) {
         return true;
       }
       // Use default condition for other errors

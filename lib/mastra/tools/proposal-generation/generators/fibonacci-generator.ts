@@ -8,7 +8,6 @@
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
 import type { ProposalData } from '@/types/proposal-generator.types';
-import type { PeakTroughPoint } from '../types';
 // DrawingProposal type is not used directly due to mismatch
 import type { 
   IProposalGenerator, 
@@ -19,7 +18,6 @@ import {
   ANALYSIS_PARAMS, 
   COLOR_PALETTE,
   THRESHOLDS,
-  TIME_CONSTANTS
 } from '../utils/constants';
 import { calculateFibonacciConfidence } from '../analyzers/confidence-calculator';
 import { validateDrawingData } from '../validators/drawing-validator';
@@ -95,24 +93,30 @@ export class FibonacciGenerator implements IProposalGenerator {
       
       if (swingHigh) {
         const strength = this.calculateSwingStrength(data, i, 'high', window);
-        swingPoints.push({
-          index: i,
-          time: data[i].time,
-          price: data[i].high,
-          type: 'high',
-          strength,
-        });
+        const candle = data[i];
+        if (candle) {
+          swingPoints.push({
+            index: i,
+            time: candle.time,
+            price: candle.high,
+            type: 'high',
+            strength,
+          });
+        }
       }
       
       if (swingLow) {
         const strength = this.calculateSwingStrength(data, i, 'low', window);
-        swingPoints.push({
-          index: i,
-          time: data[i].time,
-          price: data[i].low,
-          type: 'low',
-          strength,
-        });
+        const candle = data[i];
+        if (candle) {
+          swingPoints.push({
+            index: i,
+            time: candle.time,
+            price: candle.low,
+            type: 'low',
+            strength,
+          });
+        }
       }
     }
     
@@ -127,10 +131,13 @@ export class FibonacciGenerator implements IProposalGenerator {
     index: number,
     window: number
   ): boolean {
-    const currentHigh = data[index].high;
+    const currentCandle = data[index];
+    if (!currentCandle) return false;
+    const currentHigh = currentCandle.high;
     
     for (let i = index - window; i <= index + window; i++) {
-      if (i !== index && data[i].high >= currentHigh) {
+      const candle = data[i];
+      if (i !== index && candle && candle.high >= currentHigh) {
         return false;
       }
     }
@@ -146,10 +153,13 @@ export class FibonacciGenerator implements IProposalGenerator {
     index: number,
     window: number
   ): boolean {
-    const currentLow = data[index].low;
+    const currentCandle = data[index];
+    if (!currentCandle) return false;
+    const currentLow = currentCandle.low;
     
     for (let i = index - window; i <= index + window; i++) {
-      if (i !== index && data[i].low <= currentLow) {
+      const candle = data[i];
+      if (i !== index && candle && candle.low <= currentLow) {
         return false;
       }
     }
@@ -167,15 +177,19 @@ export class FibonacciGenerator implements IProposalGenerator {
     window: number
   ): number {
     let strength = 0;
-    const price = data[index][type];
+    const currentCandle = data[index];
+    if (!currentCandle) return 0;
+    const price = currentCandle[type];
     
     // 前後の価格差
     for (let i = index - window; i <= index + window; i++) {
       if (i === index) continue;
+      const candle = data[i];
+      if (!candle) continue;
       
       const diff = type === 'high' 
-        ? (price - data[i].high) / price
-        : (data[i].low - price) / price;
+        ? (price - candle.high) / price
+        : (candle.low - price) / price;
       
       strength += Math.max(0, diff);
     }
@@ -183,7 +197,7 @@ export class FibonacciGenerator implements IProposalGenerator {
     // ボリューム要因
     const avgVolume = data.slice(index - window, index + window + 1)
       .reduce((sum, d) => sum + d.volume, 0) / (window * 2 + 1);
-    const volumeRatio = data[index].volume / avgVolume;
+    const volumeRatio = currentCandle.volume / avgVolume;
     
     strength *= volumeRatio;
     
@@ -286,13 +300,19 @@ export class FibonacciGenerator implements IProposalGenerator {
   private calculateTrendClarity(segment: CandlestickData[]): number {
     if (segment.length < 2) return 0;
     
-    const startPrice = segment[0].close;
-    const endPrice = segment[segment.length - 1].close;
+    const firstCandle = segment[0];
+    const lastCandle = segment[segment.length - 1];
+    if (!firstCandle || !lastCandle) return 0;
+    
+    const startPrice = firstCandle.close;
+    const endPrice = lastCandle.close;
     const expectedChange = endPrice - startPrice;
     
     let actualProgress = 0;
     for (let i = 1; i < segment.length; i++) {
-      const progress = segment[i].close - startPrice;
+      const candle = segment[i];
+      if (!candle) continue;
+      const progress = candle.close - startPrice;
       if (Math.sign(progress) === Math.sign(expectedChange)) {
         actualProgress += Math.abs(progress);
       }
@@ -318,9 +338,12 @@ export class FibonacciGenerator implements IProposalGenerator {
     const { start, end, direction } = pair;
     
     // 信頼度計算
+    const lastCandle = data[data.length - 1];
+    if (!lastCandle) return null;
+    
     const confidence = calculateFibonacciConfidence(
       { high: Math.max(start.price, end.price), low: Math.min(start.price, end.price) },
-      data[data.length - 1].close,
+      lastCandle.close,
       data
     );
     
@@ -329,7 +352,7 @@ export class FibonacciGenerator implements IProposalGenerator {
     }
     
     // リトレースメントレベルの計算
-    const currentPrice = data[data.length - 1].close;
+    const currentPrice = lastCandle.close;
     const priceRange = Math.abs(end.price - start.price);
     const currentRetracement = direction === 'up'
       ? (end.price - currentPrice) / priceRange
@@ -340,27 +363,47 @@ export class FibonacciGenerator implements IProposalGenerator {
       type: 'fibonacci',
       title: `${direction === 'up' ? '上昇' : '下降'}フィボナッチリトレースメント`,
       description: this.generateDescription(start, end, currentRetracement),
-      reason: this.generateReason(pair, data, currentRetracement, params),
-      drawingData: validateDrawingData({
-        type: 'fibonacci',
-        points: [
-          { time: start.time, value: start.price },
-          { time: end.time, value: end.price },
-        ],
-        levels: ANALYSIS_PARAMS.FIBONACCI_LEVELS,
-        style: {
-          color: COLOR_PALETTE.FIBONACCI.RETRACEMENT,
-          lineWidth: 1,
-          lineStyle: 'dashed',
-          showLabels: true,
-        },
-      }),
+      // reasoning: this.generateReason(pair, data, currentRetracement, params), // Not in ProposalData type
+      drawingData: (() => {
+        const validated = validateDrawingData({
+          type: 'fibonacci',
+          points: [
+            { time: start.time, value: start.price },
+            { time: end.time, value: end.price },
+          ],
+          levels: ANALYSIS_PARAMS.FIBONACCI_LEVELS,
+          style: {
+            color: COLOR_PALETTE.FIBONACCI.RETRACEMENT,
+            lineWidth: 1,
+            lineStyle: 'dashed',
+            showLabels: true,
+          },
+        });
+        
+        // Create clean object without undefined values
+        const result: any = {
+          type: validated.type,
+          points: validated.points,
+        };
+        
+        if (validated.style) result.style = validated.style;
+        if (validated.levels) result.levels = validated.levels;
+        
+        return result;
+      })(),
       confidence,
       priority: this.calculatePriority(confidence, pair, currentRetracement),
       createdAt: Date.now(),
-      symbol: params.symbol,
-      interval: params.interval,
+      analysis: {
+        direction: direction === 'up' ? 'bullish' : 'bearish' as 'bullish' | 'bearish',
+        strength: confidence,
+        angle: Math.atan2(end.price - start.price, end.time - start.time) * 180 / Math.PI,
+        length: Math.abs(end.time - start.time),
+      },
       metadata: {
+        symbol: params.symbol,
+        interval: params.interval,
+        reasoning: this.generateReason(pair, data, currentRetracement, params),
         direction,
         swingStrength: (start.strength + end.strength) / 2,
         priceChange: calculatePriceChangePercent(start.price, end.price),
@@ -378,7 +421,7 @@ export class FibonacciGenerator implements IProposalGenerator {
   private generateDescription(
     start: SwingPoint,
     end: SwingPoint,
-    currentRetracement: number
+    _currentRetracement: number
   ): string {
     const priceChange = calculatePriceChangePercent(start.price, end.price);
     const direction = start.price < end.price ? '上昇' : '下降';
@@ -390,10 +433,15 @@ export class FibonacciGenerator implements IProposalGenerator {
    * 理由文の生成
    */
   private generateReason(
-    pair: { point1: PeakTroughPoint; point2: PeakTroughPoint; isUptrend: boolean },
-    data: CandlestickData[],
+    pair: {
+      start: SwingPoint;
+      end: SwingPoint;
+      direction: 'up' | 'down';
+      score: number;
+    },
+    _data: CandlestickData[],
     currentRetracement: number,
-    params: GeneratorParams
+    _params: GeneratorParams
   ): string {
     const { start, end, direction } = pair;
     const timeSpan = end.index - start.index;
@@ -441,7 +489,12 @@ export class FibonacciGenerator implements IProposalGenerator {
    */
   private calculatePriority(
     confidence: number,
-    pair: { point1: PeakTroughPoint; point2: PeakTroughPoint; isUptrend: boolean },
+    pair: {
+      start: SwingPoint;
+      end: SwingPoint;
+      direction: 'up' | 'down';
+      score: number;
+    },
     currentRetracement: number
   ): 'high' | 'medium' | 'low' {
     // 主要なフィボナッチレベル付近

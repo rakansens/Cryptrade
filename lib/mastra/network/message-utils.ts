@@ -14,7 +14,7 @@ import {
  */
 export function formatMessageForAgent(message: A2AMessage): string {
   if (message.method === 'process_query' && message.params && 'query' in message.params) {
-    const params = message.params as ProcessQueryParams;
+    const params = message.params as unknown as ProcessQueryParams;
     const query = params.query;
     const context: AgentContext = params.context || {} as AgentContext;
 

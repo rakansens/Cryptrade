@@ -83,7 +83,7 @@ export async function withRetry<T>(
 // Specific retry wrapper for Binance API calls
 export async function withBinanceRetry<T>(
   operation: () => Promise<T>,
-  operationName: string = 'BinanceAPI'
+  _operationName: string = 'BinanceAPI'
 ): Promise<T> {
   return withRetry(operation, {
     maxAttempts: 3,

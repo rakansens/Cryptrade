@@ -6,7 +6,7 @@ import { PatternDetector } from '@/lib/analysis/pattern-detector';
 import { StreamingMLAnalyzer } from '@/lib/ml/streaming-ml-analyzer';
 import type { PriceData } from '@/types/market';
 import type { DetectedLine } from '@/lib/analysis/types';
-import type { MLPrediction } from '@/types/shared/ml';
+import type { MLPrediction, MLReasoning } from '@/types/shared/ml';
 
 // Type definitions for proposal generation
 interface Proposal {
@@ -17,7 +17,7 @@ interface Proposal {
   mlPrediction?: {
     successProbability: number;
     expectedBounces: number;
-    reasoning: string;
+    reasoning: MLReasoning[] | string;
   };
   drawingData: {
     type: string;
@@ -119,7 +119,7 @@ export async function enhancedProposalGeneration(
 
   try {
     const proposals: Proposal[] = [];
-    const currentPrice = input.priceData[input.priceData.length - 1].close;
+    const currentPrice = input.priceData[input.priceData.length - 1]?.close || 0;
     
     // Initialize ML analyzer if enabled
     const mlAnalyzer = input.useMLValidation ? new StreamingMLAnalyzer() : null;
@@ -200,16 +200,11 @@ export async function enhancedProposalGeneration(
           }
         }
 
-        proposals.push({
+        const proposal: Proposal = {
           id: `sr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'horizontalLine',
           description: `${level.type === 'support' ? 'サポート' : 'レジスタンス'}ライン: $${level.price.toFixed(2)}`,
           confidence: level.confidence,
-          mlPrediction: mlPrediction ? {
-            successProbability: mlPrediction.successProbability,
-            expectedBounces: mlPrediction.expectedBounces,
-            reasoning: mlPrediction.reasoning
-          } : undefined,
           drawingData: {
             type: 'horizontalLine',
             points: level.touchPoints,
@@ -222,7 +217,17 @@ export async function enhancedProposalGeneration(
               }
             }
           }
-        });
+        };
+        
+        if (mlPrediction) {
+          proposal.mlPrediction = {
+            successProbability: mlPrediction.successProbability,
+            expectedBounces: mlPrediction.expectedBounces,
+            reasoning: mlPrediction.reasoning
+          };
+        }
+        
+        proposals.push(proposal);
       }
     }
 
@@ -268,16 +273,11 @@ export async function enhancedProposalGeneration(
           }
         }
 
-        proposals.push({
+        const proposal: Proposal = {
           id: `tl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'trendline',
           description: `${trendline.direction}トレンドライン`,
           confidence: trendline.confidence,
-          mlPrediction: mlPrediction ? {
-            successProbability: mlPrediction.successProbability,
-            expectedBounces: mlPrediction.expectedBounces,
-            reasoning: mlPrediction.reasoning
-          } : undefined,
           drawingData: {
             type: 'trendline',
             points: trendline.touchPoints,
@@ -291,7 +291,17 @@ export async function enhancedProposalGeneration(
               }
             }
           }
-        });
+        };
+        
+        if (mlPrediction) {
+          proposal.mlPrediction = {
+            successProbability: mlPrediction.successProbability,
+            expectedBounces: mlPrediction.expectedBounces,
+            reasoning: mlPrediction.reasoning
+          };
+        }
+        
+        proposals.push(proposal);
       }
     }
 
@@ -301,13 +311,36 @@ export async function enhancedProposalGeneration(
 
     return {
       proposalGroupId: `pg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      proposals: finalProposals,
+      proposals: finalProposals as Array<{
+        id: string;
+        type: string;
+        description: string;
+        confidence: number;
+        mlPrediction?: {
+          successProbability: number;
+          expectedBounces: number;
+          reasoning: Array<{
+            factor: string;
+            impact: 'positive' | 'negative' | 'neutral';
+            weight: number;
+            description: string;
+          }>;
+        };
+        drawingData: {
+          type: string;
+          points: Array<{ time: number; value: number }>;
+          price?: number;
+          slope?: number;
+          intercept?: number;
+          metadata?: Record<string, unknown>;
+        };
+      }>,
       summary: generateSummary(finalProposals, input.useMLValidation),
       totalAnalysisTime: Date.now() - startTime
     };
 
   } catch (error) {
-    logger.error('[EnhancedProposalGeneration] Error', error);
+    logger.error('[EnhancedProposalGeneration] Error', { error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }
@@ -325,11 +358,12 @@ function detectSupportResistanceLevels(priceData: PriceData[]): Array<{
   // Find local extremes
   for (let i = 5; i < priceData.length - 5; i++) {
     const current = priceData[i];
+    if (!current) continue;
     
     // Check for local high (resistance)
     let isLocalHigh = true;
     for (let j = i - 5; j <= i + 5; j++) {
-      if (j !== i && priceData[j].high > current.high) {
+      if (j !== i && priceData[j] && priceData[j]!.high > current.high) {
         isLocalHigh = false;
         break;
       }
@@ -342,8 +376,8 @@ function detectSupportResistanceLevels(priceData: PriceData[]): Array<{
       ];
       
       for (let j = 0; j < priceData.length; j++) {
-        if (j !== i && Math.abs(priceData[j].high - current.high) < tolerance) {
-          touchPoints.push({ time: priceData[j].time, value: priceData[j].high });
+        if (j !== i && priceData[j] && Math.abs(priceData[j]!.high - current.high) < tolerance) {
+          touchPoints.push({ time: priceData[j]!.time, value: priceData[j]!.high });
         }
       }
       
@@ -360,7 +394,7 @@ function detectSupportResistanceLevels(priceData: PriceData[]): Array<{
     // Check for local low (support)
     let isLocalLow = true;
     for (let j = i - 5; j <= i + 5; j++) {
-      if (j !== i && priceData[j].low < current.low) {
+      if (j !== i && priceData[j] && priceData[j]!.low < current.low) {
         isLocalLow = false;
         break;
       }
@@ -373,8 +407,8 @@ function detectSupportResistanceLevels(priceData: PriceData[]): Array<{
       ];
       
       for (let j = 0; j < priceData.length; j++) {
-        if (j !== i && Math.abs(priceData[j].low - current.low) < tolerance) {
-          touchPoints.push({ time: priceData[j].time, value: priceData[j].low });
+        if (j !== i && priceData[j] && Math.abs(priceData[j]!.low - current.low) < tolerance) {
+          touchPoints.push({ time: priceData[j]!.time, value: priceData[j]!.low });
         }
       }
       
@@ -409,20 +443,21 @@ function detectTrendlines(priceData: PriceData[]): Array<{
   
   for (let i = 2; i < priceData.length - 2; i++) {
     const current = priceData[i];
+    if (!current || !priceData[i-1] || !priceData[i-2] || !priceData[i+1] || !priceData[i+2]) continue;
     
     // Swing high
-    if (current.high > priceData[i-1].high && 
-        current.high > priceData[i-2].high &&
-        current.high > priceData[i+1].high && 
-        current.high > priceData[i+2].high) {
+    if (current.high > priceData[i-1]!.high && 
+        current.high > priceData[i-2]!.high &&
+        current.high > priceData[i+1]!.high && 
+        current.high > priceData[i+2]!.high) {
       swingHighs.push({ index: i, time: current.time, value: current.high });
     }
     
     // Swing low
-    if (current.low < priceData[i-1].low && 
-        current.low < priceData[i-2].low &&
-        current.low < priceData[i+1].low && 
-        current.low < priceData[i+2].low) {
+    if (current.low < priceData[i-1]!.low && 
+        current.low < priceData[i-2]!.low &&
+        current.low < priceData[i+1]!.low && 
+        current.low < priceData[i+2]!.low) {
       swingLows.push({ index: i, time: current.time, value: current.low });
     }
   }
@@ -433,7 +468,7 @@ function detectTrendlines(priceData: PriceData[]): Array<{
     for (let i = 0; i < swingLows.length - 1; i++) {
       for (let j = i + 1; j < swingLows.length; j++) {
         const points = [swingLows[i], swingLows[j]];
-        const { slope, intercept, touchPoints } = fitTrendline(points, priceData, 'low');
+        const { slope, intercept, touchPoints } = fitTrendline(points.filter((p): p is { index: number; time: number; value: number } => p !== undefined), priceData, 'low');
         
         if (touchPoints.length >= 3 && slope > 0) {
           trendlines.push({
@@ -453,7 +488,7 @@ function detectTrendlines(priceData: PriceData[]): Array<{
     for (let i = 0; i < swingHighs.length - 1; i++) {
       for (let j = i + 1; j < swingHighs.length; j++) {
         const points = [swingHighs[i], swingHighs[j]];
-        const { slope, intercept, touchPoints } = fitTrendline(points, priceData, 'high');
+        const { slope, intercept, touchPoints } = fitTrendline(points.filter((p): p is { index: number; time: number; value: number } => p !== undefined), priceData, 'high');
         
         if (touchPoints.length >= 3 && slope < 0) {
           trendlines.push({
@@ -477,10 +512,10 @@ function fitTrendline(
   field: 'high' | 'low'
 ): { slope: number; intercept: number; touchPoints: TouchPoint[] } {
   // Calculate slope and intercept
-  const x1 = points[0].index;
-  const y1 = points[0].value;
-  const x2 = points[1].index;
-  const y2 = points[1].value;
+  const x1 = points[0]!.index;
+  const y1 = points[0]!.value;
+  const x2 = points[1]!.index;
+  const y2 = points[1]!.value;
   
   const slope = (y2 - y1) / (x2 - x1);
   const intercept = y1 - slope * x1;
@@ -491,12 +526,12 @@ function fitTrendline(
   
   for (let i = 0; i < priceData.length; i++) {
     const expectedValue = slope * i + intercept;
-    const actualValue = priceData[i][field];
+    const actualValue = priceData[i]![field];
     
     if (Math.abs(actualValue - expectedValue) < tolerance) {
       touchPoints.push({
         index: i,
-        time: priceData[i].time,
+        time: priceData[i]!.time,
         value: actualValue
       });
     }
@@ -513,7 +548,7 @@ function calculateTrendlineConfidence(touchPoints: TouchPoint[], slope: number):
   
   // Recent touches = higher confidence
   const recentTouches = touchPoints.filter(p => 
-    p.index > touchPoints[touchPoints.length - 1].index - 20
+    p.index > touchPoints[touchPoints.length - 1]!.index - 20
   ).length;
   confidence += recentTouches * 0.05;
   
@@ -538,23 +573,23 @@ function consolidateLevels(levels: SupportResistanceLevel[], tolerance: number):
     for (let j = i + 1; j < levels.length; j++) {
       if (used.has(j)) continue;
       
-      if (levels[i].type === levels[j].type && 
-          Math.abs(levels[i].price - levels[j].price) < tolerance) {
-        group.push(levels[j]);
+      if (levels[i]!.type === levels[j]!.type && 
+          Math.abs(levels[i]!.price - levels[j]!.price) < tolerance) {
+        group.push(levels[j]!);
         used.add(j);
       }
     }
     
     // Merge group
     if (group.length > 0) {
-      const avgPrice = group.reduce((sum, l) => sum + l.price, 0) / group.length;
-      const allTouchPoints = group.flatMap(l => l.touchPoints);
+      const avgPrice = group.reduce((sum, l) => sum + l!.price, 0) / group.length;
+      const allTouchPoints = group.flatMap(l => l!.touchPoints);
       const uniqueTouchPoints = Array.from(
         new Map(allTouchPoints.map(tp => [tp.time, tp])).values()
       );
       
       consolidated.push({
-        type: group[0].type,
+        type: group[0]!.type,
         price: avgPrice,
         touchPoints: uniqueTouchPoints,
         confidence: Math.min(0.95, 0.5 + uniqueTouchPoints.length * 0.1)

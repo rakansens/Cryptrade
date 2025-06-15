@@ -11,7 +11,6 @@ import { trackToolError, trackException } from '@/lib/errors/error-tracker';
 import { createCompatibleTool } from '@/lib/tools/compatibility/tool-compatibility';
 import { logger } from '@/lib/utils/logger';
 import { BaseService } from '@/lib/api/base-service';
-import { APP_CONSTANTS } from '@/config/app-constants';
 
 // Enhanced Binance API service using BaseService
 class EnhancedBinanceAPI extends BaseService {
@@ -46,11 +45,11 @@ const marketDataSchema = z.object({
 // Base tool definition
 const baseMarketDataTool = createTool({
   id: 'enhanced-market-data',
-  name: 'Enhanced Market Data Tool',
   description: 'Fetch market data with error tracking and compatibility',
   inputSchema: marketDataSchema,
   
-  execute: async ({ symbol, interval, limit }) => {
+  execute: async ({ context }) => {
+    const { symbol, interval, limit } = context;
     const correlationId = `market-data-${Date.now()}`;
     
     try {
@@ -156,7 +155,7 @@ const baseMarketDataTool = createTool({
       // 未処理のエラーをキャッチ
       if (!(error instanceof ApiError || error instanceof ToolError)) {
         const unknownError = new ToolError(
-          `Unexpected error in market data tool: ${error.message}`,
+          `Unexpected error in market data tool: ${error instanceof Error ? error.message : String(error)}`,
           'enhanced-market-data',
           {
             correlationId,
@@ -186,19 +185,34 @@ const baseMarketDataTool = createTool({
 
 // OpenAI版
 export const marketDataToolForOpenAI = createCompatibleTool(
-  baseMarketDataTool,
+  {
+    name: baseMarketDataTool.id,
+    description: baseMarketDataTool.description,
+    inputSchema: baseMarketDataTool.inputSchema,
+    execute: baseMarketDataTool.execute
+  },
   'openai'
 );
 
 // OpenAI Reasoning (o1)版
 export const marketDataToolForO1 = createCompatibleTool(
-  baseMarketDataTool,
+  {
+    name: baseMarketDataTool.id,
+    description: baseMarketDataTool.description,
+    inputSchema: baseMarketDataTool.inputSchema,
+    execute: baseMarketDataTool.execute
+  },
   'openai-reasoning'
 );
 
 // Anthropic版
 export const marketDataToolForAnthropic = createCompatibleTool(
-  baseMarketDataTool,
+  {
+    name: baseMarketDataTool.id,
+    description: baseMarketDataTool.description,
+    inputSchema: baseMarketDataTool.inputSchema,
+    execute: baseMarketDataTool.execute
+  },
   'anthropic'
 );
 

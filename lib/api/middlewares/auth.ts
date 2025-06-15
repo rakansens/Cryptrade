@@ -28,14 +28,6 @@ export const createAuthMiddleware = (config: AuthConfig): ApiMiddleware =>
       const headers = new Headers(ctx.request.headers);
       headers.set(config.headerName, token);
 
-      const newCtx = {
-        ...ctx,
-        request: {
-          ...ctx.request,
-          headers
-        }
-      };
-
       return next();
 
     } catch (error) {

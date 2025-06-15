@@ -35,7 +35,6 @@ const MarketSnapshotOutput = z.object({
 
 export const marketSnapshotTool = createTool({
   id: 'market-snapshot',
-  name: 'marketSnapshot',
   description: 'Get a quick market overview for casual conversation',
   inputSchema: MarketSnapshotInput,
   outputSchema: MarketSnapshotOutput,
@@ -53,7 +52,7 @@ export const marketSnapshotTool = createTool({
         const marketData = await Promise.all(
           symbols.map(async (symbol) => {
             try {
-              const result = await marketDataResilientTool.execute({ symbol });
+              const result = await marketDataResilientTool.execute!({ context: { symbol } });
               return {
                 symbol: symbol.replace('USDT', ''),
                 price: result.currentPrice,
@@ -65,24 +64,27 @@ export const marketSnapshotTool = createTool({
           })
         );
         
-        const validData = marketData.filter(d => d !== null);
-        const sorted = validData.sort((a, b) => b.change24h - a.change24h);
+        const validData = marketData.filter((d): d is NonNullable<typeof d> => d !== null);
+        const sorted = validData.sort((a, b) => (b?.change24h ?? 0) - (a?.change24h ?? 0));
         
-        const topGainers = sorted.filter(d => d.change24h > 0).slice(0, limit);
-        const topLosers = sorted.filter(d => d.change24h < 0).slice(0, limit);
+        const topGainers = sorted.filter(d => d && d.change24h > 0).slice(0, limit);
+        const topLosers = sorted.filter(d => d && d.change24h < 0).slice(0, limit);
         
         // 市場ムードを判定
-        const avgChange = validData.reduce((sum, d) => sum + d.change24h, 0) / validData.length;
+        const avgChange = validData.reduce((sum, d) => sum + (d?.change24h ?? 0), 0) / validData.length;
         let marketMood: 'bullish' | 'bearish' | 'neutral' | 'volatile';
         if (avgChange > 3) marketMood = 'bullish';
         else if (avgChange < -3) marketMood = 'bearish';
-        else if (Math.max(...validData.map(d => Math.abs(d.change24h))) > 10) marketMood = 'volatile';
+        else if (Math.max(...validData.map(d => Math.abs(d?.change24h ?? 0))) > 10) marketMood = 'volatile';
         else marketMood = 'neutral';
         
         // マーケットハイライトを生成
         let marketHighlight = '';
         if (topGainers.length > 0) {
-          marketHighlight = `${topGainers[0].symbol}が${topGainers[0].change24h.toFixed(1)}%上昇でトップ！`;
+          const topGainer = topGainers[0];
+          if (topGainer) {
+            marketHighlight = `${topGainer.symbol}が${topGainer.change24h.toFixed(1)}%上昇でトップ！`;
+          }
         }
         if (marketMood === 'bullish') {
           marketHighlight += ' 市場全体が上昇トレンドです。';
@@ -138,11 +140,11 @@ const TrendingTopicsOutput = z.object({
 
 export const trendingTopicsTool = createTool({
   id: 'trending-topics',
-  name: 'trendingTopics',
   description: 'Get trending cryptocurrency topics for conversation',
   inputSchema: TrendingTopicsInput,
   outputSchema: TrendingTopicsOutput,
-  execute: async ({ category }) => {
+  execute: async ({ context }) => {
+    const { category } = context;
     try {
       logger.info('[TrendingTopics] Fetching trending topics', { category });
       

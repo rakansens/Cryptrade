@@ -2,7 +2,7 @@ import { logger } from '@/lib/utils/logger';
 import { createRateLimitedLogger } from '@/lib/utils/rate-limiter';
 import { validateBinanceTradeMessage, validateBinanceKlineMessage, type BinanceTradeMessage, type BinanceKlineMessage } from '@/types/market';
 
-const rateLimitedLogger = createRateLimitedLogger(logger);
+const rateLimitedLogger = createRateLimitedLogger(logger as any);
 
 type MessageHandler = (data: BinanceTradeMessage | BinanceKlineMessage | Record<string, unknown>) => void;
 type UnsubscribeFunction = () => void;
@@ -152,7 +152,7 @@ class BinanceConnectionManager {
     let validatedData: BinanceTradeMessage | BinanceKlineMessage | Record<string, unknown> = data;
     
     if (streamName.includes('@trade')) {
-      validatedData = validateBinanceTradeMessage(data);
+      validatedData = validateBinanceTradeMessage(data) || data;
       if (!validatedData) {
         rateLimitedLogger.rateLimit(
           'WS_INVALID_TRADE', 
@@ -165,8 +165,8 @@ class BinanceConnectionManager {
         return;
       }
     } else if (streamName.includes('@kline')) {
-      validatedData = validateBinanceKlineMessage(data);
-      if (!validatedData) {
+      const klineData = validateBinanceKlineMessage(data);
+      if (!klineData) {
         rateLimitedLogger.rateLimit(
           'WS_INVALID_KLINE', 
           10, 
@@ -177,6 +177,7 @@ class BinanceConnectionManager {
         );
         return;
       }
+      validatedData = klineData;
     }
 
     const subscribers = this.subscriptions.get(streamName) || [];

@@ -182,16 +182,19 @@ export function calculateFibonacciConfidence(
  */
 function countTrendlineTouches(
   data: CandlestickData[],
-  trendlinePoints: Array<{ index: number; time: number; value: number }>,
+  _trendlinePoints: Array<{ index: number; time: number; value: number }>,
   regression: { slope: number; intercept: number }
 ): number {
   const tolerance = 0.002; // 0.2%の許容誤差
   let touches = 0;
   
   for (let i = 0; i < data.length; i++) {
+    const candle = data[i];
+    if (!candle) continue;
+    
     const expectedValue = regression.slope * i + regression.intercept;
-    const actualHigh = data[i].high;
-    const actualLow = data[i].low;
+    const actualHigh = candle.high;
+    const actualLow = candle.low;
     
     const highDiff = Math.abs(actualHigh - expectedValue) / expectedValue;
     const lowDiff = Math.abs(actualLow - expectedValue) / expectedValue;
@@ -218,8 +221,10 @@ function analyzeTrendlineVolume(
   data: CandlestickData[],
   trendlinePoints: Array<{ index: number; time: number; value: number }>
 ): VolumeAnalysis {
-  const volumes = trendlinePoints.map(p => data[p.index].volume);
-  const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
+  const volumes = trendlinePoints
+    .map(p => data[p.index]?.volume)
+    .filter((v): v is number => v !== undefined);
+  const avgVolume = volumes.length > 0 ? volumes.reduce((sum, v) => sum + v, 0) / volumes.length : 0;
   const overallAvg = data.reduce((sum, d) => sum + d.volume, 0) / data.length;
   
   // ボリュームトレンドの判定
@@ -248,8 +253,8 @@ function analyzeTrendlineVolume(
  * 近くのパターンを検出
  */
 function detectNearbyPatterns(
-  data: CandlestickData[],
-  trendlinePoints: Array<{ index: number; time: number; value: number }>
+  _data: CandlestickData[],
+  _trendlinePoints: Array<{ index: number; time: number; value: number }>
 ): string[] {
   // 簡略化された実装
   const patterns: string[] = [];
@@ -279,8 +284,8 @@ function calculateBounceAccuracy(
  * スイングポイントの明確さを計算
  */
 function calculateSwingClarity(
-  swingPoints: { high: number; low: number },
-  data: CandlestickData[]
+  _swingPoints: { high: number; low: number },
+  _data: CandlestickData[]
 ): number {
   // スイングの前後でどれだけ明確な反転があるかを評価
   // 簡略化された実装
@@ -291,8 +296,8 @@ function calculateSwingClarity(
  * スイングポイントでのボリューム確認
  */
 function checkVolumeAtSwingPoints(
-  swingPoints: { high: number; low: number },
-  data: CandlestickData[]
+  _swingPoints: { high: number; low: number },
+  _data: CandlestickData[]
 ): boolean {
   // スイングポイントで高ボリュームがあるかチェック
   // 簡略化された実装

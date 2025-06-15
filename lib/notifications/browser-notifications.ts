@@ -67,7 +67,7 @@ export class BrowserNotificationManager {
       logger.info('[Notifications] Permission requested', { permission });
       return permission;
     } catch (error) {
-      logger.error('[Notifications] Failed to request permission', error);
+      logger.error('[Notifications] Failed to request permission', { error });
       return 'denied';
     }
   }
@@ -91,13 +91,15 @@ export class BrowserNotificationManager {
     }
 
     try {
-      const notification = new Notification(options.title, {
+      const notificationOptions = {
         body: options.body,
         icon: options.icon || '/favicon.ico',
-        tag: options.tag,
         requireInteraction: options.requireInteraction || false,
-        silent: options.silent || false
-      });
+        silent: options.silent || false,
+        ...(options.tag ? { tag: options.tag } : {})
+      };
+      
+      const notification = new Notification(options.title, notificationOptions);
 
       logger.info('[Notifications] Notification shown', { 
         title: options.title, 
@@ -106,7 +108,7 @@ export class BrowserNotificationManager {
 
       return notification;
     } catch (error) {
-      logger.error('[Notifications] Failed to show notification', error);
+      logger.error('[Notifications] Failed to show notification', { error });
       return null;
     }
   }

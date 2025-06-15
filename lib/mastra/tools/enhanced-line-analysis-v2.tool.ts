@@ -19,42 +19,8 @@ interface DetectionResult {
   trendlines: EnhancedLineV2[];
 }
 
-interface DrawingRecommendation {
-  action: string;
-  type: string;
-  priority: number;
-  coordinates: {
-    startPrice: number;
-    endPrice: number;
-    startTime: number;
-    endTime: number;
-  };
-  style: {
-    color: string;
-    lineWidth: number;
-    lineStyle: string;
-  };
-  description: string;
-}
-
-interface TouchPoint {
-  volumeRatio: number;
-  [key: string]: unknown;
-}
-
-interface LineWithTouchAnalysis extends EnhancedLineV2 {
-  touchAnalysis: {
-    touchPoints: TouchPoint[];
-    wickTouchCount: number;
-    bodyTouchCount: number;
-    exactTouchCount: number;
-    touchQualityScore: number;
-    strongBounceCount: number;
-  };
-  qualityMetrics: {
-    overallQuality: number;
-  };
-}
+// Removed unused interfaces TouchPoint and LineWithTouchAnalysis
+// If needed in future, can extend EnhancedLineV2 with touch analysis
 
 interface UserConfig {
   [key: string]: unknown;
@@ -122,13 +88,13 @@ Perfect for high-accuracy support/resistance and trendline detection.
       
       // Configure detector based on analysis type
       const detectorConfig = getConfigForAnalysisType(analysisType, config);
-      const detector = new enhancedLineDetectorV2.constructor(detectorConfig);
+      const detector = new (enhancedLineDetectorV2 as any)(detectorConfig);
       
       // Perform enhanced line detection
       const detectionResult = await detector.detectEnhancedLines(multiTimeframeData);
       
       // Generate comprehensive analysis
-      const analysis = generateComprehensiveAnalysis(
+      generateComprehensiveAnalysis(
         detectionResult.horizontalLines,
         detectionResult.trendlines,
         multiTimeframeData,
@@ -142,11 +108,12 @@ Perfect for high-accuracy support/resistance and trendline detection.
         multiTimeframeData
       );
       
+      
       // Generate drawing recommendations
       const recommendations = generateDrawingRecommendations(
         detectionResult.horizontalLines,
         detectionResult.trendlines,
-        analysis
+        marketStructure
       );
       
       const detectionTime = Date.now() - startTime;
@@ -363,7 +330,7 @@ function generateTouchAnalytics(detectionResult: DetectionResult) {
     },
     averageQualityScore: avgQualityScore,
     volumeConfirmedTouches: allLines.reduce((sum, line) => 
-      sum + line.touchAnalysis.touchPoints.filter((tp: TouchPoint) => tp.volumeRatio > 1.3).length, 0
+      sum + line.touchAnalysis.touchPoints.filter((tp) => tp.volumeRatio > 1.3).length, 0
     ),
     bounceConfirmedTouches: allLines.reduce((sum, line) => sum + line.touchAnalysis.strongBounceCount, 0)
   };
@@ -452,27 +419,27 @@ function identifyConfluenceZones(horizontalLines: EnhancedLineV2[]) {
   for (let i = 0; i < horizontalLines.length; i++) {
     const line1 = horizontalLines[i];
     const nearbyLines = horizontalLines.filter((line2, j) => 
-      j !== i && Math.abs(line1.price - line2.price) / line1.price <= tolerance
+      j !== i && Math.abs(line1!.price - line2.price) / line1!.price <= tolerance
     );
     
     if (nearbyLines.length > 0) {
-      const allLines = [line1, ...nearbyLines];
-      const avgPrice = allLines.reduce((sum, line) => sum + line.price, 0) / allLines.length;
-      const totalStrength = allLines.reduce((sum, line) => sum + line.strength, 0);
-      const avgConfidence = allLines.reduce((sum, line) => sum + line.confidence, 0) / allLines.length;
+      const allLines = [line1!, ...nearbyLines];
+      const avgPrice = allLines.reduce((sum, line) => sum + line!.price, 0) / allLines.length;
+      const totalStrength = allLines.reduce((sum, line) => sum + line!.strength, 0);
+      const avgConfidence = allLines.reduce((sum, line) => sum + line!.confidence, 0) / allLines.length;
       
       zones.push({
         priceRange: {
-          min: Math.min(...allLines.map(line => line.price)),
-          max: Math.max(...allLines.map(line => line.price)),
+          min: Math.min(...allLines.map(line => line!.price)),
+          max: Math.max(...allLines.map(line => line!.price)),
           center: avgPrice
         },
         strength: totalStrength,
         confidence: avgConfidence,
         lineCount: allLines.length,
-        supportingTimeframes: Array.from(new Set(allLines.flatMap(line => line.supportingTimeframes))),
-        type: allLines[0].type,
-        description: `Confluence zone with ${allLines.length} ${allLines[0].type} lines`
+        supportingTimeframes: Array.from(new Set(allLines.flatMap(line => line!.supportingTimeframes))),
+        type: allLines[0]!.type,
+        description: `Confluence zone with ${allLines.length} ${allLines[0]!.type} lines`
       });
     }
   }
@@ -506,11 +473,27 @@ function identifyKeyLevels(horizontalLines: EnhancedLineV2[], trendlines: Enhanc
 /**
  * Generate drawing recommendations with priorities
  */
-function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trendlines: EnhancedLineV2[], analysis: ReturnType<typeof calculateMarketStructure>) {
-  const drawingActions = [];
+function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trendlines: EnhancedLineV2[], _analysis: ReturnType<typeof calculateMarketStructure>) {
+  const drawingActions: Array<{
+    action: string;
+    type: string;
+    priority: number;
+    coordinates: {
+      startPrice: number;
+      endPrice: number;
+      startTime: number;
+      endTime: number;
+    };
+    style: {
+      color: string;
+      lineWidth: number;
+      lineStyle: string;
+    };
+    description: string;
+  }> = [];
   
   // Add horizontal lines
-  horizontalLines.slice(0, 8).forEach((line, index) => {
+  horizontalLines.slice(0, 8).forEach((line) => {
     drawingActions.push({
       action: 'draw',
       type: line.type === 'support' ? 'horizontal_line' : 'horizontal_line',
@@ -531,7 +514,7 @@ function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trend
   });
   
   // Add trendlines
-  trendlines.slice(0, 5).forEach((line, index) => {
+  trendlines.slice(0, 5).forEach((line) => {
     if (line.coordinates) {
       drawingActions.push({
         action: 'draw',
@@ -544,7 +527,7 @@ function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trend
           endTime: line.coordinates.endTime
         },
         style: {
-          color: line.coordinates.slope > 0 ? '#00aa00' : '#aa0000',
+          color: line.coordinates.slope !== undefined && line.coordinates.slope > 0 ? '#00aa00' : '#aa0000',
           lineWidth: Math.max(1, Math.round(line.strength * 3)),
           lineStyle: 'solid'
         },
@@ -562,11 +545,11 @@ function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trend
 // Utility functions
 function getCurrentPrice(multiTimeframeData: MultiTimeframeData): number {
   const firstTimeframe = Object.values(multiTimeframeData.timeframes)[0];
-  const latestCandle = firstTimeframe.data[firstTimeframe.data.length - 1];
+  const latestCandle = firstTimeframe && firstTimeframe.data.length > 0 ? firstTimeframe.data[firstTimeframe.data.length - 1] : undefined;
   return latestCandle?.close || 0;
 }
 
-function calculateTrendStrength(trendlines: EnhancedLineV2[], horizontalLines: EnhancedLineV2[]): number {
+function calculateTrendStrength(trendlines: EnhancedLineV2[], _horizontalLines: EnhancedLineV2[]): number {
   if (trendlines.length === 0) return 0.5;
   
   const avgTrendlineStrength = trendlines.reduce((sum, line) => sum + line.strength, 0) / trendlines.length;
@@ -575,7 +558,7 @@ function calculateTrendStrength(trendlines: EnhancedLineV2[], horizontalLines: E
   return Math.min(avgTrendlineStrength + (trendlineCount / 10), 1);
 }
 
-function determineTrend(trendlines: EnhancedLineV2[], supportLevels: EnhancedLineV2[], resistanceLevels: EnhancedLineV2[], currentPrice: number): string {
+function determineTrend(trendlines: EnhancedLineV2[], supportLevels: EnhancedLineV2[], resistanceLevels: EnhancedLineV2[], _currentPrice: number): string {
   if (trendlines.length > 0) {
     const ascendingTrends = trendlines.filter(line => line.coordinates?.slope && line.coordinates.slope > 0);
     const descendingTrends = trendlines.filter(line => line.coordinates?.slope && line.coordinates.slope < 0);
@@ -632,7 +615,7 @@ function calculateAverageConfidence(detectionResult: DetectionResult): number {
   return allLines.reduce((sum, line) => sum + line.confidence, 0) / allLines.length;
 }
 
-function generateComprehensiveAnalysis(horizontalLines: EnhancedLineV2[], trendlines: EnhancedLineV2[], multiTimeframeData: MultiTimeframeData, detectionStats: Record<string, unknown>) {
+function generateComprehensiveAnalysis(horizontalLines: EnhancedLineV2[], trendlines: EnhancedLineV2[], _multiTimeframeData: MultiTimeframeData, _detectionStats: Record<string, unknown>) {
   return {
     overview: `Advanced line detection completed with ${horizontalLines.length} horizontal lines and ${trendlines.length} trendlines using sophisticated touch point analysis.`,
     touchAnalysisInsights: generateTouchInsights(horizontalLines, trendlines),
@@ -667,7 +650,7 @@ function generateTimeframeAnalysis(horizontalLines: EnhancedLineV2[], trendlines
   return `${multiTF} lines validated across multiple timeframes, with ${strongMultiTF} showing strong cross-timeframe confluence.`;
 }
 
-function generateAnalysisRecommendations(horizontalLines: EnhancedLineV2[], trendlines: EnhancedLineV2[]): string {
+function generateAnalysisRecommendations(horizontalLines: EnhancedLineV2[], _trendlines: EnhancedLineV2[]): string {
   const strongSupport = horizontalLines.filter(line => line.type === 'support' && line.confidence > 0.8).length;
   const strongResistance = horizontalLines.filter(line => line.type === 'resistance' && line.confidence > 0.8).length;
   

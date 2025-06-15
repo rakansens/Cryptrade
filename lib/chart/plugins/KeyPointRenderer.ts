@@ -9,8 +9,7 @@ import type { PatternVisualization } from '@/types/pattern';
 import type { 
   IKeyPointRendererPlugin, 
   PluginContext, 
-  MarkerStyle, 
-  RenderResult 
+  MarkerStyle
 } from './interfaces';
 import { PluginError } from './interfaces';
 import { ValidationUtils, ColorUtils } from './utils';
@@ -94,7 +93,7 @@ export class KeyPointRenderer implements IKeyPointRendererPlugin {
       await this.remove(id);
       
       // キーポイントをマーカーに変換
-      const markers = this.createMarkers(id, data.keyPoints);
+      const markers = this.createMarkers(id, data.keyPoints as any);
       
       if (markers.length === 0) {
         logger.warn('[KeyPointRenderer] No markers created', { id });
@@ -219,7 +218,7 @@ export class KeyPointRenderer implements IKeyPointRendererPlugin {
     
     // 内部状態をクリア
     this.markers.clear();
-    this.context = undefined;
+    delete (this as any).context;
     
     logger.info('[KeyPointRenderer] Plugin disposed');
   }
@@ -253,7 +252,7 @@ export class KeyPointRenderer implements IKeyPointRendererPlugin {
           color,
           shape,
           text,
-          size: this.markerStyle.size,
+          ...(this.markerStyle.size !== undefined && { size: this.markerStyle.size }),
         };
         
         markers.push(marker);
@@ -332,7 +331,7 @@ export class KeyPointRenderer implements IKeyPointRendererPlugin {
    */
   private generateMarkerShape(
     point: { time: number; value: number; label?: string }, 
-    index: number
+    _index: number
   ): 'circle' | 'square' | 'arrowUp' | 'arrowDown' {
     if (point.label) {
       const upperLabel = point.label.toUpperCase();

@@ -1,4 +1,3 @@
-import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline } from '@/types/market';
 
 /**
@@ -277,7 +276,7 @@ export class AdvancedTouchDetector {
   /**
    * Calculate overall touch quality score
    */
-  private calculateTouchQualityScore(touchPoints: TouchPoint[], totalCandles: number): number {
+  calculateTouchQualityScore(touchPoints: TouchPoint[], totalCandles: number): number {
     if (touchPoints.length === 0) return 0;
     
     let score = 0;
@@ -312,7 +311,7 @@ export class AdvancedTouchDetector {
   /**
    * Calculate volume-weighted strength
    */
-  private calculateVolumeWeightedStrength(touchPoints: TouchPoint[]): number {
+  public calculateVolumeWeightedStrength(touchPoints: TouchPoint[]): number {
     if (touchPoints.length === 0) return 0;
     
     const totalVolumeWeight = touchPoints.reduce((sum, tp) => sum + tp.volume, 0);

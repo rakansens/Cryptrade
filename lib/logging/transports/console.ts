@@ -66,7 +66,7 @@ export class ConsoleTransport implements IUnifiedTransport {
       } else {
         // Text format - simplified metadata display
         const metaStr = Object.entries(entry.meta)
-          .filter(([key, value]) => value !== undefined)
+          .filter(([_key, value]) => value !== undefined)
           .map(([key, value]) => `${key}=${typeof value === 'object' ? JSON.stringify(value) : value}`)
           .join(' ');
         if (metaStr) {
