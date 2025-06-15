@@ -58,11 +58,9 @@ export async function POST(request: NextRequest) {
                   timestamp: p.createdAt,
                   ...(p.metadata?.['stopLoss'] !== undefined && { stopLoss: p.metadata?.['stopLoss'] as number }),
                   ...(p.metadata?.['targetPrice'] !== undefined && { takeProfit: p.metadata?.['targetPrice'] as number }),
-                })) as any,
-                summary: drawingGroup.description,
-                totalConfidence: 'summary' in drawingGroup && drawingGroup.summary ? (drawingGroup.summary as any).averageConfidence : undefined,
+                })),
                 timestamp: drawingGroup.createdAt,
-              };
+              } as any;
             }
             if (message.entryProposalGroup) {
               messageData.entryProposalGroup = {

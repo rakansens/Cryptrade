@@ -358,7 +358,6 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       })(),
       confidence,
       priority: this.calculatePriority(confidence, level, isNearby),
-      createdAt: Date.now(),
       analysis: {
         direction: 'neutral' as const,
         strength: level.strength,

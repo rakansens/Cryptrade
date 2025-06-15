@@ -52,7 +52,10 @@ export const marketSnapshotTool = createTool({
         const marketData = await Promise.all(
           symbols.map(async (symbol) => {
             try {
-              const result = await marketDataResilientTool.execute!({ context: { symbol } });
+              const result = await marketDataResilientTool.execute!({ 
+                context: { symbol },
+                runtimeContext: {} as any
+              });
               return {
                 symbol: symbol.replace('USDT', ''),
                 price: result.currentPrice,

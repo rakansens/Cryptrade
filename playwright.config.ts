@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Playwright configuration for E2E tests
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
   timeout: 30 * 1000,
   expect: {
     timeout: 5000

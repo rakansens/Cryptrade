@@ -55,6 +55,14 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
       
       try {
         // Create full PatternData object with required fields
+        const visualization: PatternVisualization = {
+          type: pattern.visualization?.type || pattern.type,
+          lines: pattern.visualization?.lines || [],
+          zones: pattern.visualization?.zones,
+          labels: pattern.visualization?.labels,
+          keyPoints: pattern.visualization?.keyPoints
+        };
+        
         const fullPatternData: PatternData = {
           id,
           type: pattern.type,
@@ -62,7 +70,7 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
           interval: timeframe,
           startTime: Date.now(),
           endTime: Date.now(),
-          visualization: pattern.visualization || { keyPoints: [] } as PatternVisualization
+          visualization
         };
         
         // Add optional properties

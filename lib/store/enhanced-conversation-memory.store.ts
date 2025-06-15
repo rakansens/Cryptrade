@@ -195,19 +195,27 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             
             const currentSession = state.sessions[message.sessionId];
             if (currentSession) {
-              currentSession.messages.push(fullMessage);
-              currentSession.lastActiveAt = timestamp;
+              // Update messages array
+              state.sessions[message.sessionId] = {
+                ...currentSession,
+                messages: [...currentSession.messages, fullMessage],
+                lastActiveAt: timestamp
+              };
               
               // Clear processed cache to force reprocessing
-              delete currentSession.processedMessages;
+              const session = state.sessions[message.sessionId];
+              if (session && 'processedMessages' in session) {
+                delete (session as any).processedMessages;
+              }
               
               // Update token usage
-              if (currentSession.tokenUsage) {
-                currentSession.tokenUsage.total += tokenCount;
+              const sessionTokenUsage = session?.tokenUsage;
+              if (sessionTokenUsage) {
+                sessionTokenUsage.total += tokenCount;
                 if (message.role === 'user') {
-                  currentSession.tokenUsage.input += tokenCount;
+                  sessionTokenUsage.input += tokenCount;
                 } else {
-                  currentSession.tokenUsage.output += tokenCount;
+                  sessionTokenUsage.output += tokenCount;
                 }
               }
             }

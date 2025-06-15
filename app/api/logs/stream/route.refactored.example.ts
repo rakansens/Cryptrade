@@ -24,7 +24,7 @@ type LogStreamQuery = z.infer<typeof LogStreamQuerySchema>;
 export const GET = createStreamingHandler<LogStreamQuery>({
   schema: LogStreamQuerySchema,
   
-  streamHandler: async function* ({ data, request, context }) {
+  streamHandler: async function* ({ data, request }) {
     // Build filter from validated query parameters
     const filter: LogFilter = {};
     
@@ -99,7 +99,7 @@ export async function GET_ALTERNATIVE(request: Request) {
     keepAliveInterval: 30000, // 30 second heartbeat
   });
   
-  const { searchParams } = new URL(request.url);
+  new URL(request.url);
   
   // Build filter
   const filter: LogFilter = {};

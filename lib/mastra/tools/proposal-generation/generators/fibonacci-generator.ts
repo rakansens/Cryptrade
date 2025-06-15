@@ -393,7 +393,6 @@ export class FibonacciGenerator implements IProposalGenerator {
       })(),
       confidence,
       priority: this.calculatePriority(confidence, pair, currentRetracement),
-      createdAt: Date.now(),
       analysis: {
         direction: direction === 'up' ? 'bullish' : 'bearish' as 'bullish' | 'bearish',
         strength: confidence,

@@ -285,7 +285,7 @@ export class MonitoredCircuitBreaker extends CircuitBreaker {
       state: baseMetrics.state,
       failureCount: baseMetrics.failureCount,
       successCount: this.successCount,
-      lastFailureTime: baseMetrics.lastFailureTime || null,
+      lastFailureTime: baseMetrics.lastFailureTime,
       halfOpenAttempts: baseMetrics.halfOpenAttempts
     };
   }

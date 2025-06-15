@@ -1,0 +1,58 @@
+diff --git a/jest.config.js b/jest.config.js
+index 3e3d931..440cba4 100644
+--- a/jest.config.js
++++ b/jest.config.js
+@@ -15,11 +15,12 @@ module.exports = {
+       displayName: 'node',
+       testEnvironment: 'node',
+       testMatch: [
+-        '<rootDir>/lib/**/*.test.ts',
+-        '<rootDir>/app/api/**/*.test.ts',
+-        '<rootDir>/types/**/*.test.ts',
+-        '<rootDir>/config/**/*.test.ts',
+-        '<rootDir>/__tests__/integration/**/*.test.ts'
++        '<rootDir>/lib/**/__tests__/*.test.ts',
++        '<rootDir>/app/api/**/__tests__/*.test.ts',
++        '<rootDir>/types/**/__tests__/*.test.ts',
++        '<rootDir>/config/**/__tests__/*.test.ts',
++        '<rootDir>/__tests__/**/*.test.ts',
++        '<rootDir>/tests/**/*.test.ts'
+       ],
+       transform: {
+         '^.+\\.(ts|tsx)$': ['ts-jest', {
+@@ -43,10 +44,12 @@ module.exports = {
+       displayName: 'jsdom',
+       testEnvironment: 'jsdom',
+       testMatch: [
+-        '<rootDir>/components/**/*.test.ts',
+-        '<rootDir>/components/**/*.test.tsx',
+-        '<rootDir>/store/**/*.test.ts',
+-        '<rootDir>/hooks/**/*.test.ts'
++        '<rootDir>/components/**/__tests__/*.test.ts',
++        '<rootDir>/components/**/__tests__/*.test.tsx',
++        '<rootDir>/store/**/__tests__/*.test.ts',
++        '<rootDir>/store/**/__tests__/*.test.tsx',
++        '<rootDir>/hooks/**/__tests__/*.test.ts',
++        '<rootDir>/hooks/**/__tests__/*.test.tsx'
+       ],
+       transform: {
+         '^.+\\.(ts|tsx)$': ['ts-jest', {
+@@ -79,6 +82,9 @@ module.exports = {
+     'hooks/**/*.ts',
+     'components/**/*.tsx',
+     'app/api/**/*.ts',
++    'types/**/*.ts',
++    'store/**/*.ts',
++    'config/**/*.ts',
+     '!**/*.d.ts',
+     '!**/__tests__/**',
+     '!**/*.test.ts',
+@@ -87,6 +93,8 @@ module.exports = {
+     '!**/.next/**',
+     '!**/coverage/**',
+     '!**/dist/**',
++    '!tests/**',
++    '!__tests__/**'
+   ],
+   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
+   coverageThreshold: {

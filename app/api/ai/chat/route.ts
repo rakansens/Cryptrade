@@ -2,7 +2,7 @@ import { createApiHandler, createOptionsHandler } from '@/lib/api/create-api-han
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
 import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
-import type { OrchestratorResult } from '@/lib/api/types';
+import type { OrchestratorResult, ExecutionResult } from '@/lib/api/types';
 import { extractProposalGroup, debugProposalGroupStructure } from '@/lib/api/helpers/proposal-extractor';
 import { buildChatResponse, processOrchestratorResult } from '@/lib/api/helpers/response-builder';
 import { createOrchestratorErrorResponse } from '@/lib/api/helpers/error-handler';
@@ -60,22 +60,26 @@ export const POST = createApiHandler<ChatRequest>({
         success: orchestratorResponse.success,
         proposalGroup: orchestratorResponse.executionResult?.proposalGroup,
         error: orchestratorResponse.executionResult?.error ? {
-          code: orchestratorResponse.executionResult.error.code || 'UNKNOWN_ERROR',
+          code: (orchestratorResponse.executionResult.error as any).code || 'UNKNOWN_ERROR',
           message: orchestratorResponse.executionResult.error.message || 'Unknown error occurred',
-          details: orchestratorResponse.executionResult.error.details,
-          stack: orchestratorResponse.executionResult.error.stack
+          details: (orchestratorResponse.executionResult.error as any).details,
+          stack: (orchestratorResponse.executionResult.error as any).stack
         } : undefined,
-        metadata: orchestratorResponse.executionResult?.metadata,
+        metadata: orchestratorResponse.executionResult?.metadata || undefined,
         analysis: {
-          intent: orchestratorResponse.analysis.intent,
+          intent: orchestratorResponse.analysis.intent as string,
           confidence: orchestratorResponse.analysis.confidence,
-          reasoning: orchestratorResponse.analysis.reasoning || '',
-          analysisDepth: orchestratorResponse.analysis.analysisDepth || 'basic',
-          isProposalMode: orchestratorResponse.analysis.isProposalMode === true,
-          proposalType: orchestratorResponse.analysis.proposalType,
+          reasoning: (orchestratorResponse.analysis as any).reasoning || '',
+          analysisDepth: (orchestratorResponse.analysis as any).analysisDepth || 'basic',
+          isProposalMode: (orchestratorResponse.analysis as any).isProposalMode === true,
+          proposalType: (orchestratorResponse.analysis as any).proposalType,
         },
         executionTime: orchestratorResponse.executionTime,
-        executionResult: orchestratorResponse.executionResult || undefined,
+        executionResult: orchestratorResponse.executionResult ? ({
+          ...orchestratorResponse.executionResult,
+          success: orchestratorResponse.executionResult.response ? true : false,
+          executionResult: undefined
+        } as unknown as ExecutionResult) : undefined,
         memoryContext: orchestratorResponse.memoryContext,
       };
 

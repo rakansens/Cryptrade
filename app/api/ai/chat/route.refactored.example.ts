@@ -8,9 +8,9 @@
 import { createApiHandler, createOptionsHandler } from '@/lib/api/create-api-handler';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
-import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
+import { executeImprovedOrchestrator, type OrchestratorResult } from '@/lib/mastra/agents/orchestrator.agent';
 import { extractProposalGroup, debugProposalGroupStructure } from '@/lib/api/helpers/proposal-extractor';
-import { buildChatResponse, processOrchestratorResult } from '@/lib/api/helpers/response-builder';
+import { buildChatResponse, processOrchestratorResult, type ChatResponseParams } from '@/lib/api/helpers/response-builder';
 import { createOrchestratorErrorResponse } from '@/lib/api/helpers/error-handler';
 import { registerAgentsSafely } from '@/lib/api/helpers/request-validator';
 
@@ -45,7 +45,6 @@ export const POST = createApiHandler<ChatRequest>({
 
     const userMessage = data.message;
     const sessionId = data.sessionId || context.sessionId || `chat-session-${Date.now()}`;
-    const runtimeContext = data.context || {};
 
     logger.info('[AI Chat A2A] Processing request with A2A communication', {
       sessionId,
@@ -57,18 +56,40 @@ export const POST = createApiHandler<ChatRequest>({
       // Execute A2A-powered orchestrator
       logger.info('[AI Chat A2A] Executing A2A-powered orchestrator');
       
-      const orchestratorResult = await executeImprovedOrchestrator(
+      const orchestratorResponse = await executeImprovedOrchestrator(
         userMessage,
-        sessionId,
-        runtimeContext
+        sessionId
       );
+
+      // Convert OrchestratorExecutionResponse to OrchestratorResult
+      const orchestratorResult: OrchestratorResult = {
+        success: orchestratorResponse.success,
+        proposalGroup: orchestratorResponse.executionResult?.proposalGroup,
+        error: orchestratorResponse.executionResult?.error ? {
+          code: orchestratorResponse.executionResult.error.code || 'UNKNOWN_ERROR',
+          message: orchestratorResponse.executionResult.error.message,
+          details: orchestratorResponse.executionResult.error.details
+        } : undefined,
+        metadata: orchestratorResponse.executionResult?.metadata,
+        analysis: {
+          intent: orchestratorResponse.analysis.intent as string,
+          confidence: orchestratorResponse.analysis.confidence,
+          reasoning: (orchestratorResponse.analysis as any).reasoning || '',
+          analysisDepth: (orchestratorResponse.analysis as any).analysisDepth || 'basic',
+          isProposalMode: (orchestratorResponse.analysis as any).isProposalMode === true,
+          proposalType: (orchestratorResponse.analysis as any).proposalType
+        },
+        executionTime: orchestratorResponse.executionTime,
+        executionResult: orchestratorResponse.executionResult,
+        memoryContext: orchestratorResponse.memoryContext,
+      };
 
       // Process orchestrator result
       const { message, proposalGroup: baseProposalGroup } = processOrchestratorResult(orchestratorResult);
       let proposalGroup = baseProposalGroup;
       
       // Extract proposal group if in proposal mode
-      if (orchestratorResult.analysis.intent === 'proposal_request' || orchestratorResult.analysis.isProposalMode) {
+      if (orchestratorResult.analysis.intent === 'proposal_request' || orchestratorResult.analysis.isProposalMode === true) {
         proposalGroup = extractProposalGroup(orchestratorResult.executionResult);
         
         if (!proposalGroup) {
@@ -77,12 +98,17 @@ export const POST = createApiHandler<ChatRequest>({
       }
       
       // Build response
-      const response = buildChatResponse({
+      const responseParams: ChatResponseParams = {
         message: proposalGroup && !message.includes('提案') ? 'トレンドラインの提案を生成しました。' : message,
         orchestratorResult,
-        proposalGroup: proposalGroup || undefined,
         sessionId,
-      });
+      };
+      
+      if (proposalGroup) {
+        responseParams.proposalGroup = proposalGroup;
+      }
+      
+      const response = buildChatResponse(responseParams);
 
       logger.info('[AI Chat A2A] A2A orchestrator completed successfully', {
         intent: orchestratorResult.analysis.intent,

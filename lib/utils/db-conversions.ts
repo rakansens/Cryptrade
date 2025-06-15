@@ -45,16 +45,16 @@ export function convertDbAnalysisRecord(
   const touches = dbRecord.touchEvents?.map(event => ({
     id: event.id,
     timestamp: Number(event.timestamp),
-    price: event.price.toNumber(),
+    price: Number(event.price.toString()),
     result: event.result as 'breakout' | 'bounce',
-    volume: event.volume?.toNumber(),
-    strength: event.strength.toNumber(),
+    volume: event.volume ? Number(event.volume.toString()) : undefined,
+    strength: Number(event.strength.toString()),
   })) || [];
 
   // Build tracking data
   const finalTrackingData: TrackingData = trackingData || {
     status: 'active' as const,
-    startTime: dbRecord.timestamp.toNumber(),
+    startTime: Number(dbRecord.timestamp.toString()),
     touches: touches.map(t => ({
       time: t.timestamp,
       price: t.price,
@@ -122,7 +122,7 @@ export function serializeBigInt(value: bigint): string {
  * Convert Decimal to number for JSON serialization
  */
 export function serializeDecimal(value: Decimal): number {
-  return value.toNumber();
+  return Number(value.toString());
 }
 
 /**

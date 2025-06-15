@@ -22,17 +22,14 @@ interface TestCase {
   expectedTTLRange: [number, number]; // [min, max] in seconds
 }
 
-// interface DynamicTTLTestResult {
-//   success: boolean;
-//   error?: unknown;
-//   symbol?: string;
-//   description?: string;
-//   expectedTTLRange?: [number, number];
-//   ttl?: number;
-//   volatility?: number;
-// }
+interface DynamicTTLTestResult {
+  success: boolean;
+  error?: unknown;
+  ttl: number | undefined;
+  volatility: number | undefined;
+}
 
-async function testDynamicTTL(testCase: TestCase) {
+async function testDynamicTTL(testCase: TestCase): Promise<DynamicTTLTestResult> {
   console.log(`\n${colors.blue('▶')} Testing: ${testCase.description}`);
   console.log(`  Symbol: ${testCase.symbol}`);
   
@@ -43,8 +40,11 @@ async function testDynamicTTL(testCase: TestCase) {
     // First request (cache miss)
     const start1 = Date.now();
     const result1 = await marketDataResilientTool.execute?.({
-      symbol: testCase.symbol,
-      context: {} as any
+      context: { symbol: testCase.symbol },
+      runtimeContext: {
+        get: (_key: string) => undefined,
+        set: (_key: string, _value: any) => {},
+      } as any
     });
     const duration1 = Date.now() - start1;
     
@@ -77,9 +77,11 @@ async function testDynamicTTL(testCase: TestCase) {
       // Second request (should be cache hit)
       const start2 = Date.now();
       await marketDataResilientTool.execute?.({
-        context: {
-          symbol: testCase.symbol,
-        }
+        context: { symbol: testCase.symbol },
+        runtimeContext: {
+          get: (_key: string) => undefined,
+          set: (_key: string, _value: any) => {},
+        } as any
       });
       const duration2 = Date.now() - start2;
       
@@ -95,9 +97,11 @@ async function testDynamicTTL(testCase: TestCase) {
       // Third request (should be cache miss after expiration)
       const start3 = Date.now();
       await marketDataResilientTool.execute?.({
-        context: {
-          symbol: testCase.symbol,
-        }
+        context: { symbol: testCase.symbol },
+        runtimeContext: {
+          get: (_key: string) => undefined,
+          set: (_key: string, _value: any) => {},
+        } as any
       });
       const duration3 = Date.now() - start3;
       
@@ -107,20 +111,12 @@ async function testDynamicTTL(testCase: TestCase) {
       return { 
         success: true, 
         ttl: ttlSeconds, 
-        volatility: cacheEntry.volatility,
-        error: undefined,
-        symbol: undefined,
-        description: undefined,
-        expectedTTLRange: undefined
+        volatility: cacheEntry.volatility
       };
     } else {
       console.log(`  ${colors.red('✗')} No cache entry found`);
       return { 
         success: false,
-        error: undefined,
-        symbol: undefined,
-        description: undefined,
-        expectedTTLRange: undefined,
         ttl: undefined,
         volatility: undefined
       };
@@ -131,9 +127,6 @@ async function testDynamicTTL(testCase: TestCase) {
     return { 
       success: false, 
       error,
-      symbol: undefined,
-      description: undefined,
-      expectedTTLRange: undefined,
       ttl: undefined,
       volatility: undefined
     };

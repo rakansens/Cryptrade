@@ -14,6 +14,7 @@ interface ConfluenceZone {
   };
   timeframeCount: number;
   strength: number;
+  supportingTimeframes: string[];
   description?: string;
 }
 
@@ -36,7 +37,7 @@ interface MarketStructure {
 
 interface EnhancedLine extends DetectedLine {
   description: string;
-  tradingImplication: string;
+  tradingImplication: 'bullish' | 'bearish' | 'neutral' | undefined;
 }
 
 // Removed unused interface DrawingAction
@@ -194,11 +195,12 @@ const EnhancedLineAnalysisOutput = z.object({
           close: z.number(),
           volume: z.number()
         })),
-        timeframe: z.string(),
-        lastUpdate: z.number()
+        weight: z.number(),
+        dataPoints: z.number()
       })),
       symbol: z.string(),
-      timestamp: z.number()
+      fetchedAt: z.number(),
+      timestamp: z.number().optional()
     }).optional(),
     detectionDetails: z.object({
       symbol: z.string(),
@@ -344,10 +346,15 @@ export const enhancedLineAnalysisTool = createTool({
         summary: enhancedSummary,
         marketStructure,
         recommendations,
-        rawData: returnRawData ? {
-          multiTimeframeData: currentMarketData,
-          detectionDetails: detectionResult
-        } : undefined
+        ...(returnRawData && { 
+          rawData: {
+            multiTimeframeData: {
+              ...currentMarketData,
+              timestamp: currentMarketData.fetchedAt || Date.now()
+            },
+            detectionDetails: detectionResult
+          }
+        })
       };
 
       logger.info('[EnhancedLineAnalysis] Analysis completed successfully', {
@@ -705,7 +712,7 @@ function generateAdvancedRecommendations(
         opacity: 0.3
       },
       priority: Math.round(zone.strength * 10),
-      description: zone.description
+      description: zone.description || `Confluence zone at ${zone.priceRange.center.toFixed(2)}`
     });
   }
 

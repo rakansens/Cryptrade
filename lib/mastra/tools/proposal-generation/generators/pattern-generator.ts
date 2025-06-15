@@ -712,10 +712,9 @@ export class PatternGenerator implements IProposalGenerator {
       })(),
       confidence: pattern.confidence,
       priority: this.calculatePriority(pattern),
-      createdAt: Date.now(),
       analysis: {
         direction: pattern.implication === 'bullish' || pattern.implication === 'bearish' ? pattern.implication : 'neutral' as 'bullish' | 'bearish' | 'neutral',
-        strength: confidence,
+        strength: pattern.confidence,
       },
       metadata: {
         symbol: params.symbol,

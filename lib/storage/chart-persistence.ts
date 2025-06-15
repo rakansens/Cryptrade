@@ -36,7 +36,7 @@ export class ChartPersistenceManager {
    */
   static configure(config: Partial<PersistenceConfig>): void {
     this.config = { ...this.config, ...config };
-    logger.info('[ChartPersistence] Configuration updated', this.config as Record<string, unknown>);
+    logger.info('[ChartPersistence] Configuration updated', { ...this.config });
   }
 
   /**

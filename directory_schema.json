@@ -1,0 +1,127 @@
+{
+  "testDirectoryStructure": {
+    "/tests": {
+      "description": "Root test directory containing all test files",
+      "subdirectories": {
+        "/unit": {
+          "description": "Unit tests for individual functions/components",
+          "subdirectories": {
+            "/api": "API route unit tests",
+            "/components": "React component unit tests",
+            "/hooks": "Custom hook unit tests",
+            "/lib": {
+              "description": "Library function unit tests",
+              "subdirectories": {
+                "/agents": "AI agent unit tests",
+                "/analysis": "Analysis function tests",
+                "/binance": "Binance API wrapper tests",
+                "/chart": "Chart utility tests",
+                "/errors": "Error handling tests",
+                "/indicators": "Technical indicator tests",
+                "/mastra": "Mastra framework tests",
+                "/ml": "Machine learning tests",
+                "/services": "Service layer tests",
+                "/storage": "Storage utility tests",
+                "/store": "State management tests",
+                "/utils": "Utility function tests",
+                "/validation": "Validation schema tests",
+                "/ws": "WebSocket utility tests"
+              }
+            }
+          }
+        },
+        "/integration": {
+          "description": "Integration tests for multiple components",
+          "subdirectories": {
+            "/api": "API integration tests",
+            "/chart": "Chart feature integration tests",
+            "/memory": "Conversation memory tests",
+            "/database": "Database integration tests",
+            "/ui": "UI interaction tests"
+          }
+        },
+        "/e2e": {
+          "description": "End-to-end tests for complete user flows",
+          "subdirectories": {
+            "/auth": "Authentication flow tests",
+            "/trading": "Trading workflow tests",
+            "/chart": "Chart interaction tests",
+            "/ai": "AI assistant interaction tests"
+          }
+        },
+        "/performance": {
+          "description": "Performance and load tests",
+          "subdirectories": {
+            "/rendering": "Chart rendering performance",
+            "/data": "Data processing performance",
+            "/websocket": "WebSocket performance",
+            "/ml": "ML analysis performance"
+          }
+        },
+        "/fixtures": {
+          "description": "Shared test data and fixtures",
+          "subdirectories": {
+            "/data": "Mock data files",
+            "/responses": "Mock API responses",
+            "/snapshots": "Component snapshots"
+          }
+        },
+        "/helpers": {
+          "description": "Test utilities and helpers",
+          "files": [
+            "setup.ts",
+            "test-utils.ts",
+            "mock-factories.ts",
+            "db-test-utils.ts"
+          ]
+        }
+      }
+    }
+  },
+  "namingConventions": {
+    "unitTests": "{module}.test.ts",
+    "integrationTests": "{feature}.integration.test.ts",
+    "e2eTests": "{flow}.e2e.test.ts",
+    "performanceTests": "{operation}.perf.test.ts",
+    "testHelpers": "{utility}-helper.ts",
+    "mockFiles": "{module}.mock.ts",
+    "fixtureFiles": "{data}-fixture.{json|ts}"
+  },
+  "migrationMapping": {
+    "./app/api/__tests__/**/*.test.ts": "/tests/unit/api/",
+    "./components/**/__tests__/*.test.tsx": "/tests/unit/components/",
+    "./hooks/**/__tests__/*.test.ts": "/tests/unit/hooks/",
+    "./lib/**/__tests__/*.test.ts": "/tests/unit/lib/{module}/",
+    "./__tests__/integration/**/*.test.ts": "/tests/integration/",
+    "./__tests__/performance/**/*.test.ts": "/tests/performance/",
+    "./lib/ws/__tests__/e2e/*.test.ts": "/tests/e2e/websocket/",
+    "./__tests__/helpers/*": "/tests/helpers/",
+    "./app/api/test/*": "/tests/fixtures/api/"
+  },
+  "testConfiguration": {
+    "unit": {
+      "pattern": "/tests/unit/**/*.test.{ts,tsx}",
+      "config": "jest.unit.config.js"
+    },
+    "integration": {
+      "pattern": "/tests/integration/**/*.test.{ts,tsx}",
+      "config": "jest.integration.config.js"
+    },
+    "e2e": {
+      "pattern": "/tests/e2e/**/*.test.{ts,tsx}",
+      "config": "jest.e2e.config.js"
+    },
+    "performance": {
+      "pattern": "/tests/performance/**/*.test.{ts,tsx}",
+      "config": "jest.perf.config.js"
+    }
+  },
+  "benefits": [
+    "Clear separation of test types",
+    "Easier to run specific test suites",
+    "Shared test utilities in one location",
+    "Consistent naming conventions",
+    "Better organization for CI/CD pipelines",
+    "Simplified test configuration management"
+  ]
+}

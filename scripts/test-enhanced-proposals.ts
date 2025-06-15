@@ -18,7 +18,11 @@ async function testEnhancedProposals() {
     console.log('\n⏳ Generating proposals...\n');
 
     const result = await proposalGenerationTool.execute?.({
-      context: params
+      context: params,
+      runtimeContext: {
+        get: (_key: string) => undefined,
+        set: (_key: string, _value: any) => {},
+      } as any
     });
 
     if (result?.success && result.proposalGroup) {
@@ -88,7 +92,11 @@ async function testEnhancedProposals() {
       };
 
       const srResult = await proposalGenerationTool.execute?.({
-        context: srParams
+        context: srParams,
+        runtimeContext: {
+          get: (_key: string) => undefined,
+          set: (_key: string, _value: any) => {},
+        } as any
       });
       
       if (srResult?.success && srResult.proposalGroup) {

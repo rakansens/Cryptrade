@@ -60,3 +60,11 @@ test-proposal-*.html
 
 # internal worktree staging
 /Cryptrade-worktree/
+
+# log files
+/logs/*.log
+/logs/*.txt
+logs/temp-check.log
+logs/tsc-output.txt
+logs/type-check-*.log
+logs/typecheck-output.txt

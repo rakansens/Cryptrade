@@ -188,8 +188,8 @@ export const marketDataToolForOpenAI = createCompatibleTool(
   {
     name: baseMarketDataTool.id,
     description: baseMarketDataTool.description,
-    inputSchema: baseMarketDataTool.inputSchema,
-    execute: baseMarketDataTool.execute
+    inputSchema: baseMarketDataTool.inputSchema! as z.ZodType<any>,
+    execute: baseMarketDataTool.execute!
   },
   'openai'
 );
@@ -199,8 +199,8 @@ export const marketDataToolForO1 = createCompatibleTool(
   {
     name: baseMarketDataTool.id,
     description: baseMarketDataTool.description,
-    inputSchema: baseMarketDataTool.inputSchema,
-    execute: baseMarketDataTool.execute
+    inputSchema: baseMarketDataTool.inputSchema! as z.ZodType<any>,
+    execute: baseMarketDataTool.execute!
   },
   'openai-reasoning'
 );
@@ -210,8 +210,8 @@ export const marketDataToolForAnthropic = createCompatibleTool(
   {
     name: baseMarketDataTool.id,
     description: baseMarketDataTool.description,
-    inputSchema: baseMarketDataTool.inputSchema,
-    execute: baseMarketDataTool.execute
+    inputSchema: baseMarketDataTool.inputSchema! as z.ZodType<any>,
+    execute: baseMarketDataTool.execute!
   },
   'anthropic'
 );

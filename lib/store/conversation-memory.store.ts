@@ -254,8 +254,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           
           logger.info('[ConversationMemory] Session summarized', { sessionId, summary });
         },
-          ...createDbSyncHandlers(set, get),
-        
+        // DB sync handlers
+        ...createDbSyncHandlers(set, get),
       })),
       {
         name: 'conversation-memory',
@@ -263,7 +263,7 @@ export const useConversationMemory = create<ConversationMemoryState>()(
         migrate: (persistedState: unknown, version: number) => {
           if (version === 0 || version === 1) {
             return {
-              ...persistedState,
+              ...(persistedState as Record<string, unknown>),
               isDbEnabled: true,
               isSyncing: false,
             };

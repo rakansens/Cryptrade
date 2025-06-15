@@ -6,7 +6,6 @@
 
 import { Agent } from '@mastra/core';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
 import { AgentError } from '@/lib/errors/base-error';
 import { trackAgentError, trackException } from '@/lib/errors/error-tracker';
 import { logger } from '@/lib/utils/logger';
@@ -27,13 +26,6 @@ interface MarketAnalysisData {
     volume: number;
   }>;
 }
-
-// エージェント用スキーマ
-const tradingAgentSchema = z.object({
-  query: z.string(),
-  symbol: z.string().optional().default('BTCUSDT'),
-  model: z.enum(['gpt-4', 'o1-preview', 'claude-3']).optional().default('gpt-4'),
-});
 
 export const tradingAgentWithErrors = new Agent({
   name: 'trading-agent-with-errors',

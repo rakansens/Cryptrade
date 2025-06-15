@@ -16,6 +16,7 @@ import type {
   ClientEvent,
   ChartOperationEvent,
   DrawingOperationEvent,
+  OperationType,
 } from '@/types/chart-control.types';
 
 // Re-export types for backward compatibility

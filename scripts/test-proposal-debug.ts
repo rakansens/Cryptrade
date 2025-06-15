@@ -30,7 +30,11 @@ async function testDirectProposalGeneration() {
         interval: '1h',
         analysisType: 'trendline',
         maxProposals: 3,
-      }
+      },
+      runtimeContext: {
+        get: (_key: string) => undefined,
+        set: (_key: string, _value: any) => {},
+      } as any
     });
     
     console.log('✅ Direct tool execution successful');
@@ -95,7 +99,12 @@ async function testProposalGenerationWithUndefined() {
         symbol: undefined as unknown as string,
         interval: '1h',
         analysisType: 'trendline',
-      }
+        maxProposals: 3,
+      },
+      runtimeContext: {
+        get: (_key: string) => undefined,
+        set: (_key: string, _value: any) => {},
+      } as any
     });
     
     console.log('✅ Undefined symbol handled gracefully');
@@ -103,10 +112,16 @@ async function testProposalGenerationWithUndefined() {
     
     // Test with null symbol
     const result2 = await proposalGenerationTool.execute?.({
-      symbol: null as unknown as string,
-      interval: '1h',
-      analysisType: 'trendline',
-      context: {} as any
+      context: {
+        symbol: null as unknown as string,
+        interval: '1h',
+        analysisType: 'trendline',
+        maxProposals: 3,
+      },
+      runtimeContext: {
+        get: (_key: string) => undefined,
+        set: (_key: string, _value: any) => {},
+      } as any
     });
     
     console.log('✅ Null symbol handled gracefully');
