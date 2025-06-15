@@ -8,10 +8,10 @@ import type {
   AnalysisRecord, 
   TouchEvent,
   ProposalData,
-  SentimentData,
-  TrackingData
+  TrackingData,
+  SentimentData
 } from '@/types/analysis-history';
-import type { DatabaseRecord } from '@/lib/api/types';
+import { convertDbAnalysisRecord } from '@/lib/utils/db-conversions';
 
 export class AnalysisAPI {
   /**
@@ -117,57 +117,7 @@ export class AnalysisAPI {
   /**
    * Convert DB record to client format
    */
-  static convertToAnalysisRecord(dbRecord: DatabaseRecord & {
-    sessionId: string;
-    symbol: string;
-    interval: string;
-    type: 'support' | 'resistance' | 'pattern' | 'trendline' | 'fibonacci' | 'volume';
-    timestamp: string;
-    price: string;
-    proposalData?: ProposalData;
-    sentimentData?: SentimentData;
-    trackingData?: TrackingData;
-    touchEvents?: Array<{
-      id: string;
-      timestamp: string;
-      price: string;
-      result: 'breakout' | 'bounce';
-      volume?: string;
-      strength: string;
-    }>;
-    confidence?: string;
-  }): AnalysisRecord {
-    return {
-      id: dbRecord.id,
-      sessionId: dbRecord.sessionId,
-      symbol: dbRecord.symbol,
-      interval: dbRecord.interval,
-      type: dbRecord.type,
-      timestamp: new Date(dbRecord.timestamp).getTime(),
-      price: parseFloat(dbRecord.price),
-      proposalData: dbRecord.proposalData,
-      sentimentData: dbRecord.sentimentData,
-      trackingData: dbRecord.trackingData || {
-        touches: dbRecord.touchEvents?.map((event) => ({
-          id: event.id,
-          timestamp: new Date(event.timestamp).getTime(),
-          price: parseFloat(event.price),
-          result: event.result,
-          volume: event.volume ? parseFloat(event.volume) : undefined,
-          strength: parseFloat(event.strength),
-        })) || [],
-        performance: {
-          accuracy: 0,
-          avgStrength: 0,
-          totalTouches: 0,
-          successRate: 0,
-        },
-      },
-      confidence: dbRecord.confidence ? parseFloat(dbRecord.confidence) : undefined,
-      dbMeta: {
-        synced: true,
-        lastSync: Date.now(),
-      },
-    };
+  static convertToAnalysisRecord(dbRecord: unknown): AnalysisRecord {
+    return convertDbAnalysisRecord(dbRecord as Parameters<typeof convertDbAnalysisRecord>[0]);
   }
 }

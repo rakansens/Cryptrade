@@ -57,13 +57,16 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
     middleware,
     schema,
     handler,
-    enableCors = true,
+    // enableCors = true, // unused
     rateLimitOptions,
   } = config;
 
   // Create rate limit middleware if options provided
-  const rateLimitMiddleware = rateLimitOptions
-    ? createApiMiddleware(rateLimitOptions)
+  const rateLimitMiddleware = rateLimitOptions && rateLimitOptions.windowMs && rateLimitOptions.maxRequests
+    ? createApiMiddleware({
+        windowMs: rateLimitOptions.windowMs,
+        maxRequests: rateLimitOptions.maxRequests
+      })
     : null;
 
   // Combine middlewares
@@ -139,8 +142,9 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
       }
 
       // Extract context
+      const sessionId = request.headers.get('x-session-id');
       const context = {
-        sessionId: request.headers.get('x-session-id') || undefined,
+        ...(sessionId && { sessionId }),
         headers: Object.fromEntries(request.headers.entries()),
       };
 
@@ -212,13 +216,13 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
 export function createStreamingHandler<TInput = unknown>(
   config: StreamingHandlerConfig<TInput>
 ) {
-  const baseHandler = createApiHandler({
-    ...config,
-    handler: async ({ data, request, context }) => {
-      // This will be overridden, but TypeScript needs it
-      return {} as TOutput;
-    },
-  });
+  // const baseHandler = createApiHandler({ // unused
+  //   ...config,
+  //   handler: async ({ data, request, context }) => {
+  //     // This will be overridden, but TypeScript needs it
+  //     return {} as unknown;
+  //   },
+  // });
 
   return async function streamingHandler(request: NextRequest): Promise<Response> {
     // Use base handler for middleware and validation

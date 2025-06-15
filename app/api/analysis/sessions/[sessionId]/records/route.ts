@@ -4,11 +4,12 @@ import { AnalysisAPI } from '@/lib/api/analysis-api';
 import { logger } from '@/lib/utils/logger';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  _request: NextRequest,
+  context: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const dbRecords = await AnalysisService.getSessionAnalyses(params.sessionId);
+    const { sessionId } = await context.params;
+    const dbRecords = await AnalysisService.getSessionAnalyses(sessionId);
     const records = dbRecords.map(record => AnalysisAPI.convertToAnalysisRecord(record));
     
     return NextResponse.json({ records });

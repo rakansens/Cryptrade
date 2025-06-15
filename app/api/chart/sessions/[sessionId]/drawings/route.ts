@@ -3,18 +3,14 @@ import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import { ChartDrawingSchema } from '@/lib/validation/chart-drawing.schema';
 import { z } from 'zod';
+import { prepareChartDrawingData } from '@/lib/utils/db-conversions';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
 
 const saveDrawingsSchema = z.object({
   drawings: z.array(ChartDrawingSchema),
 });
 
-export async function GET(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await context.params;
   try {
     const drawings = await prisma.chartDrawing.findMany({
@@ -32,7 +28,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ ses
         id: d.id,
         sessionId: d.sessionId,
         type: d.type,
-        data: d.data,
+        data: {
+          points: d.points,
+          style: d.style,
+          price: d.price?.toNumber(),
+          time: d.time?.toString(),
+          levels: d.levels,
+          metadata: d.metadata,
+        },
         createdAt: d.createdAt.toISOString(),
         updatedAt: d.updatedAt.toISOString(),
       }))
@@ -60,13 +63,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
 
     // Create new drawings
     if (data.drawings.length > 0) {
-      await prisma.chartDrawing.createMany({
-        data: data.drawings.map(drawing => ({
-          id: drawing.id,
+      const drawingsToCreate = data.drawings.map(drawing => 
+        prepareChartDrawingData({
+          ...drawing,
           sessionId,
-          type: drawing.type,
-          data: drawing.data,
-        })),
+        })
+      );
+      
+      await prisma.chartDrawing.createMany({
+        data: drawingsToCreate,
       });
     }
 

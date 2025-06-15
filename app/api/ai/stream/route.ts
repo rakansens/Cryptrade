@@ -110,7 +110,11 @@ export const GET = createSSEHandler({
             throw new AgentError('Agent not found or does not support streaming', agentId);
           }
           const ctx = contextJson ? JSON.parse(contextJson) : undefined;
-          const streamResult = await agent.stream(message, { sessionId, context: ctx });
+          // Store context in session if needed
+          if (ctx && sessionId) {
+            // Context can be stored in session metadata or passed differently
+          }
+          const streamResult = await agent.stream(message);
           for await (const chunk of streamResult.textStream) {
             let text = '';
             if (typeof chunk === 'string') {

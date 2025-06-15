@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
         sessionId: data.sessionId,
         role: data.role,
         content: data.content,
-        agentId: data.agentId,
-        metadata: data.metadata,
+        agentId: data.agentId ?? null,
+        metadata: data.metadata as any,
       },
     });
 

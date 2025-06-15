@@ -1,12 +1,10 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
-import { mastra } from '@/lib/mastra/mastra';
 import {
   AnalysisProgressEvent,
   AnalysisStep,
   createAnalysisStep,
-  AnalysisStepType,
   getAnalysisSteps,
 } from '@/types/analysis-progress';
 import { createSSEHandler, createSSEOptionsHandler, SSEStream } from '@/lib/api/create-sse-handler';
@@ -22,7 +20,7 @@ const AnalysisStreamRequestSchema = z.object({
   symbol: z.string().min(1, 'Symbol is required'),
   interval: z.string().min(1, 'Interval is required'),
   analysisType: z.enum(['trendline', 'support-resistance', 'fibonacci', 'pattern', 'all']),
-  maxProposals: z.number().optional().default(5),
+  maxProposals: z.number().default(5),
   sessionId: z.string().optional(),
 });
 
@@ -75,10 +73,11 @@ async function streamText(text: string, delayMs: number = 20): Promise<string[]>
   return chars;
 }
 
-export const POST = createSSEHandler({
+export const GET = createSSEHandler({
+  schema: AnalysisStreamRequestSchema,
   handler: {
-    async onConnect({ request, stream }) {
-      await runAnalysisStream(request, stream);
+    async onConnect({ request, data, stream }) {
+      await runAnalysisStream(request, data as any, stream);
     }
   },
   cors: { origin: '*' },
@@ -86,10 +85,8 @@ export const POST = createSSEHandler({
 
 export const OPTIONS = createSSEOptionsHandler({ origin: '*' });
 
-async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
+async function runAnalysisStream(_request: NextRequest, validatedInput: z.infer<typeof AnalysisStreamRequestSchema>, stream: SSEStream) {
   try {
-    const body = await request.json();
-    const validatedInput = AnalysisStreamRequestSchema.parse(body);
     const sessionId = validatedInput.sessionId || `session_${Date.now()}`;
 
     logger.info('[Analysis Stream API] Starting analysis stream', {
@@ -188,7 +185,7 @@ async function runAnalysisStream(request: NextRequest, stream: SSEStream) {
         symbol: validatedInput.symbol,
         interval: validatedInput.interval,
         analysisType: validatedInput.analysisType,
-        maxProposals: validatedInput.maxProposals,
+        maxProposals: validatedInput.maxProposals || 5,
       } as any) as Promise<ProposalGenerationOutput>);
       if (toolResult.success && toolResult.proposalGroup) {
         result = {

@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   AppError,
   isAppError,
-  isOperationalError,
   toAppError,
   serializeError,
   ValidationError,
@@ -20,7 +19,7 @@ import {
 } from '@/lib/errors';
 import { enhancedLogger as logger } from '@/lib/logging';
 import { env } from '@/config/env';
-import type { ApiHandler, ApiHandlerContext, ErrorDetails } from '@/lib/api/types';
+import type { ApiHandler, ApiHandlerContext } from '@/lib/api/types';
 
 
 /**
@@ -133,7 +132,7 @@ function logError(
 
   // Use appropriate log level based on error type
   if (!error.isOperational || error.statusCode >= 500) {
-    logger.error('API Error', error, logContext);
+    logger.error('API Error', { ...logContext, error });
   } else if (error.statusCode >= 400) {
     logger.warn('Client Error', logContext);
   } else {
@@ -152,11 +151,12 @@ function handleUncaughtError(
   const appError = toAppError(error);
   
   // Always log uncaught errors as critical
-  logger.error('Uncaught API Error', error as Error, {
+  logger.error('Uncaught API Error', {
     requestId,
     path: request.nextUrl.pathname,
     method: request.method,
-    stack: error instanceof Error ? error.stack : undefined
+    stack: error instanceof Error ? error.stack : undefined,
+    error: error as Error
   });
 
   // In production, return generic error for non-operational errors
@@ -190,7 +190,9 @@ export function withErrorBoundary<T = unknown>(
       const response = await handler(request, context);
       
       // Add request ID to successful responses
-      response.headers.set('X-Request-Id', requestId);
+      if (response instanceof Response) {
+        response.headers.set('X-Request-Id', requestId);
+      }
       
       return response;
     } catch (error) {
@@ -220,7 +222,7 @@ export function withStreamingErrorBoundary<T = unknown>(
       const response = await handler(request, context);
       
       // For streaming responses, we need to wrap the stream
-      if (response.body && typeof response.body === 'object' && 'getReader' in response.body) {
+      if (response instanceof Response && response.body && typeof response.body === 'object' && 'getReader' in response.body) {
         const originalBody = response.body;
         const encoder = new TextEncoder();
         
@@ -262,7 +264,9 @@ export function withStreamingErrorBoundary<T = unknown>(
         });
       }
 
-      response.headers.set('X-Request-Id', requestId);
+      if (response instanceof Response) {
+        response.headers.set('X-Request-Id', requestId);
+      }
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -284,10 +288,10 @@ interface ValidationSchema<T> {
   parse?: (data: unknown) => T;
 }
 
-type ValidationFunction<T> = (data: unknown) => Promise<{ valid: boolean; message?: string; field?: string; value?: unknown; details?: Record<string, unknown> }>;
+type ValidationFunction = (data: unknown) => Promise<{ valid: boolean; message?: string; field?: string; value?: unknown; details?: Record<string, unknown> }>;
 
-export function withValidation<T = unknown>(
-  schema: ValidationSchema<T> | ValidationFunction<T>,
+export function withValidation<T>(
+  schema: ValidationSchema<T> | ValidationFunction,
   handler: (data: T, request: NextRequest, context?: ApiHandlerContext) => Promise<NextResponse>
 ): ApiHandler<NextRequest, unknown> {
   return withErrorBoundary(async (request: NextRequest, context?: ApiHandlerContext) => {
@@ -300,12 +304,15 @@ export function withValidation<T = unknown>(
     }
 
     // Handle Zod schema
-    if (schema.parse) {
+    if ('parse' in schema && typeof schema.parse === 'function') {
       try {
         const validatedData = schema.parse(body);
         return await handler(validatedData, request, context);
       } catch (error) {
-        throw ValidationError.fromZodError(error);
+        if (error && typeof error === 'object' && 'errors' in error) {
+          throw ValidationError.fromZodError(error as { errors: Array<{ path: string[]; message: string; code: string }> });
+        }
+        throw new ValidationError('Invalid request data');
       }
     }
 
@@ -320,7 +327,7 @@ export function withValidation<T = unknown>(
           validationResult.details
         );
       }
-      return await handler(body, request, context);
+      return await handler(body as T, request, context);
     }
 
     throw new ConfigurationError('Invalid validation schema provided');

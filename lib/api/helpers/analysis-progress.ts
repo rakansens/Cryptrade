@@ -64,7 +64,7 @@ export async function simulateStepProgress(
       for (let i = 0; i < indicators.length; i++) {
         step.progress = ((i + 1) / indicators.length) * 100;
         step.details = {
-          currentIndicator: indicators[i],
+          currentIndicator: indicators[i] || '',
           completedIndicators: indicators.slice(0, i + 1),
         };
         emitProgress(step, currentIndex, totalSteps, sendEvent, sessionId);
@@ -78,7 +78,7 @@ export async function simulateStepProgress(
       for (let i = 0; i < patterns.length; i++) {
         step.progress = ((i + 1) / patterns.length) * 100;
         step.details = {
-          scanning: patterns[i],
+          scanning: patterns[i] as string,
           found: Math.floor(Math.random() * 3),
         };
         emitProgress(step, currentIndex, totalSteps, sendEvent, sessionId);
@@ -96,7 +96,7 @@ export async function simulateStepProgress(
       for (let i = 0; i < lineTypes.length; i++) {
         step.progress = ((i + 1) / lineTypes.length) * 100;
         step.details = {
-          calculating: lineTypes[i],
+          calculating: lineTypes[i] as string,
           calculated: i + 1,
         };
         emitProgress(step, currentIndex, totalSteps, sendEvent, sessionId);

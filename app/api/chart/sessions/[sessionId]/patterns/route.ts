@@ -3,18 +3,14 @@ import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import { PatternDataSchema } from '@/lib/validation/chart-drawing.schema';
 import { z } from 'zod';
+import { preparePatternAnalysisData } from '@/lib/utils/db-conversions';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
 
 const savePatternsSchema = z.object({
   patterns: z.array(PatternDataSchema),
 });
 
-export async function GET(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await context.params;
 
   try {
@@ -69,19 +65,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
     // Create new patterns
     if (data.patterns.length > 0) {
       await prisma.patternAnalysis.createMany({
-        data: data.patterns.map(pattern => ({
-          id: pattern.id,
+        data: data.patterns.map(pattern => preparePatternAnalysisData({
+          ...pattern,
           sessionId,
-          type: pattern.type,
-          symbol: pattern.symbol,
-          interval: pattern.interval,
-          confidence: pattern.confidence,
-          startTime: pattern.startTime,
-          endTime: pattern.endTime,
-          visualization: pattern.visualization,
-          metrics: pattern.metrics,
-          description: pattern.description,
-          tradingImplication: pattern.tradingImplication,
         })),
       });
     }

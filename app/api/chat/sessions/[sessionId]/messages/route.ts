@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger';
 import { isDevelopment } from '@/config/env';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const { sessionId } = await params;

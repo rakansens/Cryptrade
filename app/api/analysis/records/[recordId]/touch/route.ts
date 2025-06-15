@@ -4,11 +4,28 @@ import { logger } from '@/lib/utils/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { recordId: string } }
+  context: { params: Promise<{ recordId: string }> }
 ) {
   try {
-    const touchEvent = await request.json();
-    await AnalysisService.recordTouchEvent(params.recordId, touchEvent);
+    const { recordId } = await context.params;
+    const body = await request.json();
+    const { price, result, strength, volume } = body;
+    
+    // Validate required fields
+    if (!price || !result || strength === undefined) {
+      return NextResponse.json(
+        { error: 'Missing required fields: price, result, strength' },
+        { status: 400 }
+      );
+    }
+    
+    await AnalysisService.recordTouchEvent({
+      recordId,
+      price,
+      result,
+      strength,
+      volume
+    });
     
     return NextResponse.json({ success: true });
   } catch (error) {

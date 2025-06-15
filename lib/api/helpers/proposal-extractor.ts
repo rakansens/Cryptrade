@@ -10,11 +10,13 @@ export function extractProposalGroup(executionResult: ExecutionResult | unknown)
     return null;
   }
 
+  const execResult = executionResult as ExecutionResult;
+
   // 1. JSONレスポンスからの抽出
-  if (typeof executionResult.response === 'string' && 
-      (executionResult.response.includes('proposalGroup') || executionResult.response.includes('entryProposalGroup'))) {
+  if (typeof execResult.response === 'string' && 
+      (execResult.response.includes('proposalGroup') || execResult.response.includes('entryProposalGroup'))) {
     try {
-      const parsed = JSON.parse(executionResult.response);
+      const parsed = JSON.parse(execResult.response);
       if ((parsed.type === 'proposalGroup' || parsed.type === 'entryProposalGroup') && parsed.data) {
         logger.info('[ProposalExtractor] Found proposal group in JSON response', {
           type: parsed.type,
@@ -28,7 +30,7 @@ export function extractProposalGroup(executionResult: ExecutionResult | unknown)
   }
 
   // 2. toolResultsから探索
-  const toolResults = collectToolResults(executionResult);
+  const toolResults = collectToolResults(execResult);
   for (const toolResult of toolResults) {
     // 通常のproposalGroup
     if (toolResult?.result?.proposalGroup) {
@@ -50,19 +52,19 @@ export function extractProposalGroup(executionResult: ExecutionResult | unknown)
       return {
         ...toolResult.result.proposalGroup,
         type: 'entryProposalGroup'
-      };
+      } as ProposalGroup;
     }
   }
 
   // 3. 直接参照できる場所を探す（優先順位順）
   const directLocations = [
-    executionResult.proposalGroup,
-    executionResult.entryProposalGroup,
-    executionResult.executionResult?.proposalGroup,
-    executionResult.executionResult?.entryProposalGroup,
-    executionResult.executionResult?.executionResult?.proposalGroup, // Added nested path for E2E test
-    executionResult.data?.proposalGroup,
-    executionResult.data?.entryProposalGroup,
+    execResult.proposalGroup,
+    execResult.entryProposalGroup,
+    execResult.executionResult?.proposalGroup,
+    execResult.executionResult?.entryProposalGroup,
+    execResult.executionResult?.executionResult?.proposalGroup, // Added nested path for E2E test
+    (execResult.data as any)?.proposalGroup,
+    (execResult.data as any)?.entryProposalGroup,
   ];
 
   for (const location of directLocations) {
@@ -82,7 +84,7 @@ export function extractProposalGroup(executionResult: ExecutionResult | unknown)
 /**
  * 様々な構造からtoolResultsを収集する
  */
-function collectToolResults(execResult: ExecutionResult | Record<string, unknown>): ToolResult[] {
+function collectToolResults(execResult: ExecutionResult): ToolResult[] {
   const results: ToolResult[] = [];
   
   // 直接のtoolResults
@@ -128,8 +130,10 @@ export function debugProposalGroupStructure(execResult: ExecutionResult | unknow
     return;
   }
 
+  const typedExecResult = execResult as ExecutionResult;
+
   // エントリー提案のチェックを追加
-  const toolResults = collectToolResults(execResult);
+  const toolResults = collectToolResults(typedExecResult);
   for (const toolResult of toolResults) {
     if (toolResult?.toolName === 'entryProposalGeneration') {
       logger.debug('[ProposalExtractor] Found entry proposal generation tool result', {
@@ -141,15 +145,10 @@ export function debugProposalGroupStructure(execResult: ExecutionResult | unknow
   }
 
   // 既存の処理はそのまま継続
-  debugProposalGroupStructureOriginal(execResult);
+  debugProposalGroupStructureOriginal(typedExecResult);
 }
 
-function debugProposalGroupStructureOriginal(execResult: ExecutionResult | unknown): void {
-  if (!execResult || typeof execResult !== 'object') {
-    logger.warn('[ProposalExtractor] No execution result to debug');
-    return;
-  }
-
+function debugProposalGroupStructureOriginal(execResult: ExecutionResult): void {
   logger.debug('[ProposalExtractor] Debugging structure', {
     hasExecutionResult: !!execResult.executionResult,
     executionResultKeys: execResult.executionResult ? Object.keys(execResult.executionResult) : [],

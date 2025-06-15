@@ -75,11 +75,25 @@ export async function validateChatRequest(request: NextRequest): Promise<Validat
     hasRuntimeContext: !!runtimeContext,
   });
 
-  return {
+  const result: ValidatedChatRequest = {
     userMessage,
-    sessionId,
-    runtimeContext,
   };
+  
+  if (sessionId !== undefined) {
+    result.sessionId = sessionId;
+  }
+  
+  if (runtimeContext !== undefined) {
+    result.runtimeContext = {
+      ...(runtimeContext.userLevel && { userLevel: runtimeContext.userLevel }),
+      ...(runtimeContext.marketStatus && { marketStatus: runtimeContext.marketStatus }),
+      ...(runtimeContext.userTier && { userTier: runtimeContext.userTier }),
+      ...(runtimeContext.queryComplexity && { queryComplexity: runtimeContext.queryComplexity }),
+      ...(runtimeContext.isProposalMode !== undefined && { isProposalMode: runtimeContext.isProposalMode }),
+    };
+  }
+  
+  return result;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChatDatabaseService } from '@/lib/services/database/chat.service';
+import { ChatDatabaseService, type ChatMessage } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
-import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
+import { DrawingProposalGroup, EntryProposalGroup, ProposalType } from '@/types/proposals';
 
 interface MigrateSession {
   title: string;
@@ -14,7 +14,7 @@ interface MigrateMessage {
   content: string;
   role: 'user' | 'assistant';
   type?: 'text' | 'proposal' | 'entry';
-  proposalGroup?: ProposalGroup;
+  proposalGroup?: DrawingProposalGroup;
   entryProposalGroup?: EntryProposalGroup;
   isTyping?: boolean;
 }
@@ -38,14 +38,44 @@ export async function POST(request: NextRequest) {
         const sessionMessages = (messages[sessionId] || []) as MigrateMessage[];
         for (const message of sessionMessages) {
           try {
-            await ChatDatabaseService.addMessage(sessionId, {
+            const messageData: Omit<ChatMessage, 'id' | 'timestamp'> = {
               content: message.content,
               role: message.role,
-              type: message.type,
-              proposalGroup: message.proposalGroup as ProposalGroup | undefined,
-              entryProposalGroup: message.entryProposalGroup as EntryProposalGroup | undefined,
-              isTyping: message.isTyping,
-            });
+              type: message.type || 'text',
+            };
+            
+            if (message.proposalGroup) {
+              // Convert DrawingProposalGroup to ProposalGroup format
+              const drawingGroup = message.proposalGroup;
+              messageData.proposalGroup = {
+                id: drawingGroup.id,
+                proposals: drawingGroup.proposals.map(p => ({
+                  id: p.id,
+                  type: 'buy' as const,
+                  price: p.drawingData?.points?.[0]?.value || 0,
+                  reason: p.reasoning || p.reason || '',
+                  confidence: p.confidence,
+                  timestamp: p.createdAt,
+                  ...(p.metadata?.['stopLoss'] !== undefined && { stopLoss: p.metadata?.['stopLoss'] as number }),
+                  ...(p.metadata?.['targetPrice'] !== undefined && { takeProfit: p.metadata?.['targetPrice'] as number }),
+                })) as any,
+                summary: drawingGroup.description,
+                totalConfidence: drawingGroup.summary?.averageConfidence,
+                timestamp: drawingGroup.createdAt,
+              };
+            }
+            if (message.entryProposalGroup) {
+              messageData.entryProposalGroup = {
+                ...message.entryProposalGroup,
+                entries: message.entryProposalGroup.proposals || [],
+                timestamp: message.entryProposalGroup.createdAt || Date.now()
+              } as any;
+            }
+            if (message.isTyping !== undefined) {
+              messageData.isTyping = message.isTyping;
+            }
+            
+            await ChatDatabaseService.addMessage(sessionId, messageData);
           } catch (error) {
             logger.error('[API] Failed to migrate message', { error, sessionId, messageId: message.id });
           }

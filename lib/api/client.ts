@@ -1,21 +1,20 @@
 import { logger } from '@/lib/utils/logger';
 import { composeWithFetch } from '@/lib/utils/compose';
-import type { ApiMiddleware, RequestCtx, ApiClientConfig, ApiResponse, ApiError } from '@/types/api';
+import type { ApiMiddleware, RequestCtx, ApiClientConfig, ApiResponse } from '@/types/api';
 import { 
   createTimeoutMiddleware,
   createRateLimitMiddleware,
   createRetryMiddleware,
   createErrorHandlerMiddleware
 } from './middlewares';
-import type { ApiResponse as ApiResponseType } from '@/lib/api/types';
 
 // Re-export types for backward compatibility
-export type { ApiClientConfig, ApiResponse, ApiError } from '@/types/api';
+export type { ApiClientConfig, ApiResponse } from '@/types/api';
 
 export class ApiClient {
   private config: ApiClientConfig;
   private middlewares: ApiMiddleware[];
-  private requestQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void; request: () => Promise<ApiResponse<unknown>> }> = [];
+  private requestQueue: Array<{ resolve: (value: any) => void; reject: (reason?: any) => void; request: () => Promise<ApiResponse<any>> }> = [];
   private isProcessingQueue = false;
 
   constructor(config: ApiClientConfig, middlewares?: ApiMiddleware[]) {
@@ -107,17 +106,19 @@ export class ApiClient {
   }
 
   async post<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
-    return this.execute<T>(url, {
+    const options: RequestInit = {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+      ...(data !== undefined && { body: JSON.stringify(data) }),
+    };
+    return this.execute<T>(url, options);
   }
 
   async put<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
-    return this.execute<T>(url, {
+    const options: RequestInit = {
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+      ...(data !== undefined && { body: JSON.stringify(data) }),
+    };
+    return this.execute<T>(url, options);
   }
 
   async delete<T>(url: string): Promise<ApiResponse<T>> {
@@ -128,7 +129,7 @@ export class ApiClient {
   async queueRequest<T>(requestFn: () => Promise<ApiResponse<T>>): Promise<T> {
     return new Promise((resolve, reject) => {
       this.requestQueue.push({
-        resolve: (result: T) => resolve(result),
+        resolve: (result: any) => resolve(result as T),
         reject,
         request: requestFn,
       });

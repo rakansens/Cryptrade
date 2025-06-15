@@ -63,11 +63,21 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
       let data: T = {} as T;
       if (config.schema) {
         const { searchParams } = new URL(request.url);
-        const queryData: Record<string, string> = {};
+        const queryData: Record<string, unknown> = {};
         
-        // Convert URLSearchParams to object
+        // Convert URLSearchParams to object with proper type conversions
         for (const [key, value] of searchParams.entries()) {
-          queryData[key] = value;
+          // Try to parse numbers
+          const numValue = Number(value);
+          if (!isNaN(numValue) && value.trim() !== '') {
+            queryData[key] = numValue;
+          } else if (value === 'true') {
+            queryData[key] = true;
+          } else if (value === 'false') {
+            queryData[key] = false;
+          } else {
+            queryData[key] = value;
+          }
         }
         
         try {
@@ -200,7 +210,7 @@ export function createSSEHandler<T = unknown>(config: SSEConfig<T>) {
                     const errorResult = config.handler.onError({ request, data, error });
                     // Check if the result is a Promise
                     if (errorResult && typeof errorResult.catch === 'function') {
-                      errorResult.catch((err: any) => {
+                      errorResult.catch((err: unknown) => {
                         logger.error('[SSE] Error handler failed', { err });
                       });
                     }

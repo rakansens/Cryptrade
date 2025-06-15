@@ -67,7 +67,7 @@ export function errorHandler(error: Error | string, status?: number) {
  * Orchestratorエラー用のフォールバックレスポンスを作成する
  */
 export function createOrchestratorErrorResponse(
-  error: Error | string,
+  _error: Error | string,
   sessionId?: string
 ): Partial<ChatResponse> {
   return {
@@ -78,6 +78,7 @@ export function createOrchestratorErrorResponse(
       confidence: 0,
       reasoning: 'System error occurred',
       analysisDepth: 'basic' as const,
+      isProposalMode: false,
     },
     execution: {
       success: false,
@@ -89,7 +90,7 @@ export function createOrchestratorErrorResponse(
       sessionId: sessionId || 'error-session',
       timestamp: new Date().toISOString(),
       a2aEnabled: true,
-      error: String(error),
-    }
+      agentType: 'error',
+    } as any // Error details are in the data field, not metadata
   };
 }

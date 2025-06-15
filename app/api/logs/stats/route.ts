@@ -41,9 +41,10 @@ export const GET = createApiHandler({
     
     // Time range
     if (data.from || data.to) {
-      filter.timeRange = {};
-      if (data.from) filter.timeRange!.from = data.from;
-      if (data.to) filter.timeRange!.to = data.to;
+      filter.timeRange = {
+        from: data.from || new Date(0),
+        to: data.to || new Date()
+      };
     }
     
     // Agent/Tool filters

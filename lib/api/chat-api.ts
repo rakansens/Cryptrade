@@ -37,7 +37,7 @@ export class ChatAPI {
   static convertToChatSession(dbSession: CreateSessionResponse['session']): ChatSession {
     return {
       id: dbSession.id,
-      title: dbSession.summary || dbSession.title || 'Untitled Session',
+      title: dbSession.title || 'Untitled Session',
       createdAt: new Date(dbSession.createdAt).getTime(),
       updatedAt: new Date(dbSession.updatedAt).getTime(),
     };
@@ -47,23 +47,34 @@ export class ChatAPI {
    * Convert database message to chat message format
    */
   static convertToChatMessage(dbMessage: AddMessageResponse['message']): ChatMessage {
-    return {
+    const message: ChatMessage = {
       id: dbMessage.id,
       content: dbMessage.content,
-      role: dbMessage.role as 'user' | 'assistant',
-      timestamp: new Date(dbMessage.timestamp || dbMessage.createdAt).getTime(),
-      type: dbMessage.metadata?.type || 'text',
-      proposalGroup: dbMessage.metadata?.proposalGroup,
-      entryProposalGroup: dbMessage.metadata?.entryProposalGroup,
-      isTyping: dbMessage.metadata?.isTyping || false,
+      role: dbMessage.role,
+      timestamp: dbMessage.timestamp,
+      type: dbMessage.type || 'text',
+      isTyping: dbMessage.isTyping || false,
     };
+    
+    if (dbMessage.proposalGroup !== undefined && dbMessage.proposalGroup !== null) {
+      message.proposalGroup = dbMessage.proposalGroup as ProposalGroup;
+    }
+    
+    if (dbMessage.entryProposalGroup !== undefined && dbMessage.entryProposalGroup !== null) {
+      message.entryProposalGroup = dbMessage.entryProposalGroup as EntryProposalGroup;
+    }
+    
+    return message;
   }
   /**
    * Create a new chat session
    */
   static async createSession(userId?: string, title?: string): Promise<ChatSession> {
     try {
-      const request: CreateSessionRequest = { userId, title };
+      const request: CreateSessionRequest = { 
+        ...(userId !== undefined && { userId }),
+        ...(title !== undefined && { title })
+      };
       const response = await fetch('/api/chat/sessions', {
         method: 'POST',
         headers: {
@@ -122,10 +133,10 @@ export class ChatAPI {
       const request: AddMessageRequest = {
         content: message.content,
         role: message.role,
-        type: message.type,
-        proposalGroup: message.proposalGroup,
-        entryProposalGroup: message.entryProposalGroup,
-        isTyping: message.isTyping,
+        ...(message.type !== undefined && { type: message.type }),
+        ...(message.proposalGroup !== undefined && { proposalGroup: message.proposalGroup }),
+        ...(message.entryProposalGroup !== undefined && { entryProposalGroup: message.entryProposalGroup }),
+        ...(message.isTyping !== undefined && { isTyping: message.isTyping }),
       };
       const response = await fetch(`/api/chat/sessions/${sessionId}/messages`, {
         method: 'POST',

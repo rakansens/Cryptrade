@@ -14,7 +14,7 @@ const metricsQuerySchema = z.object({
  */
 export const GET = createApiHandler({
   schema: metricsQuerySchema,
-  handler: async ({ data, request }) => {
+  handler: async ({ data }) => {
     const format = data.format || 'prometheus';
 
     if (format === 'json') {

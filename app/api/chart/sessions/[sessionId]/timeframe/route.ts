@@ -3,11 +3,6 @@ import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import { z } from 'zod';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
 
 const timeframeStateSchema = z.object({
   symbol: z.string(),
@@ -15,12 +10,12 @@ const timeframeStateSchema = z.object({
   timestamp: z.number(),
 });
 
-export async function GET(request: NextRequest, { params }: Params) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
 
     // Get the session to retrieve timeframe state from metadata
-    const session = await prisma.chatSession.findUnique({
+    const session = await prisma.conversationSession.findUnique({
       where: { id: sessionId },
       select: { metadata: true },
     });
@@ -55,28 +50,26 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
     const body = await request.json();
     const state = timeframeStateSchema.parse(body);
 
     // Update session metadata with timeframe state
-    await prisma.chatSession.upsert({
+    await prisma.conversationSession.upsert({
       where: { id: sessionId },
       update: {
         metadata: {
           timeframeState: state,
         },
-        lastActiveAt: new Date(),
+        updatedAt: new Date(),
       },
       create: {
         id: sessionId,
-        summary: 'Chart session',
         metadata: {
           timeframeState: state,
         },
-        lastActiveAt: new Date(),
       },
     });
 

@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
 
-export async function DELETE(request: NextRequest, { params }: Params) {
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
 
     // Delete all drawings
     await prisma.chartDrawing.deleteMany({
@@ -18,17 +13,17 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
 
     // Delete all patterns
-    await prisma.chartPattern.deleteMany({
+    await prisma.patternAnalysis.deleteMany({
       where: { sessionId },
     });
 
     // Clear timeframe state from session metadata
-    const session = await prisma.chatSession.findUnique({
+    const session = await prisma.conversationSession.findUnique({
       where: { id: sessionId },
     });
 
     if (session) {
-      await prisma.chatSession.update({
+      await prisma.conversationSession.update({
         where: { id: sessionId },
         data: {
           metadata: {},
