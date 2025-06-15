@@ -7,7 +7,6 @@
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { executeImprovedOrchestrator } from '../agents/orchestrator.agent';
-import { agentNetwork } from '../network/agent-network';
 import { registerAllAgents } from '../network/agent-registry';
 import { extractProposalGroup } from '@/lib/api/helpers/proposal-extractor';
 import { logger } from '@/lib/utils/logger';
@@ -49,9 +48,8 @@ jest.mock('@/lib/binance/api-service', () => ({
 // Mock OpenAI with realistic responses
 jest.mock('@ai-sdk/openai', () => ({
   openai: jest.fn(() => ({
-    generate: jest.fn().mockImplementation(async (messages, options) => {
-      const query = messages[0]?.content || '';
-      const context = options || {};
+    generate: jest.fn().mockImplementation(async (_messages: any, options: any) => {
+      const context = (options || {}) as any;
       
       // Simulate realistic AI responses based on intent
       if (context.isProposalMode && context.proposalType === 'entry') {
@@ -373,8 +371,8 @@ describe('Entry Proposal End-to-End Integration', () => {
         // Verify chart drawing data
         expect(proposal!.entryZone).toHaveProperty('start');
         expect(proposal!.entryZone).toHaveProperty('end');
-        expect(proposal!.riskParameters.stopLoss).toBeGreaterThan(0);
-        expect(proposal!.riskParameters.takeProfit).toBeInstanceOf(Array);
+        expect(proposal!.riskParameters?.stopLoss).toBeGreaterThan(0);
+        expect(proposal!.riskParameters?.takeProfitTargets).toBeInstanceOf(Array);
       }
     });
   });

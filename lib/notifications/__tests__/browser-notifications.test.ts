@@ -457,11 +457,7 @@ describe('BrowserNotificationManager', () => {
       
       const notification = await grantedManager.show({
         title: 'Test',
-        body: 'Body',
-        icon: undefined,
-        tag: undefined,
-        requireInteraction: undefined,
-        silent: undefined
+        body: 'Body'
       });
       
       expect(notification).toBeDefined();

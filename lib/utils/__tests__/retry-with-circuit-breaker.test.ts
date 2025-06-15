@@ -68,7 +68,7 @@ describe('Retry with Circuit Breaker', () => {
         retryWithCircuitBreaker(operation, {
           retry: {
             maxAttempts: 3,
-            shouldRetry: (error) => error.status >= 500,
+            shouldRetry: (error: any) => error.status >= 500,
           }
         })
       ).rejects.toThrow('Client error');
@@ -146,7 +146,7 @@ describe('Retry with Circuit Breaker', () => {
     it('should not count filtered errors', () => {
       const cb = new CircuitBreaker({
         failureThreshold: 2,
-        errorFilter: (error) => error.status >= 500,
+        errorFilter: (error: any) => error.status >= 500,
       });
 
       const clientError = new Error('Client error');

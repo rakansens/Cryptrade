@@ -1,5 +1,15 @@
 import { uiStateTool } from '../ui-state.tool';
 
+// Mock logger
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 // Mock store modules
 const mockBaseStore = {
   symbol: 'BTCUSDT',
@@ -62,6 +72,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'get_state',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -76,6 +87,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'get_state',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -107,6 +119,7 @@ describe('uiStateTool', () => {
           action: 'toggle_indicator',
           indicator: 'movingAverages',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -124,6 +137,7 @@ describe('uiStateTool', () => {
           action: 'toggle_indicator',
           indicator: 'rsi',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -139,6 +153,7 @@ describe('uiStateTool', () => {
           indicator: 'macd',
           enabled: true,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -156,6 +171,7 @@ describe('uiStateTool', () => {
           indicator: 'bollingerBands',
           enabled: false,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -169,6 +185,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'toggle_indicator',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -181,6 +198,7 @@ describe('uiStateTool', () => {
           action: 'toggle_indicator',
           indicator: 'unknown' as any,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -199,6 +217,7 @@ describe('uiStateTool', () => {
             type: 'EMA',
           },
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -218,6 +237,7 @@ describe('uiStateTool', () => {
           action: 'update_indicator_settings',
           settings: { period: 30 },
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -230,6 +250,7 @@ describe('uiStateTool', () => {
           action: 'update_indicator_settings',
           indicator: 'rsi',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -246,6 +267,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'get_indicators',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -271,6 +293,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'reset_indicators',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -295,6 +318,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'reset_indicators',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -308,6 +332,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'unknown_action' as any,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -326,6 +351,7 @@ describe('uiStateTool', () => {
         context: {
           action: 'get_state',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -343,6 +369,7 @@ describe('uiStateTool', () => {
           action: 'toggle_indicator',
           indicator: 'rsi',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -355,7 +382,7 @@ describe('uiStateTool', () => {
       const actions = [
         { action: 'get_state' as const },
         { action: 'toggle_indicator' as const, indicator: 'rsi' as const },
-        { action: 'update_indicator_settings' as const, indicator: 'ma' as const, settings: { period: 30 } },
+        { action: 'update_indicator_settings' as const, indicator: 'movingAverages' as const, settings: { period: 30 } },
         { action: 'get_indicators' as const },
         { action: 'reset_indicators' as const },
       ];
@@ -363,7 +390,7 @@ describe('uiStateTool', () => {
       for (const context of actions) {
         const result = await uiStateTool.execute({ 
           context,
-          runtimeContext: { sessionId: 'test-session' }
+          runtimeContext: {} as any
         });
         
         if (result.success) {

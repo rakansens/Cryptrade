@@ -469,7 +469,7 @@ describe('drawing-manager.types', () => {
           { time: Date.now(), value: 100 }
         ],
         metadata: {
-          createdAt: item['createdAt'],
+          ...(item['createdAt'] !== undefined && { createdAt: item['createdAt'] }),
           isPattern: item['isPattern'],
           direction: item['direction']
         }
@@ -501,7 +501,13 @@ describe('drawing-manager.types', () => {
       };
 
       expect(largeDrawing['points']).toHaveLength(10000);
-      expect(largeDrawing['points'][0].time).toBeLessThan(largeDrawing['points'][9999].time);
+      const firstTime = largeDrawing['points']?.[0]?.time;
+      const lastTime = largeDrawing['points']?.[9999]?.time;
+      expect(firstTime).toBeDefined();
+      expect(lastTime).toBeDefined();
+      if (firstTime !== undefined && lastTime !== undefined) {
+        expect(firstTime).toBeLessThan(lastTime);
+      }
     });
   });
 });

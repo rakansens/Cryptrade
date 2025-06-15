@@ -38,7 +38,7 @@ describe('useAIChat', () => {
     jest.clearAllMocks();
     (useChat as jest.Mock).mockReturnValue(mockChatStore);
     (useIsClient as jest.Mock).mockReturnValue(true);
-    (safeParseOrWarn as jest.Mock).mockImplementation((schema, value) => value);
+    (safeParseOrWarn as jest.Mock).mockImplementation((_schema, value) => value);
   });
 
   describe('send function', () => {
@@ -68,7 +68,7 @@ describe('useAIChat', () => {
 
     it('should create session if none exists', async () => {
       const { result } = renderHook(() => useAIChat());
-      mockChatStore.currentSessionId = null;
+      mockChatStore.currentSessionId = '';
 
       (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -358,8 +358,8 @@ describe('useAIChat', () => {
 
     it('should include conversation history in request', async () => {
       mockChatStore.messages = [
-        { role: 'user', content: 'Previous message' },
-        { role: 'assistant', content: 'Previous response' },
+        { role: 'user', content: 'Previous message' } as never,
+        { role: 'assistant', content: 'Previous response' } as never,
       ];
 
       const { result } = renderHook(() => useAIChat());

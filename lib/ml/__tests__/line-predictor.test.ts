@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as tf from '@tensorflow/tfjs';
 import { LineQualityPredictor } from '../line-predictor';
-import type { LineFeatures, MLPrediction } from '../line-validation-types';
+import type { LineFeatures } from '../line-validation-types';
 
 // Mock TensorFlow.js
 jest.mock('@tensorflow/tfjs', () => ({
@@ -37,10 +37,10 @@ describe('LineQualityPredictor', () => {
     // Create mock model
     mockModel = {
       compile: jest.fn(),
-      fit: jest.fn().mockResolvedValue({}),
+      fit: jest.fn().mockResolvedValue({} ),
       predict: jest.fn(),
       dispose: jest.fn()
-    };
+    } ;
 
     // Setup TensorFlow mocks
     (tf.sequential as jest.Mock).mockReturnValue(mockModel);
@@ -90,7 +90,7 @@ describe('LineQualityPredictor', () => {
     it('should predict line success with ML model when ready', async () => {
       // Mock successful prediction
       const mockPredictionTensor = {
-        array: jest.fn().mockResolvedValue([[0.85, 0.6, 0.75, 0.95]]),
+        array: jest.fn().mockResolvedValue([[0.85, 0.6, 0.75, 0.95]] ),
         dispose: jest.fn()
       };
       mockModel.predict.mockReturnValue(mockPredictionTensor);
@@ -102,7 +102,7 @@ describe('LineQualityPredictor', () => {
       const normalized = Array(23).fill(0.5);
       
       // Force model ready state
-      (predictor as any).isModelReady = true;
+      (predictor ).isModelReady = true;
       
       const prediction = await predictor.predictLineSuccess(features, normalized);
 
@@ -127,7 +127,7 @@ describe('LineQualityPredictor', () => {
 
     it('should handle prediction errors gracefully', async () => {
       // Force model ready but make prediction fail
-      (predictor as any).isModelReady = true;
+      (predictor ).isModelReady = true;
       mockModel.predict.mockImplementation(() => {
         throw new Error('Prediction failed');
       });
@@ -208,7 +208,7 @@ describe('LineQualityPredictor', () => {
       const normalized = Array(23).fill(0.5);
       
       // Force ML prediction
-      (predictor as any).isModelReady = true;
+      (predictor ).isModelReady = true;
       const mockPredictionTensor = {
         array: jest.fn().mockResolvedValue([[0.8, 0.6, 0.7, 0.9]]),
         dispose: jest.fn()
@@ -292,7 +292,11 @@ describe('LineQualityPredictor', () => {
       
       // Check sorting
       for (let i = 1; i < importance.length; i++) {
-        expect(importance[i - 1].importance).toBeGreaterThanOrEqual(importance[i].importance);
+        const prev = importance[i - 1];
+        const curr = importance[i];
+        if (prev && curr) {
+          expect(prev.importance).toBeGreaterThanOrEqual(curr.importance);
+        }
       }
     });
 
@@ -386,7 +390,6 @@ function createMockFeatures(): LineFeatures {
     timeframeConfluence: 0.7,
     higherTimeframeAlignment: true,
     nearPattern: false,
-    patternType: undefined,
     distanceFromPrice: 0.02,
     priceRoundness: 0.6,
     nearPsychological: false

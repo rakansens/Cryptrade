@@ -1,6 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
 import { calculateRSI, getRSIColor, getRSISignal } from '../rsi';
-import type { RSIData } from '@/types/market';
 
 describe('calculateRSI', () => {
   // Simple test data with known pattern
@@ -63,9 +62,10 @@ describe('calculateRSI', () => {
       const result = calculateRSI(minData, 14);
       
       expect(result).toHaveLength(1);
-      expect(result[0]).toHaveProperty('rsi');
-      expect(result[0].rsi).toBeGreaterThanOrEqual(0);
-      expect(result[0].rsi).toBeLessThanOrEqual(100);
+      const firstResult = result[0];
+      expect(firstResult).toHaveProperty('rsi');
+      expect(firstResult?.rsi).toBeGreaterThanOrEqual(0);
+      expect(firstResult?.rsi).toBeLessThanOrEqual(100);
     });
   });
 
@@ -74,7 +74,7 @@ describe('calculateRSI', () => {
       const result = calculateRSI(simpleUptrend);
       
       // In a perfect uptrend, RSI should be very high
-      const lastRSI = result[result.length - 1].rsi;
+      const lastRSI = result[result.length - 1]?.rsi ?? 0;
       expect(lastRSI).toBeGreaterThan(90);
       expect(lastRSI).toBeLessThanOrEqual(100);
     });
@@ -83,7 +83,7 @@ describe('calculateRSI', () => {
       const result = calculateRSI(simpleDowntrend);
       
       // In a perfect downtrend, RSI should be very low
-      const lastRSI = result[result.length - 1].rsi;
+      const lastRSI = result[result.length - 1]?.rsi ?? 0;
       expect(lastRSI).toBeLessThan(10);
       expect(lastRSI).toBeGreaterThanOrEqual(0);
     });
@@ -130,8 +130,8 @@ describe('calculateRSI', () => {
       expect(result).toHaveLength(2); // 16 - 14 = 2
       
       // With mostly gains, RSI should be high
-      expect(result[0].rsi).toBeGreaterThan(50);
-      expect(result[1].rsi).toBeGreaterThan(50);
+      expect(result[0]?.rsi).toBeGreaterThan(50);
+      expect(result[1]?.rsi).toBeGreaterThan(50);
     });
 
     it('should produce smooth RSI values', () => {
@@ -145,7 +145,7 @@ describe('calculateRSI', () => {
       // Check that RSI changes smoothly (Wilder's smoothing effect)
       let totalChange = 0;
       for (let i = 1; i < result.length; i++) {
-        const change = Math.abs(result[i].rsi - result[i-1].rsi);
+        const change = Math.abs((result[i]?.rsi ?? 0) - (result[i-1]?.rsi ?? 0));
         totalChange += change;
         
         // Individual changes should not be too large
@@ -204,11 +204,11 @@ describe('calculateRSI', () => {
       const result = calculateRSI(oscillatingData);
       
       // First RSI should be at index = period
-      expect(result[0].time).toBe(oscillatingData[14].time);
+      expect(result[0]?.time).toBe(oscillatingData[14]?.time);
       
       // Check all times are in order
       for (let i = 1; i < result.length; i++) {
-        expect(result[i].time).toBeGreaterThan(result[i-1].time);
+        expect(result[i]?.time).toBeGreaterThan(result[i-1]?.time ?? 0);
       }
     });
 
@@ -239,8 +239,8 @@ describe('calculateRSI', () => {
       const result = calculateRSI(testData, 14);
       
       expect(result).toHaveLength(2);
-      expect(result[0].rsi).toBeGreaterThan(0);
-      expect(result[0].rsi).toBeLessThan(100);
+      expect(result[0]?.rsi).toBeGreaterThan(0);
+      expect(result[0]?.rsi).toBeLessThan(100);
     });
 
     it('should handle small price changes accurately', () => {
@@ -335,8 +335,8 @@ describe('RSI performance', () => {
     
     // Time should scale linearly (roughly)
     // Doubling data size should roughly double time
-    const ratio1 = times[1] / times[0];
-    const ratio2 = times[2] / times[1];
+    const ratio1 = (times[1] ?? 0) / (times[0] ?? 1);
+    const ratio2 = (times[2] ?? 0) / (times[1] ?? 1);
     
     expect(ratio1).toBeLessThan(3); // Should be close to 2
     expect(ratio2).toBeLessThan(3); // Should be close to 2

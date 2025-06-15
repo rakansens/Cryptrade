@@ -1,4 +1,4 @@
-import { MastraBaseError, ErrorCategory, ErrorSeverity, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '../base-error';
+import { MastraBaseError, ErrorSeverity, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '../base-error';
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger

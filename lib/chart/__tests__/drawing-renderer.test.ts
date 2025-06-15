@@ -85,7 +85,7 @@ describe('DrawingRenderer', () => {
     })
 
     // Mock store subscription
-    ;(useChartStoreBase.subscribe as jest.Mock).mockImplementation((selector, callback) => {
+    ;(useChartStoreBase.subscribe as jest.Mock).mockImplementation((_selector, callback) => {
       // Simulate immediate callback
       callback(mockDrawings)
       return jest.fn() // unsubscribe function
@@ -111,7 +111,7 @@ describe('DrawingRenderer', () => {
 
     it('throttles drawing updates', async () => {
       const mockCallback = jest.fn()
-      ;(useChartStoreBase.subscribe as jest.Mock).mockImplementation((selector, callback) => {
+      ;(useChartStoreBase.subscribe as jest.Mock).mockImplementation((_selector, callback) => {
         mockCallback.mockImplementation(callback)
         return jest.fn()
       })
@@ -152,12 +152,12 @@ describe('DrawingRenderer', () => {
       const updatedDrawing = {
         ...mockDrawings[0],
         points: [{ time: 1704067200, value: 46000 }],
-        style: { ...mockDrawings[0].style, color: '#22c55e' }
+        style: { ...mockDrawings[0]!.style, color: '#22c55e' }
       }
       
       // Trigger update
       const callback = (useChartStoreBase.subscribe as jest.Mock).mock.calls[0][1]
-      callback([updatedDrawing, mockDrawings[1]])
+      callback([updatedDrawing, mockDrawings[1]!])
       
       // Wait for throttle
       jest.advanceTimersByTime(100)
@@ -182,9 +182,12 @@ describe('DrawingRenderer', () => {
     })
 
     it('hides title when showLabels is false', () => {
+      const firstDrawing = mockDrawings[0]
+      if (!firstDrawing) return
+      
       const drawingWithoutLabels = {
-        ...mockDrawings[0],
-        style: { ...mockDrawings[0].style, showLabels: false }
+        ...firstDrawing,
+        style: { ...firstDrawing.style, showLabels: false }
       }
       
       ;(useChartStoreBase.getState as jest.Mock).mockReturnValue({
@@ -225,8 +228,8 @@ describe('DrawingRenderer', () => {
       renderer = new DrawingRenderer(mockChart, mockMainSeries)
       
       // Check extended data points
-      const setDataCall = mockLineSeries.setData.mock.calls[0][0]
-      expect(setDataCall.length).toBeGreaterThan(2) // Should have extended points
+      const setDataCall = mockLineSeries.setData.mock.calls[0]?.[0]
+      expect(setDataCall?.length).toBeGreaterThan(2) // Should have extended points
     })
 
     it('updates existing trend line', () => {
@@ -235,7 +238,7 @@ describe('DrawingRenderer', () => {
       // Update trend line
       const updatedDrawing = {
         ...mockDrawings[1],
-        style: { ...mockDrawings[1].style, color: '#3b82f6', lineWidth: 3 }
+        style: { ...mockDrawings[1]?.style, color: '#3b82f6', lineWidth: 3 }
       }
       
       const callback = (useChartStoreBase.subscribe as jest.Mock).mock.calls[0][1]
@@ -325,9 +328,9 @@ describe('DrawingRenderer', () => {
   describe('Line Style Conversion', () => {
     it('converts line styles correctly', () => {
       const drawings: ChartDrawing[] = [
-        { ...mockDrawings[0], style: { ...mockDrawings[0].style, lineStyle: 'solid' } },
-        { ...mockDrawings[0], id: 'h2', style: { ...mockDrawings[0].style, lineStyle: 'dashed' } },
-        { ...mockDrawings[0], id: 'h3', style: { ...mockDrawings[0].style, lineStyle: 'dotted' } }
+        { ...mockDrawings[0]!, style: { ...mockDrawings[0]!.style, lineStyle: 'solid' } },
+        { ...mockDrawings[0]!, id: 'h2', style: { ...mockDrawings[0]!.style, lineStyle: 'dashed' } },
+        { ...mockDrawings[0]!, id: 'h3', style: { ...mockDrawings[0]!.style, lineStyle: 'dotted' } }
       ]
       
       drawings.forEach((drawing, index) => {
@@ -345,10 +348,10 @@ describe('DrawingRenderer', () => {
   })
 
   describe('Cleanup', () => {
-    it('cleans up all drawings on destroy', () => {
+    it('cleans up all drawings on cleanup', () => {
       renderer = new DrawingRenderer(mockChart, mockMainSeries)
       
-      renderer.destroy()
+      renderer.cleanup()
       
       // Should remove all price lines
       expect(mockMainSeries.removePriceLine).toHaveBeenCalled()
@@ -357,15 +360,15 @@ describe('DrawingRenderer', () => {
       expect(mockChart.removeSeries).toHaveBeenCalled()
       
       // Should unsubscribe from store
-      const unsubscribe = (useChartStoreBase.subscribe as jest.Mock).mock.results[0].value
+      const unsubscribe = (useChartStoreBase.subscribe as jest.Mock).mock.results[0]?.value
       expect(unsubscribe).toHaveBeenCalled()
     })
 
-    it('handles multiple destroy calls safely', () => {
+    it('handles multiple cleanup calls safely', () => {
       renderer = new DrawingRenderer(mockChart, mockMainSeries)
       
-      renderer.destroy()
-      renderer.destroy()
+      renderer.cleanup()
+      renderer.cleanup()
       
       // Should not throw errors
       expect(mockMainSeries.removePriceLine).toHaveBeenCalledTimes(1)

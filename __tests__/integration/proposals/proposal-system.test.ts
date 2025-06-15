@@ -2,17 +2,17 @@ import 'dotenv/config';
 import { config } from 'dotenv';
 import { executeImprovedOrchestrator } from '../../../lib/mastra/agents/orchestrator.agent';
 import { dispatchTypedUIEvent } from '../../../lib/utils/ui-event-dispatcher';
-import type { ProposalEventData, ChartEventData } from '../../../types/events/all-event-types';
+import type { ProposalEventData } from '../../../types/events/all-event-types';
+import type { OrchestratorRuntimeContext } from '../../../types/orchestrator.types';
 
 // Load environment variables
 config({ path: '.env.local' });
 
 describe('Proposal System Integration Tests', () => {
   const testSessionId = `test-proposal-${Date.now()}`;
-  const defaultContext = { 
+  const defaultContext: OrchestratorRuntimeContext = { 
     userLevel: 'intermediate', 
-    marketStatus: 'open',
-    preferredSymbol: 'BTCUSDT'
+    marketStatus: 'open'
   };
 
   beforeAll(() => {
@@ -61,8 +61,8 @@ describe('Proposal System Integration Tests', () => {
         expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
         
         // Verify proposal structure
-        if (result.executionResult!.proposalGroup) {
-          const proposalGroup = result.executionResult!.proposalGroup;
+        if (result.executionResult && 'proposalGroup' in result.executionResult && result.executionResult.proposalGroup) {
+          const proposalGroup = result.executionResult.proposalGroup as any;
           expect(proposalGroup.proposals).toBeDefined();
           expect(proposalGroup.proposals.length).toBeGreaterThan(0);
           
@@ -88,8 +88,8 @@ describe('Proposal System Integration Tests', () => {
       expect(result.executionResult).toBeDefined();
       
       // Check if proposals with chart annotations are included
-      if (result.executionResult!.proposalGroup) {
-        const proposalGroup = result.executionResult!.proposalGroup;
+      if (result.executionResult && 'proposalGroup' in result.executionResult && result.executionResult.proposalGroup) {
+        const proposalGroup = result.executionResult.proposalGroup as any;
         expect(proposalGroup.proposals).toBeDefined();
         expect(Array.isArray(proposalGroup.proposals)).toBe(true);
         expect(proposalGroup.proposals.length).toBeGreaterThan(0);
@@ -107,7 +107,7 @@ describe('Proposal System Integration Tests', () => {
   describe('Proposal API Integration', () => {
     beforeEach(() => {
       // Mock the proposal API endpoint
-      jest.spyOn(global, 'fetch').mockImplementation(async (url, _options) => {
+      jest.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
         if (url.toString().includes('/api/chat/proposal')) {
           const body = JSON.parse(options?.body as string);
           return Promise.resolve({
@@ -231,14 +231,11 @@ describe('Proposal System Integration Tests', () => {
   describe('Enhanced Proposal Features', () => {
     test('should include confidence factors in proposals', async () => {
       const query = 'BTCの高信頼度エントリーポイントを提案して';
-      const result = await executeImprovedOrchestrator(query, testSessionId, {
-        ...defaultContext,
-        requireHighConfidence: true
-      });
+      const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult!.proposalGroup) {
-        const proposalGroup = result.executionResult!.proposalGroup;
+      if (result.executionResult && 'proposalGroup' in result.executionResult && result.executionResult.proposalGroup) {
+        const proposalGroup = result.executionResult.proposalGroup as any;
         expect(proposalGroup.proposals.length).toBeGreaterThan(0);
         
         const firstProposal = proposalGroup.proposals[0];
@@ -254,8 +251,8 @@ describe('Proposal System Integration Tests', () => {
       const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult!.proposalGroup) {
-        const proposalGroup = result.executionResult!.proposalGroup;
+      if (result.executionResult && 'proposalGroup' in result.executionResult && result.executionResult.proposalGroup) {
+        const proposalGroup = result.executionResult.proposalGroup as any;
         expect(proposalGroup.proposals.length).toBeGreaterThan(0);
         
         const firstProposal = proposalGroup.proposals[0];
@@ -271,8 +268,8 @@ describe('Proposal System Integration Tests', () => {
       const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
-      if (result.executionResult!.proposalGroup) {
-        const proposalGroup = result.executionResult!.proposalGroup;
+      if (result.executionResult && 'proposalGroup' in result.executionResult && result.executionResult.proposalGroup) {
+        const proposalGroup = result.executionResult.proposalGroup as any;
         expect(proposalGroup.proposals.length).toBeGreaterThan(0);
         
         const firstProposal = proposalGroup.proposals[0];
@@ -289,10 +286,7 @@ describe('Proposal System Integration Tests', () => {
   describe('Error Handling', () => {
     test('should handle missing symbol gracefully', async () => {
       const query = 'エントリーポイントを提案して'; // No symbol mentioned
-      const result = await executeImprovedOrchestrator(query, testSessionId, {
-        ...defaultContext,
-        preferredSymbol: undefined // No default symbol
-      });
+      const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
       
       expect(result.executionResult).toBeDefined();
       // Should either use a default symbol or ask for clarification
@@ -309,7 +303,7 @@ describe('Proposal System Integration Tests', () => {
         await dispatchTypedUIEvent({
           type: 'proposal.created',
           proposal: {} as any
-        });
+        } as ProposalEventData);
       } catch (error) {
         expect(error).toBeDefined();
       }

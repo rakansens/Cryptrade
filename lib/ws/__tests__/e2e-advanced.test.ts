@@ -7,8 +7,7 @@ import { WSManager } from '../WSManager';
 import { getBinanceConnection } from '../migration';
 import { 
   MockWebSocket, 
-  BinanceMessageGenerator, 
-  WebSocketTestScenarios,
+  BinanceMessageGenerator,
   setupWebSocketMocking 
 } from './websocket-mock';
 
@@ -125,9 +124,9 @@ describe('WSManager Advanced E2E Scenarios', () => {
       let reconnectionDetected = false;
       let messagesAfterReconnect = 0;
 
-      const messagePromise = new Promise((resolve, reject) => {
+      const messagePromise = new Promise((resolve) => {
         const subscription = manager.subscribe('btcusdt@trade').subscribe({
-          next: (data) => {
+          next: (_data) => {
             if (reconnectionDetected) {
               messagesAfterReconnect++;
               if (messagesAfterReconnect >= 2) {
@@ -185,9 +184,9 @@ describe('WSManager Advanced E2E Scenarios', () => {
       ];
 
       // Verify exponential growth
-      expect(delays[0].exponentialDelay).toBe(100); // 100 * 2^0
-      expect(delays[1].exponentialDelay).toBe(200); // 100 * 2^1
-      expect(delays[2].exponentialDelay).toBe(400); // 100 * 2^2
+      expect(delays[0]?.exponentialDelay).toBe(100); // 100 * 2^0
+      expect(delays[1]?.exponentialDelay).toBe(200); // 100 * 2^1
+      expect(delays[2]?.exponentialDelay).toBe(400); // 100 * 2^2
 
       // All should enforce minimum delay
       delays.forEach(delay => {
@@ -301,7 +300,7 @@ describe('WSManager Advanced E2E Scenarios', () => {
       const mockWs = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
       if (mockWs) {
         // Send malformed message
-        mockWs.simulateMessage({ invalid: 'format', missing: 'required fields' });
+        mockWs.simulateMessage({ invalid: 'format', missing: 'required fields' } as any);
       }
 
       await testPromise;

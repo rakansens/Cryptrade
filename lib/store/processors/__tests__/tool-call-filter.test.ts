@@ -10,7 +10,7 @@ describe('ToolCallFilter', () => {
     ];
     const result = filter.process(msgs);
     expect(result).toHaveLength(1);
-    expect(result[0].role).toBe('user');
+    expect(result[0]?.role).toBe('user');
   });
 
   it('keeps tool calls when includeAll is true', () => {

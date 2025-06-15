@@ -7,7 +7,7 @@ const restoreEnv = mockTestEnv({
   TELEMETRY_API_KEY: ''
 });
 
-import { ErrorTracker, errorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '../error-tracker';
+import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '../error-tracker';
 import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '../base-error';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
@@ -236,8 +236,8 @@ describe('ErrorTracker', () => {
       const stats = tracker.getStats();
       expect(stats.total).toBe(15);
       expect(stats.recent).toHaveLength(10);
-      expect(stats.recent[0].message).toBe('Error 5');
-      expect(stats.recent[9].message).toBe('Error 14');
+      expect(stats.recent[0]?.message).toBe('Error 5');
+      expect(stats.recent[9]?.message).toBe('Error 14');
     });
   });
 
@@ -717,7 +717,7 @@ describe('ErrorTracker', () => {
       }
 
       const stats = tracker.getStats();
-      expect(stats.recent[0].message).toContain('Ordered 0');
+      expect(stats.recent[0]?.message).toContain('Ordered 0');
     });
   });
 

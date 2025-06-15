@@ -5,8 +5,10 @@
  */
 
 import { WSManager } from '../WSManager';
-import { timer, of, throwError } from 'rxjs';
+import { of, throwError, Observable } from 'rxjs';
+import { shareReplay } from 'rxjs/operators';
 import { webSocket } from 'rxjs/webSocket';
+import type { StreamState } from '../types';
 
 // Mock WebSocket and RxJS webSocket
 jest.mock('rxjs/webSocket');
@@ -71,8 +73,8 @@ describe('WSManager', () => {
       mockWsSubject.pipe.mockReturnValue(mockObservable);
       
       // Act
-      const subscription1 = manager.subscribe(streamName);
-      const subscription2 = manager.subscribe(streamName);
+      manager.subscribe(streamName);
+      manager.subscribe(streamName);
       
       // Assert
       expect(mockWebSocket).toHaveBeenCalledTimes(1);
@@ -109,8 +111,8 @@ describe('WSManager', () => {
       mockWsSubject.pipe.mockReturnValue(mockObservable);
       
       // Act
-      const subscription1 = manager.subscribe(streamName);
-      const subscription2 = manager.subscribe(streamName);
+      manager.subscribe(streamName);
+      manager.subscribe(streamName);
       
       // Verify initial state
       expect(manager.getActiveStreamsCount()).toBe(1);
@@ -127,7 +129,6 @@ describe('WSManager', () => {
   describe('Retry Logic (P1-3-6 Requirement 3)', () => {
     it('should respect maxRetryAttempts limit', () => {
       // Arrange
-      const streamName = 'btcusdt@trade';
       
       // Act & Assert - test retry delay calculation
       const preview0 = manager.getRetryDelayPreview(0);
@@ -194,8 +195,8 @@ describe('WSManager', () => {
       // Assert
       const streamInfo = manager.getStreamInfo();
       expect(streamInfo).toHaveLength(1);
-      expect(streamInfo[0].name).toBe(streamName);
-      expect(streamInfo[0].lastActivity).toBeGreaterThan(0);
+      expect(streamInfo[0]?.name).toBe(streamName);
+      expect(streamInfo[0]?.lastActivity).toBeGreaterThan(0);
     });
 
     it('should cleanup idle streams after 5 minutes', () => {
@@ -210,7 +211,11 @@ describe('WSManager', () => {
       expect(manager.getActiveStreamsCount()).toBe(1);
       
       // Manually add stream to test cleanup (since our mock doesn't fully simulate the stream lifecycle)
-      const streamState = { observable: mockObservable, refCount: 1, lastActivity: Date.now() - 400000 }; // 6+ minutes ago
+      const streamState: StreamState<any> = { 
+        observable: mockObservable.pipe(shareReplay({ refCount: true, bufferSize: 1 })) as Observable<any>, 
+        refCount: 1, 
+        lastActivity: Date.now() - 400000 
+      }; // 6+ minutes ago
       manager['streams'].set(streamName, streamState);
       
       // Act - simulate 5+ minutes passing
@@ -302,7 +307,7 @@ describe('WSManager', () => {
       
       // Act & Assert - should not throw immediately, errors are handled in the Observable stream
       expect(() => {
-        const subscription = manager.subscribe('btcusdt@trade');
+        manager.subscribe('btcusdt@trade');
         // The error will be handled in the Observable pipeline
       }).not.toThrow();
     });

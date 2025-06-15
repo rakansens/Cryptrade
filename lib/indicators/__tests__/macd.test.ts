@@ -1,6 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
 import { calculateMACD, getMACDColor, getMACDSignal } from '../macd';
-import type { MACDData } from '@/types/market';
 
 describe('calculateMACD', () => {
   // Simple test data with known pattern
@@ -104,8 +103,8 @@ describe('calculateMACD', () => {
       
       // MACD should start positive and move towards zero
       if (result.length > 10) {
-        const early = result[5].macd;
-        const late = result[result.length - 1].macd;
+        const early = result[5]?.macd ?? 0;
+        const late = result[result.length - 1]?.macd ?? 0;
         expect(Math.abs(late)).toBeLessThan(Math.abs(early));
       }
     });
@@ -120,8 +119,8 @@ describe('calculateMACD', () => {
       let signalVariance = 0;
       
       for (let i = 1; i < result.length; i++) {
-        macdVariance += Math.abs(result[i].macd - result[i-1].macd);
-        signalVariance += Math.abs(result[i].signal - result[i-1].signal);
+        macdVariance += Math.abs((result[i]?.macd ?? 0) - (result[i-1]?.macd ?? 0));
+        signalVariance += Math.abs((result[i]?.signal ?? 0) - (result[i-1]?.signal ?? 0));
       }
       
       // Signal line should have less variance (be smoother)
@@ -166,11 +165,11 @@ describe('calculateMACD', () => {
       
       // First result should align with correct time index
       const expectedFirstIndex = 26 + 9 - 1; // slowPeriod + signalPeriod - 1
-      expect(result[0].time).toBe(simpleTestData[expectedFirstIndex].time);
+      expect(result[0]?.time).toBe(simpleTestData[expectedFirstIndex]?.time);
       
       // Check all times are in order
       for (let i = 1; i < result.length; i++) {
-        expect(result[i].time).toBeGreaterThan(result[i-1].time);
+        expect(result[i]?.time).toBeGreaterThan(result[i-1]?.time ?? 0);
       }
     });
   });

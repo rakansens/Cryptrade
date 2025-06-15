@@ -189,8 +189,15 @@ const benchmarks: BenchmarkConfig[] = [
   {
     name: 'Line Detection (100 candles)',
     fn: async () => {
-      const data = createMockCandlestickData(100);
-      await multiTimeframeLineDetector.detectLines('BTCUSDT', data);
+      createMockCandlestickData(100);
+      await multiTimeframeLineDetector.detectLines('BTCUSDT', {
+        minTimeframes: 1,
+        priceTolerancePercent: 0.5,
+        minTouchCount: 2,
+        confluenceZoneWidth: 0.01,
+        strengthThreshold: 0.5,
+        recencyWeight: 0.8
+      });
     },
     iterations: 50,
     warmup: 5
@@ -199,8 +206,15 @@ const benchmarks: BenchmarkConfig[] = [
   {
     name: 'Line Detection (1000 candles)',
     fn: async () => {
-      const data = createMockCandlestickData(1000);
-      await multiTimeframeLineDetector.detectLines('BTCUSDT', data);
+      createMockCandlestickData(1000);
+      await multiTimeframeLineDetector.detectLines('BTCUSDT', {
+        minTimeframes: 1,
+        priceTolerancePercent: 0.5,
+        minTouchCount: 2,
+        confluenceZoneWidth: 0.01,
+        strengthThreshold: 0.5,
+        recencyWeight: 0.8
+      });
     },
     iterations: 20,
     warmup: 2
@@ -209,13 +223,12 @@ const benchmarks: BenchmarkConfig[] = [
   {
     name: 'Chart Control Tool',
     fn: async () => {
-      await enhancedChartControlTool.execute({
+      await (enhancedChartControlTool as any).execute({
         context: {
           userRequest: 'トレンドラインを描いて',
           conversationHistory: [],
           currentState: { symbol: 'BTCUSDT', timeframe: '1h' }
-        },
-        runtimeContext: { sessionId: 'test-session' }
+        }
       });
     },
     iterations: 50,
@@ -273,4 +286,5 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-export { BenchmarkRunner, BenchmarkConfig, BenchmarkResult };
+export { BenchmarkRunner };
+export type { BenchmarkConfig, BenchmarkResult };

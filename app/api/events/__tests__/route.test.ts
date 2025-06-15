@@ -114,7 +114,7 @@ describe('Events SSE API Route', () => {
         signal: abortController.signal
       });
 
-      const response = await GET(request);
+      await GET(request);
       expect(eventBroadcast.getSubscriberCount()).toBe(1);
 
       // Simulate client disconnection

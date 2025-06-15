@@ -1,6 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { ChatDatabaseService } from '../../database/chat.service';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
@@ -27,7 +26,7 @@ jest.mock('@prisma/client', () => ({
       update: jest.fn(),
       delete: jest.fn(),
     },
-    message: {
+    conversationMessage: {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -52,7 +51,7 @@ jest.mock('@/lib/db/prisma', () => ({
       update: jest.fn(),
       delete: jest.fn(),
     },
-    message: {
+    conversationMessage: {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -66,65 +65,18 @@ jest.mock('@/lib/db/prisma', () => ({
 import { prisma as mockPrisma } from '@/lib/db/prisma';
 
 describe('ChatDatabaseService', () => {
-  let service: ChatDatabaseService;
   const mockPrismaClient = mockPrisma as jest.Mocked<typeof mockPrisma>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ChatDatabaseService();
-  });
-
-  describe('getOrCreateUser', () => {
-    it('should return existing user if found', async () => {
-      const existingUser = {
-        id: 'user-123',
-        email: 'test@example.com',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaClient.user.findUnique.mockResolvedValue(existingUser);
-
-      const result = await service.getOrCreateUser('test@example.com');
-
-      expect(result).toEqual(existingUser);
-      expect(mockPrismaClient.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
-      });
-      expect(mockPrismaClient.user.create).not.toHaveBeenCalled();
-    });
-
-    it('should create new user if not found', async () => {
-      const newUser = {
-        id: 'new-user-123',
-        email: 'new@example.com',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaClient.user.findUnique.mockResolvedValue(null);
-      mockPrismaClient.user.create.mockResolvedValue(newUser);
-
-      const result = await service.getOrCreateUser('new@example.com');
-
-      expect(result).toEqual(newUser);
-      expect(mockPrismaClient.user.create).toHaveBeenCalledWith({
-        data: { email: 'new@example.com' },
-      });
-    });
-
-    it('should handle errors gracefully', async () => {
-      mockPrismaClient.user.findUnique.mockRejectedValue(new Error('DB Error'));
-
-      await expect(service.getOrCreateUser('error@example.com')).rejects.toThrow('DB Error');
-      expect(logger.error).toHaveBeenCalledWith(
-        'Failed to get or create user',
-        expect.objectContaining({ error: expect.any(Error) })
-      );
-    });
   });
 
   describe('createSession', () => {
+    // Test moved to correct location below
+
+    // Test removed - getOrCreateUser doesn't exist
+
+    // Test removed - getOrCreateUser doesn't exist
     it('should create a new session', async () => {
       const userId = 'user-123';
       const sessionId = 'session-456';
@@ -140,9 +92,9 @@ describe('ChatDatabaseService', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaClient.conversationSession.create.mockResolvedValue(newSession);
+      mockPrismaClient.conversationSession.create.mockResolvedValue(newSession as any);
 
-      const result = await service.createSession(userId, sessionId, title, metadata);
+      const result = await ChatDatabaseService.createSession(userId, title);
 
       expect(result).toEqual(newSession);
       expect(mockPrismaClient.conversationSession.create).toHaveBeenCalledWith({
@@ -159,7 +111,7 @@ describe('ChatDatabaseService', () => {
       mockPrismaClient.conversationSession.create.mockRejectedValue(new Error('Creation failed'));
 
       await expect(
-        service.createSession('user-123', 'session-456', 'Test')
+        ChatDatabaseService.createSession('user-123', 'Test')
       ).rejects.toThrow('Creation failed');
       
       expect(logger.error).toHaveBeenCalledWith(
@@ -176,24 +128,28 @@ describe('ChatDatabaseService', () => {
         {
           id: 'session-1',
           userId,
-          title: 'Session 1',
+          summary: 'Session 1',
+          metadata: {},
           createdAt: new Date(),
           updatedAt: new Date(),
-          messages: [],
+          startedAt: new Date(),
+          lastActiveAt: new Date(),
         },
         {
           id: 'session-2',
           userId,
-          title: 'Session 2',
+          summary: 'Session 2',
+          metadata: {},
           createdAt: new Date(),
           updatedAt: new Date(),
-          messages: [],
+          startedAt: new Date(),
+          lastActiveAt: new Date(),
         },
       ];
 
       mockPrismaClient.conversationSession.findMany.mockResolvedValue(sessions);
 
-      const result = await service.getSessions(userId);
+      const result = await ChatDatabaseService.getUserSessions(userId);
 
       expect(result).toEqual(sessions);
       expect(mockPrismaClient.conversationSession.findMany).toHaveBeenCalledWith({
@@ -206,7 +162,7 @@ describe('ChatDatabaseService', () => {
     it('should return empty array for user with no sessions', async () => {
       mockPrismaClient.conversationSession.findMany.mockResolvedValue([]);
 
-      const result = await service.getSessions('user-no-sessions');
+      const result = await ChatDatabaseService.getUserSessions('user-no-sessions');
 
       expect(result).toEqual([]);
     });
@@ -228,12 +184,12 @@ describe('ChatDatabaseService', () => {
         createdAt: new Date(),
       };
 
-      mockPrismaClient.message.create.mockResolvedValue(newMessage);
+      mockPrismaClient.conversationMessage.create.mockResolvedValue(newMessage as any);
 
-      const result = await service.addMessage(sessionId, messageData);
+      const result = await ChatDatabaseService.addMessage(sessionId, messageData);
 
       expect(result).toEqual(newMessage);
-      expect(mockPrismaClient.message.create).toHaveBeenCalledWith({
+      expect(mockPrismaClient.conversationMessage.create).toHaveBeenCalledWith({
         data: {
           sessionId,
           ...messageData,
@@ -242,10 +198,10 @@ describe('ChatDatabaseService', () => {
     });
 
     it('should handle message creation errors', async () => {
-      mockPrismaClient.message.create.mockRejectedValue(new Error('Message creation failed'));
+      mockPrismaClient.conversationMessage.create.mockRejectedValue(new Error('Message creation failed'));
 
       await expect(
-        service.addMessage('session-123', {
+        ChatDatabaseService.addMessage('session-123', {
           role: 'user',
           content: 'Test message',
         })
@@ -266,9 +222,9 @@ describe('ChatDatabaseService', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaClient.conversationSession.update.mockResolvedValue(updatedSession);
+      mockPrismaClient.conversationSession.update.mockResolvedValue(updatedSession as any);
 
-      const result = await service.updateSession(sessionId, updates);
+      const result = await ChatDatabaseService.updateSessionTitle(sessionId, updates.title);
 
       expect(result).toEqual(updatedSession);
       expect(mockPrismaClient.conversationSession.update).toHaveBeenCalledWith({
@@ -277,22 +233,22 @@ describe('ChatDatabaseService', () => {
       });
     });
 
-    it('should update session metadata', async () => {
+    it('should update session title', async () => {
       const sessionId = 'session-123';
-      const updates = { metadata: { theme: 'light', lang: 'ja' } };
+      const newTitle = 'Updated Session Title';
 
       const updatedSession = {
         id: sessionId,
         userId: 'user-123',
-        title: 'Test Session',
-        metadata: updates.metadata,
+        title: newTitle,
+        metadata: { theme: 'light', lang: 'ja' },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      mockPrismaClient.conversationSession.update.mockResolvedValue(updatedSession);
+      mockPrismaClient.conversationSession.update.mockResolvedValue(updatedSession as any);
 
-      const result = await service.updateSession(sessionId, updates);
+      const result = await ChatDatabaseService.updateSessionTitle(sessionId, newTitle);
 
       expect(result).toEqual(updatedSession);
     });
@@ -306,7 +262,7 @@ describe('ChatDatabaseService', () => {
         return callback(mockPrismaClient);
       });
 
-      await service.deleteSession(sessionId);
+      await ChatDatabaseService.deleteSession(sessionId);
 
       expect(mockPrismaClient.$transaction).toHaveBeenCalled();
     });
@@ -316,7 +272,7 @@ describe('ChatDatabaseService', () => {
 
       mockPrismaClient.$transaction.mockRejectedValue(new Error('Deletion failed'));
 
-      await expect(service.deleteSession(sessionId)).rejects.toThrow('Deletion failed');
+      await expect(ChatDatabaseService.deleteSession(sessionId)).rejects.toThrow('Deletion failed');
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to delete session',
         expect.objectContaining({ error: expect.any(Error) })
@@ -344,12 +300,12 @@ describe('ChatDatabaseService', () => {
         },
       ];
 
-      mockPrismaClient.message.findMany.mockResolvedValue(messages);
+      mockPrismaClient.conversationMessage.findMany.mockResolvedValue(messages as any);
 
-      const result = await service.getMessages(sessionId);
+      const result = await ChatDatabaseService.getMessages(sessionId);
 
       expect(result).toEqual(messages);
-      expect(mockPrismaClient.message.findMany).toHaveBeenCalledWith({
+      expect(mockPrismaClient.conversationMessage.findMany).toHaveBeenCalledWith({
         where: { sessionId },
         orderBy: { createdAt: 'asc' },
       });
@@ -359,11 +315,11 @@ describe('ChatDatabaseService', () => {
       const sessionId = 'session-123';
       const limit = 10;
 
-      mockPrismaClient.message.findMany.mockResolvedValue([]);
+      mockPrismaClient.conversationMessage.findMany.mockResolvedValue([] as any);
 
-      await service.getMessages(sessionId, limit);
+      await ChatDatabaseService.getMessages(sessionId);
 
-      expect(mockPrismaClient.message.findMany).toHaveBeenCalledWith({
+      expect(mockPrismaClient.conversationMessage.findMany).toHaveBeenCalledWith({
         where: { sessionId },
         orderBy: { createdAt: 'asc' },
         take: limit,
@@ -371,25 +327,8 @@ describe('ChatDatabaseService', () => {
     });
   });
 
-  describe('deleteMessage', () => {
-    it('should delete a specific message', async () => {
-      const messageId = 'msg-123';
-
-      await service.deleteMessage(messageId);
-
-      expect(mockPrismaClient.message.delete).toHaveBeenCalledWith({
-        where: { id: messageId },
-      });
-    });
-
-    it('should handle message not found', async () => {
-      mockPrismaClient.message.delete.mockRejectedValue(
-        new Error('Record to delete does not exist')
-      );
-
-      await expect(service.deleteMessage('non-existent')).rejects.toThrow();
-    });
-  });
+  // Note: deleteMessage is not implemented in ChatDatabaseService
+  // Messages are only deleted when the entire session is deleted
 
   describe('transaction handling', () => {
     it('should handle complex transactions', async () => {
@@ -403,12 +342,12 @@ describe('ChatDatabaseService', () => {
 
       // Simulate a complex operation
       const complexOperation = async () => {
-        return service.prisma.$transaction(async (tx: any) => {
+        return mockPrismaClient.$transaction(async (tx: any) => {
           const session = await tx.conversationSession.create({
             data: { id: sessionId, userId, title: 'New Session' },
           });
           
-          const message = await tx.message.create({
+          const message = await tx.conversationMessage.create({
             data: {
               sessionId: session.id,
               role: 'system',
@@ -424,14 +363,14 @@ describe('ChatDatabaseService', () => {
         id: sessionId,
         userId,
         title: 'New Session',
-      });
+      } as any);
 
-      mockPrismaClient.message.create.mockResolvedValue({
+      mockPrismaClient.conversationMessage.create.mockResolvedValue({
         id: 'msg-789',
         sessionId,
         role: 'system',
         content: 'Session initialized',
-      });
+      } as any);
 
       const result = await complexOperation();
 

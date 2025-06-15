@@ -17,28 +17,28 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Mock the analyzers and calculators
 jest.mock('../entry-proposal-generation/analyzers/market-context-analyzer', () => ({
-  analyzeMarketContext: jest.fn().mockResolvedValue({
+  analyzeMarketContext: jest.fn().mockImplementation(() => Promise.resolve({
     trend: 'bullish',
     volatility: 'normal',
     volume: 'average',
     momentum: 'positive',
     keyLevels: { support: [100000, 99000], resistance: [105000, 106000] },
-  }),
+  })),
 }));
 
 jest.mock('../entry-proposal-generation/analyzers/condition-evaluator', () => ({
-  evaluateEntryConditions: jest.fn().mockResolvedValue({
+  evaluateEntryConditions: jest.fn().mockImplementation(() => Promise.resolve({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
       { type: 'momentum', met: true, description: 'Positive momentum' },
     ],
     score: 0.8,
     readyToEnter: true,
-  }),
+  })),
 }));
 
 jest.mock('../entry-proposal-generation/calculators/entry-calculator', () => ({
-  calculateEntryPoints: jest.fn().mockResolvedValue([
+  calculateEntryPoints: jest.fn().mockImplementation(() => Promise.resolve([
     {
       price: 100500,
       direction: 'long',
@@ -54,17 +54,17 @@ jest.mock('../entry-proposal-generation/calculators/entry-calculator', () => ({
       relatedPatterns: [],
       relatedDrawings: [],
     },
-  ]),
+  ])),
 }));
 
 jest.mock('../entry-proposal-generation/calculators/risk-calculator', () => ({
-  calculateRiskManagement: jest.fn().mockResolvedValue({
+  calculateRiskManagement: jest.fn().mockImplementation(() => Promise.resolve({
     stopLoss: 99500,
     takeProfit: [102000, 103000],
     positionSize: 0.1,
     riskAmount: 100,
     riskRewardRatio: 3,
-  }),
+  })),
 }));
 
 describe('entryProposalGenerationTool', () => {
@@ -81,7 +81,7 @@ describe('entryProposalGenerationTool', () => {
     jest.clearAllMocks();
     
     // Setup binanceAPI mock
-    (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
+    jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
   });
 
   describe('Basic Functionality', () => {
@@ -94,6 +94,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -105,7 +106,7 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should handle market data fetch failure', async () => {
-      (binanceAPI.fetchKlines as jest.Mock).mockRejectedValue(new Error('API Error'));
+      jest.mocked(binanceAPI.fetchKlines).mockRejectedValue(new Error('API Error'));
 
       const result = await entryProposalGenerationTool.execute!({
         context: {
@@ -115,6 +116,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -126,7 +128,7 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should handle insufficient market data', async () => {
-      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue([mockPriceData[0]]);
+      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue([mockPriceData[0]] as any);
 
       const result = await entryProposalGenerationTool.execute!({
         context: {
@@ -136,6 +138,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -156,6 +159,7 @@ describe('entryProposalGenerationTool', () => {
             riskPercentage: 1,
             maxProposals: 3,
           },
+          runtimeContext: {} as any
         });
 
         expect(result.success).toBe(true);
@@ -178,6 +182,7 @@ describe('entryProposalGenerationTool', () => {
             riskPercentage: risk,
             maxProposals: 3,
           },
+          runtimeContext: {} as any
         });
 
         expect(result.success).toBe(true);
@@ -196,6 +201,7 @@ describe('entryProposalGenerationTool', () => {
             riskPercentage: 0.05,
             maxProposals: 3,
           },
+          runtimeContext: {} as any
         });
         // If we get here, the validation didn't work as expected
         expect(true).toBe(false); // Force test to fail
@@ -213,6 +219,7 @@ describe('entryProposalGenerationTool', () => {
             riskPercentage: 10,
             maxProposals: 3,
           },
+          runtimeContext: {} as any
         });
         // If we get here, the validation didn't work as expected
         expect(true).toBe(false); // Force test to fail
@@ -242,10 +249,11 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
-      expect(result.proposalGroup?.proposals).toHaveLength(3);
+      expect((result.proposalGroup as any)?.proposals).toHaveLength(3);
     });
 
     it('should generate proper proposal group structure', async () => {
@@ -257,6 +265,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -282,7 +291,7 @@ describe('entryProposalGenerationTool', () => {
       const { analyzeMarketContext } = require('../entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset binanceAPI mock to return valid data
-      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
+      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
       
       // Then mock the analyzer to throw an error
       analyzeMarketContext.mockRejectedValueOnce(new Error('Unexpected error'));
@@ -295,6 +304,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -310,7 +320,7 @@ describe('entryProposalGenerationTool', () => {
       const { analyzeMarketContext } = require('../entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset mocks to default behavior
-      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
+      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
       analyzeMarketContext.mockResolvedValue({
         trend: 'bullish',
         volatility: 'normal',
@@ -330,6 +340,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -362,6 +373,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: { logger } as any
       });
 
       expect(result.success).toBe(true);
@@ -388,6 +400,7 @@ describe('entryProposalGenerationTool', () => {
           riskPercentage: 1,
           maxProposals: 3,
         },
+        runtimeContext: {} as any
       });
 
       const executionTime = Date.now() - startTime;

@@ -2,15 +2,16 @@ import 'dotenv/config';
 import { config } from 'dotenv';
 import { executeImprovedOrchestrator } from '../../../lib/mastra/agents/orchestrator.agent';
 import { logger } from '../../../lib/utils/logger';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
+import type { OrchestratorRuntimeContext } from '../../../types/orchestrator.types';
 
 // Load environment variables
 config({ path: '.env.local' });
 
 describe('Orchestrator Agent Integration Tests', () => {
   const testSessionId = `test-${Date.now()}`;
-  const defaultContext = { userLevel: 'intermediate', marketStatus: 'open' };
+  const defaultContext: OrchestratorRuntimeContext = { userLevel: 'intermediate', marketStatus: 'open' };
 
   beforeAll(() => {
     // Suppress logs during tests unless debugging
@@ -62,7 +63,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         { query: 'ビットコインはいくら？', symbol: 'BTC' },
       ];
 
-      test.each(priceQueries)('should handle price inquiry: "$query"', async ({ query, symbol }) => {
+      test.each(priceQueries)('should handle price inquiry: "$query"', async ({ query }) => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe('price_inquiry');
@@ -96,7 +97,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         { query: '15分足に変更して', expectedAction: 'change_timeframe' },
       ];
 
-      test.each(uiQueries)('should handle UI operation: "$query"', async ({ query, expectedAction }) => {
+      test.each(uiQueries)('should handle UI operation: "$query"', async ({ query }) => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe('ui_control');

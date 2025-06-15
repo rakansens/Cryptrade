@@ -221,7 +221,7 @@ describe('WSManager E2E - Message Handling', () => {
         const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
         if (ws) {
           for (let i = 0; i < messageCount; i++) {
-            ws.simulateMessage({ id: i, data: 'test' });
+            ws.simulateMessage({ id: i, data: 'test' } as any);
           }
         }
       }, 20);

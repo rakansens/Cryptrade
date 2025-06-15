@@ -6,9 +6,6 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { tradingAgent } from '../agents/trading.agent';
-import { logger } from '@/lib/utils/logger';
-import { Readable } from 'stream';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -307,7 +304,11 @@ describe('Entry Proposal Streaming Response', () => {
       // Calculate average time between chunks
       const deltas = [];
       for (let i = 1; i < chunkTimestamps.length; i++) {
-        deltas.push(chunkTimestamps[i] - chunkTimestamps[i - 1]);
+        const current = chunkTimestamps[i];
+        const previous = chunkTimestamps[i - 1];
+        if (current !== undefined && previous !== undefined) {
+          deltas.push(current - previous);
+        }
       }
       const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
 

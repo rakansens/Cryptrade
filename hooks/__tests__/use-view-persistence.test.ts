@@ -164,7 +164,7 @@ describe('useViewPersistence', () => {
 
     it('should not update if URL parameter matches current view', () => {
       mockSearchParams.get.mockReturnValue('home');
-      const { result, rerender } = renderHook(() => useViewPersistence());
+      const { rerender } = renderHook(() => useViewPersistence());
       
       const setItemCallCount = localStorageMock.setItem.mock.calls.length;
       

@@ -51,8 +51,16 @@ describe('Store Integration Tests', () => {
       useChatStoreBase.getState().reset();
       useUIEventStore.getState().reset();
       useProposalApprovalStore.getState().reset();
-      useDrawingStore.getState().reset();
-      usePatternStore.getState().reset();
+      // Clear drawing and pattern stores manually
+      useDrawingStore.setState({ 
+        drawingMode: null,
+        drawings: [],
+        selectedDrawingId: null,
+        isDrawing: false,
+        undoStack: [],
+        redoStack: []
+      });
+      usePatternStore.setState({ patterns: new Map() });
     });
   });
 
@@ -85,7 +93,7 @@ describe('Store Integration Tests', () => {
         uiPublisher.current.publish({
           type: 'drawing-created',
           data: {
-            drawingId: drawingStore.current.drawings[0].id,
+            drawingId: drawingStore.current.drawings[0]?.id!,
             drawingType: 'trendline',
           },
         });
@@ -140,23 +148,38 @@ describe('Store Integration Tests', () => {
       act(() => {
         drawings.forEach(drawing => {
           drawingStore.current.addDrawing(drawing);
-          drawingIds.push(drawingStore.current.drawings[drawingStore.current.drawings.length - 1].id);
+          drawingIds.push(drawingStore.current.drawings[drawingStore.current.drawings.length - 1]?.id!);
         });
       });
 
       // Create pattern from drawings
       const patternId = 'pattern-1';
       const patternData: PatternData = {
+        id: patternId,
         type: 'triangle',
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        startTime: 1000,
+        endTime: 2000,
         visualization: {
           type: 'triangle',
-          points: [
-            { time: 1000, value: 100 },
-            { time: 2000, value: 200 },
-            { time: 1500, value: 150 },
+          lines: [
+            {
+              start: { time: 1000, price: 100 },
+              end: { time: 2000, price: 200 },
+            },
+            {
+              start: { time: 2000, price: 200 },
+              end: { time: 1500, price: 150 },
+            },
+            {
+              start: { time: 1500, price: 150 },
+              end: { time: 1000, price: 100 },
+            },
           ],
-          color: 'blue',
-          drawingIds,
+          zones: [],
+          labels: [],
+          keyPoints: [],
         },
         confidence: 0.85,
       };
@@ -167,20 +190,21 @@ describe('Store Integration Tests', () => {
 
       expect(drawingStore.current.drawings).toHaveLength(2);
       expect(patternStore.current.patterns.size).toBe(1);
-      expect(patternStore.current.patterns.get(patternId)?.visualization.drawingIds).toEqual(drawingIds);
+      // Pattern visualization doesn't store drawingIds, just verify pattern exists
+      expect(patternStore.current.patterns.get(patternId)).toBeDefined();
     });
   });
 
   describe('Chat and Proposal Integration', () => {
-    it('should handle proposal creation in chat messages', () => {
+    it('should handle proposal creation in chat messages', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: chatStore } = renderHook(() => useChatStore(state => state));
 
       let sessionId: string = '';
 
       // Create chat session
-      act(() => {
-        sessionId = chatActions.current.createSession();
+      act(async () => {
+        sessionId = await chatActions.current.createSession();
       });
 
       // Add user message
@@ -204,6 +228,8 @@ describe('Store Integration Tests', () => {
           },
         ],
         analysis: 'Bullish trend identified',
+        proposals: [],
+        timestamp: Date.now()
       };
 
       act(() => {
@@ -235,21 +261,27 @@ describe('Store Integration Tests', () => {
 
       // Simulate drawing creation from approved proposal
       act(() => {
-        const drawing = {
+        const drawing: ChartDrawing = {
+          id: 'test-drawing-1',
           type: drawingType,
-          points: [{ time: 1000, price: 45000 }, { time: 2000, price: 48000 }],
-          color: '#00ff00',
-          lineWidth: 2,
-          label: 'Support Line',
+          points: [{ time: 1000, value: 45000 }, { time: 2000, value: 48000 }],
+          style: {
+            color: '#00ff00',
+            lineWidth: 2,
+            lineStyle: 'solid',
+            showLabels: true,
+          },
+          visible: true,
+          interactive: true,
         };
         drawingStore.current.addDrawing(drawing);
       });
 
-      const drawingId = drawingStore.current.drawings[0].id;
+      const drawingId = drawingStore.current.drawings[0]?.id!;
 
       // Track approved drawing
       act(() => {
-        proposalStore.current.addApprovedDrawing(messageId, proposalId, drawingId, drawingType);
+        proposalStore.current.addApprovedDrawing(messageId, proposalId, drawingId, 'drawing');
       });
 
       // Publish approval event
@@ -278,7 +310,7 @@ describe('Store Integration Tests', () => {
   });
 
   describe('Multi-Store Workflow', () => {
-    it('should handle complete AI analysis workflow', () => {
+    it('should handle complete AI analysis workflow', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: chatStore } = renderHook(() => useChatStore(state => state));
       const { result: chartStore } = renderHook(() => useChartStore(state => state));
@@ -296,8 +328,8 @@ describe('Store Integration Tests', () => {
       });
 
       // 2. Create chat session
-      act(() => {
-        sessionId = chatActions.current.createSession();
+      act(async () => {
+        sessionId = await chatActions.current.createSession();
         chatActions.current.setOpen(true);
       });
 
@@ -328,20 +360,36 @@ describe('Store Integration Tests', () => {
       // 6. AI completes with proposal
       const proposalData = {
         id: 'proposal-sr-1',
+        proposals: [],
+        timestamp: Date.now(),
         drawings: [
           {
+            id: 'drawing-support',
             type: 'horizontal' as const,
-            points: [{ time: Date.now(), price: 2500 }],
-            color: '#00ff00',
-            lineWidth: 2,
-            label: 'Support',
+            points: [{ time: Date.now(), value: 2500 }],
+            price: 2500,
+            style: {
+              color: '#00ff00',
+              lineWidth: 2,
+              lineStyle: 'solid' as const,
+              showLabels: true,
+            },
+            visible: true,
+            interactive: true,
           },
           {
+            id: 'drawing-resistance',
             type: 'horizontal' as const,
-            points: [{ time: Date.now(), price: 2800 }],
-            color: '#ff0000',
-            lineWidth: 2,
-            label: 'Resistance',
+            points: [{ time: Date.now(), value: 2800 }],
+            price: 2800,
+            style: {
+              color: '#ff0000',
+              lineWidth: 2,
+              lineStyle: 'solid' as const,
+              showLabels: true,
+            },
+            visible: true,
+            interactive: true,
           },
         ],
       };
@@ -360,12 +408,12 @@ describe('Store Integration Tests', () => {
         // Add drawings to chart
         proposalData.drawings.forEach((drawing, index) => {
           drawingStore.current.addDrawing(drawing);
-          const drawingId = drawingStore.current.drawings[index].id;
+          const drawingId = drawingStore.current.drawings[index]?.id!;
           proposalStore.current.addApprovedDrawing(
             sessionId, 
             `${proposalData.id}-${index}`, 
             drawingId, 
-            drawing.type
+            'drawing'
           );
         });
       });
@@ -386,7 +434,7 @@ describe('Store Integration Tests', () => {
       expect(chartStore.current.symbol).toBe('ETHUSDT');
       expect(chartStore.current.timeframe).toBe('4h');
       expect(chatStore.current.messagesBySession[sessionId]).toHaveLength(2);
-      expect(chatStore.current.messagesBySession[sessionId][1].type).toBe('proposal');
+      expect(chatStore.current.messagesBySession[sessionId]?.[1]?.type).toBe('proposal');
       expect(drawingStore.current.drawings).toHaveLength(2);
       expect(proposalStore.current.isDrawingApproved(sessionId, `${proposalData.id}-0`)).toBe(true);
       expect(proposalStore.current.isDrawingApproved(sessionId, `${proposalData.id}-1`)).toBe(true);
@@ -400,7 +448,7 @@ describe('Store Integration Tests', () => {
       });
     });
 
-    it('should handle state cleanup on session switch', () => {
+    it('should handle state cleanup on session switch', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: drawingStore } = renderHook(() => useDrawingStore());
       const { result: proposalStore } = renderHook(() => useProposalApprovalStore());
@@ -409,8 +457,8 @@ describe('Store Integration Tests', () => {
       let sessionId2: string = '';
 
       // Create two sessions with different contexts
-      act(() => {
-        sessionId1 = chatActions.current.createSession();
+      act(async () => {
+        sessionId1 = await chatActions.current.createSession();
         
         // Add drawings for session 1
         drawingStore.current.addDrawing({
@@ -429,8 +477,8 @@ describe('Store Integration Tests', () => {
         });
       });
 
-      act(() => {
-        sessionId2 = chatActions.current.createSession();
+      act(async () => {
+        sessionId2 = await chatActions.current.createSession();
         
         // Clear drawings when switching session
         drawingStore.current.clearAllDrawings();
@@ -461,14 +509,14 @@ describe('Store Integration Tests', () => {
       });
 
       // Verify state isolation
-      expect(chatStore.current.currentSessionId).toBe(sessionId1);
+      expect(useChatStoreBase.getState().currentSessionId).toBe(sessionId1);
       expect(drawingStore.current.drawings).toHaveLength(0);
       expect(proposalStore.current.approvedDrawingIds.size).toBeGreaterThanOrEqual(0);
     });
   });
 
   describe('Error Handling Across Stores', () => {
-    it('should propagate errors between stores', () => {
+    it('should propagate errors between stores', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: chartStore } = renderHook(() => useChartStore(state => state));
 
@@ -478,8 +526,8 @@ describe('Store Integration Tests', () => {
       });
 
       // Error should affect chat functionality
-      act(() => {
-        chatActions.current.createSession();
+      act(async () => {
+        await chatActions.current.createSession();
         chatActions.current.setError('Cannot analyze - chart not ready');
       });
 
@@ -491,7 +539,7 @@ describe('Store Integration Tests', () => {
       const { result: drawingStore } = renderHook(() => useDrawingStore());
       const { result: patternStore } = renderHook(() => usePatternStore());
 
-      const drawingPromises: Promise<void>[] = [];
+      const drawingPromises: Promise<any>[] = [];
 
       // Simulate concurrent drawing additions
       act(() => {
@@ -521,30 +569,40 @@ describe('Store Integration Tests', () => {
       // Create pattern from all drawings
       act(() => {
         patternStore.current.addPattern('concurrent-pattern', {
+          id: 'concurrent-pattern',
           type: 'complex',
+          symbol: 'BTCUSDT',
+          interval: '1h',
+          startTime: Date.now() - 3600000,
+          endTime: Date.now(),
           visualization: {
-            type: 'complex',
-            points: drawingStore.current.drawings.flatMap(d => d.points),
-            color: 'blue',
+            type: 'triangle',
+            lines: drawingStore.current.drawings.map((d, i) => ({
+              start: { time: d.points[0]?.time || 1000 + i * 100, price: d.points[0]?.value || 100 + i * 10 },
+              end: { time: d.points[1]?.time || 2000 + i * 100, price: d.points[1]?.value || 200 + i * 10 },
+            })),
+            zones: [],
+            labels: [],
+            keyPoints: [],
           },
           confidence: 0.75,
         });
       });
 
       expect(patternStore.current.patterns.size).toBe(1);
-      expect(patternStore.current.patterns.get('concurrent-pattern')?.visualization.points).toHaveLength(20); // 10 drawings * 2 points each
+      expect(patternStore.current.patterns.get('concurrent-pattern')?.visualization.lines).toHaveLength(10); // 10 drawings = 10 lines
     });
   });
 
   describe('Performance and Memory', () => {
-    it('should handle large numbers of messages efficiently', () => {
+    it('should handle large numbers of messages efficiently', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
       const messageCount = 1000;
 
-      act(() => {
-        sessionId = chatActions.current.createSession();
+      act(async () => {
+        sessionId = await chatActions.current.createSession();
       });
 
       const startTime = Date.now();
@@ -568,14 +626,14 @@ describe('Store Integration Tests', () => {
       expect(messages).toHaveLength(messageCount);
     });
 
-    it('should clean up resources on store reset', () => {
+    it('should clean up resources on store reset', async () => {
       const { result: chartStore } = renderHook(() => useChartStore(state => state));
       const { result: drawingStore } = renderHook(() => useDrawingStore());
       const { result: patternStore } = renderHook(() => usePatternStore());
       const { result: chatStore } = renderHook(() => useChatStore(state => state));
 
       // Populate stores with data
-      act(() => {
+      act(async () => {
         // Add drawings
         for (let i = 0; i < 50; i++) {
           drawingStore.current.addDrawing({
@@ -596,11 +654,18 @@ describe('Store Integration Tests', () => {
         // Add patterns
         for (let i = 0; i < 20; i++) {
           patternStore.current.addPattern(`pattern-${i}`, {
+            id: `pattern-${i}`,
             type: 'triangle',
+            symbol: 'BTCUSDT',
+            interval: '1h',
+            startTime: Date.now() - 3600000,
+            endTime: Date.now(),
             visualization: {
               type: 'triangle',
-              points: [],
-              color: 'blue',
+              lines: [],
+              zones: [],
+              labels: [],
+              keyPoints: [],
             },
             confidence: 0.8,
           });
@@ -608,7 +673,7 @@ describe('Store Integration Tests', () => {
 
         // Add chat sessions and messages
         for (let i = 0; i < 5; i++) {
-          const sessionId = chatStore.current.createSession();
+          const sessionId = await chatStore.current.createSession();
           for (let j = 0; j < 100; j++) {
             chatStore.current.addMessage(sessionId, {
               content: `Message ${j}`,
@@ -621,7 +686,7 @@ describe('Store Integration Tests', () => {
       // Reset all stores
       act(() => {
         chartStore.current.reset();
-        drawingStore.current.reset();
+        drawingStore.current.clearAllDrawings();
         patternStore.current.clearPatterns();
         chatStore.current.reset();
       });

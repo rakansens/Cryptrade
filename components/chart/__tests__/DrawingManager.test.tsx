@@ -29,12 +29,12 @@ jest.mock('@/components/ui/button', () => ({
 }))
 
 jest.mock('@/components/ui/popover', () => ({
-  Popover: ({ children, open, onOpenChange }: any) => (
+  Popover: ({ children, open }: any) => (
     <div data-testid="popover" data-open={open}>
       {children}
     </div>
   ),
-  PopoverTrigger: ({ children, asChild }: any) => (
+  PopoverTrigger: ({ children }: any) => (
     <div data-testid="popover-trigger">{children}</div>
   ),
   PopoverContent: ({ children }: any) => (
@@ -207,7 +207,7 @@ describe('DrawingManager', () => {
       render(<DrawingManager />)
       
       const deleteButtons = screen.getAllByTitle('削除')
-      fireEvent.click(deleteButtons[0])
+      fireEvent.click(deleteButtons[0]!)
       
       await waitFor(() => {
         expect(mockActions.deleteDrawing).toHaveBeenCalledWith('drawing-1')
@@ -225,7 +225,7 @@ describe('DrawingManager', () => {
       
       const deleteButtons = screen.getAllByTitle('削除')
       // Patterns come after drawings in the list
-      fireEvent.click(deleteButtons[2])
+      fireEvent.click(deleteButtons[2]!)
       
       await waitFor(() => {
         expect(mockActions.removePattern).toHaveBeenCalledWith('pattern-1')

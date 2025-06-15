@@ -3,7 +3,6 @@
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { logger } from '@/lib/utils/logger';
-import { createRateLimitedLogger } from '@/lib/utils/rate-limiter';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -24,12 +23,12 @@ jest.mock('@/lib/utils/rate-limiter', () => ({
 jest.mock('@/types/market', () => ({
   validateBinanceTradeMessage: jest.fn((data) => {
     // Return null for invalid messages, data for valid
-    if (data && data.e === 'trade' && data.s && data.p && data.q && data.T) {
+    if (data && 'e' in data && data.e === 'trade' && 's' in data && data.s && 'p' in data && data.p && 'q' in data && data.q && 'T' in data && data.T) {
       return data;
     }
     return null;
   }),
-  validateBinanceKlineMessage: jest.fn((data) => {
+  validateBinanceKlineMessage: jest.fn((data: any) => {
     // Return null for invalid messages, data for valid
     if (data && data.e === 'kline' && data.k) {
       return data;
@@ -70,7 +69,7 @@ class MockWebSocket {
     }, 10);
   }
   
-  send(data: string) {
+  send(_data: string) {
     // Mock send
   }
 }
@@ -127,41 +126,43 @@ jest.doMock('../connection-manager', () => {
         
         this.ws = new (global as any).WebSocket(streamUrl);
         
-        this.ws.onopen = () => {
-          this.isConnected = true;
-          this.reconnectAttempts = 0;
-          this.reconnectInProgress = false;
-          logger.info('[BinanceWS] Connected successfully');
-        };
+        if (this.ws) {
+          this.ws.onopen = () => {
+            this.isConnected = true;
+            this.reconnectAttempts = 0;
+            this.reconnectInProgress = false;
+            logger.info('[BinanceWS] Connected successfully');
+          };
 
-        this.ws.onmessage = (event: any) => {
-          try {
-            const data = JSON.parse(event.data);
-            this.handleMessage(data);
-          } catch (error) {
-            logger.error('[BinanceWS] Failed to parse message', {}, error);
-          }
-        };
+          this.ws.onmessage = (event: any) => {
+            try {
+              const data = JSON.parse(event.data);
+              this.handleMessage(data);
+            } catch (error) {
+              logger.error('[BinanceWS] Failed to parse message', {}, error);
+            }
+          };
 
-        this.ws.onclose = (event: any) => {
-          this.isConnected = false;
-          logger.warn('[BinanceWS] Connection closed', { 
-            code: event.code, 
-            reason: event.reason 
-          });
-          this.handleReconnection();
-        };
+          this.ws.onclose = (event: any) => {
+            this.isConnected = false;
+            logger.warn('[BinanceWS] Connection closed', { 
+              code: event.code, 
+              reason: event.reason 
+            });
+            this.handleReconnection();
+          };
 
-        this.ws.onerror = (error: any) => {
-          logger.error('[BinanceWS] Connection error', { 
-            readyState: this.ws?.readyState,
-          }, error);
-          this.isConnected = false;
-          
-          if (typeof window !== 'undefined' && (window as any).location?.hostname !== 'localhost') {
-            console.warn('[WebSocket] Connection issue detected');
-          }
-        };
+          this.ws.onerror = (error: any) => {
+            logger.error('[BinanceWS] Connection error', { 
+              readyState: this.ws?.readyState,
+            }, error);
+            this.isConnected = false;
+            
+            if (typeof window !== 'undefined' && (window as any).location?.hostname !== 'localhost') {
+              console.warn('[WebSocket] Connection issue detected');
+            }
+          };
+        }
       } catch (error) {
         logger.error('[BinanceWS] Failed to create connection', {}, error);
         this.handleReconnection();
@@ -400,7 +401,7 @@ describe('BinanceConnectionManager', () => {
       const originalURL = global.URL;
       (global as any).URL = class {
         hostname: string;
-        constructor(url: string) {
+        constructor(_url: string) {
           this.hostname = 'malicious.com';
         }
       };
@@ -645,8 +646,8 @@ describe('BinanceConnectionManager', () => {
       // Due to the way we trigger reconnects, the delays might vary
       // Just check that the second delay is greater than the first
       if (reconnectCalls.length >= 2) {
-        const firstDelay = reconnectCalls[0][1].delay;
-        const secondDelay = reconnectCalls[1][1].delay;
+        const firstDelay = (reconnectCalls[0]?.[1] as any)?.delay || 0;
+        const secondDelay = (reconnectCalls[1]?.[1] as any)?.delay || 0;
         expect(secondDelay).toBeGreaterThanOrEqual(firstDelay);
       }
     });
@@ -683,7 +684,6 @@ describe('BinanceConnectionManager', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       
       // Try to trigger another reconnection while first is in progress
-      const loggerDebugCallsBefore = (logger.debug as jest.Mock).mock.calls.length;
       
       // Manually trigger handleReconnection (simulating another close event)
       connectionManager['reconnectInProgress'] = true;

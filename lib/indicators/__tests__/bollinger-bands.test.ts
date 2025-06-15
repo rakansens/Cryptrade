@@ -57,11 +57,11 @@ describe('calculateBollingerBands', () => {
     
     // Compare middle lines (should be identical)
     result1.forEach((point, i) => {
-      expect(point.middle).toBeCloseTo(result2[i].middle, 10);
+      expect(point.middle).toBeCloseTo(result2[i]?.middle ?? 0, 10);
       
       // Band width should be proportional to stdDev multiplier
       const width1 = point.upper - point.lower;
-      const width2 = result2[i].upper - result2[i].lower;
+      const width2 = (result2[i]?.upper ?? 0) - (result2[i]?.lower ?? 0);
       expect(width2).toBeCloseTo(width1 * 2, 5);
     });
   });

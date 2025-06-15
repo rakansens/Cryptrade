@@ -7,8 +7,7 @@ import type {
   SymbolChangeEventDetail,
   TimeframeChangeEventDetail,
   IndicatorToggleEventDetail,
-  DrawingAddedEventDetail,
-  CustomEventMap
+  DrawingAddedEventDetail
 } from '../ui-events.types';
 import {
   isDrawingPoint,
@@ -192,15 +191,15 @@ describe('ui-events.types', () => {
       mockListener = jest.fn();
       // Mock window for Node environment
       originalWindow = global.window;
-      (global as any).window = {
+      (global as unknown as { window: typeof window }).window = {
         addEventListener: jest.fn(),
         removeEventListener: jest.fn(),
         dispatchEvent: jest.fn(),
-        CustomEvent: jest.fn((type: string, options?: any) => ({
+        CustomEvent: jest.fn((type: string, options?: CustomEventInit<unknown>) => ({
           type,
           detail: options?.detail
         }))
-      };
+      } as unknown as typeof window;
     });
 
     afterEach(() => {

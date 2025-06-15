@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { agentNetwork } from '../network/agent-network';
 import { executeImprovedOrchestrator } from '../agents/orchestrator.agent';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';

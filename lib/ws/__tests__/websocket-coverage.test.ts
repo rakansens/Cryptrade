@@ -45,7 +45,7 @@ describe('WSManager Coverage Tests', () => {
       // Get retry preview - this method returns an object with delay info
       const preview = manager.getRetryDelayPreview(3);
       expect(preview).toBeDefined();
-      expect(preview.baseDelay).toBe(2000);
+      expect(preview.minDelay).toBe(2000);
       expect(preview.maxDelay).toBe(10000);
       // The clampedDelay should be calculated based on exponential backoff
       expect(preview.clampedDelay).toBeLessThanOrEqual(10000);
@@ -121,11 +121,12 @@ describe('WSManager Coverage Tests', () => {
         const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
         if (ws) {
           // Send valid JSON
-          ws.simulateMessage({ valid: 'json' });
+          ws.simulateMessage({ valid: 'json' } as any);
           
           // Try to send invalid JSON (should be handled gracefully)
           try {
-            ws.trigger('message', { data: 'invalid json {' });
+            // @ts-expect-error - Accessing private method for testing
+            ws['trigger']('message', { data: 'invalid json {' } as MessageEvent);
           } catch (e) {
             // Expected
           }
@@ -241,10 +242,8 @@ describe('WSManager Coverage Tests', () => {
       });
 
       // Create some subscriptions
-      const subs = [
-        manager.subscribe('stream1').subscribe({ next: () => {}, error: () => {} }),
-        manager.subscribe('stream2').subscribe({ next: () => {}, error: () => {} })
-      ];
+      manager.subscribe('stream1').subscribe({ next: () => {}, error: () => {} });
+      manager.subscribe('stream2').subscribe({ next: () => {}, error: () => {} });
 
       expect(manager.getActiveStreamsCount()).toBe(2);
 
@@ -314,7 +313,7 @@ describe('WSManager Coverage Tests', () => {
         if (ws) {
           // Send all messages at once
           for (let i = 0; i < targetCount; i++) {
-            ws.simulateMessage({ id: i, data: 'test' });
+            ws.simulateMessage({ id: i, data: 'test' } as any);
           }
         }
       });

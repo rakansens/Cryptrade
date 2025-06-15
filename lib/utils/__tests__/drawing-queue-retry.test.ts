@@ -27,7 +27,7 @@ describe('DrawingOperationQueue with Retry', () => {
   it('should increment drawing_success_total on successful operation', async () => {
     const mockOperation = jest.fn().mockResolvedValue('success');
     
-    const result = await queue.enqueue(mockOperation);
+    const result = await queue.enqueue(mockOperation );
     
     expect(result).toBe('success');
     expect(mockOperation).toHaveBeenCalledTimes(1);
@@ -46,7 +46,7 @@ describe('DrawingOperationQueue with Retry', () => {
       .mockRejectedValueOnce(new Error('First failure'))
       .mockResolvedValueOnce('success after retry');
     
-    const result = await queue.enqueue(mockOperation);
+    const result = await queue.enqueue(mockOperation );
     
     expect(result).toBe('success after retry');
     expect(mockOperation).toHaveBeenCalledTimes(2);
@@ -88,7 +88,7 @@ describe('DrawingOperationQueue with Retry', () => {
     ];
     
     const results = await Promise.allSettled(
-      operations.map(op => queue.enqueue(op))
+      operations.map(op => queue.enqueue(op ))
     );
     
     expect(results[0]).toEqual({ status: 'fulfilled', value: 'success1' });

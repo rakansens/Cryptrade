@@ -60,7 +60,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
             done();
           }
         },
-        error: (error) => {
+        error: (_error) => {
           // Should not error out immediately
           connectionAttempts++;
         }
@@ -102,11 +102,11 @@ describe('WSManager E2E - Reconnection Logic', () => {
       }
 
       // Verify exponential growth
-      expect(delays[0].exponentialDelay).toBe(200);  // 100 * 2^1
-      expect(delays[1].exponentialDelay).toBe(400);  // 100 * 2^2
-      expect(delays[2].exponentialDelay).toBe(800);  // 100 * 2^3
-      expect(delays[3].exponentialDelay).toBe(1600); // 100 * 2^4
-      expect(delays[4].exponentialDelay).toBe(3200); // 100 * 2^5
+      expect(delays[0]?.exponentialDelay).toBe(200);  // 100 * 2^1
+      expect(delays[1]?.exponentialDelay).toBe(400);  // 100 * 2^2
+      expect(delays[2]?.exponentialDelay).toBe(800);  // 100 * 2^3
+      expect(delays[3]?.exponentialDelay).toBe(1600); // 100 * 2^4
+      expect(delays[4]?.exponentialDelay).toBe(3200); // 100 * 2^5
 
       // Verify clamping to max delay
       delays.forEach(delay => {
@@ -122,13 +122,11 @@ describe('WSManager E2E - Reconnection Logic', () => {
         debug: true
       });
 
-      let errorReceived = false;
 
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
+      manager.subscribe('btcusdt@trade').subscribe({
         next: () => {},
-        error: (error) => {
-          errorReceived = true;
-          expect(error.message).toContain('Max retry attempts');
+        error: (_error) => {
+          expect(_error.message).toContain('Max retry attempts');
           done();
         }
       });

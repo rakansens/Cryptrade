@@ -16,14 +16,14 @@ describe('Middleware Composition', () => {
     it('should execute middlewares in correct order', async () => {
       const executionOrder: string[] = [];
 
-      const middleware1: ApiMiddleware = async (ctx, next) => {
+      const middleware1: ApiMiddleware = async (_ctx, next) => {
         executionOrder.push('middleware1-start');
         const result = await next();
         executionOrder.push('middleware1-end');
         return result;
       };
 
-      const middleware2: ApiMiddleware = async (ctx, next) => {
+      const middleware2: ApiMiddleware = async (_ctx, next) => {
         executionOrder.push('middleware2-start');
         const result = await next();
         executionOrder.push('middleware2-end');
@@ -54,12 +54,12 @@ describe('Middleware Composition', () => {
     });
 
     it('should pass context through middleware chain', async () => {
-      const addMetaMiddleware: ApiMiddleware = async (ctx, next) => {
+      const addMetaMiddleware: ApiMiddleware = async (_ctx, next) => {
         ctx.meta = { ...ctx.meta, middleware1: true };
         return next();
       };
 
-      const addMoreMetaMiddleware: ApiMiddleware = async (ctx, next) => {
+      const addMoreMetaMiddleware: ApiMiddleware = async (_ctx, next) => {
         ctx.meta = { ...ctx.meta, middleware2: true };
         return next();
       };
@@ -97,7 +97,7 @@ describe('Middleware Composition', () => {
     });
 
     it('should propagate errors from middleware', async () => {
-      const errorMiddleware: ApiMiddleware = async (ctx, next) => {
+      const errorMiddleware: ApiMiddleware = async (_ctx, _next) => {
         throw new Error('Middleware error');
       };
 
@@ -165,7 +165,7 @@ describe('Middleware Composition', () => {
       });
       mockFetch.mockResolvedValue(mockResponse);
 
-      const testMiddleware: ApiMiddleware = async (ctx, next) => {
+      const testMiddleware: ApiMiddleware = async (_ctx, next) => {
         ctx.meta = { processed: true };
         return next();
       };
@@ -188,12 +188,12 @@ describe('Middleware Composition', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }));
       mockFetch.mockResolvedValue(mockResponse);
 
-      const middleware1: ApiMiddleware = async (ctx, next) => {
+      const middleware1: ApiMiddleware = async (_ctx, next) => {
         ctx.meta = { step1: true };
         return next();
       };
 
-      const middleware2: ApiMiddleware = async (ctx, next) => {
+      const middleware2: ApiMiddleware = async (_ctx, next) => {
         ctx.meta = { ...ctx.meta, step2: true };
         return next();
       };
@@ -215,7 +215,7 @@ describe('Middleware Composition', () => {
     });
 
     it('should handle middleware errors before fetch', async () => {
-      const errorMiddleware: ApiMiddleware = async (ctx, next) => {
+      const errorMiddleware: ApiMiddleware = async (_ctx, _next) => {
         throw new Error('Pre-fetch error');
       };
 

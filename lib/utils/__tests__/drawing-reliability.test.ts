@@ -96,9 +96,9 @@ describe('Drawing Reliability Tests', () => {
       // For now, we test the concept
       
       const mockAddDrawingAsync = jest.fn().mockImplementation((drawing) => {
-        return new Promise((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error(`Drawing ${drawing.id} addition timed out`));
+        return new Promise((_resolve, reject) => {
+          setTimeout(() => {
+            reject(new Error(`Drawing ${(drawing as any).id} addition timed out`));
           }, 100);
           
           // Simulate no confirmation event
@@ -116,14 +116,14 @@ describe('Drawing Reliability Tests', () => {
           setTimeout(() => {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('chart:drawingAdded', {
-                detail: { id: drawing.id }
+                detail: { id: (drawing as any).id }
               }));
             }
           }, 10);
           
           const handler = (event: Event) => {
             const customEvent = event as CustomEvent;
-            if (customEvent.detail.id === drawing.id) {
+            if (customEvent.detail.id === (drawing as any).id) {
               if (typeof window !== 'undefined') {
                 window.removeEventListener('chart:drawingAdded', handler);
               }

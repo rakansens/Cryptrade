@@ -1,5 +1,5 @@
 import { analyzeUserIntent as analyzeIntent } from '../orchestrator.agent';
-import type { IntentAnalysisResult } from '../orchestrator.agent';
+// import type { IntentAnalysisResult } from '../orchestrator.agent';
 
 describe('Orchestrator Agent - Intent Analysis', () => {
   describe('analyzeIntent function', () => {

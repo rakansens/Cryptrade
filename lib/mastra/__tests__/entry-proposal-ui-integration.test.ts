@@ -5,10 +5,8 @@
  * Verifies that proposals are correctly displayed and interactive
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { tradingAgent } from '../agents/trading.agent';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { entryProposalGenerationTool } from '../tools/entry-proposal-generation';
-import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -33,7 +31,6 @@ global.window = {
 
 // Mock the proposal store
 const mockSetProposalGroup = jest.fn();
-const mockAddProposal = jest.fn();
 const mockUpdateProposalStatus = jest.fn();
 const mockClearProposals = jest.fn();
 
@@ -342,7 +339,7 @@ describe('Entry Proposal UI Integration', () => {
       });
 
       const drawingCalls = mockDispatchEvent.mock.calls.filter(
-        call => call[0].type === 'chart:drawLine'
+        call => (call[0] as any).type === 'chart:drawLine'
       );
 
       expect(drawingCalls.length).toBe(3); // 1 SL + 2 TP
@@ -351,7 +348,6 @@ describe('Entry Proposal UI Integration', () => {
 
   describe('Real-time Updates', () => {
     it('should update proposal status when market conditions change', async () => {
-      const proposalId = 'ep_test_123';
       const currentPrice = 100600;
       const entryZone = { start: 100000, end: 101000 };
 

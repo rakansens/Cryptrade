@@ -3,7 +3,7 @@
  */
 
 import { WSManager } from '../WSManager';
-import { MockWebSocket, BinanceMessageGenerator, setupWebSocketMocking } from './websocket-mock';
+import { MockWebSocket, setupWebSocketMocking } from './websocket-mock';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -70,7 +70,7 @@ describe('WSManager Basic Tests', () => {
     setTimeout(() => {
       const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
       if (ws) {
-        ws.simulateMessage(testMessage);
+        ws.simulateMessage(testMessage as any);
       }
     }, 20);
   });

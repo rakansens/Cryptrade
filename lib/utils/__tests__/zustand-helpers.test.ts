@@ -14,13 +14,28 @@ describe('zustand-helpers', () => {
 
     afterEach(() => {
       // Restore original NODE_ENV
-      process.env.NODE_ENV = originalEnv;
+      if (originalEnv !== undefined) {
+        Object.defineProperty(process.env, 'NODE_ENV', {
+          value: originalEnv,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } else {
+        // @ts-expect-error - Deleting process.env property for testing
+        delete process.env.NODE_ENV;
+      }
       // Restore console.debug
       consoleDebugSpy.mockRestore();
     });
 
     it('should log debug messages in development environment', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('action performed');
@@ -29,7 +44,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should not log debug messages in production environment', () => {
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('action performed');
@@ -38,7 +58,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should not log debug messages in test environment', () => {
-      process.env.NODE_ENV = 'test';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'test',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('action performed');
@@ -56,7 +81,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should include store name in debug output', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const chartDebug = createStoreDebugger('ChartStore');
       const chatDebug = createStoreDebugger('ChatStore');
@@ -69,7 +99,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle empty store name', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('');
       debug('anonymous action');
@@ -78,7 +113,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle special characters in store name', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('Test-Store_v2.0');
       debug('action with special chars');
@@ -87,7 +127,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle empty action string', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('');
@@ -96,7 +141,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle very long action strings', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       const longAction = 'a'.repeat(1000);
@@ -106,7 +156,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should be reusable for multiple actions', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       
@@ -121,7 +176,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle Unicode characters in actions', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('アクション実行 🚀');
@@ -130,7 +190,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle multiline action strings', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       const debug = createStoreDebugger('TestStore');
       debug('action\nwith\nmultiple\nlines');
@@ -149,7 +214,12 @@ describe('zustand-helpers', () => {
     });
 
     it('should handle errors in console.debug gracefully', () => {
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
       
       // Mock console.debug to throw an error
       consoleDebugSpy.mockImplementation(() => {
@@ -164,7 +234,12 @@ describe('zustand-helpers', () => {
 
     describe('Performance considerations', () => {
       it('should have minimal overhead in production', () => {
-        process.env.NODE_ENV = 'production';
+        Object.defineProperty(process.env, 'NODE_ENV', {
+          value: 'production',
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
         
         const debug = createStoreDebugger('PerfStore');
         const iterations = 10000;

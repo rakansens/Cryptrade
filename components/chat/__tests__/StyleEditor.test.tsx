@@ -256,7 +256,7 @@ describe('StyleEditor', () => {
       fireEvent.click(screen.getByTestId('tab-pattern'))
       
       const opacitySlider = screen.getAllByRole('slider')[0]
-      fireEvent.change(opacitySlider, { target: { value: '0.5' } })
+      fireEvent.change(opacitySlider!, { target: { value: '0.5' } })
       
       await waitFor(() => {
         expect(window.dispatchEvent).toHaveBeenCalledWith(
@@ -288,7 +288,7 @@ describe('StyleEditor', () => {
       
       // Find and click the select trigger for metric label position
       const selectTriggers = screen.getAllByTestId('select-trigger')
-      fireEvent.click(selectTriggers[0])
+      fireEvent.click(selectTriggers[0]!)
       
       // Click left option
       fireEvent.click(screen.getByTestId('select-item-left'))

@@ -52,8 +52,8 @@ describe('WSManager E2E - Connection Management', () => {
       // Verify connection created
       const instances = MockWebSocket.getAllInstances();
       expect(instances).toHaveLength(1);
-      expect(instances[0].url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
-      expect(instances[0].readyState).toBe(MockWebSocket.OPEN);
+      expect(instances[0]?.url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      expect(instances[0]?.readyState).toBe(MockWebSocket.OPEN);
 
       subscription.unsubscribe();
     });
@@ -123,8 +123,8 @@ describe('WSManager E2E - Connection Management', () => {
   describe('Connection Cleanup', () => {
     it('should close connections on destroy', () => {
       // Create multiple connections
-      const sub1 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
-      const sub2 = manager.subscribe('ethusdt@trade').subscribe({ next: () => {} });
+      manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
+      manager.subscribe('ethusdt@trade').subscribe({ next: () => {} });
       
       const instances = MockWebSocket.getAllInstances();
       expect(instances).toHaveLength(2);
@@ -202,7 +202,7 @@ describe('WSManager E2E - Connection Management', () => {
       
       // Cleanup half
       for (let i = 0; i < 5; i++) {
-        subscriptions[i].unsubscribe();
+        subscriptions[i]?.unsubscribe();
       }
       
       // HWM should remain at 10

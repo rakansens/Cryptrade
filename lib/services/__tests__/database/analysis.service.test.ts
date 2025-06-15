@@ -1,6 +1,8 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { AnalysisService } from '../../database/analysis.service';
 import { prisma } from '@/lib/db/prisma';
+// import type { DrawingProposal } from '@/types/proposals'; // Not used
+import { ProposalType, ProposalStatus } from '@/types/proposals';
 
 // Mock Prisma
 jest.mock('@/lib/db/prisma', () => ({
@@ -16,6 +18,9 @@ jest.mock('@/lib/db/prisma', () => ({
   },
 }));
 
+// Helper type for mocking
+type MockedPrisma = typeof prisma;
+
 describe('AnalysisService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -23,12 +28,29 @@ describe('AnalysisService', () => {
 
   describe('saveAnalysis', () => {
     it('should save analysis record with correct data', async () => {
+      const mockProposal: DrawingProposal = {
+        id: 'prop-123',
+        type: ProposalType.HORIZONTAL_LINE,
+        analysisType: 'horizontal',
+        coordinates: {
+          start: { x: Date.now() - 86400000, y: 45000 },
+          end: { x: Date.now(), y: 45000 }
+        },
+        description: 'Support level',
+        confidence: 0.8,
+        priority: 'high',
+        reasoning: 'Strong support level identified',
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
+        metadata: { price: 45000, strength: 0.8 }
+      };
+
       const mockData = {
         sessionId: 'session-123',
         symbol: 'BTCUSDT',
         interval: '1h',
         type: 'support' as const,
-        proposalData: { price: 45000, strength: 0.8 },
+        proposalData: mockProposal,
       };
 
       const mockCreatedRecord = {
@@ -44,7 +66,7 @@ describe('AnalysisService', () => {
         updatedAt: new Date(),
       };
 
-      (prisma.analysisRecord.create as jest.Mock).mockResolvedValue(mockCreatedRecord);
+      (prisma.analysisRecord.create as any).mockResolvedValue(mockCreatedRecord as any);
 
       const result = await AnalysisService.saveAnalysis(mockData);
 
@@ -68,11 +90,29 @@ describe('AnalysisService', () => {
     });
 
     it('should handle analysis without sessionId', async () => {
+      const mockProposal: DrawingProposal = {
+        id: 'prop-456',
+        type: ProposalType.HORIZONTAL_LINE,
+        analysisType: 'horizontal',
+        coordinates: {
+          start: { x: Date.now() - 86400000, y: 2500 },
+          end: { x: Date.now(), y: 2500 }
+        },
+        description: 'Resistance level',
+        confidence: 0.9,
+        priority: 'high',
+
+        reasoning: 'Strong resistance level identified',
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
+        metadata: { price: 2500, strength: 0.9 }
+      };
+
       const mockData = {
         symbol: 'ETHUSDT',
         interval: '4h',
         type: 'resistance' as const,
-        proposalData: { price: 2500, strength: 0.9 },
+        proposalData: mockProposal,
       };
 
       const mockCreatedRecord = {
@@ -89,7 +129,7 @@ describe('AnalysisService', () => {
         updatedAt: new Date(),
       };
 
-      (prisma.analysisRecord.create as jest.Mock).mockResolvedValue(mockCreatedRecord);
+      (prisma.analysisRecord.create as any).mockResolvedValue(mockCreatedRecord as any);
 
       const result = await AnalysisService.saveAnalysis(mockData);
 
@@ -112,17 +152,34 @@ describe('AnalysisService', () => {
       const types = ['support', 'resistance', 'trendline', 'pattern', 'fibonacci'] as const;
       
       for (const type of types) {
+        const mockProposal: DrawingProposal = {
+          id: `prop-${type}`,
+          type: ProposalType.HORIZONTAL_LINE,
+          analysisType: 'horizontal',
+          coordinates: {
+            start: { x: Date.now() - 86400000, y: 50000 },
+            end: { x: Date.now(), y: 50000 }
+          },
+          description: `${type} level`,
+          confidence: 0.7,
+          priority: 'medium',
+
+          reasoning: `${type} analysis`,
+          status: ProposalStatus.PENDING,
+          createdAt: Date.now()
+        };
+
         const mockData = {
           symbol: 'BTCUSDT',
           interval: '1d',
           type,
-          proposalData: { test: true },
+          proposalData: mockProposal,
         };
 
-        (prisma.analysisRecord.create as jest.Mock).mockResolvedValue({
+        (prisma.analysisRecord.create as any).mockResolvedValue({
           id: `record-${type}`,
           ...mockData,
-        });
+        } as any);
 
         await AnalysisService.saveAnalysis(mockData);
 
@@ -133,15 +190,33 @@ describe('AnalysisService', () => {
     });
 
     it('should throw error when database operation fails', async () => {
+      const mockProposal: DrawingProposal = {
+        id: 'prop-error',
+        type: ProposalType.HORIZONTAL_LINE,
+        analysisType: 'horizontal',
+        coordinates: {
+          start: { x: Date.now() - 86400000, y: 45000 },
+          end: { x: Date.now(), y: 45000 }
+        },
+        description: 'Support level',
+        confidence: 0.8,
+        priority: 'high',
+
+        reasoning: 'Support level',
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
+        metadata: { price: 45000 }
+      };
+
       const mockData = {
         symbol: 'BTCUSDT',
         interval: '1h',
         type: 'support' as const,
-        proposalData: { price: 45000 },
+        proposalData: mockProposal,
       };
 
       const mockError = new Error('Database connection failed');
-      (prisma.analysisRecord.create as jest.Mock).mockRejectedValue(mockError);
+      (prisma.analysisRecord.create as any).mockRejectedValue(mockError);
 
       await expect(AnalysisService.saveAnalysis(mockData)).rejects.toThrow('Database connection failed');
     });
@@ -172,8 +247,8 @@ describe('AnalysisService', () => {
         },
       };
 
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue(mockTouchEvent);
-      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue(mockUpdatedRecord);
+      (prisma.touchEvent.create as any).mockResolvedValue(mockTouchEvent);
+      (prisma.analysisRecord.update as any).mockResolvedValue(mockUpdatedRecord);
 
       const result = await AnalysisService.recordTouchEvent(mockData);
 
@@ -219,8 +294,8 @@ describe('AnalysisService', () => {
         createdAt: new Date(),
       };
 
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue(mockTouchEvent);
-      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue({});
+      (prisma.touchEvent.create as any).mockResolvedValue(mockTouchEvent);
+      (prisma.analysisRecord.update as any).mockResolvedValue({});
 
       const result = await AnalysisService.recordTouchEvent(mockData);
 
@@ -244,11 +319,11 @@ describe('AnalysisService', () => {
           strength: 0.8,
         };
 
-        (prisma.touchEvent.create as jest.Mock).mockResolvedValue({
+        (prisma.touchEvent.create as any).mockResolvedValue({
           id: `touch-${result}`,
           ...mockData,
         });
-        (prisma.analysisRecord.update as jest.Mock).mockResolvedValue({});
+        (prisma.analysisRecord.update as any).mockResolvedValue({});
 
         await AnalysisService.recordTouchEvent(mockData);
 
@@ -267,7 +342,7 @@ describe('AnalysisService', () => {
       };
 
       const mockError = new Error('Foreign key constraint failed');
-      (prisma.touchEvent.create as jest.Mock).mockRejectedValue(mockError);
+      (prisma.touchEvent.create as any).mockRejectedValue(mockError);
 
       await expect(AnalysisService.recordTouchEvent(mockData)).rejects.toThrow('Foreign key constraint failed');
     });
@@ -302,7 +377,7 @@ describe('AnalysisService', () => {
         },
       ];
 
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockAnalyses);
+      (prisma.analysisRecord.findMany as any).mockResolvedValue(mockAnalyses);
 
       const result = await AnalysisService.getSessionAnalyses(sessionId);
 
@@ -319,12 +394,12 @@ describe('AnalysisService', () => {
 
       expect(result).toEqual(mockAnalyses);
       expect(result).toHaveLength(2);
-      expect(result[0].touchEvents).toHaveLength(2);
+      expect(result[0]?.touchEvents).toHaveLength(2);
     });
 
     it('should return empty array for non-existent session', async () => {
       const sessionId = 'non-existent';
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.analysisRecord.findMany as any).mockResolvedValue([]);
 
       const result = await AnalysisService.getSessionAnalyses(sessionId);
 
@@ -334,7 +409,7 @@ describe('AnalysisService', () => {
     it('should handle database errors', async () => {
       const sessionId = 'session-123';
       const mockError = new Error('Query timeout');
-      (prisma.analysisRecord.findMany as jest.Mock).mockRejectedValue(mockError);
+      (prisma.analysisRecord.findMany as any).mockRejectedValue(mockError);
 
       await expect(AnalysisService.getSessionAnalyses(sessionId)).rejects.toThrow('Query timeout');
     });
@@ -363,7 +438,7 @@ describe('AnalysisService', () => {
         },
       ];
 
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockActiveAnalyses);
+      (prisma.analysisRecord.findMany as any).mockResolvedValue(mockActiveAnalyses);
 
       const result = await AnalysisService.getActiveAnalyses(symbol);
 
@@ -400,7 +475,7 @@ describe('AnalysisService', () => {
         },
       ];
 
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockActiveAnalyses);
+      (prisma.analysisRecord.findMany as any).mockResolvedValue(mockActiveAnalyses);
 
       const result = await AnalysisService.getActiveAnalyses();
 
@@ -422,7 +497,7 @@ describe('AnalysisService', () => {
     });
 
     it('should return empty array when no active analyses exist', async () => {
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.analysisRecord.findMany as any).mockResolvedValue([]);
 
       const result = await AnalysisService.getActiveAnalyses('XRPUSDT');
 
@@ -431,7 +506,7 @@ describe('AnalysisService', () => {
 
     it('should handle database errors', async () => {
       const mockError = new Error('Invalid JSON path');
-      (prisma.analysisRecord.findMany as jest.Mock).mockRejectedValue(mockError);
+      (prisma.analysisRecord.findMany as any).mockRejectedValue(mockError);
 
       await expect(AnalysisService.getActiveAnalyses()).rejects.toThrow('Invalid JSON path');
     });

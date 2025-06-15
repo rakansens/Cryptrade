@@ -7,9 +7,6 @@
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-// Mock the functions we're testing
-const mockGenerateLocalFallbackResponse = jest.fn();
-const mockGenerateStaticFallbackResponse = jest.fn();
 
 // Mock the AI SDK
 jest.mock('@ai-sdk/openai', () => ({
@@ -55,7 +52,7 @@ describe('Enhanced Fallback Functionality', () => {
       },
     ];
 
-    testLocalPatterns.forEach(({ query, expectedPattern, description }) => {
+    testLocalPatterns.forEach(({ query, description }) => {
       it(`should generate appropriate local response for ${description}`, () => {
         // Since we can't directly import the function due to module structure,
         // we'll test the expected behavior patterns

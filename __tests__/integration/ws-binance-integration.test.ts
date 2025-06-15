@@ -4,10 +4,12 @@
  */
 
 import { WSManager } from '@/lib/ws/WSManager';
-import { BinanceAPIService } from '@/lib/binance/api-service';
-import { BinanceConnectionManager } from '@/lib/binance/connection-manager';
-import { MarketStore } from '@/store/market.store';
+import { binanceAPI } from '@/lib/binance/api-service';
+import { binanceConnectionManager } from '@/lib/binance/connection-manager';
+import { useMarketStoreBase } from '@/store/market.store';
 import { MockWebSocket, BinanceMessageGenerator, setupWebSocketMocking } from '@/lib/ws/__tests__/websocket-mock';
+import type { BinanceTradeMessage, BinanceKlineMessage } from '@/types/market';
+import { createPriceUpdate } from '../helpers/test-utils';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -21,14 +23,17 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Mock HTTP requests
 jest.mock('@/lib/api/client', () => ({
-  apiClient: {
+  ApiClient: jest.fn().mockImplementation(() => ({
     get: jest.fn().mockResolvedValue({
       data: {
         symbol: 'BTCUSDT',
         price: '50000.00'
       }
-    })
-  }
+    }),
+    post: jest.fn().mockResolvedValue({ data: {} }),
+    put: jest.fn().mockResolvedValue({ data: {} }),
+    delete: jest.fn().mockResolvedValue({ data: {} })
+  }))
 }));
 
 // Setup WebSocket mocking
@@ -36,9 +41,7 @@ const cleanupMock = setupWebSocketMocking();
 
 describe('WSManager + Binance API Integration', () => {
   let wsManager: WSManager;
-  let binanceAPI: BinanceAPIService;
-  let connectionManager: BinanceConnectionManager;
-  let marketStore: ReturnType<typeof MarketStore.getState>;
+  let marketStore: ReturnType<typeof useMarketStoreBase.getState>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,9 +53,7 @@ describe('WSManager + Binance API Integration', () => {
       debug: false
     });
     
-    binanceAPI = BinanceAPIService.getInstance();
-    connectionManager = new BinanceConnectionManager();
-    marketStore = MarketStore.getState();
+    marketStore = useMarketStoreBase.getState();
     
     // Reset store
     marketStore.reset();
@@ -73,18 +74,22 @@ describe('WSManager + Binance API Integration', () => {
       const expectedPrice = 52000;
       
       // Subscribe to price updates in store
-      const unsubscribe = MarketStore.subscribe((state: ReturnType<typeof MarketStore.getState>) => {
-        if (state.prices[symbol]) {
-          expect(state.prices[symbol]).toBe(expectedPrice);
+      const unsubscribe = useMarketStoreBase.subscribe((state: ReturnType<typeof useMarketStoreBase.getState>) => {
+        if (state.currentPrices[symbol]) {
+          expect(state.currentPrices[symbol].price).toBe(expectedPrice);
           unsubscribe();
           done();
         }
       });
       
       // Connect to WebSocket stream
-      // @ts-expect-error - subscribeToTicker method needs to be implemented
-      connectionManager.subscribeToTicker(symbol, (data: { c: string }) => {
-        marketStore.updatePrice(symbol, parseFloat(data.c));
+      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@ticker`, (data) => {
+        console.log('Received WebSocket data:', data);
+        // 24hr ticker messages have 'c' field for current price
+        if ('c' in data && typeof data['c'] === 'string') {
+          console.log('Setting price for', symbol, 'to', data['c']);
+          marketStore.setCurrentPrice(symbol, createPriceUpdate(symbol, parseFloat(data['c'])));
+        }
       });
       
       // Simulate WebSocket message
@@ -92,16 +97,31 @@ describe('WSManager + Binance API Integration', () => {
         const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
         if (ws) {
           ws.simulateMessage({
-            e: 'trade' as any,
+            e: '24hrTicker',
             E: Date.now(),
             s: symbol,
+            p: '0',
+            P: '0',
+            w: '0',
+            x: '0',
             c: expectedPrice.toString(), // Current price
+            Q: '0',
+            b: '0',
+            B: '0',
+            a: '0',
+            A: '0',
             o: '51000', // Open price
             h: '52500', // High price
             l: '50500', // Low price
             v: '1000', // Volume
-            q: '51000000' // Quote volume
-          });
+            V: '0',
+            q: '51000000', // Quote volume
+            O: 0,
+            C: 0,
+            F: 0,
+            L: 0,
+            n: 0
+          } as any);
         }
       }, 50);
     });
@@ -112,18 +132,19 @@ describe('WSManager + Binance API Integration', () => {
       
       // Subscribe to multiple symbols
       symbols.forEach(symbol => {
-        // @ts-expect-error - subscribeToTicker method needs to be implemented
-        connectionManager.subscribeToTicker(symbol, (data: { c: string }) => {
-          marketStore.updatePrice(symbol, parseFloat(data.c));
-          receivedPrices.add(symbol);
+        binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@ticker`, (data) => {
+          if ('c' in data && typeof data['c'] === 'string') {
+            marketStore.setCurrentPrice(symbol, createPriceUpdate(symbol, parseFloat(data['c'])));
+            receivedPrices.add(symbol);
           
-          if (receivedPrices.size === symbols.length) {
-            // Verify all prices are in store
-            symbols.forEach(s => {
-              expect(marketStore.prices[s]).toBeDefined();
-              expect(marketStore.prices[s]).toBeGreaterThan(0);
-            });
-            done();
+            if (receivedPrices.size === symbols.length) {
+              // Verify all prices are in store
+              symbols.forEach(s => {
+                expect(marketStore.currentPrices[s]).toBeDefined();
+                expect(marketStore.currentPrices[s]?.price).toBeGreaterThan(0);
+              });
+              done();
+            }
           }
         });
       });
@@ -134,16 +155,31 @@ describe('WSManager + Binance API Integration', () => {
           const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
           if (ws) {
             ws.simulateMessage({
-              e: 'trade' as any,
+              e: '24hrTicker',
               E: Date.now(),
               s: symbol,
+              p: '0',
+              P: '0',
+              w: '0',
+              x: '0',
               c: (50000 + index * 1000).toString(),
+              Q: '0',
+              b: '0',
+              B: '0',
+              a: '0',
+              A: '0',
               o: '50000',
               h: '55000',
               l: '45000',
               v: '1000',
-              q: '50000000'
-            });
+              V: '0',
+              q: '50000000',
+              O: 0,
+              C: 0,
+              F: 0,
+              L: 0,
+              n: 0
+            } as any);
           }
         });
       }, 50);
@@ -156,27 +192,30 @@ describe('WSManager + Binance API Integration', () => {
       const interval = '1m';
       
       // Subscribe to kline updates
-      // @ts-expect-error - subscribeToKlines method needs to be implemented
-      connectionManager.subscribeToKlines(symbol, interval, (kline: { t: number; o: string; h: string; l: string; c: string; v: string }) => {
-        // Update store with kline data
-        marketStore.addKline(symbol, {
-          time: kline.t / 1000, // Convert to seconds
-          open: parseFloat(kline.o),
-          high: parseFloat(kline.h),
-          low: parseFloat(kline.l),
-          close: parseFloat(kline.c),
-          volume: parseFloat(kline.v)
-        });
+      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@kline_${interval}`, (data) => {
+        // Check if it's a BinanceKlineMessage with 'k' property
+        if ('k' in data && typeof data.k === 'object' && data.k) {
+          const kline = data.k as BinanceKlineMessage['k'];
+          // Update store with kline data
+          marketStore.addKline(symbol, {
+            time: kline.t / 1000, // Convert to seconds
+            open: parseFloat(kline.o),
+            high: parseFloat(kline.h),
+            low: parseFloat(kline.l),
+            close: parseFloat(kline.c),
+            volume: parseFloat(kline.v)
+          });
         
-        // Verify kline was added
-        const klines = marketStore.klines[`${symbol}_${interval}`];
-        expect(klines).toBeDefined();
-        expect(klines.length).toBeGreaterThan(0);
-        
-        const lastKline = klines[klines.length - 1];
-        expect(lastKline.close).toBe(parseFloat(kline.c));
-        
-        done();
+          // Verify kline was added
+          const klines = marketStore.priceData[symbol] || [];
+          expect(klines).toBeDefined();
+          expect(klines.length).toBeGreaterThan(0);
+          
+          const lastKline = klines[klines.length - 1];
+          expect(lastKline?.close).toBe(parseFloat(kline.c));
+          
+          done();
+        }
       });
       
       // Simulate kline message
@@ -208,15 +247,15 @@ describe('WSManager + Binance API Integration', () => {
       });
       
       // Get historical data through API
-      const historicalData = await binanceAPI.getKlines({
+      const historicalData = await binanceAPI.fetchKlines(
         symbol,
         interval,
-        limit: 20
-      });
+        20
+      );
       
       // Verify data consistency
       expect(historicalData).toBeDefined();
-      expect(marketStore.klines[`${symbol}_${interval}`].length).toBeGreaterThanOrEqual(20);
+      expect((marketStore.priceData[symbol] || []).length).toBeGreaterThanOrEqual(20);
     });
   });
 
@@ -225,9 +264,16 @@ describe('WSManager + Binance API Integration', () => {
       const symbol = 'BTCUSDT';
       
       // Subscribe with automatic fallback
-      // @ts-expect-error - subscribeToTicker method needs to be implemented
-      const subscription = connectionManager.subscribeToTicker(symbol, (data: { c: string }) => {
-        marketStore.updatePrice(symbol, parseFloat(data.c));
+      const subscription = binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@ticker`, (data) => {
+        if ('c' in data && typeof data['c'] === 'string') {
+          marketStore.setCurrentPrice(symbol, {
+            symbol,
+            price: parseFloat(data['c']),
+            change: 0,
+            changePercent: 0,
+            time: Date.now()
+          });
+        }
       });
       
       // Simulate WebSocket failure
@@ -243,12 +289,14 @@ describe('WSManager + Binance API Integration', () => {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Verify REST API was called as fallback
-      const ticker = await binanceAPI.getTicker24hr(symbol);
+      const ticker = await binanceAPI.fetchTicker24hr(symbol);
       expect(ticker).toBeDefined();
-      expect(ticker.symbol).toBe(symbol);
+      if (!Array.isArray(ticker)) {
+        expect(ticker.symbol).toBe(symbol);
+      }
       
       // Cleanup
-      subscription?.unsubscribe?.();
+      subscription?.();
     });
 
     it('should handle reconnection with data continuity', (done) => {
@@ -256,8 +304,9 @@ describe('WSManager + Binance API Integration', () => {
       let messageCount = 0;
       let disconnected = false;
       
-      // @ts-expect-error - subscribeToTrades method needs to be implemented
-      connectionManager.subscribeToTrades(symbol, (trade: { s: string }) => {
+      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@trade`, (data) => {
+        // Cast to BinanceTradeMessage for type safety
+        const trade = data as BinanceTradeMessage;
         messageCount++;
         
         if (messageCount === 1) {
@@ -269,7 +318,7 @@ describe('WSManager + Binance API Integration', () => {
               ws.simulateDisconnect();
             }
           }, 50);
-        } else if (messageCount === 2 && disconnected) {
+        } else if (messageCount === 2 && disconnected && trade.s) {
           // Second message after reconnection
           expect(trade.s).toBe(symbol);
           done();
@@ -304,8 +353,7 @@ describe('WSManager + Binance API Integration', () => {
       // Track performance
       const startTime = Date.now();
       
-      // @ts-expect-error - subscribeToAggTrades method needs to be implemented
-      connectionManager.subscribeToAggTrades(symbol, (_trade: unknown) => {
+      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@aggTrade`, (_trade) => {
         receivedCount++;
         
         if (receivedCount === updateCount) {
@@ -315,9 +363,8 @@ describe('WSManager + Binance API Integration', () => {
           expect(duration).toBeLessThan(1000); // Less than 1 second
           
           // Verify store updates
-          const state = marketStore.getState();
-          expect(state.lastUpdate).toBeDefined();
-          expect(state.lastUpdate).toBeGreaterThan(startTime);
+          expect(marketStore.lastUpdateTime).toBeDefined();
+          expect(marketStore.lastUpdateTime).toBeGreaterThan(startTime);
           
           done();
         }
@@ -329,7 +376,7 @@ describe('WSManager + Binance API Integration', () => {
         if (ws) {
           for (let i = 0; i < updateCount; i++) {
             ws.simulateMessage({
-              e: 'trade' as any,
+              e: 'aggTrade',
               E: Date.now(),
               s: symbol,
               a: 12345 + i,
@@ -339,7 +386,7 @@ describe('WSManager + Binance API Integration', () => {
               l: 100 + i,
               T: Date.now(),
               m: i % 2 === 0
-            });
+            } as any);
           }
         }
       }, 50);

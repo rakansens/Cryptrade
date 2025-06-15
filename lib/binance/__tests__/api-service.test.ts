@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BinanceAPIService } from '../api-service';
 import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline, BinanceTicker24hr } from '@/types/market';
@@ -23,7 +23,7 @@ const mockWindow = global as any;
 
 describe('BinanceAPIService', () => {
   let service: BinanceAPIService;
-  let mockGet: jest.Mock;
+  let mockGet: jest.MockedFunction<any>;
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -206,21 +206,25 @@ describe('BinanceAPIService', () => {
   describe('fetchTicker24hr', () => {
     const mockTickerData: BinanceTicker24hr = {
       symbol: 'BTCUSDT',
-      priceChange: 1000,
-      priceChangePercent: 2.22,
-      weightedAvgPrice: 45500,
-      prevClosePrice: 45000,
-      lastPrice: 46000,
-      lastQty: 0.5,
-      bidPrice: 45990,
-      askPrice: 46010,
-      openPrice: 45000,
-      highPrice: 47000,
-      lowPrice: 44000,
-      volume: 10000,
-      quoteVolume: 455000000,
+      priceChange: '1000',
+      priceChangePercent: '2.22',
+      weightedAvgPrice: '45500',
+      prevClosePrice: '45000',
+      lastPrice: '46000',
+      lastQty: '0.5',
+      bidPrice: '45990',
+      bidQty: '1.2',
+      askPrice: '46010',
+      askQty: '0.8',
+      openPrice: '45000',
+      highPrice: '47000',
+      lowPrice: '44000',
+      volume: '10000',
+      quoteVolume: '455000000',
       openTime: 1640000000000,
       closeTime: 1640086400000,
+      firstId: 1000000,
+      lastId: 1100000,
       count: 100000,
     };
 

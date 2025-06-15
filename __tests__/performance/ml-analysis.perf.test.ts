@@ -8,26 +8,32 @@ import type { PriceData } from '@/types/market';
 import type { StreamingMLUpdate } from '@/lib/ml/line-validation-types';
 
 // Mock TensorFlow.js for performance testing
-jest.mock('@tensorflow/tfjs', () => ({
-  sequential: jest.fn(() => ({
-    compile: jest.fn(),
-    fit: jest.fn().mockResolvedValue({}),
-    predict: jest.fn(() => ({
-      array: jest.fn().mockResolvedValue([[0.85, 0.6, 0.75, 0.95]]),
-      dispose: jest.fn()
-    })),
+jest.mock('@tensorflow/tfjs', () => {
+  const mockTensor = {
+    array: jest.fn(() => Promise.resolve([[0.85, 0.6, 0.75, 0.95]])),
     dispose: jest.fn()
-  })),
-  layers: {
-    dense: jest.fn(() => ({})),
-    dropout: jest.fn(() => ({}))
-  },
-  train: {
-    adam: jest.fn()
-  },
-  tensor2d: jest.fn(() => ({ dispose: jest.fn() })),
-  dispose: jest.fn()
-}));
+  };
+  
+  const mockModel = {
+    compile: jest.fn(),
+    fit: jest.fn().mockImplementation(() => Promise.resolve({ history: {} })),
+    predict: jest.fn().mockImplementation(() => mockTensor),
+    dispose: jest.fn()
+  };
+
+  return {
+    sequential: jest.fn().mockImplementation(() => mockModel),
+    layers: {
+      dense: jest.fn().mockImplementation(() => ({})),
+      dropout: jest.fn().mockImplementation(() => ({}))
+    },
+    train: {
+      adam: jest.fn().mockImplementation(() => ({}))
+    },
+    tensor2d: jest.fn().mockImplementation(() => ({ dispose: jest.fn() })),
+    dispose: jest.fn()
+  };
+});
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -84,7 +90,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const _features = extractor.extractFeatures(line, 'BTCUSDT');
+        extractor.extractFeatures(line, 'BTCUSDT');
         const end = performance.now();
         times.push(end - start);
       }
@@ -103,7 +109,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 1000; i++) {
         const start = performance.now();
-        const _normalized = extractor.normalizeFeatures(features);
+        extractor.normalizeFeatures(features);
         const end = performance.now();
         times.push(end - start);
       }
@@ -128,7 +134,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 50; i++) {
         const start = performance.now();
-        const _prediction = await predictor.predictLineSuccess(features, normalized);
+        await predictor.predictLineSuccess(features, normalized);
         const end = performance.now();
         times.push(end - start);
       }
@@ -281,7 +287,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        const _tempPredictor = new LineQualityPredictor();
+        new LineQualityPredictor();
         
         // Wait for initialization
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -359,7 +365,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const _importance = predictor.getFeatureImportance();
+        predictor.getFeatureImportance();
         const end = performance.now();
         times.push(end - start);
       }
@@ -375,7 +381,7 @@ describe('ML Analysis Performance Tests', () => {
 
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
-        const _metrics = predictor.getModelMetrics();
+        predictor.getModelMetrics();
         const end = performance.now();
         times.push(end - start);
       }
@@ -462,7 +468,6 @@ function generateMockPriceData(count: number): PriceData[] {
 function createMockLine(): DetectedLine {
   const touchTimes = [100, 200, 300, 400, 500];
   return {
-    id: `line-${Date.now()}-${Math.random()}`,
     type: 'support',
     price: 50000,
     confidence: 0.85,
@@ -470,6 +475,9 @@ function createMockLine(): DetectedLine {
       time: t,
       value: 50000 + (Math.random() - 0.5) * 100
     })),
-    supportingTimeframes: ['1h', '4h']
+    timeframe: '1h',
+    rSquared: 0.95,
+    startTime: 100,
+    endTime: 500
   };
 }

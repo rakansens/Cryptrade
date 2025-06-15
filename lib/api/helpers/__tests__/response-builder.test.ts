@@ -5,6 +5,7 @@ import {
   processOrchestratorResult,
   type ChatResponseParams 
 } from '../response-builder';
+import type { ProposalGroup } from '@/lib/api/types';
 
 // Mock middleware functions
 jest.mock('@/lib/api/middleware', () => ({
@@ -27,13 +28,13 @@ describe('response-builder', () => {
             confidence: 0.95,
             reasoning: 'User requested market analysis',
             analysisDepth: 'deep',
-            isProposalMode: false,
-            proposalType: null,
+            isProposalMode: false
           },
           success: true,
           executionTime: 1234,
-          memoryContext: { data: 'context' },
+          memoryContext: 'standard',
           executionResult: {
+            success: true,
             data: { result: 'analysis data' }
           }
         },
@@ -69,9 +70,13 @@ describe('response-builder', () => {
     });
 
     it('should include proposalGroup when provided', () => {
-      const proposalGroup = {
+      const proposalGroup: ProposalGroup = {
+        id: 'group-123', // Add the required id property
+        groupId: 'group-123',
+        timestamp: Date.now(),
+        symbol: 'BTCUSDT',
         proposals: [
-          { id: 1, type: 'trendline' }
+          { id: '1', type: 'trendline' } as any
         ]
       };
 
@@ -88,8 +93,10 @@ describe('response-builder', () => {
           },
           success: true,
           executionTime: 2000,
-          memoryContext: null,
-          executionResult: {}
+          memoryContext: undefined,
+          executionResult: {
+            success: true
+          }
         },
         proposalGroup,
         sessionId: 'proposal-session'
@@ -111,11 +118,14 @@ describe('response-builder', () => {
             confidence: 1,
             reasoning: 'Test',
             analysisDepth: 'basic',
+            isProposalMode: false
           },
           success: true,
           executionTime: 100,
-          memoryContext: null,
-          executionResult: {}
+          memoryContext: undefined,
+          executionResult: {
+            success: true
+          }
         }
       };
 
@@ -133,11 +143,12 @@ describe('response-builder', () => {
             confidence: 0.5,
             reasoning: 'No data test',
             analysisDepth: 'basic',
+            isProposalMode: false,
           },
           success: false,
           executionTime: 50,
-          memoryContext: null,
-          executionResult: null
+          memoryContext: undefined,
+          executionResult: undefined as any
         },
         sessionId: 'no-data-session'
       };
@@ -198,7 +209,7 @@ describe('response-builder', () => {
         }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result).toEqual({
         message: 'This is the response message',
@@ -220,7 +231,7 @@ describe('response-builder', () => {
         }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result).toEqual({
         message: 'Nested response',
@@ -240,7 +251,7 @@ describe('response-builder', () => {
         }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result).toEqual({
         message: 'Message field response',
@@ -255,10 +266,10 @@ describe('response-builder', () => {
           confidence: 0.85,
           isProposalMode: true,
         },
-        executionResult: {}
+        executionResult: { success: true }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result).toEqual({
         message: 'トレンドラインの提案を生成しました。',
@@ -273,10 +284,10 @@ describe('response-builder', () => {
           confidence: 0.3,
           isProposalMode: false,
         },
-        executionResult: {}
+        executionResult: { success: true }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result).toEqual({
         message: 'Intent: unknown (0.3)',
@@ -291,10 +302,10 @@ describe('response-builder', () => {
           confidence: 0.5,
           isProposalMode: false,
         },
-        executionResult: null
+        executionResult: undefined
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result.message).toBe('Intent: test (0.5)');
       expect(result.proposalGroup).toBeNull();
@@ -316,7 +327,7 @@ describe('response-builder', () => {
         }
       };
 
-      const result = processOrchestratorResult(orchestratorResult);
+      const result = processOrchestratorResult(orchestratorResult as any);
 
       expect(result.message).toBe('Direct response');
     });

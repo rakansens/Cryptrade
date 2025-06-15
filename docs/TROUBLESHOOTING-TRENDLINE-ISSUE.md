@@ -64,8 +64,6 @@ git checkout f5fe8f5 -- lib/chart/drawing-renderer.ts
 
 ### 3. デバッグツールの作成
 複数のデバッグ用HTMLファイルを作成：
-- `debug-drawing-visibility.html` - 描画の可視性確認
-- `debug-trendline-time.html` - 時間範囲の確認
 - `test-simple-trendline.html` - シンプルなテスト
 
 ## 実装の改善点

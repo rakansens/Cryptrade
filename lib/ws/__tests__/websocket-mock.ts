@@ -3,7 +3,6 @@
  * Provides realistic WebSocket behavior simulation
  */
 
-import type { RawWebSocketMessage } from '../types';
 
 // WebSocket event types
 interface WebSocketEventMap {
@@ -142,8 +141,12 @@ export class MockWebSocket {
     }
     
     this._readyState = MockWebSocket.CLOSING;
-    this.closeCode = code;
-    this.closeReason = reason;
+    if (code !== undefined) {
+      this.closeCode = code;
+    }
+    if (reason !== undefined) {
+      this.closeReason = reason;
+    }
     
     setTimeout(() => {
       this._readyState = MockWebSocket.CLOSED;
@@ -207,7 +210,7 @@ export class MockWebSocket {
       setTimeout(() => {
         this.simulateMessage({
           result: null,
-          id: message.id
+          id: message.id || 0
         });
       }, 5);
     }
@@ -353,7 +356,7 @@ export class WebSocketTestScenarios {
     }, 100);
   }
 
-  static simulateIdleConnection(ws: MockWebSocket, idleDuration: number = 300000): void {
+  static simulateIdleConnection(_ws: MockWebSocket, idleDuration: number = 300000): void {
     // No messages for specified duration
     setTimeout(() => {
       console.log('Idle connection simulation: no messages for', idleDuration, 'ms');
@@ -367,10 +370,14 @@ export function setupWebSocketMocking(): (() => void) {
   const originalWebSocket = (global as { WebSocket?: typeof WebSocket }).WebSocket;
   
   // Replace global WebSocket with mock immediately
-  (global as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
+  (global as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket as any;
   
   // Return cleanup function
   return () => {
-    (global as { WebSocket?: typeof WebSocket }).WebSocket = originalWebSocket;
+    if (originalWebSocket !== undefined) {
+      (global as { WebSocket: typeof WebSocket }).WebSocket = originalWebSocket;
+    } else {
+      delete (global as any).WebSocket;
+    }
   };
 }

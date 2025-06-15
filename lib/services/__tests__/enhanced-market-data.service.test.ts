@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { EnhancedMarketDataService, TimeframeConfig } from '../enhanced-market-data.service';
 import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline } from '@/types/market';
@@ -25,7 +25,7 @@ describe('EnhancedMarketDataService', () => {
     
     // Mock the get method
     mockGet = jest.fn();
-    service['get'] = mockGet;
+    service['get'] = mockGet as any;
   });
 
   describe('fetchMultiTimeframeData', () => {
@@ -55,7 +55,7 @@ describe('EnhancedMarketDataService', () => {
         { interval: '1h', weight: 0.3, dataPoints: 100 },
       ];
 
-      mockGet.mockImplementation((url, params) => {
+      mockGet.mockImplementation((_url, _params) => {
         return Promise.resolve({
           data: mockKlineData,
           status: 200,
@@ -79,15 +79,15 @@ describe('EnhancedMarketDataService', () => {
       expect(result.symbol).toBe(symbol);
       expect(result.timeframes['15m']).toBeDefined();
       expect(result.timeframes['1h']).toBeDefined();
-      expect(result.timeframes['15m'].data).toEqual(mockKlineData);
-      expect(result.timeframes['15m'].weight).toBe(0.2);
+      expect(result.timeframes['15m']?.data).toEqual(mockKlineData);
+      expect(result.timeframes['15m']?.weight).toBe(0.2);
     });
 
     it('should use cached data when available', async () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
+      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 } as any);
       const result1 = await service.fetchMultiTimeframeData(symbol);
       
       // Second call - should use cache
@@ -102,8 +102,8 @@ describe('EnhancedMarketDataService', () => {
     it('should handle partial failures gracefully', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockImplementation((url, params) => {
-        if (params.interval === '15m') {
+      mockGet.mockImplementation((_url, _params: any) => {
+        if (_params?.interval === '15m') {
           return Promise.reject(new Error('Network error'));
         }
         return Promise.resolve({ data: mockKlineData, status: 200 });
@@ -124,7 +124,7 @@ describe('EnhancedMarketDataService', () => {
     it('should throw error when all timeframes fail', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockRejectedValue(new Error('API unavailable'));
+      mockGet.mockRejectedValue(new Error('API unavailable' ) as any);
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow('Failed to fetch data from any timeframe');
     });
@@ -133,11 +133,11 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
+      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 } as any);
       await service.fetchMultiTimeframeData(symbol);
       
-      // Simulate cache expiry
-      service['cacheExpiryMs'] = 0;
+      // Simulate cache expiry by setting to a very small value
+      (service as any)['cacheExpiryMs'] = 0;
       
       // Second call - should fetch again
       await service.fetchMultiTimeframeData(symbol);
@@ -188,7 +188,7 @@ describe('EnhancedMarketDataService', () => {
         expect(level).toHaveProperty('timeframeSupport');
         expect(level).toHaveProperty('confidenceScore');
         expect(level).toHaveProperty('type');
-        expect(['support', 'resistance']).toContain(level.type);
+        expect(['support', 'resistance']).toContain(level?.type);
       }
     });
 
@@ -249,15 +249,15 @@ describe('EnhancedMarketDataService', () => {
       if (zones.length > 0) {
         const zone = zones[0];
         expect(zone).toHaveProperty('priceRange');
-        expect(zone.priceRange).toHaveProperty('min');
-        expect(zone.priceRange).toHaveProperty('max');
-        expect(zone.priceRange).toHaveProperty('center');
+        expect(zone?.priceRange).toHaveProperty('min');
+        expect(zone?.priceRange).toHaveProperty('max');
+        expect(zone?.priceRange).toHaveProperty('center');
         expect(zone).toHaveProperty('strength');
         expect(zone).toHaveProperty('timeframeCount');
         expect(zone).toHaveProperty('supportingTimeframes');
         expect(zone).toHaveProperty('levels');
         expect(zone).toHaveProperty('type');
-        expect(['support', 'resistance', 'pivot']).toContain(zone.type);
+        expect(['support', 'resistance', 'pivot']).toContain(zone?.type);
       }
     });
 
@@ -355,7 +355,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // Add some data to cache
-      mockGet.mockResolvedValue({ data: [], status: 200 });
+      mockGet.mockResolvedValue({ data: [], status: 200 } as any);
       await service.fetchMultiTimeframeData(symbol);
       
       const stats = service.getCacheStats();
@@ -364,7 +364,7 @@ describe('EnhancedMarketDataService', () => {
       expect(stats.entries).toHaveLength(stats.size);
       expect(stats.entries[0]).toHaveProperty('key');
       expect(stats.entries[0]).toHaveProperty('age');
-      expect(stats.entries[0].age).toBeGreaterThanOrEqual(0);
+      expect(stats.entries[0]?.age).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -373,7 +373,7 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       const error = new Error('API rate limit exceeded');
       
-      mockGet.mockRejectedValue(error);
+      mockGet.mockRejectedValue(error as any);
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow('Failed to fetch data from any timeframe');
       
@@ -389,7 +389,7 @@ describe('EnhancedMarketDataService', () => {
     it('should handle non-Error exceptions', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockRejectedValue('String error');
+      mockGet.mockRejectedValue('String error' as any);
 
       await expect(service.fetchMultiTimeframeData(symbol)).rejects.toThrow();
       

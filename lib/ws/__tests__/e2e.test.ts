@@ -8,8 +8,7 @@ import { binanceConnectionManagerShim } from '../compat-shim';
 import { getBinanceConnection } from '../migration';
 import { 
   MockWebSocket, 
-  BinanceMessageGenerator, 
-  WebSocketTestScenarios,
+  BinanceMessageGenerator,
   setupWebSocketMocking 
 } from './websocket-mock';
 
@@ -27,17 +26,6 @@ jest.mock('@/lib/utils/logger', () => ({
 jest.setTimeout(30000);
 
 // WebSocket message types for E2E testing
-interface MockTradeMessage {
-  e: 'trade';
-  E: number;
-  s: string;
-  t: number;
-  p: string;
-  q: string;
-  T: number;
-  m: boolean;
-}
-
 interface MockKlineMessage {
   e: 'kline';
   E: number;

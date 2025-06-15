@@ -7,7 +7,7 @@ import {
   createRetryMiddleware,
   createErrorHandlerMiddleware
 } from '../middlewares';
-import type { ApiMiddleware, RequestCtx } from '@/types/api';
+import type { ApiMiddleware } from '@/types/api';
 
 // Test server setup
 const server = setupServer();
@@ -88,7 +88,7 @@ describe('API Middleware Integration Tests', () => {
       expect(requestTimes).toHaveLength(3);
       
       // Third request should be delayed by at least 500ms from the first
-      const timeDiff = requestTimes[2] - requestTimes[0];
+      const timeDiff = (requestTimes[2] ?? 0) - (requestTimes[0] ?? 0);
       expect(timeDiff).toBeGreaterThanOrEqual(400); // Allow some margin for test timing
     });
   });
@@ -225,8 +225,8 @@ describe('API Middleware Integration Tests', () => {
       expect(requestTimes).toHaveLength(3);
       
       // Second retry should have ~200ms delay (2^1 * 100)
-      const delay1 = requestTimes[1] - requestTimes[0];
-      const delay2 = requestTimes[2] - requestTimes[1];
+      const delay1 = (requestTimes[1] ?? 0) - (requestTimes[0] ?? 0);
+      const delay2 = (requestTimes[2] ?? 0) - (requestTimes[1] ?? 0);
       
       expect(delay1).toBeGreaterThanOrEqual(80); // Allow some margin
       expect(delay2).toBeGreaterThanOrEqual(180); // Should be ~2x the first delay
@@ -238,14 +238,14 @@ describe('API Middleware Integration Tests', () => {
     it('should execute middlewares in correct order', async () => {
       const executionOrder: string[] = [];
 
-      const middleware1: ApiMiddleware = async (ctx, next) => {
+      const middleware1: ApiMiddleware = async (_ctx, next) => {
         executionOrder.push('middleware1-start');
         const result = await next();
         executionOrder.push('middleware1-end');
         return result;
       };
 
-      const middleware2: ApiMiddleware = async (ctx, next) => {
+      const middleware2: ApiMiddleware = async (_ctx, next) => {
         executionOrder.push('middleware2-start');
         const result = await next();
         executionOrder.push('middleware2-end');
@@ -334,10 +334,10 @@ describe('API Middleware Integration Tests', () => {
       expect(getResponse.data).toEqual({ method: 'GET' });
 
       const postResponse = await client.post('/post-test', { data: 'test' });
-      expect(postResponse.data.method).toBe('POST');
+      expect((postResponse.data as any).method).toBe('POST');
 
       const putResponse = await client.put('/put-test', { data: 'test' });
-      expect(putResponse.data.method).toBe('PUT');
+      expect((putResponse.data as any).method).toBe('PUT');
 
       const deleteResponse = await client.delete('/delete-test');
       expect(deleteResponse.data).toEqual({ method: 'DELETE' });
@@ -357,7 +357,7 @@ describe('API Middleware Integration Tests', () => {
       });
 
       expect(queuedResult).toHaveProperty('timestamp');
-      expect(typeof queuedResult.timestamp).toBe('number');
+      expect(typeof (queuedResult as any).timestamp).toBe('number');
     });
   });
 });

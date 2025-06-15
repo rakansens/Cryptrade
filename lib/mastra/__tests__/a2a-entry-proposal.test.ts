@@ -1,7 +1,6 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { agentNetwork } from '../network/agent-network';
 import { tradingAgent } from '../agents/trading.agent';
-import { orchestratorAgent } from '../agents/orchestrator.agent';
 import { registerAllAgents } from '../network/agent-registry';
 import { logger } from '@/lib/utils/logger';
 import type { AgentContext } from '@/types';
@@ -55,7 +54,7 @@ jest.mock('../tools/entry-proposal-generation/analyzers/condition-evaluator', ()
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () => ({
-  calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
+  calculateEntryPoints: jest.fn().mockResolvedValue([
     {
       price: 100500,
       direction: 'long',
@@ -75,7 +74,7 @@ jest.mock('../tools/entry-proposal-generation/calculators/entry-calculator', () 
 }));
 
 jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () => ({
-  calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
+  calculateRiskManagement: jest.fn().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],
     positionSize: 0.1,
@@ -87,7 +86,7 @@ jest.mock('../tools/entry-proposal-generation/calculators/risk-calculator', () =
 // Mock OpenAI to avoid API calls in tests
 jest.mock('@ai-sdk/openai', () => ({
   openai: jest.fn(() => ({
-    generate: jest.fn<(messages: unknown, options: unknown) => unknown>().mockImplementation((_messages, options) => {
+    generate: jest.fn().mockImplementation((_messages: any, options: any) => {
       // Check if this is for entry proposal generation
       if ((options as any)?.isProposalMode && (options as any)?.proposalType === 'entry') {
         return Promise.resolve({
@@ -304,7 +303,7 @@ describe('A2A Entry Proposal Integration', () => {
       // Create a spy on the trading agent's generate method
       const generateSpy = jest.spyOn(tradingAgent, 'generate');
 
-      const _response = await agentNetwork.sendMessage(
+      await agentNetwork.sendMessage(
         'orchestratorAgent',
         'tradingAnalysisAgent',
         'process_query',
@@ -456,7 +455,7 @@ describe('A2A Entry Proposal Integration', () => {
     it('should handle network errors', async () => {
       // Temporarily mock a network error
       const originalSendMessage = agentNetwork.sendMessage;
-      (agentNetwork as any).sendMessage = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('Network error'));
+      (agentNetwork as any).sendMessage = jest.fn().mockRejectedValue(new Error('Network error'));
 
       await expect(
         agentNetwork.sendMessage(

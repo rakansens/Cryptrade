@@ -250,7 +250,7 @@ describe('Binance Ticker API Route', () => {
     it('should timeout appropriately', async () => {
       // Mock fetch to never resolve
       mockFetch.mockImplementationOnce(() => 
-        new Promise((resolve) => {
+        new Promise(() => {
           // Never resolve to simulate timeout
         })
       );
@@ -258,7 +258,7 @@ describe('Binance Ticker API Route', () => {
       const request = new NextRequest('http://localhost/api/binance/ticker?symbol=BTCUSDT');
       
       // This should eventually timeout due to AbortSignal
-      const responsePromise = GET(request);
+      GET(request);
       
       // Wait a bit and verify fetch was called with abort signal
       await new Promise(resolve => setTimeout(resolve, 100));

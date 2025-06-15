@@ -200,9 +200,7 @@ describe('proposal-generator.types', () => {
     it('should handle undefined values for optional factors', () => {
       const factors: ConfidenceFactors = {
         baseFactor: 0.5,
-        touchFactor: undefined,
-        lengthFactor: 0.7,
-        volumeFactor: undefined
+        lengthFactor: 0.7
       };
 
       expect(factors.touchFactor).toBeUndefined();

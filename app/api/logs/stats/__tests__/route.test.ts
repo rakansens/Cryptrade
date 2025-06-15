@@ -110,7 +110,7 @@ describe('Logs Stats API Route', () => {
 
       const request = new NextRequest('http://localhost/api/logs/stats?source=api,websocket');
       const response = await GET(request);
-      const data = await response.json();
+      await response.json();
 
       expect(mockGetStats).toHaveBeenCalledWith({ source: ['api', 'websocket'] });
     });
@@ -137,7 +137,7 @@ describe('Logs Stats API Route', () => {
 
       const request = new NextRequest('http://localhost/api/logs/stats?agentName=orchestrator&toolName=chart-control');
       const response = await GET(request);
-      const data = await response.json();
+      await response.json();
 
       expect(mockGetStats).toHaveBeenCalledWith({
         agentName: 'orchestrator',
@@ -152,7 +152,7 @@ describe('Logs Stats API Route', () => {
         'http://localhost/api/logs/stats?level=error,warn&source=api&agentName=orchestrator&from=2024-01-01T00:00:00Z'
       );
       const response = await GET(request);
-      const data = await response.json();
+      await response.json();
 
       expect(mockGetStats).toHaveBeenCalledWith({
         level: ['error', 'warn'],

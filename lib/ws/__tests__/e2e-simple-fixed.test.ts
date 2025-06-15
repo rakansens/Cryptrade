@@ -39,7 +39,7 @@ describe('WSManager Simplified E2E Tests', () => {
       // Check that WebSocket was created
       const instances = MockWebSocket.getAllInstances();
       expect(instances).toHaveLength(1);
-      expect(instances[0].url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      expect(instances[0]?.url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
 
       subscription.unsubscribe();
     });

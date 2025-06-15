@@ -1,5 +1,4 @@
 import { analyzeIntent } from '../intent';
-import type { IntentAnalysisResult, UserIntent } from '../intent';
 
 describe('Intent Analysis Utility', () => {
   describe('Basic Intent Detection', () => {

@@ -1,18 +1,18 @@
 import { ChartAnalyzer } from '../analyzer'
-import type { CandlestickData } from '@/types/chart.types'
+import type { CandlestickData, Time } from 'lightweight-charts'
 
 describe('ChartAnalyzer', () => {
-  const mockData = [
-    { time: 1704067200, open: 44800, high: 45200, low: 44600, close: 45000, volume: 100 },
-    { time: 1704070800, open: 45000, high: 45500, low: 44900, close: 45300, volume: 120 },
-    { time: 1704074400, open: 45300, high: 45600, low: 45100, close: 45400, volume: 110 },
-    { time: 1704078000, open: 45400, high: 45800, low: 45200, close: 45600, volume: 130 },
-    { time: 1704081600, open: 45600, high: 46000, low: 45500, close: 45900, volume: 140 },
-    { time: 1704085200, open: 45900, high: 46200, low: 45700, close: 46100, volume: 125 },
-    { time: 1704088800, open: 46100, high: 46300, low: 45800, close: 45900, volume: 115 },
-    { time: 1704092400, open: 45900, high: 46100, low: 45600, close: 45800, volume: 105 },
-    { time: 1704096000, open: 45800, high: 46000, low: 45500, close: 45700, volume: 100 },
-    { time: 1704099600, open: 45700, high: 45900, low: 45400, close: 45600, volume: 95 }
+  const mockData: CandlestickData[] = [
+    { time: 1704067200 as Time, open: 44800, high: 45200, low: 44600, close: 45000 },
+    { time: 1704070800 as Time, open: 45000, high: 45500, low: 44900, close: 45300 },
+    { time: 1704074400 as Time, open: 45300, high: 45600, low: 45100, close: 45400 },
+    { time: 1704078000 as Time, open: 45400, high: 45800, low: 45200, close: 45600 },
+    { time: 1704081600 as Time, open: 45600, high: 46000, low: 45500, close: 45900 },
+    { time: 1704085200 as Time, open: 45900, high: 46200, low: 45700, close: 46100 },
+    { time: 1704088800 as Time, open: 46100, high: 46300, low: 45800, close: 45900 },
+    { time: 1704092400 as Time, open: 45900, high: 46100, low: 45600, close: 45800 },
+    { time: 1704096000 as Time, open: 45800, high: 46000, low: 45500, close: 45700 },
+    { time: 1704099600 as Time, open: 45700, high: 45900, low: 45400, close: 45600 }
   ]
 
   let analyzer: ChartAnalyzer
@@ -190,8 +190,8 @@ describe('ChartAnalyzer', () => {
       // Test data with multiple touches at similar price levels
       const clusteredData = [
         ...mockData.slice(0, 5),
-        { time: 1704103200, open: 45500, high: 45600, low: 45490, close: 45550, volume: 100 },
-        { time: 1704106800, open: 45550, high: 45650, low: 45510, close: 45600, volume: 110 },
+        { time: 1704103200 as Time, open: 45500, high: 45600, low: 45490, close: 45550 },
+        { time: 1704106800 as Time, open: 45550, high: 45650, low: 45510, close: 45600 },
         ...mockData.slice(7)
       ]
       
@@ -227,7 +227,7 @@ describe('ChartAnalyzer', () => {
     })
 
     it('handles single data point', () => {
-      const singleAnalyzer = new ChartAnalyzer([mockData[0]])
+      const singleAnalyzer = new ChartAnalyzer([mockData[0] as CandlestickData<Time>])
       
       const trendResult = singleAnalyzer.detectTrendLines({
         lookbackPeriod: 10,

@@ -1,20 +1,13 @@
 // Jest is configured globally, no imports needed
 import type {
   StoreMetadata,
-  StoreMigration,
   PatternCoordinate,
-  PatternLine,
   PatternVisualization,
-  PatternZone,
-  PatternLabel,
-  PatternMetrics,
   TradingProposal,
   ProposalGroup,
-  EntryProposal,
   EntryProposalGroup,
   IndicatorValue,
   IndicatorConfig,
-  AnalysisMetadata,
   AnalysisResult
 } from '../store.types';
 import {
@@ -363,36 +356,36 @@ describe('store.types', () => {
         return typeof s === 'object' && 
                s !== null && 
                'valid' in s && 
-               (s as any).valid === true;
+               (s as { valid: boolean }).valid === true;
       });
     });
 
     it('should return true for valid state', () => {
       const state = { valid: true };
-      expect(isValidPersistedState(state, mockValidator)).toBe(true);
+      expect(isValidPersistedState(state, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(true);
       expect(mockValidator).toHaveBeenCalledWith(state);
     });
 
     it('should return false for null', () => {
-      expect(isValidPersistedState(null, mockValidator)).toBe(false);
+      expect(isValidPersistedState(null, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
       expect(mockValidator).not.toHaveBeenCalled();
     });
 
     it('should return false for undefined', () => {
-      expect(isValidPersistedState(undefined, mockValidator)).toBe(false);
+      expect(isValidPersistedState(undefined, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
       expect(mockValidator).not.toHaveBeenCalled();
     });
 
     it('should return false for non-object values', () => {
-      expect(isValidPersistedState('string', mockValidator)).toBe(false);
-      expect(isValidPersistedState(123, mockValidator)).toBe(false);
-      expect(isValidPersistedState(true, mockValidator)).toBe(false);
+      expect(isValidPersistedState('string', mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
+      expect(isValidPersistedState(123, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
+      expect(isValidPersistedState(true, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
       expect(mockValidator).not.toHaveBeenCalled();
     });
 
     it('should return false when validator returns false', () => {
       const state = { valid: false };
-      expect(isValidPersistedState(state, mockValidator)).toBe(false);
+      expect(isValidPersistedState(state, mockValidator as unknown as Parameters<typeof isValidPersistedState>[1])).toBe(false);
       expect(mockValidator).toHaveBeenCalledWith(state);
     });
   });

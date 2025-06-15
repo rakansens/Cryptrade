@@ -1,5 +1,6 @@
 import { AnalysisService } from '../analysis.service';
 import { prisma } from '@/lib/db/prisma';
+import { DrawingProposal } from '@/types/proposals';
 
 // Mock Prisma client
 jest.mock('@/lib/db/prisma', () => ({
@@ -36,7 +37,13 @@ describe('AnalysisService', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
         type: 'support' as const,
-        proposalData: { price: 50000, confidence: 0.85 },
+        proposalData: { 
+          id: 'test-proposal',
+          type: 'support',
+          price: 50000, 
+          confidence: 0.85,
+          reasoning: 'Test reasoning'
+        },
       };
 
       const result = await AnalysisService.saveAnalysis(data);
@@ -68,7 +75,13 @@ describe('AnalysisService', () => {
         symbol: 'ETHUSDT',
         interval: '4h',
         type: 'resistance' as const,
-        proposalData: { price: 3000 },
+        proposalData: { 
+          id: 'test-proposal-2',
+          type: 'resistance',
+          price: 3000,
+          confidence: 0.9,
+          reasoning: 'Test resistance reasoning'
+        },
       };
 
       await AnalysisService.saveAnalysis(data);
@@ -90,7 +103,12 @@ describe('AnalysisService', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           type,
-          proposalData: {},
+          proposalData: {
+            id: `test-${type}`,
+            type: type,
+            confidence: 0.8,
+            reasoning: 'Test proposal'
+          },
         });
       }
 
@@ -298,7 +316,12 @@ describe('AnalysisService', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           type: 'support',
-          proposalData: {},
+          proposalData: {
+            id: 'test-error',
+            type: 'support',
+            confidence: 0.8,
+            reasoning: 'Test error proposal'
+          },
         })
       ).rejects.toThrow('Database connection failed');
     });

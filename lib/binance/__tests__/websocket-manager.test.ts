@@ -120,7 +120,7 @@ describe('BinanceWebSocketManager', () => {
       
       // Should only create one connection
       expect(MockWebSocket.instances).toHaveLength(1);
-      expect(MockWebSocket.instances[0].url).toContain('ethusdt@trade');
+      expect(MockWebSocket.instances[0]?.url).toContain('ethusdt@trade');
     });
 
     it('should handle connection open event', async () => {
@@ -161,7 +161,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      const closeSpy = jest.spyOn(ws, 'close');
+      const closeSpy = jest.spyOn(ws as any, 'close');
       
       manager.unsubscribe('BTCUSDT', callback);
       
@@ -182,7 +182,7 @@ describe('BinanceWebSocketManager', () => {
       jest.advanceTimersByTime(20);
       
       const ws = MockWebSocket.instances[0];
-      const closeSpy = jest.spyOn(ws, 'close');
+      const closeSpy = jest.spyOn(ws as any, 'close');
       
       manager.unsubscribe('BTCUSDT', callback1);
       

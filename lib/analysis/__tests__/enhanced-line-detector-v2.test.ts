@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { EnhancedLineDetectorV2, type EnhancedLineV2, type LineDetectionV2Config } from '@/lib/analysis/enhanced-line-detector-v2';
+import { EnhancedLineDetectorV2, type LineDetectionV2Config } from '@/lib/analysis/enhanced-line-detector-v2';
 import { AdvancedTouchDetector } from '@/lib/analysis/advanced-touch-detector';
 import type { MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 import type { ProcessedKline } from '@/types/market';
@@ -34,7 +34,7 @@ describe('EnhancedLineDetectorV2', () => {
           { time: 5000, open: basePrice, high: basePrice + 8, low: basePrice - 1, close: basePrice + 6, volume: 2000 },
         ],
         weight: 1.0,
-        analysisDepth: 200
+        dataPoints: 200
       },
       '4h': {
         data: [
@@ -43,7 +43,7 @@ describe('EnhancedLineDetectorV2', () => {
           { time: 32000, open: basePrice + 2, high: basePrice + 4, low: basePrice - 3, close: basePrice + 1, volume: 4500 },
         ],
         weight: 1.5,
-        analysisDepth: 100
+        dataPoints: 100
       }
     },
     fetchedAt: Date.now()
@@ -146,7 +146,7 @@ describe('EnhancedLineDetectorV2', () => {
       // Mock low touch count
       mockTouchDetector.analyzeTouchPoints.mockReturnValue({
         ...mockTouchAnalysis,
-        touchPoints: [mockTouchAnalysis.touchPoints[0]], // Only 1 touch
+        touchPoints: mockTouchAnalysis.touchPoints[0] ? [mockTouchAnalysis.touchPoints[0]] : [], // Only 1 touch
       });
       
       const result = await customDetector.detectEnhancedLines(multiTimeframeData);
@@ -215,7 +215,7 @@ describe('EnhancedLineDetectorV2', () => {
   describe('horizontal line detection', () => {
     it('should find swing levels correctly', async () => {
       const multiTimeframeData = createMockTimeframeData(100);
-      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      await detector.detectEnhancedLines(multiTimeframeData);
       
       // Should have called touch analysis for detected levels
       expect(mockTouchDetector.analyzeTouchPoints).toHaveBeenCalled();
@@ -348,7 +348,7 @@ describe('EnhancedLineDetectorV2', () => {
       const allLines = [...result.horizontalLines, ...result.trendlines];
       
       allLines.forEach(line => {
-        expect(line.metadata).toMatchObject({
+        expect((line as any).metadata).toMatchObject({
           algorithm: 'multi-timeframe',
           version: expect.any(String),
           calculatedAt: expect.any(Number),
@@ -387,7 +387,7 @@ describe('EnhancedLineDetectorV2', () => {
       const emptyData: MultiTimeframeData = {
         symbol: 'BTCUSDT',
         timeframes: {
-          '1h': { data: [], weight: 1.0, analysisDepth: 0 },
+          '1h': { data: [], weight: 1.0, dataPoints: 0 },
         },
         fetchedAt: Date.now(),
       };
@@ -405,7 +405,7 @@ describe('EnhancedLineDetectorV2', () => {
           '1h': {
             data: [{ time: 1000, open: 100, high: 105, low: 95, close: 102, volume: 1000 }],
             weight: 1.0,
-            analysisDepth: 1
+            dataPoints: 1
           },
         },
         fetchedAt: Date.now(),
@@ -427,7 +427,7 @@ describe('EnhancedLineDetectorV2', () => {
               { time: 2000, open: 102, high: 107, low: 98, close: 104, volume: 1200 },
             ],
             weight: 1.0,
-            analysisDepth: 2
+            dataPoints: 2
           },
         },
         fetchedAt: Date.now(),

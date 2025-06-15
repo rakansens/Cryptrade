@@ -95,11 +95,11 @@ describe('Style Editor Integration Tests', () => {
     // Mock window.addEventListener to capture event listeners
     window.addEventListener = jest.fn((type: string, listener: EventListener) => {
       eventListeners.set(type, listener)
-    })
+    }) as any
     
     window.removeEventListener = jest.fn((type: string) => {
       eventListeners.delete(type)
-    })
+    }) as any
     
     // Reset mock implementations
     mockUpdateDrawing.mockClear()

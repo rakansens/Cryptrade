@@ -55,7 +55,7 @@ jest.mock('@/components/ui/button', () => ({
 
 jest.mock('@/components/ui/popover', () => ({
   Popover: ({ children }: any) => <div data-testid="popover">{children}</div>,
-  PopoverTrigger: ({ children, asChild }: any) => (
+  PopoverTrigger: ({ children }: any) => (
     <div data-testid="popover-trigger">{children}</div>
   ),
   PopoverContent: ({ children }: any) => (

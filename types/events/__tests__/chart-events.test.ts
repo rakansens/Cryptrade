@@ -187,10 +187,10 @@ describe('Chart Events Validation', () => {
 
   describe('unknown event type', () => {
     it('should handle unknown event type', () => {
-      const result = validateChartEvent('unknownEvent' as any, {});
+      const result = validateChartEvent('unknownEvent' as Parameters<typeof validateChartEvent>[0], {});
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.errors[0].message).toContain('Unknown event type');
+        expect(result.error?.errors[0]?.message).toContain('Unknown event type');
       }
       });
   });

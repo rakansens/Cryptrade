@@ -43,7 +43,7 @@ jest.mock('@/store/chart-range.store', () => ({
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   disconnect: jest.fn(),
-}));
+})) as any;
 
 // Performance testing utilities
 const createMockPriceData = (count: number): ProcessedKline[] => {
@@ -57,14 +57,14 @@ const createMockPriceData = (count: number): ProcessedKline[] => {
   }));
 };
 
-const mockCalculateIndicator = jest.fn((data) => 
+const mockCalculateIndicator = jest.fn((data: any) => 
   data.map((item: any, index: number) => ({
     time: item.time,
     value: 50 + Math.sin(index * 0.1) * 20,
   }))
 );
 
-const mockFormatSeriesData = jest.fn((data) => ({
+const mockFormatSeriesData = jest.fn((data: any) => ({
   main: data,
 }));
 
@@ -152,17 +152,17 @@ describe('Indicator Chart Performance Tests', () => {
   describe('useIndicatorChartData Performance', () => {
     it('should update data efficiently with setData() only', async () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
-      const { result, rerender } = renderHook(
+      const { rerender } = renderHook(
         ({ priceData }) => useIndicatorChartData({
           chartId: 'test-chart',
           priceData,
-          seriesRefs: mockSeriesRefs,
+          seriesRefs: mockSeriesRefs as any,
           isInitialized: true,
-          calculateIndicator: mockCalculateIndicator,
-          formatSeriesData: mockFormatSeriesData,
+          calculateIndicator: mockCalculateIndicator as any,
+          formatSeriesData: mockFormatSeriesData as any,
         }),
         { 
           initialProps: { 
@@ -189,7 +189,7 @@ describe('Indicator Chart Performance Tests', () => {
 
     it('should handle large datasets efficiently', async () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
       const largeDataset = createMockPriceData(1000);
@@ -199,10 +199,10 @@ describe('Indicator Chart Performance Tests', () => {
       renderHook(() => useIndicatorChartData({
         chartId: 'test-chart',
         priceData: largeDataset,
-        seriesRefs: mockSeriesRefs,
+        seriesRefs: mockSeriesRefs as any,
         isInitialized: true,
-        calculateIndicator: mockCalculateIndicator,
-        formatSeriesData: mockFormatSeriesData,
+        calculateIndicator: mockCalculateIndicator as any,
+        formatSeriesData: mockFormatSeriesData as any,
       }));
 
       const endTime = performance.now();
@@ -215,7 +215,7 @@ describe('Indicator Chart Performance Tests', () => {
 
     it('should not update when not initialized', () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
       renderHook(() => useIndicatorChartData({
@@ -232,7 +232,7 @@ describe('Indicator Chart Performance Tests', () => {
 
     it('should handle empty data gracefully', () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
       const { result } = renderHook(() => useIndicatorChartData({
@@ -252,7 +252,7 @@ describe('Indicator Chart Performance Tests', () => {
   describe('Memory and Re-render Optimization', () => {
     it('should not cause excessive re-renders on price data updates', () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
       let renderCount = 0;
@@ -269,7 +269,7 @@ describe('Indicator Chart Performance Tests', () => {
         return null;
       };
 
-      const { rerender } = renderHook(() => null);
+      renderHook(() => null);
 
       // Initial render
       renderCount = 0;
@@ -325,7 +325,7 @@ describe('Indicator Chart Performance Tests', () => {
 
     it('should handle indicator calculation errors gracefully', () => {
       const mockSeriesRefs = {
-        main: { setData: jest.fn() },
+        main: { setData: jest.fn() } as any,
       };
 
       const errorCalculator = jest.fn(() => {

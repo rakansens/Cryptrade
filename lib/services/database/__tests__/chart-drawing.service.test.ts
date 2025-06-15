@@ -70,8 +70,10 @@ describe('ChartDrawingDatabaseService', () => {
       const drawing = {
         id: 'drawing-1',
         type: 'trendline' as const,
-        points: [{ time: 1000, value: 100 }],
+        points: [{ time: 1000, value: 100 }, { time: 2000, value: 200 }],
         style: { color: '#00ff00' },
+        visible: true,
+        interactive: true
       };
       
       const result = await ChartDrawingDatabaseService.saveDrawing(drawing);
@@ -104,7 +106,10 @@ describe('ChartDrawingDatabaseService', () => {
           id: 'drawing-2',
           type: 'horizontal' as const,
           price: 50000,
-          style: { color: '#ff0000' },
+          points: [{ time: 1000, value: 50000 }],
+          style: { color: '#ff0000', lineWidth: 2, lineStyle: 'solid' as const },
+          visible: true,
+          interactive: true
         },
       ];
 
@@ -120,8 +125,8 @@ describe('ChartDrawingDatabaseService', () => {
             id: 'drawing-1',
             sessionId: 'session-123',
             type: 'trendline',
-            points: drawings[0].points,
-            style: drawings[0].style,
+            points: drawings[0]?.points,
+            style: drawings[0]?.style,
             price: null,
             time: null,
             levels: null,
@@ -134,7 +139,7 @@ describe('ChartDrawingDatabaseService', () => {
             sessionId: 'session-123',
             type: 'horizontal',
             points: undefined,
-            style: drawings[1].style,
+            style: drawings[1]?.style,
             price: 50000,
             time: null,
             levels: null,
@@ -163,7 +168,13 @@ describe('ChartDrawingDatabaseService', () => {
       (prisma.chartDrawing.deleteMany as jest.Mock).mockRejectedValue(error);
 
       await expect(
-        ChartDrawingDatabaseService.saveDrawings([{ id: '1', type: 'trendline' }])
+        ChartDrawingDatabaseService.saveDrawings([{ 
+          id: '1', 
+          type: 'trendline',
+          points: [],
+          visible: true,
+          interactive: true
+        }])
       ).rejects.toThrow('Database error');
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -257,6 +268,8 @@ describe('ChartDrawingDatabaseService', () => {
         levels: [0, 0.236, 0.382, 0.5, 0.618, 1],
         style: { color: '#00ff00' },
         metadata: { symbol: 'BTCUSDT' },
+        visible: true,
+        interactive: true
       };
 
       const dbDrawing = { ...drawing, createdAt: new Date() };
@@ -448,8 +461,21 @@ describe('ChartDrawingDatabaseService', () => {
 
     it('should migrate drawings and patterns', async () => {
       const drawings = [
-        { id: 'd1', type: 'trendline' as const, points: [] },
-        { id: 'd2', type: 'horizontal' as const, price: 50000 },
+        { 
+          id: 'd1', 
+          type: 'trendline' as const, 
+          points: [{ time: 1000, value: 100 }, { time: 2000, value: 200 }],
+          visible: true,
+          interactive: true
+        },
+        { 
+          id: 'd2', 
+          type: 'horizontal' as const, 
+          price: 50000,
+          points: [{ time: 1000, value: 50000 }],
+          visible: true,
+          interactive: true
+        },
       ];
       
       const patterns = [
@@ -545,7 +571,7 @@ describe('ChartDrawingDatabaseService', () => {
 
       // Should only return BTCUSDT 1h drawing
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('d1');
+      expect(result[0]?.id).toBe('d1');
     });
   });
 });

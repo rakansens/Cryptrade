@@ -126,7 +126,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals).toHaveLength(2);
       expect(result.proposals[0]?.type).toBe('pattern');
       expect(result.proposals[0]?.description).toContain('ヘッドアンドショルダー');
@@ -168,7 +169,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals.length).toBeGreaterThan(0);
       expect(result.proposals.some(p => p.type === 'horizontalLine')).toBe(true);
     });
@@ -185,7 +187,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(mockMLAnalyzer.analyzeLineWithProgress).toHaveBeenCalled();
       
       const mlValidatedProposals = result.proposals.filter(p => p.mlPrediction);
@@ -211,7 +214,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals.some(p => p.type === 'trendline')).toBe(true);
       
       const trendlineProposal = result.proposals.find(p => p.type === 'trendline');
@@ -234,7 +238,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       const trendlineWithML = result.proposals.find(p => p.type === 'trendline' && p.mlPrediction);
       
       if (trendlineWithML) {
@@ -257,7 +262,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals.length).toBeGreaterThan(0);
       
       const types = new Set(result.proposals.map(p => p.type));
@@ -302,7 +308,7 @@ describe('enhancedProposalGeneration', () => {
     });
 
     it('should continue without ML when ML analyzer fails', async () => {
-      mockMLAnalyzer.analyzeLineWithProgress.mockImplementation(function* () {
+      mockMLAnalyzer.analyzeLineWithProgress.mockImplementation(async function* () {
         throw new Error('ML analysis failed');
       });
 
@@ -317,7 +323,8 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals.length).toBeGreaterThan(0);
       expect(result.proposals[0]?.mlPrediction).toBeUndefined();
     });
@@ -349,14 +356,15 @@ describe('enhancedProposalGeneration', () => {
 
       const result = await enhancedProposalGeneration(input);
 
-      expect(result.success).toBe(true);
+      expect(result).toBeDefined();
+      expect(result.proposalGroupId).toBeDefined();
       expect(result.proposals.length).toBeLessThanOrEqual(input.maxProposals);
     });
   });
 
   describe('Summary Generation', () => {
     it('should generate appropriate summary for no proposals', async () => {
-      mockPatternDetector.detectPatterns.mockReturnValue({ patterns: [] });
+      mockPatternDetector.detectPatterns.mockReturnValue([]);
 
       const input: EnhancedProposalGenerationInput = {
         symbol: 'BTCUSDT',

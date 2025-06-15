@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { PatternDetector } from '@/lib/analysis/pattern-detector';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { PatternAnalysis, PatternDetectionParams, PatternType } from '@/types/pattern';
+import type { PatternDetectionParams } from '@/types/pattern';
 
 describe('PatternDetector', () => {
   let detector: PatternDetector;
@@ -25,6 +25,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 50,
         minConfidence: 0.6,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -49,6 +50,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 50,
         minConfidence: 0.8,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -63,6 +65,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: 50,
         minConfidence: 0.5,
         patternTypes: ['headAndShoulders', 'inverseHeadAndShoulders'],
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -76,12 +79,13 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 20,
         minConfidence: 0.5,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
 
       patterns.forEach(pattern => {
-        expect(pattern.startIndex).toBeGreaterThanOrEqual(mockData.length - 20);
+        expect((pattern as any).startIndex).toBeGreaterThanOrEqual(mockData.length - 20);
       });
     });
   });
@@ -96,6 +100,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: hsData.length,
         minConfidence: 0.5,
         patternTypes: ['headAndShoulders'],
+        includePartialPatterns: false,
       };
 
       const patterns = hsDetector.detectPatterns(params);
@@ -117,6 +122,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: ihsData.length,
         minConfidence: 0.5,
         patternTypes: ['inverseHeadAndShoulders'],
+        includePartialPatterns: false,
       };
 
       const patterns = ihsDetector.detectPatterns(params);
@@ -135,6 +141,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: asymmetricData.length,
         minConfidence: 0.9, // High confidence required
         patternTypes: ['headAndShoulders'],
+        includePartialPatterns: false,
       };
 
       const patterns = asymDetector.detectPatterns(params);
@@ -153,6 +160,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: triangleData.length,
         minConfidence: 0.6,
         patternTypes: ['ascendingTriangle'],
+        includePartialPatterns: false,
       };
 
       const patterns = triangleDetector.detectPatterns(params);
@@ -174,6 +182,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: triangleData.length,
         minConfidence: 0.6,
         patternTypes: ['descendingTriangle'],
+        includePartialPatterns: false,
       };
 
       const patterns = triangleDetector.detectPatterns(params);
@@ -193,6 +202,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: triangleData.length,
         minConfidence: 0.6,
         patternTypes: ['symmetricalTriangle'],
+        includePartialPatterns: false,
       };
 
       const patterns = triangleDetector.detectPatterns(params);
@@ -210,6 +220,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: doubleTopData.length,
         minConfidence: 0.6,
         patternTypes: ['doubleTop'],
+        includePartialPatterns: false,
       };
 
       const patterns = dtDetector.detectPatterns(params);
@@ -232,6 +243,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: doubleBottomData.length,
         minConfidence: 0.6,
         patternTypes: ['doubleBottom'],
+        includePartialPatterns: false,
       };
 
       const patterns = dbDetector.detectPatterns(params);
@@ -249,6 +261,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 50,
         minConfidence: 0.5,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -267,16 +280,20 @@ describe('PatternDetector', () => {
           });
         });
 
-        if (pattern.visualization.trendLines) {
+        if ('trendLines' in pattern.visualization && pattern.visualization.trendLines) {
           expect(pattern.visualization.trendLines).toBeInstanceOf(Array);
         }
 
-        if (pattern.visualization.area) {
-          expect(pattern.visualization.area).toMatchObject({
-            startTime: expect.any(Number),
-            endTime: expect.any(Number),
-            color: expect.any(String),
-            opacity: expect.any(Number),
+        if (pattern.visualization.areas) {
+          expect(pattern.visualization.areas).toBeInstanceOf(Array);
+          pattern.visualization.areas.forEach(area => {
+            expect(area).toMatchObject({
+              points: expect.arrayContaining([expect.any(Number)]),
+              style: expect.objectContaining({
+                fillColor: expect.any(String),
+                opacity: expect.any(Number),
+              }),
+            });
           });
         }
       });
@@ -289,6 +306,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 50,
         minConfidence: 0.6,
+        includePartialPatterns: false,
       };
 
       const patterns = emptyDetector.detectPatterns(params);
@@ -301,6 +319,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 50,
         minConfidence: 0.6,
+        includePartialPatterns: false,
       };
 
       const patterns = smallDetector.detectPatterns(params);
@@ -312,6 +331,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 200, // Larger than mockData length
         minConfidence: 0.6,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -324,6 +344,7 @@ describe('PatternDetector', () => {
         lookbackPeriod: 50,
         minConfidence: 0.5,
         // patternTypes not specified - should check all
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);
@@ -342,6 +363,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 200,
         minConfidence: 0.6,
+        includePartialPatterns: false,
       };
 
       const startTime = Date.now();
@@ -356,6 +378,7 @@ describe('PatternDetector', () => {
       const params: PatternDetectionParams = {
         lookbackPeriod: 100,
         minConfidence: 0.5,
+        includePartialPatterns: false,
       };
 
       const patterns = detector.detectPatterns(params);

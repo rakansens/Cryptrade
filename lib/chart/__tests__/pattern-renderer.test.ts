@@ -1,8 +1,8 @@
 import { PatternRenderer } from '../pattern-renderer'
 import { GlobalStateManager } from '../GlobalStateManager'
-import { logger } from '@/lib/utils/logger'
-import type { IChartApi, ISeriesApi, SeriesMarker, Time, SeriesType } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, Time, SeriesType } from 'lightweight-charts'
 import type { PatternVisualization } from '@/types/pattern'
+import { logger } from '@/lib/utils/logger'
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger')
@@ -30,14 +30,11 @@ describe('PatternRenderer', () => {
     ],
     areas: [
       {
-        points: [
-          { x: 1704067200, y: 45000 },
-          { x: 1704240000, y: 46000 },
-          { x: 1704240000, y: 43000 },
-          { x: 1704067200, y: 43000 }
-        ],
-        fillColor: 'rgba(59, 130, 246, 0.1)',
-        strokeColor: '#3b82f6'
+        points: [0, 1, 2, 3],
+        style: {
+          fillColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: '#3b82f6'
+        }
       }
     ]
   }
@@ -63,7 +60,7 @@ describe('PatternRenderer', () => {
 
     // Mock chart
     mockChart = {
-      addLineSeries: jest.fn().mockReturnValue(mockPatternSeries),
+      addLineSeries: jest.fn().mockReturnValue(mockPatternSeries) as any,
       addAreaSeries: jest.fn().mockReturnValue(mockPatternSeries),
       removeSeries: jest.fn()
     } as unknown as jest.Mocked<IChartApi>
@@ -214,7 +211,7 @@ describe('PatternRenderer', () => {
       renderer.renderPattern('pattern-2', mockVisualization, 'test')
       
       // Remove all
-      renderer.removeAllPatterns()
+      ;(renderer as any).clearAllPatterns()
       
       expect(logger.info).toHaveBeenCalledWith(
         '[PatternRenderer] Removing all patterns',
@@ -307,7 +304,7 @@ describe('PatternRenderer', () => {
       
       // Mock error only for first series
       let callCount = 0
-      mockChart.addLineSeries.mockImplementation(() => {
+      ;(mockChart.addLineSeries as jest.Mock).mockImplementation(() => {
         if (callCount++ === 0) {
           throw new Error('First series error')
         }
@@ -330,7 +327,7 @@ describe('PatternRenderer', () => {
       renderer.renderPattern('pattern-1', mockVisualization, 'test')
       
       // Destroy should clean up
-      renderer.destroy()
+      ;(renderer as any).destroy()
       
       expect(logger.info).toHaveBeenCalledWith(
         '[PatternRenderer] Destroying instance',
@@ -382,7 +379,7 @@ describe('PatternRenderer', () => {
   describe('Marker Management', () => {
     it('merges markers with existing series markers', () => {
       const existingMarkers = [
-        { time: 1704000000 as Time, position: 'belowBar' as const, color: '#000', text: 'Existing' }
+        { time: 1704000000 as Time, position: 'belowBar' as const, color: '#000', text: 'Existing', shape: 'circle' as const }
       ]
       
       mockMainSeries.markers.mockReturnValue(existingMarkers)

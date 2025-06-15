@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { AgentNetwork, agentNetwork } from '../network/agent-network';
 import { registerAllAgents } from '../network/agent-registry';
 import { logger } from '@/lib/utils/logger';
@@ -42,11 +42,10 @@ jest.spyOn(logger, 'warn').mockImplementation(() => {});
 jest.spyOn(logger, 'error').mockImplementation(() => {});
 
 describe('A2A Communication System', () => {
-  let testNetwork: AgentNetwork;
 
   beforeEach(() => {
     // 各テスト前に新しいネットワークインスタンスを作成
-    testNetwork = new AgentNetwork({
+    new AgentNetwork({
       maxHops: 3,
       timeout: 1000, // テスト用に短縮
       enableLogging: false,
@@ -187,7 +186,7 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化
-      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Test response from agent');
+      const mockGenerate = jest.fn().mockResolvedValue('Test response from agent');
       
       // 登録されたエージェントのgenerateメソッドをモック
       for (const [, registration] of (agentNetwork as any).agents) {
@@ -244,7 +243,7 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化
-      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Broadcast response');
+      const mockGenerate = jest.fn().mockResolvedValue('Broadcast response');
       
       for (const [, registration] of (agentNetwork as any).agents) {
         registration.agent.generate = mockGenerate;
@@ -286,7 +285,7 @@ describe('A2A Communication System', () => {
       registerAllAgents();
       
       // エージェントの生成メソッドをモック化（高速）
-      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Health OK');
+      const mockGenerate = jest.fn().mockResolvedValue('Health OK');
       
       for (const [, registration] of (agentNetwork as any).agents) {
         registration.agent.generate = mockGenerate;
@@ -311,7 +310,7 @@ describe('A2A Communication System', () => {
       });
       
       // モック化された高速レスポンスでも動作確認
-      const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Fast health check');
+      const mockGenerate = jest.fn().mockResolvedValue('Fast health check');
       shortTimeoutNetwork.registerAgent('testAgent', { generate: mockGenerate } as any, [], 'test');
       
       const healthResults = await shortTimeoutNetwork.healthCheck();
@@ -407,15 +406,15 @@ describe('A2A Integration Tests', () => {
     registerAllAgents();
     
     // グローバルエージェントネットワークのモック化
-    const mockGenerate = jest.fn<() => Promise<unknown>>().mockResolvedValue('Integration test response');
+    const mockGenerate = jest.fn().mockResolvedValue('Integration test response');
     
-    for (const [agentId, registration] of (agentNetwork as any).agents) {
+    for (const [, registration] of (agentNetwork as any).agents) {
       registration.agent.generate = mockGenerate;
     }
     
     // ルーティングエージェントもモック化
     (agentNetwork as any).routingAgent = {
-      generate: jest.fn<() => Promise<unknown>>().mockResolvedValue('priceInquiryAgent')
+      generate: jest.fn().mockResolvedValue('priceInquiryAgent')
     };
   });
 
@@ -430,7 +429,7 @@ describe('A2A Integration Tests', () => {
         context: {},
         correlationId: 'integration-test-001',
       },
-      runtimeContext: { sessionId: 'test-session' },
+      runtimeContext: {} as any
     });
 
     expect(result.success).toBe(true);

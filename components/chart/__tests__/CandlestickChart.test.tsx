@@ -1,6 +1,5 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import { forwardRef } from 'react'
 import CandlestickChart, { CandlestickChartRef } from '../core/CandlestickChart'
 import { useChart, useIsChartReady } from '@/store/chart.store'
 import { useCandlestickData } from '@/hooks/market/use-candlestick-data'

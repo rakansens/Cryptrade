@@ -58,7 +58,12 @@ describe('chartDataAnalysisTool', () => {
       mockFetch.mockResolvedValueOnce(createMockResponse(mockCandleData));
 
       const result = await chartDataAnalysisTool.execute({ 
-        context: {} 
+        context: {
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -121,7 +126,8 @@ describe('chartDataAnalysisTool', () => {
           limit: 100,
           analysisType: 'trend',
           lookbackPeriod: 50,
-        }
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.symbol).toBe('ETHUSDT');
@@ -138,7 +144,11 @@ describe('chartDataAnalysisTool', () => {
       const result = await chartDataAnalysisTool.execute({
         context: {
           symbol: 'BTCUSDT',
-        }
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -177,7 +187,13 @@ describe('chartDataAnalysisTool', () => {
       } as Response);
 
       const result = await chartDataAnalysisTool.execute({
-        context: { symbol: 'BTCUSDT' }
+        context: { 
+          symbol: 'BTCUSDT',
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.currentPrice.price).toBe(50000); // Fallback
@@ -208,8 +224,11 @@ describe('chartDataAnalysisTool', () => {
       const result = await chartDataAnalysisTool.execute({
         context: { 
           symbol: 'BTCUSDT',
-          analysisType: 'full' 
-        }
+          analysisType: 'full' as const,
+          limit: 200,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.recommendations.trendlineDrawing).toBeInstanceOf(Array);
@@ -253,8 +272,11 @@ describe('chartDataAnalysisTool', () => {
       const result = await chartDataAnalysisTool.execute({
         context: {
           symbol: 'BTCUSDT',
-          analysisType: 'patterns',
-        }
+          analysisType: 'patterns' as const,
+          limit: 200,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.patterns).toBeDefined();
@@ -283,7 +305,13 @@ describe('chartDataAnalysisTool', () => {
         mockFetch.mockResolvedValueOnce(createMockResponse(mockCandleData));
 
         const result = await chartDataAnalysisTool.execute({
-          context: { timeframe }
+          context: { 
+            timeframe,
+            limit: 200,
+            analysisType: 'full' as const,
+            lookbackPeriod: 100
+          },
+          runtimeContext: {} as any
         });
 
         expect(result.timeframe).toBe(timeframe);
@@ -314,7 +342,10 @@ describe('chartDataAnalysisTool', () => {
         context: {
           symbol: 'BTCUSDT',
           limit: 50,
-        }
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       const { momentum, movingAverages } = result.technicalAnalysis;
@@ -341,7 +372,12 @@ describe('chartDataAnalysisTool', () => {
       mockFetch.mockResolvedValueOnce(createMockResponse(mockCandleData));
 
       const result = await chartDataAnalysisTool.execute({
-        context: {}
+        context: {
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.rawData).toBeDefined();
@@ -366,8 +402,11 @@ describe('chartDataAnalysisTool', () => {
       await chartDataAnalysisTool.execute({
         context: {
           symbol: 'BTCUSDT',
-          analysisType: 'full',
-        }
+          analysisType: 'full' as const,
+          limit: 200,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(logger.info).toHaveBeenCalledWith(
@@ -395,7 +434,12 @@ describe('chartDataAnalysisTool', () => {
       mockFetch.mockResolvedValueOnce(createMockResponse([]));
 
       const result = await chartDataAnalysisTool.execute({
-        context: {}
+        context: {
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       // When candle data is empty, the tool will throw an error accessing empty array
@@ -419,7 +463,10 @@ describe('chartDataAnalysisTool', () => {
       const result = await chartDataAnalysisTool.execute({
         context: {
           limit: 1000,
-        }
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       // The tool successfully fetched and processed 1000 candles
@@ -437,7 +484,12 @@ describe('chartDataAnalysisTool', () => {
       } as Response);
 
       const result = await chartDataAnalysisTool.execute({
-        context: {}
+        context: {
+          limit: 200,
+          analysisType: 'full' as const,
+          lookbackPeriod: 100
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.symbol).toBe('BTCUSDT');

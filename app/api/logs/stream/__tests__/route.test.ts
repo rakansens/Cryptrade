@@ -34,7 +34,7 @@ describe('Logs Stream API Route', () => {
     mockUnsubscribe = jest.fn();
     
     // Capture the callback when subscribe is called
-    mockSubscribe.mockImplementation((filter, callback) => {
+    mockSubscribe.mockImplementation((_filter, callback) => {
       mockCallback = callback;
       return { unsubscribe: mockUnsubscribe };
     });
@@ -131,7 +131,7 @@ describe('Logs Stream API Route', () => {
         level: 'info',
         message: 'Test log message',
         source: 'test',
-        context: {}
+        environment: 'test'
       };
 
       // Simulate log entry
@@ -159,15 +159,15 @@ describe('Logs Stream API Route', () => {
           level: 'info',
           message: 'First log',
           source: 'test',
-          context: {}
+          environment: 'test'
         },
         {
           id: 'log-2',
-          timestamp: new Date(),
+          timestamp: new Date(Date.now() + 1000),
           level: 'error',
           message: 'Second log',
           source: 'test',
-          context: {}
+          environment: 'test'
         }
       ];
 
@@ -217,7 +217,7 @@ describe('Logs Stream API Route', () => {
         level: 'error',
         message: 'This will fail to write',
         source: 'test',
-        context: {}
+        environment: 'test'
       };
 
       // Should handle the error internally

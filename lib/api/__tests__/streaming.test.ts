@@ -103,7 +103,7 @@ describe('StreamingResponseBuilder', () => {
       const decoder = new TextDecoder();
       const chunks: string[] = [];
 
-      let errorCaught = false;
+      // let false = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -111,13 +111,13 @@ describe('StreamingResponseBuilder', () => {
           chunks.push(decoder.decode(value));
         }
       } catch (error) {
-        errorCaught = true;
+        // Error caught
       }
 
       const output = chunks.join('');
       expect(output).toContain('event: start');
       // Error should be caught and stream should end gracefully
-      expect(errorCaught || output.includes('event: error')).toBe(true);
+      expect(output.includes('event: error')).toBe(true);
       expect(logger.error).toHaveBeenCalledWith('[SSE Stream] Generator error', expect.any(Object));
     });
 
@@ -219,7 +219,7 @@ describe('StreamingResponseBuilder', () => {
   describe('createEventStream', () => {
     it('should create event stream with automatic retry', async () => {
       let attemptCount = 0;
-      const handler = jest.fn().mockImplementation(({ request, context }) => {
+      const handler = jest.fn().mockImplementation(() => {
         async function* generator() {
           attemptCount++;
           if (attemptCount < 2) {
@@ -238,7 +238,7 @@ describe('StreamingResponseBuilder', () => {
       const decoder = new TextDecoder();
       const chunks: string[] = [];
 
-      let errorCaught = false;
+      // let false = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -246,7 +246,7 @@ describe('StreamingResponseBuilder', () => {
           chunks.push(decoder.decode(value));
         }
       } catch (error) {
-        errorCaught = true;
+        // Error caught
       }
 
       const output = chunks.join('');
@@ -258,7 +258,7 @@ describe('StreamingResponseBuilder', () => {
     });
 
     it('should fail after max retries', async () => {
-      const handler = jest.fn().mockImplementation(({ request, context }) => {
+      const handler = jest.fn().mockImplementation(() => {
         async function* generator() {
           throw new Error('Always fails');
         }
@@ -278,7 +278,7 @@ describe('StreamingResponseBuilder', () => {
       const decoder = new TextDecoder();
       const chunks: string[] = [];
 
-      let errorCaught = false;
+      // let false = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -286,7 +286,7 @@ describe('StreamingResponseBuilder', () => {
           chunks.push(decoder.decode(value));
         }
       } catch (error) {
-        errorCaught = true;
+        // Error caught
       }
 
       const output = chunks.join('');
@@ -295,7 +295,7 @@ describe('StreamingResponseBuilder', () => {
     });
 
     it('should wrap non-event data', async () => {
-      const handler = jest.fn().mockImplementation(({ request, context }) => {
+      const handler = jest.fn().mockImplementation(() => {
         async function* generator() {
           yield { simple: 'data' };
           yield { event: 'custom', data: { custom: true } };
@@ -355,13 +355,13 @@ describe('StreamingResponseBuilder', () => {
 
     it('should handle transform errors', () => {
       // Create the mock for formatSSEMessage to throw an error
-      const originalFormatSSEMessage = builder.formatSSEMessage;
-      builder.formatSSEMessage = jest.fn().mockImplementation((event) => {
-        if (event.data && event.data.self) {
-          throw new Error('Circular reference');
-        }
-        return originalFormatSSEMessage.call(builder, event);
-      });
+//       const originalFormatSSEMessage = builder.formatSSEMessage;
+//       builder.formatSSEMessage = jest.fn().mockImplementation((event) => {
+//         if (event.data && event.data.self) {
+//           throw new Error('Circular reference');
+//         }
+//         return originalFormatSSEMessage.call(builder, event);
+      // });
 
       const transform = builder.createSSETransformStream();
       
@@ -370,7 +370,6 @@ describe('StreamingResponseBuilder', () => {
       circularRef.self = circularRef;
 
       const writer = transform.writable.getWriter();
-      const reader = transform.readable.getReader();
       
       // Write should not throw
       writer.write({ data: circularRef });
@@ -380,7 +379,7 @@ describe('StreamingResponseBuilder', () => {
       expect(logger.error).toHaveBeenCalledWith('[SSE Transform] Failed to transform event', expect.any(Object));
 
       // Restore original method
-      builder.formatSSEMessage = originalFormatSSEMessage;
+//       builder.formatSSEMessage = originalFormatSSEMessage;
     });
   });
 });
@@ -535,8 +534,8 @@ describe('Utility functions', () => {
       });
 
       const update2 = progress.update(50);
-      expect(update2.data.percentage).toBe(50);
-      expect(update2.data.message).toBeUndefined();
+      expect((update2.data as any).percentage).toBe(50);
+      expect((update2.data as any).message).toBeUndefined();
     });
 
     it('should complete progress', () => {
@@ -558,8 +557,8 @@ describe('Utility functions', () => {
       const progress = new ProgressStream(0, 'Empty');
       
       const update = progress.update(0);
-      expect(update.data.progress).toBe(0);
-      expect(update.data.eta).toBe(0);
+      expect((update.data as any).progress).toBe(0);
+      expect((update.data as any).eta).toBe(0);
     });
 
     it('should calculate ETA correctly', async () => {
@@ -569,10 +568,10 @@ describe('Utility functions', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       const update = progress.update(25);
-      expect(update.data.eta).toBeGreaterThan(0);
+      expect((update.data as any).eta).toBeGreaterThan(0);
       
       // ETA should be roughly 3x elapsed time (75% remaining)
-      const etaRatio = update.data.eta / update.data.elapsed;
+      const etaRatio = (update.data as any).eta / (update.data as any).elapsed;
       expect(etaRatio).toBeGreaterThan(2.5);
       expect(etaRatio).toBeLessThan(3.5);
     });

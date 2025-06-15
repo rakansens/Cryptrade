@@ -57,12 +57,12 @@ describe('Chat Store', () => {
   });
 
   describe('Session Management', () => {
-    it('should create a new session', () => {
+    it('should create a new session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       expect(sessionId).toBeTruthy();
@@ -71,21 +71,21 @@ describe('Chat Store', () => {
       const { result: sessionsResult } = renderHook(() => useChatSessions());
       expect(Object.keys(sessionsResult.current)).toHaveLength(1);
       expect(sessionsResult.current[sessionId]).toBeDefined();
-      expect(sessionsResult.current[sessionId].title).toBe('New Conversation');
+      expect(sessionsResult.current[sessionId]?.title).toBe('New Conversation');
 
       const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
       expect(currentSessionResult.current).toBe(sessionId);
     });
 
-    it('should switch between sessions', () => {
+    it('should switch between sessions', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(() => {
-        sessionId1 = result.current.createSession();
-        sessionId2 = result.current.createSession();
+      act(async () => {
+        sessionId1 = await result.current.createSession();
+        sessionId2 = await result.current.createSession();
       });
 
       const { result: currentSessionResult2 } = renderHook(() => useChatCurrentSession());
@@ -99,12 +99,12 @@ describe('Chat Store', () => {
       expect(currentSessionResult.current).toBe(sessionId1);
     });
 
-    it('should rename a session', () => {
+    it('should rename a session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -112,21 +112,21 @@ describe('Chat Store', () => {
       });
 
       const { result: sessionsResult } = renderHook(() => useChatSessions());
-      expect(sessionsResult.current[sessionId].title).toBe('Custom Title');
-      expect(sessionsResult.current[sessionId].updatedAt).toBeGreaterThan(
-        sessionsResult.current[sessionId].createdAt
+      expect(sessionsResult.current[sessionId]?.title).toBe('Custom Title');
+      expect(sessionsResult.current[sessionId]?.updatedAt).toBeGreaterThan(
+        sessionsResult.current[sessionId]?.createdAt ?? 0
       );
     });
 
-    it('should delete a session', () => {
+    it('should delete a session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(() => {
-        sessionId1 = result.current.createSession();
-        sessionId2 = result.current.createSession();
+      act(async () => {
+        sessionId1 = await result.current.createSession();
+        sessionId2 = await result.current.createSession();
       });
 
       act(() => {
@@ -163,16 +163,16 @@ describe('Chat Store', () => {
       expect(currentSessionResult.current).toBeNull();
     });
 
-    it('should handle deleting the current session', () => {
+    it('should handle deleting the current session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId1: string = '';
       let sessionId3: string = '';
 
-      act(() => {
-        sessionId1 = result.current.createSession();
-        result.current.createSession(); // Create intermediate session
-        sessionId3 = result.current.createSession();
+      act(async () => {
+        sessionId1 = await result.current.createSession();
+        await result.current.createSession(); // Create intermediate session
+        sessionId3 = await result.current.createSession();
       });
 
       // Delete current session (sessionId3)
@@ -187,12 +187,12 @@ describe('Chat Store', () => {
   });
 
   describe('Message Management', () => {
-    it('should add messages to a session', () => {
+    it('should add messages to a session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -212,12 +212,12 @@ describe('Chat Store', () => {
       });
     });
 
-    it('should auto-generate session title from first user message', () => {
+    it('should auto-generate session title from first user message', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -228,15 +228,15 @@ describe('Chat Store', () => {
       });
 
       const { result: sessionsResult } = renderHook(() => useChatSessions());
-      expect(sessionsResult.current[sessionId].title).toBe('What is the weather like today...');
+      expect(sessionsResult.current[sessionId]?.title).toBe('What is the weather like today...');
     });
 
-    it('should not change title after first message', () => {
+    it('should not change title after first message', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -254,15 +254,15 @@ describe('Chat Store', () => {
       });
 
       const { result: sessionsResult } = renderHook(() => useChatSessions());
-      expect(sessionsResult.current[sessionId].title).toBe('First message');
+      expect(sessionsResult.current[sessionId]?.title).toBe('First message');
     });
 
-    it('should update the last message', () => {
+    it('should update the last message', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -277,15 +277,15 @@ describe('Chat Store', () => {
       });
 
       const { result: messagesResult } = renderHook(() => useChatMessages());
-      expect(messagesResult.current[0].content).toBe('Updated content');
+      expect(messagesResult.current[0]?.content).toBe('Updated content');
     });
 
-    it('should update last message with proposal data', () => {
+    it('should update last message with proposal data', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -298,7 +298,11 @@ describe('Chat Store', () => {
       const proposalData = {
         content: 'Updated with proposal',
         type: 'proposal' as const,
-        proposalGroup: { id: 'proposal-1', drawings: [] },
+        proposalGroup: { 
+          id: 'proposal-1', 
+          proposals: [],
+          timestamp: Date.now()
+        },
       };
 
       act(() => {
@@ -309,16 +313,19 @@ describe('Chat Store', () => {
       expect(messagesResult.current[0]).toMatchObject({
         content: 'Updated with proposal',
         type: 'proposal',
-        proposalGroup: { id: 'proposal-1', drawings: [] },
+        proposalGroup: { 
+          id: 'proposal-1', 
+          proposals: []
+        },
       });
     });
 
-    it('should clear messages for a session', () => {
+    it('should clear messages for a session', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       act(() => {
@@ -334,15 +341,15 @@ describe('Chat Store', () => {
       expect(messagesResult.current).toHaveLength(0);
     });
 
-    it('should handle messages for different sessions independently', () => {
+    it('should handle messages for different sessions independently', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(() => {
-        sessionId1 = result.current.createSession();
-        sessionId2 = result.current.createSession();
+      act(async () => {
+        sessionId1 = await result.current.createSession();
+        sessionId2 = await result.current.createSession();
       });
 
       act(() => {
@@ -353,8 +360,8 @@ describe('Chat Store', () => {
       const { result: messagesBySessionResult } = renderHook(() => useChatMessagesBySession());
       expect(messagesBySessionResult.current[sessionId1]).toHaveLength(1);
       expect(messagesBySessionResult.current[sessionId2]).toHaveLength(1);
-      expect(messagesBySessionResult.current[sessionId1][0].content).toBe('Session 1 Message');
-      expect(messagesBySessionResult.current[sessionId2][0].content).toBe('Session 2 Message');
+      expect(messagesBySessionResult.current[sessionId1]?.[0]?.content).toBe('Session 1 Message');
+      expect(messagesBySessionResult.current[sessionId2]?.[0]?.content).toBe('Session 2 Message');
     });
   });
 
@@ -485,12 +492,12 @@ describe('Chat Store', () => {
       expect(errorResult.current).toBeNull();
     });
 
-    it('should clear error when adding a message', () => {
+    it('should clear error when adding a message', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
         result.current.setError('Previous error');
       });
 
@@ -532,13 +539,13 @@ describe('Chat Store', () => {
       expect(result.current).toHaveProperty('reset');
     });
 
-    it('should handle complex chat workflow', () => {
+    it('should handle complex chat workflow', async () => {
       const { result } = renderHook(() => useChat());
 
       // Create session and send message
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
         result.current.setOpen(true);
         result.current.setInputValue('Hello AI!');
       });
@@ -592,13 +599,13 @@ describe('Chat Store', () => {
   });
 
   describe('Reset Functionality', () => {
-    it('should reset all state to initial values', () => {
+    it('should reset all state to initial values', async () => {
       const { result } = renderHook(() => useChat());
 
       // Set up some state
-      act(() => {
-        const sessionId = result.current.createSession();
-        result.current.addMessage(sessionId, { content: 'Test', role: 'user' });
+      act(async () => {
+        const sessionId = await result.current.createSession();
+        result.current.addMessage(sessionId, { content: 'Test', role: 'user' }).catch(() => {});
         result.current.setOpen(true);
         result.current.setStreaming(true);
         result.current.setLoading(true);
@@ -639,12 +646,12 @@ describe('Chat Store', () => {
       expect(currentSessionResult.current).toBeNull();
     });
 
-    it('should handle empty message updates', () => {
+    it('should handle empty message updates', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
       });
 
       // Try to update last message when no messages exist
@@ -656,14 +663,14 @@ describe('Chat Store', () => {
       expect(messagesResult.current).toHaveLength(0);
     });
 
-    it('should handle very long session titles', () => {
+    it('should handle very long session titles', async () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
       const longMessage = 'This is a very long message that exceeds the 30 character limit for session titles and should be truncated';
 
-      act(() => {
-        sessionId = result.current.createSession();
+      act(async () => {
+        sessionId = await result.current.createSession();
         result.current.addMessage(sessionId, {
           content: longMessage,
           role: 'user',
@@ -671,8 +678,8 @@ describe('Chat Store', () => {
       });
 
       const { result: sessionsResult } = renderHook(() => useChatSessions());
-      expect(sessionsResult.current[sessionId].title).toBe('This is a very long message th...');
-      expect(sessionsResult.current[sessionId].title.length).toBe(33); // 30 chars + "..."
+      expect(sessionsResult.current[sessionId]?.title).toBe('This is a very long message th...');
+      expect(sessionsResult.current[sessionId]?.title.length).toBe(33); // 30 chars + "..."
     });
   });
 });

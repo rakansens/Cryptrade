@@ -82,7 +82,8 @@ describe('memoryRecallTool', () => {
           sessionId: 'session-123',
           operation: 'getRecent',
           limit: 5,
-        }
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -125,7 +126,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-456',
           operation: 'getRecent',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -142,8 +145,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-789',
           operation: 'getRecent',
-          // limit is not specified, should use default from zod schema
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -183,7 +187,8 @@ describe('memoryRecallTool', () => {
           operation: 'search',
           query: 'ETH chart',
           limit: 10,
-        }
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -209,7 +214,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'search',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -237,7 +244,8 @@ describe('memoryRecallTool', () => {
           operation: 'search',
           query: 'test',
           limit: 5,
-        }
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.messages).toHaveLength(5);
@@ -256,7 +264,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getContext',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -276,7 +286,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-456',
           operation: 'getContext',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -304,7 +316,9 @@ describe('memoryRecallTool', () => {
           sessionId: 'session-123',
           operation: 'addMessage',
           message: newMessage,
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -323,7 +337,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -346,7 +362,9 @@ describe('memoryRecallTool', () => {
           sessionId: 'session-123',
           operation: 'addMessage',
           message: invalidMessage,
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       // This might throw a zod error, which is caught by the try-catch
@@ -362,7 +380,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'unknownOp' as any,
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -380,7 +400,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result).toMatchObject({
@@ -405,7 +427,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -541,7 +565,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: longSessionId,
           operation: 'getRecent',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -567,7 +593,9 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
-        }
+          limit: 8
+        },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -585,7 +613,9 @@ describe('memoryRecallTool', () => {
           context: {
             sessionId: `session-${i}`,
             operation: 'getRecent',
-          }
+            limit: 8
+          },
+          runtimeContext: {} as any
         })
       );
 

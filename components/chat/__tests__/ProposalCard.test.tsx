@@ -1,7 +1,8 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ProposalCard } from '../ProposalCard'
-import type { ProposalGroup, DrawingProposal } from '@/types/proposal'
+import type { DrawingProposalGroup, DrawingProposal } from '@/types/proposals'
+import { ProposalType, ProposalStatus } from '@/types/proposals'
 
 // Mock the StyleEditor component
 jest.mock('../StyleEditor', () => ({
@@ -13,10 +14,20 @@ jest.mock('../StyleEditor', () => ({
 describe('ProposalCard', () => {
   const mockProposal: DrawingProposal = {
     id: 'proposal-1',
-    title: '上昇トレンドライン',
-    description: '強い上昇トレンドを示すライン',
+    type: ProposalType.TRENDLINE,
+    analysisType: 'trendline',
+    coordinates: {
+      start: { x: 1704067200, y: 45000 },
+      end: { x: 1704153600, y: 47000 }
+    },
     priority: 'high',
     confidence: 0.85,
+    reasoning: '複数のサポートポイントで反発',
+    status: ProposalStatus.PENDING,
+    createdAt: Date.now(),
+    // Legacy compatibility properties
+    title: '上昇トレンドライン',
+    description: '強い上昇トレンドを示すライン',
     reason: '複数のサポートポイントで反発',
     touches: 5,
     drawingData: {
@@ -34,12 +45,13 @@ describe('ProposalCard', () => {
     }
   }
 
-  const mockProposalGroup: ProposalGroup = {
+  const mockProposalGroup: DrawingProposalGroup = {
     id: 'group-1',
     title: 'トレンドライン分析',
     description: '現在の市場トレンドに基づく提案',
     proposals: [mockProposal],
-    timestamp: Date.now()
+    groupType: 'analysis',
+    createdAt: Date.now()
   }
 
   const defaultProps = {
@@ -250,7 +262,7 @@ describe('ProposalCard', () => {
               type: 'horizontal' as const,
               points: [{ time: 1704067200, value: 50000 }],
               price: 50000,
-              style: mockProposal.drawingData.style
+              style: mockProposal.drawingData?.style || {}
             }
           }]
         }
@@ -276,7 +288,7 @@ describe('ProposalCard', () => {
                 { time: 1704153600, value: 50000 }
               ],
               levels: [0.236, 0.382, 0.5, 0.618],
-              style: mockProposal.drawingData.style
+              style: mockProposal.drawingData?.style || {}
             }
           }]
         }
@@ -296,8 +308,8 @@ describe('ProposalCard', () => {
             ...mockProposal,
             drawingData: {
               type: 'pattern' as const,
-              points: mockProposal.drawingData.points,
-              style: mockProposal.drawingData.style,
+              points: mockProposal.drawingData?.points || [],
+              style: mockProposal.drawingData?.style || {},
               metadata: {
                 patternType: 'head-and-shoulders',
                 metrics: {
@@ -389,13 +401,13 @@ describe('ProposalCard', () => {
       
       // Approve one
       const approveButtons = screen.getAllByTitle('承認')
-      fireEvent.click(approveButtons[0])
+      fireEvent.click(approveButtons[0]!)
       
       expect(screen.getByText(/2件の提案待ち.*1件承認済み/)).toBeInTheDocument()
       
       // Reject one
       const rejectButtons = screen.getAllByTitle('却下')
-      fireEvent.click(rejectButtons[0])
+      fireEvent.click(rejectButtons[0]!)
       
       expect(screen.getByText(/1件の提案待ち.*1件承認済み.*1件却下/)).toBeInTheDocument()
     })

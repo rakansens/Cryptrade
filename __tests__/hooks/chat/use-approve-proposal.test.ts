@@ -6,6 +6,7 @@ import { useProposalApprovalActions } from '@/store/proposal-approval.store';
 import { useUIEventPublisher } from '@/store/ui-event.store';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
+import { DrawingProposalGroup, ProposalStatus, ProposalType } from '@/types/proposals';
 
 // Mock dependencies
 jest.mock('@/store/analysis-history.store');
@@ -31,41 +32,47 @@ const mockApprovalActions = {
 
 const mockPublish = jest.fn();
 
+const mockProposalGroup: DrawingProposalGroup = {
+  id: 'group-1',
+  title: 'Test Group',
+  description: 'Test Description',
+  createdAt: Date.now(),
+  groupType: 'analysis',
+  proposals: [
+    {
+      id: 'proposal-1',
+      type: ProposalType.TRENDLINE,
+      analysisType: 'trendline' as const,
+      coordinates: {
+        start: { x: 1000, y: 100 },
+        end: { x: 2000, y: 200 }
+      },
+      confidence: 0.8,
+      title: 'Test Trendline',
+      description: 'Test trendline',
+      reason: 'Test reasoning',
+      reasoning: 'Test reasoning',
+      priority: 'medium',
+      status: ProposalStatus.PENDING,
+      createdAt: Date.now(),
+      drawingData: {
+        type: 'trendline',
+        points: [
+          { time: 1000, value: 100 },
+          { time: 2000, value: 200 },
+        ],
+      },
+    },
+  ],
+};
+
 const mockProposalMessage = {
   id: 'message-1',
   role: 'assistant' as const,
   content: 'Test proposal',
   type: 'proposal' as const,
   timestamp: Date.now(),
-  proposalGroup: {
-    id: 'group-1',
-    title: 'Test Group',
-    description: 'Test Description',
-    status: 'pending' as const,
-    createdAt: Date.now(),
-    proposals: [
-      {
-        id: 'proposal-1',
-        type: 'trendline' as const,
-        confidence: 0.8,
-        title: 'Test Trendline',
-        description: 'Test trendline',
-        reason: 'Test reasoning',
-        priority: 'medium' as const,
-        createdAt: Date.now(),
-        symbol: 'BTCUSDT',
-        interval: '1h',
-        reasoning: 'Test reasoning',
-        drawingData: {
-          type: 'trendline' as const,
-          points: [
-            { time: 1000, value: 100 },
-            { time: 2000, value: 200 },
-          ],
-        },
-      },
-    ],
-  },
+  proposalGroup: mockProposalGroup,
 };
 
 describe('useApproveProposal', () => {
@@ -116,7 +123,7 @@ describe('useApproveProposal', () => {
         ...mockProposalMessage.proposalGroup,
         proposals: [
           {
-            ...mockProposalMessage.proposalGroup.proposals[0],
+            ...mockProposalGroup.proposals[0],
             drawingData: null, // Invalid data
           },
         ],
@@ -144,18 +151,24 @@ describe('useApproveProposal', () => {
           mockProposalMessage.proposalGroup.proposals[0],
           {
             id: 'proposal-2',
-            type: 'trendline' as const,
+            type: ProposalType.TRENDLINE,
+            analysisType: 'trendline' as const,
+            coordinates: {
+              start: { x: 1000, y: 100 },
+              end: { x: 2000, y: 200 }
+            },
             confidence: 0.8,
             title: 'Test Trendline 2',
             description: 'Test trendline 2',
             reason: 'Test reasoning 2',
+            reasoning: 'Test reasoning 2',
             priority: 'medium' as const,
+            status: ProposalStatus.PENDING,
             createdAt: Date.now(),
             symbol: 'BTCUSDT',
             interval: '1h',
-            reasoning: 'Test reasoning 2',
             drawingData: {
-              type: 'trendline' as const,
+              type: ProposalType.TRENDLINE,
               points: [
                 { time: 1000, value: 100 },
                 { time: 2000, value: 200 },
@@ -169,7 +182,7 @@ describe('useApproveProposal', () => {
     const { result } = renderHook(() => useApproveProposal());
 
     await act(async () => {
-      await result.current.approveAllProposals(messageWithMultipleProposals);
+      await result.current.approveAllProposals(messageWithMultipleProposals as any);
     });
 
     expect(mockApprovalActions.addApprovedDrawing).toHaveBeenCalledTimes(2);
@@ -202,18 +215,24 @@ describe('useApproveProposal', () => {
         proposals: [
           {
             id: 'proposal-1',
-            type: 'trendline' as const,
+            type: ProposalType.TRENDLINE,
+            analysisType: 'trendline' as const,
+            coordinates: {
+              start: { x: 1000, y: 100 },
+              end: { x: 2000, y: 200 }
+            },
             confidence: 0.8,
             title: 'Test Trendline',
             description: 'Test trendline',
             reason: 'Test reasoning',
+            reasoning: 'Test reasoning',
             priority: 'medium' as const,
+            status: ProposalStatus.PENDING,
             createdAt: Date.now(),
             symbol: 'BTCUSDT',
             interval: '1h',
-            reasoning: 'Test reasoning',
             drawingData: {
-              type: 'trendline' as const,
+              type: ProposalType.TRENDLINE,
               points: [
                 { time: 1000, value: 100 },
                 { time: 2000, value: 200 },

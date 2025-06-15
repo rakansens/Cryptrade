@@ -1,6 +1,5 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { agentNetwork } from '../network/agent-network';
-// import { logger } from '@/lib/utils/logger'; // not used directly
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -25,7 +24,7 @@ jest.mock('../network/agent-registry', () => ({
 jest.mock('../agents/trading.agent', () => ({
   tradingAgent: {
     name: 'tradingAgent',
-    generate: jest.fn<() => Promise<unknown>>().mockResolvedValue({
+    generate: jest.fn().mockResolvedValue({
       text: 'エントリー提案を生成しました',
       steps: [
         {
@@ -147,16 +146,7 @@ describe('A2A Entry Proposal Mock Test', () => {
     });
 
     it('should handle tool name correctly in prompts', async () => {
-      // const mockFormatMessage = jest.fn();
-      
       // Test the prompt generation logic
-      const _context = {
-        extractedSymbol: 'BTCUSDT',
-        isProposalMode: true,
-        proposalType: 'entry',
-        isEntryProposal: true,
-        interval: '1h',
-      };
 
       const expectedPrompt = `entryProposalGeneration({
   symbol: "BTCUSDT",

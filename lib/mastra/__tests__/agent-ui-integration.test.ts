@@ -6,8 +6,7 @@
  * that the chart components can handle them
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-// import { uiControlAgent } from '../network/agent-registry'; // not used directly
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { chartControlTool } from '../tools/chart-control.tool';
 import { uiStateTool } from '../tools/ui-state.tool';
 
@@ -94,7 +93,7 @@ describe('Agent UI Integration', () => {
             timeframe: '1h',
           },
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -116,7 +115,7 @@ describe('Agent UI Integration', () => {
             timeframe: '1h',
           },
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -134,7 +133,7 @@ describe('Agent UI Integration', () => {
             timeframe: '1h',
           },
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -153,7 +152,7 @@ describe('Agent UI Integration', () => {
             timeframe: '1h',
           },
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(zoomInResult.success).toBe(true);
@@ -174,7 +173,7 @@ describe('Agent UI Integration', () => {
             timeframe: '1h',
           },
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(zoomOutResult.success).toBe(true);
@@ -195,7 +194,7 @@ describe('Agent UI Integration', () => {
           indicator: 'rsi',
           enabled: true,
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -210,7 +209,6 @@ describe('Agent UI Integration', () => {
           indicator: 'rsi',
           settings: { period: 21, upper: 80, lower: 20 },
         },
-        runtimeContext: { sessionId: 'test-session' },
       });
 
       expect(result.success).toBe(true);
@@ -225,7 +223,7 @@ describe('Agent UI Integration', () => {
         context: {
           action: 'get_state',
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -239,7 +237,7 @@ describe('Agent UI Integration', () => {
         context: {
           action: 'reset_indicators',
         },
-        runtimeContext: { sessionId: 'test-session' },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -255,15 +253,17 @@ describe('Agent UI Integration', () => {
 
       const result = await chartControlTool.execute({
         context: {
-          action: 'fit_content',
+          userRequest: 'fit content to screen',
+          conversationHistory: [],
+          currentState: {},
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true); // Should now succeed with deferred execution
-      expect(result.message).toContain('scheduled for client-side execution');
-      expect(result.deferred).toBeDefined();
-      expect(result.deferred?.type).toBe('client_event');
+      // Check operations instead of deferred/message
+      expect(result.operations).toBeDefined();
+      expect(result.operations.length).toBeGreaterThan(0);
     });
 
     it('should handle invalid symbol gracefully in server-side mode', async () => {
@@ -272,10 +272,11 @@ describe('Agent UI Integration', () => {
 
       const result = await chartControlTool.execute({
         context: {
-          action: 'change_symbol',
-          symbol: 'INVALID',
+          userRequest: 'change symbol to INVALID',
+          conversationHistory: [],
+          currentState: {},
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -285,9 +286,11 @@ describe('Agent UI Integration', () => {
     it('should handle missing parameters gracefully', async () => {
       const result = await chartControlTool.execute({
         context: {
-          action: 'change_symbol',
-          // Missing symbol parameter
+          userRequest: 'change symbol',
+          conversationHistory: [],
+          currentState: {},
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);

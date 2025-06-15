@@ -2,6 +2,7 @@ import { ProposalGenerationTool } from '../proposal-generation';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { logger } from '@/lib/utils/logger';
 import type { PriceData } from '@/types/market';
+import { createTestRuntimeContext } from '@/__tests__/helpers/mastra-test-utils';
 
 // Mock dependencies
 jest.mock('@/lib/binance/api-service');
@@ -38,6 +39,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'all',
           maxProposals: 5,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -56,6 +58,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'trendline',
           maxProposals: 3,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -77,6 +80,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'support-resistance',
           maxProposals: 4,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -98,6 +102,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'fibonacci',
           maxProposals: 2,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -119,6 +124,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'pattern',
           maxProposals: 3,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -134,8 +140,10 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'all',
+          maxProposals: 10,
           sinceTimestamp,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -157,8 +165,10 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'all',
+          maxProposals: 10,
           excludeIds,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -179,6 +189,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'all',
           maxProposals: 10,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -198,7 +209,9 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'all',
+          maxProposals: 10,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(false);
@@ -214,7 +227,9 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'all',
+          maxProposals: 10,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(false);
@@ -233,7 +248,9 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'all',
+          maxProposals: 10,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       // Should still succeed but with potentially fewer proposals
@@ -251,6 +268,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'all',
           maxProposals: 1,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -279,7 +297,9 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '1h',
           analysisType: 'trendline',
+          maxProposals: 5,
         },
+        runtimeContext: { logger } as any,
       });
 
       expect(result.success).toBe(true);
@@ -302,7 +322,9 @@ describe('ProposalGenerationTool', () => {
           symbol: 'BTCUSDT',
           interval: '15m',
           analysisType: 'all',
+          maxProposals: 10,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);
@@ -315,14 +337,14 @@ describe('ProposalGenerationTool', () => {
   describe('validation', () => {
     it('should validate input parameters', async () => {
       const invalidInputs = [
-        { symbol: '', interval: '1h', analysisType: 'all' },
-        { symbol: 'BTCUSDT', interval: '', analysisType: 'all' },
-        { symbol: 'BTCUSDT', interval: '1h', analysisType: 'invalid' as any },
+        { symbol: '', interval: '1h', analysisType: 'all', maxProposals: 10 },
+        { symbol: 'BTCUSDT', interval: '', analysisType: 'all', maxProposals: 10 },
+        { symbol: 'BTCUSDT', interval: '1h', analysisType: 'invalid' as any, maxProposals: 10 },
       ];
 
       for (const input of invalidInputs) {
         await expect(
-          ProposalGenerationTool.execute!({ context: input })
+          ProposalGenerationTool.execute!({ context: input, runtimeContext: { logger } as any })
         ).rejects.toThrow();
       }
     });
@@ -338,6 +360,7 @@ describe('ProposalGenerationTool', () => {
           analysisType: 'all',
           maxProposals,
         },
+        runtimeContext: createTestRuntimeContext()
       });
 
       expect(result.success).toBe(true);

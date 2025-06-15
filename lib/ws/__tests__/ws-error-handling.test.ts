@@ -16,7 +16,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('WSManager Error Handling', () => {
-  setupWebSocketMocking();
+  const cleanupMock = setupWebSocketMocking();
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -119,7 +119,7 @@ describe('WSManager Error Handling', () => {
       maxRetryAttempts: 0
     });
     
-    const sub = manager.subscribe('test@stream').subscribe({
+    manager.subscribe('test@stream').subscribe({
       next: () => {},
       error: () => {
         // After error, stream should be cleaned up

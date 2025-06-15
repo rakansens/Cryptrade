@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/config/testing/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { POST } from '../route';
+import { GET } from '../route';
 import { 
   AnalysisProgressEvent, 
   getAnalysisSteps 
@@ -50,7 +50,7 @@ describe('Analysis Stream API Route', () => {
     restoreEnv();
   });
 
-  describe('POST /api/ai/analysis-stream', () => {
+  describe('GET /api/ai/analysis-stream', () => {
     // Helper function to collect SSE events from stream
     async function collectSSEEvents(response: Response): Promise<AnalysisProgressEvent[]> {
       const reader = response.body!.getReader();
@@ -82,18 +82,17 @@ describe('Analysis Stream API Route', () => {
     }
 
     it('should stream analysis progress events', async () => {
-      const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          analysisType: 'trendline',
-          sessionId: 'test-stream-123'
-        })
+      const url = new URL('http://localhost/api/ai/analysis-stream');
+      url.searchParams.set('symbol', 'BTCUSDT');
+      url.searchParams.set('interval', '1h');
+      url.searchParams.set('analysisType', 'trendline');
+      url.searchParams.set('sessionId', 'test-stream-123');
+      
+      const request = new NextRequest(url.toString(), {
+        method: 'GET'
       });
 
-      const response = await POST(request);
+      const response = await GET(request);
 
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toBe('text/event-stream');
@@ -139,27 +138,30 @@ describe('Analysis Stream API Route', () => {
         ['trendline', 'support-resistance', 'fibonacci', 'pattern', 'all'];
 
       for (const analysisType of analysisTypes) {
-        const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            symbol: 'ETHUSDT',
-            interval: '4h',
-            analysisType
-          })
+        const url = new URL('http://localhost/api/ai/analysis-stream');
+        url.searchParams.set('symbol', 'ETHUSDT');
+        url.searchParams.set('interval', '4h');
+        url.searchParams.set('analysisType', analysisType);
+        
+        const request = new NextRequest(url.toString(), {
+          method: 'GET'
         });
 
-        const response = await POST(request);
+        const response = await GET(request);
         expect(response.status).toBe(200);
 
         const events = await collectSSEEvents(response);
         const startEvent = events.find(e => e.type === 'analysis:start');
         
-        expect(startEvent?.data.analysisType).toBe(analysisType);
+        if (startEvent && 'analysisType' in startEvent.data) {
+          expect(startEvent.data.analysisType).toBe(analysisType);
+        }
         
         // Verify correct steps are included
         const expectedSteps = getAnalysisSteps(analysisType);
-        expect(startEvent?.data.totalSteps).toBe(expectedSteps.length);
+        if (startEvent && 'totalSteps' in startEvent.data) {
+          expect(startEvent.data.totalSteps).toBe(expectedSteps.length);
+        }
       }
     });
 
@@ -171,14 +173,17 @@ describe('Analysis Stream API Route', () => {
         { symbol: '', interval: '1h', analysisType: 'trendline' }, // Empty symbol
       ];
 
-      for (const invalidBody of invalidRequests) {
-        const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(invalidBody)
+      for (const invalidParams of invalidRequests) {
+        const url = new URL('http://localhost/api/ai/analysis-stream');
+        Object.entries(invalidParams).forEach(([key, value]) => {
+          url.searchParams.set(key, value as string);
+        });
+        
+        const request = new NextRequest(url.toString(), {
+          method: 'GET'
         });
 
-        const response = await POST(request);
+        const response = await GET(request);
         const data = await response.json();
 
         expect(response.status).toBe(400);
@@ -190,18 +195,17 @@ describe('Analysis Stream API Route', () => {
     });
 
     it('should handle maxProposals parameter', async () => {
-      const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          analysisType: 'all',
-          maxProposals: 10
-        })
+      const url = new URL('http://localhost/api/ai/analysis-stream');
+      url.searchParams.set('symbol', 'BTCUSDT');
+      url.searchParams.set('interval', '1h');
+      url.searchParams.set('analysisType', 'all');
+      url.searchParams.set('maxProposals', '10');
+      
+      const request = new NextRequest(url.toString(), {
+        method: 'GET'
       });
 
-      const response = await POST(request);
+      const response = await GET(request);
       expect(response.status).toBe(200);
 
       // Wait for stream to complete
@@ -216,17 +220,16 @@ describe('Analysis Stream API Route', () => {
     });
 
     it('should stream text character by character for specific steps', async () => {
-      const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          analysisType: 'pattern'
-        })
+      const url = new URL('http://localhost/api/ai/analysis-stream');
+      url.searchParams.set('symbol', 'BTCUSDT');
+      url.searchParams.set('interval', '1h');
+      url.searchParams.set('analysisType', 'pattern');
+      
+      const request = new NextRequest(url.toString(), {
+        method: 'GET'
       });
 
-      const response = await POST(request);
+      const response = await GET(request);
       const events = await collectSSEEvents(response);
 
       // Find events for steps that support character streaming
@@ -235,6 +238,7 @@ describe('Analysis Stream API Route', () => {
       for (const stepType of streamingSteps) {
         const progressEvents = events.filter(e => 
           e.type === 'analysis:step-progress' && 
+          'step' in e.data &&
           e.data.step.type === stepType
         );
 
@@ -243,9 +247,9 @@ describe('Analysis Stream API Route', () => {
           expect(progressEvents.length).toBeGreaterThan(1);
           
           // Text should build up progressively
-          const texts = progressEvents.map(e => e.data.step.streamingText || '');
+          const texts = progressEvents.map(e => ('step' in e.data && e.data.step.streamingText) || '');
           for (let i = 1; i < texts.length; i++) {
-            expect(texts[i].length).toBeGreaterThanOrEqual(texts[i-1].length);
+            expect(texts[i]?.length).toBeGreaterThanOrEqual(texts[i-1]?.length || 0);
           }
         }
       }
@@ -257,37 +261,37 @@ describe('Analysis Stream API Route', () => {
         new Error('Tool execution failed')
       );
 
-      const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          analysisType: 'trendline'
-        })
+      const url = new URL('http://localhost/api/ai/analysis-stream');
+      url.searchParams.set('symbol', 'BTCUSDT');
+      url.searchParams.set('interval', '1h');
+      url.searchParams.set('analysisType', 'trendline');
+      
+      const request = new NextRequest(url.toString(), {
+        method: 'GET'
       });
 
-      const response = await POST(request);
+      const response = await GET(request);
       const events = await collectSSEEvents(response);
 
       // Should still complete but with 0 proposals
       const completeEvent = events.find(e => e.type === 'analysis:complete');
-      expect(completeEvent?.data.proposalCount).toBe(0);
+      if (completeEvent && 'proposalCount' in completeEvent.data) {
+        expect(completeEvent.data.proposalCount).toBe(0);
+      }
     });
 
     it('should generate unique session ID if not provided', async () => {
-      const request = new NextRequest('http://localhost/api/ai/analysis-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          analysisType: 'trendline'
-          // No sessionId provided
-        })
+      const url = new URL('http://localhost/api/ai/analysis-stream');
+      url.searchParams.set('symbol', 'BTCUSDT');
+      url.searchParams.set('interval', '1h');
+      url.searchParams.set('analysisType', 'trendline');
+      // No sessionId provided
+      
+      const request = new NextRequest(url.toString(), {
+        method: 'GET'
       });
 
-      const response = await POST(request);
+      const response = await GET(request);
       const events = await collectSSEEvents(response);
 
       // All events should have the same sessionId

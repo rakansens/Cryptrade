@@ -4,7 +4,7 @@
  */
 
 import { WSManager } from '../WSManager';
-import { of, throwError, timer } from 'rxjs';
+import { of } from 'rxjs';
 import { webSocket } from 'rxjs/webSocket';
 
 // Mock WebSocket and RxJS webSocket
@@ -59,7 +59,6 @@ describe('WSManager Coverage Tests', () => {
       });
       
       // Assert
-      const metrics = manager.getMetrics();
       expect(manager['options'].maxRetryDelay).toBe(30000); // Should be clamped to 30s
     });
 
@@ -163,7 +162,7 @@ describe('WSManager Coverage Tests', () => {
 
     it('should configure WebSocket subject with observers', () => {
       // Act
-      const wsSubject = manager['createWebSocketSubject']('wss://test.com/stream');
+      manager['createWebSocketSubject']('wss://test.com/stream');
       
       // Assert
       expect(mockWebSocket).toHaveBeenCalledWith({
@@ -179,8 +178,8 @@ describe('WSManager Coverage Tests', () => {
 
     it('should handle connection state changes through observers', () => {
       // Arrange
-      let openHandler: Function;
-      let closeHandler: Function;
+      let openHandler: Function | undefined;
+      let closeHandler: Function | undefined;
       
       mockWebSocket.mockImplementation((config: any) => {
         openHandler = config.openObserver.next;
@@ -192,8 +191,8 @@ describe('WSManager Coverage Tests', () => {
       manager['createWebSocketSubject']('wss://test.com/stream');
       
       // Simulate connection events
-      openHandler();
-      closeHandler();
+      openHandler!();
+      closeHandler!();
       
       // Assert - connection state should be tracked
       // (This tests the observer functions work without throwing)
@@ -328,7 +327,7 @@ describe('WSManager Coverage Tests', () => {
       
       // Create initial stream
       manager.subscribe('btcusdt@trade');
-      const initialActivity = manager.getStreamInfo()[0].lastActivity;
+      const initialActivity = manager.getStreamInfo()[0]?.lastActivity;
       
       // Wait a bit
       jest.advanceTimersByTime(100);
@@ -337,8 +336,8 @@ describe('WSManager Coverage Tests', () => {
       manager.subscribe('btcusdt@trade');
       
       // Assert
-      const updatedActivity = manager.getStreamInfo()[0].lastActivity;
-      expect(updatedActivity).toBeGreaterThan(initialActivity);
+      const updatedActivity = manager.getStreamInfo()[0]?.lastActivity;
+      expect(updatedActivity).toBeGreaterThan(initialActivity || 0);
     });
   });
 

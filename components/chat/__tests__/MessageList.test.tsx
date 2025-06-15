@@ -2,7 +2,6 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageList } from '../MessageList'
 import type { ChatMessage } from '@/store/chat.store'
-import type { ProposalMessage } from '@/types/proposal'
 
 // Mock child components
 jest.mock('../MessageItem', () => ({
@@ -168,7 +167,7 @@ describe('MessageList', () => {
       render(<MessageList {...defaultProps} />)
       
       const copyButtons = screen.getAllByText('Copy')
-      fireEvent.click(copyButtons[0])
+      fireEvent.click(copyButtons[0]!)
       
       expect(defaultProps.onCopyMessage).toHaveBeenCalledWith('msg-1', 'Hello AI')
     })
@@ -284,7 +283,7 @@ describe('MessageList', () => {
 
   describe('Proposal Handling', () => {
     it('renders proposal messages correctly', () => {
-      const messagesWithProposal = [...mockMessages, mockProposalMessage]
+      const messagesWithProposal = [...mockMessages, mockProposalMessage] as ChatMessage[]
       render(<MessageList {...defaultProps} messages={messagesWithProposal} />)
       
       expect(screen.getByTestId('message-msg-3')).toBeInTheDocument()
@@ -292,7 +291,7 @@ describe('MessageList', () => {
     })
 
     it('calls onApproveProposal when approve button is clicked', () => {
-      const messagesWithProposal = [...mockMessages, mockProposalMessage]
+      const messagesWithProposal = [...mockMessages, mockProposalMessage] as ChatMessage[]
       render(<MessageList {...defaultProps} messages={messagesWithProposal} />)
       
       const approveButton = screen.getByText('Approve Proposal')
@@ -393,7 +392,7 @@ describe('MessageList', () => {
     })
 
     it('passes empty map to message items without approved IDs', () => {
-      const messagesWithProposal = [...mockMessages, mockProposalMessage]
+      const messagesWithProposal = [...mockMessages, mockProposalMessage] as ChatMessage[]
       render(<MessageList {...defaultProps} messages={messagesWithProposal} />)
       
       // Each MessageItem should receive an empty map if no approvals

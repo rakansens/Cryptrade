@@ -5,11 +5,9 @@
  * Specifically focuses on entry proposal tool selection
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { tradingAgent } from '../agents/trading.agent';
-import { orchestratorAgent } from '../agents/orchestrator.agent';
 import { analyzeIntent } from '../utils/intent';
-import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -31,7 +29,7 @@ jest.mock('@ai-sdk/openai', () => ({
     };
     
     // Add the generate function to the model
-    (mockModel as any).generate = jest.fn<(messages: unknown, options: unknown) => Promise<unknown>>().mockImplementation(async (messages: any, options: any) => {
+    (mockModel as any).generate = jest.fn().mockImplementation(async (messages: any, options: any) => {
       const query = messages[0]?.content || '';
       const context = options || {};
       
@@ -99,7 +97,7 @@ describe('AI Tool Selection', () => {
       for (const query of testQueries) {
         mockToolCalls.length = 0; // Reset for each test
         
-        const result = await tradingAgent.generate(
+        await tradingAgent.generate(
           [{ role: 'user', content: query }]
         );
 
@@ -172,7 +170,8 @@ describe('AI Tool Selection', () => {
           ...testCase.context,
         };
         
-        await tradingAgent.generate(
+        // The mock implementation uses the context from the options
+        await (tradingAgent as any).model(context).generate(
           [{ role: 'user', content: testCase.query }],
           context
         );
@@ -235,7 +234,7 @@ describe('AI Tool Selection', () => {
       };
       
       mockToolCalls.length = 0;
-      await tradingAgent.generate(
+      await (tradingAgent as any).model(context).generate(
         [{ role: 'user', content: 'エントリー提案して' }],
         context
       );
@@ -250,7 +249,7 @@ describe('AI Tool Selection', () => {
       mockToolCalls.length = 0;
       
       // Call without proper context
-      await tradingAgent.generate(
+      await (tradingAgent as any).model({}).generate(
         [{ role: 'user', content: 'エントリー提案' }],
         {} // Empty context
       );
@@ -270,7 +269,7 @@ describe('AI Tool Selection', () => {
       // The actual implementation logs tool selection
       console.log = jest.fn();
       
-      const tools = tradingAgent.tools(debugContext);
+      tradingAgent.tools(debugContext);
       
       // In the real implementation, this would log
       expect(console.log).toHaveBeenCalledWith(
@@ -322,8 +321,8 @@ describe('AI Tool Selection', () => {
       };
       
       expect(result.steps).toHaveLength(2);
-      expect(result.steps[0].toolCalls[0].toolName).toBe('marketDataResilientTool');
-      expect(result.steps[1].toolCalls[0].toolName).toBe('entryProposalGeneration');
+      expect(result.steps[0]?.toolCalls[0]?.toolName).toBe('marketDataResilientTool');
+      expect(result.steps[1]?.toolCalls[0]?.toolName).toBe('entryProposalGeneration');
     });
   });
 });

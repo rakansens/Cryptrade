@@ -11,13 +11,11 @@ import {
   withValidation,
   withAuth,
   withMiddleware,
-  withFallback,
-  ApiHandler
+  withFallback
 } from '../error-boundary';
 import {
   AppError,
   ValidationError,
-  AuthenticationError,
   AuthorizationError,
   RateLimitError
 } from '@/lib/errors';
@@ -45,14 +43,14 @@ describe('Error Boundary', () => {
 
   describe('withErrorBoundary', () => {
     it('should handle successful requests', async () => {
-      const handler: ApiHandler = async (request: NextRequest) => {
+      const handler = async (_request: NextRequest) => {
         return NextResponse.json({ success: true, data: 'test' });
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -61,7 +59,7 @@ describe('Error Boundary', () => {
     });
 
     it('should handle AppError with operational flag', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new ValidationError('Invalid input', 'email', 'not-email');
       };
 
@@ -70,7 +68,7 @@ describe('Error Boundary', () => {
         method: 'POST'
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -99,15 +97,15 @@ describe('Error Boundary', () => {
     });
 
     it('should handle non-operational errors', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new AppError('Programming error', 'CODE_ERROR', 500, {}, false);
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
-      const data = await response.json();
+      const response = await wrappedHandler(request) as NextResponse;
+      await response.json();
 
       expect(response.status).toBe(500);
       expect(logger.error).toHaveBeenCalledWith('API Error', expect.any(Error), expect.objectContaining({
@@ -116,14 +114,14 @@ describe('Error Boundary', () => {
     });
 
     it('should handle unknown errors', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new Error('Unknown error');
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -133,14 +131,14 @@ describe('Error Boundary', () => {
     });
 
     it('should handle RateLimitError with special headers', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new RateLimitError(100, 60000, 30000);
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
 
       expect(response.status).toBe(429);
       expect(response.headers.get('X-RateLimit-Limit')).toBe('100');
@@ -149,7 +147,7 @@ describe('Error Boundary', () => {
     });
 
     it('should extract client information', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new AppError('Test error', 'TEST_ERROR', 400);
       };
 
@@ -176,14 +174,14 @@ describe('Error Boundary', () => {
     it('should sanitize errors in production', async () => {
       (env as any).NODE_ENV = 'production';
       
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new Error('Sensitive internal error');
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data.error.message).toBe('An unexpected error occurred');
@@ -193,14 +191,14 @@ describe('Error Boundary', () => {
     it('should preserve operational errors in production', async () => {
       (env as any).NODE_ENV = 'production';
       
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new ValidationError('User validation failed');
       };
 
       const wrappedHandler = withErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data.error.message).toBe('User validation failed');
@@ -210,7 +208,7 @@ describe('Error Boundary', () => {
 
   describe('withStreamingErrorBoundary', () => {
     it('should handle successful streaming responses', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         const stream = new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode('data: {"test": true}\n\n'));
@@ -228,14 +226,14 @@ describe('Error Boundary', () => {
       const wrappedHandler = withStreamingErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/stream');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
 
       expect(response.headers.get('Content-Type')).toBe('text/event-stream');
       expect(response.headers.get('X-Request-Id')).toBeTruthy();
     });
 
     it('should handle streaming errors', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         const stream = new ReadableStream({
           async start(controller) {
             controller.enqueue(new TextEncoder().encode('data: {"start": true}\n\n'));
@@ -255,7 +253,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withStreamingErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/stream');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       
       // If the stream creation throws synchronously, it should return an error response
       if (!response.body) {
@@ -285,14 +283,14 @@ describe('Error Boundary', () => {
     });
 
     it('should handle non-streaming responses', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         return NextResponse.json({ data: 'test' });
       };
 
       const wrappedHandler = withStreamingErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data).toEqual({ data: 'test' });
@@ -300,14 +298,14 @@ describe('Error Boundary', () => {
     });
 
     it('should handle handler errors for non-streaming', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new ValidationError('Invalid request');
       };
 
       const wrappedHandler = withStreamingErrorBoundary(handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -333,7 +331,7 @@ describe('Error Boundary', () => {
         body: JSON.stringify({ name: 'John', age: 25 })
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -355,7 +353,7 @@ describe('Error Boundary', () => {
         body: JSON.stringify({ name: 'John', age: 'invalid' })
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -379,7 +377,7 @@ describe('Error Boundary', () => {
         body: JSON.stringify({ test: 'data' })
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
 
       expect(response.status).toBe(200);
       expect(validator).toHaveBeenCalledWith({ test: 'data' });
@@ -401,7 +399,7 @@ describe('Error Boundary', () => {
         body: JSON.stringify({ email: 'invalid-email' })
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -419,7 +417,7 @@ describe('Error Boundary', () => {
         body: 'invalid json'
       });
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -434,14 +432,14 @@ describe('Error Boundary', () => {
         role: 'admin'
       });
 
-      const handler = jest.fn().mockImplementation(async (request, context, auth) => {
+      const handler = jest.fn().mockImplementation(async (_request, _context, auth) => {
         return NextResponse.json({ user: auth.userId });
       });
 
       const wrappedHandler = withAuth(authHandler, handler);
       const request = new NextRequest('http://localhost/api/protected');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -457,7 +455,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withAuth(authHandler, handler);
       const request = new NextRequest('http://localhost/api/protected');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -472,7 +470,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withAuth(authHandler, handler);
       const request = new NextRequest('http://localhost/api/protected');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -488,7 +486,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withAuth(authHandler, handler);
       const request = new NextRequest('http://localhost/api/protected');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(403);
@@ -500,17 +498,17 @@ describe('Error Boundary', () => {
     it('should execute middlewares in sequence', async () => {
       const executionOrder: string[] = [];
       
-      const middleware1 = jest.fn().mockImplementation(async (request, context) => {
+      const middleware1 = jest.fn().mockImplementation(async (_request, _context) => {
         executionOrder.push('middleware1');
         return { step1: true };
       });
 
-      const middleware2 = jest.fn().mockImplementation(async (request, context) => {
+      const middleware2 = jest.fn().mockImplementation(async (_request, _context) => {
         executionOrder.push('middleware2');
         return { step2: true };
       });
 
-      const handler = jest.fn().mockImplementation(async (request, context) => {
+      const handler = jest.fn().mockImplementation(async (_request, context) => {
         executionOrder.push('handler');
         return NextResponse.json({ context });
       });
@@ -518,7 +516,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withMiddleware([middleware1, middleware2], handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(executionOrder).toEqual(['middleware1', 'middleware2', 'handler']);
@@ -533,7 +531,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withMiddleware([middleware1, middleware2], handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data.early).toBe(true);
@@ -547,7 +545,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withMiddleware([middleware], handler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -558,11 +556,11 @@ describe('Error Boundary', () => {
 
   describe('withFallback', () => {
     it('should use fallback on handler error', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new AppError('Primary handler failed', 'HANDLER_ERROR', 500);
       };
 
-      const fallbackHandler = jest.fn().mockImplementation(async (error, request) => {
+      const fallbackHandler = jest.fn().mockImplementation(async (error, _request) => {
         return NextResponse.json({ 
           fallback: true, 
           originalError: error.message 
@@ -572,7 +570,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withFallback(handler, fallbackHandler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -586,7 +584,7 @@ describe('Error Boundary', () => {
     });
 
     it('should succeed with primary handler', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         return NextResponse.json({ primary: true });
       };
 
@@ -594,7 +592,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withFallback(handler, fallbackHandler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data.primary).toBe(true);
@@ -602,7 +600,7 @@ describe('Error Boundary', () => {
     });
 
     it('should handle fallback handler errors', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new AppError('Primary error', 'PRIMARY_ERROR', 500);
       };
 
@@ -623,7 +621,7 @@ describe('Error Boundary', () => {
     });
 
     it('should convert unknown errors to AppError', async () => {
-      const handler: ApiHandler = async () => {
+      const handler = async () => {
         throw new Error('Unknown error');
       };
 
@@ -637,7 +635,7 @@ describe('Error Boundary', () => {
       const wrappedHandler = withFallback(handler, fallbackHandler);
       const request = new NextRequest('http://localhost/api/test');
       
-      const response = await wrappedHandler(request);
+      const response = await wrappedHandler(request) as NextResponse;
       const data = await response.json();
 
       expect(data.errorType).toBe('AppError');

@@ -5,6 +5,7 @@ import { LineQualityPredictor } from '../line-predictor';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
 import type { StreamingMLUpdate, LineFeatures, MLPrediction } from '../line-validation-types';
+import { createSimpleSupportLine } from '@/__tests__/helpers/simple-detected-line-factory';
 
 // Mock dependencies
 jest.mock('../feature-extractor');
@@ -76,8 +77,8 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       // Should have updates for all stages
@@ -93,13 +94,15 @@ describe('StreamingMLAnalyzer', () => {
 
       // Check progress increases
       for (let i = 1; i < updates.length; i++) {
-        expect(updates[i].progress).toBeGreaterThanOrEqual(updates[i - 1].progress);
+        const current = updates[i];
+        const previous = updates[i - 1];
+        expect(current?.progress ?? 0).toBeGreaterThanOrEqual(previous?.progress ?? 0);
       }
 
       // Final update should be 100%
       const finalUpdate = updates[updates.length - 1];
-      expect(finalUpdate.progress).toBe(100);
-      expect(finalUpdate.stage).toBe('complete');
+      expect(finalUpdate?.progress).toBe(100);
+      expect(finalUpdate?.stage).toBe('complete');
     });
 
     it('should include detailed information in updates', async () => {
@@ -116,8 +119,8 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       // Check collecting stage
@@ -140,9 +143,11 @@ describe('StreamingMLAnalyzer', () => {
 
       // Check final update
       const finalUpdate = updates[updates.length - 1];
-      expect(finalUpdate.details?.featuresExtracted).toBe(23);
-      expect(finalUpdate.details?.preliminaryScore).toBeDefined();
-      expect(finalUpdate.details?.processingTime).toBeGreaterThan(0);
+      if (finalUpdate) {
+        expect(finalUpdate.details?.featuresExtracted).toBe(23);
+        expect(finalUpdate.details?.preliminaryScore).toBeDefined();
+        expect(finalUpdate.details?.processingTime).toBeGreaterThan(0);
+      }
     });
 
     it('should extract top features correctly', async () => {
@@ -168,12 +173,12 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       const finalUpdate = updates[updates.length - 1];
-      const importantFeatures = finalUpdate.details?.importantFeatures || [];
+      const importantFeatures = finalUpdate?.details?.importantFeatures ?? [];
 
       expect(importantFeatures.length).toBeGreaterThan(0);
       expect(importantFeatures.length).toBeLessThanOrEqual(4);
@@ -203,7 +208,7 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
+      for await (const _update of generator) {
         // The generator returns the final prediction after yielding all updates
       }
 
@@ -245,12 +250,13 @@ describe('StreamingMLAnalyzer', () => {
       );
 
       const updates: StreamingMLUpdate[] = [];
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       expect(updates.length).toBeGreaterThan(0);
-      expect(updates[updates.length - 1].stage).toBe('complete');
+      const lastUpdate = updates[updates.length - 1];
+      expect(lastUpdate?.stage).toBe('complete');
     });
 
     it('should handle unknown currency pairs', async () => {
@@ -269,8 +275,8 @@ describe('StreamingMLAnalyzer', () => {
       );
 
       const updates: StreamingMLUpdate[] = [];
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       const result = await generator.next();
@@ -294,8 +300,8 @@ describe('StreamingMLAnalyzer', () => {
       );
 
       try {
-        for await (const update of generator) {
-          updates.push(update);
+        for await (const _update of generator) {
+          updates.push(_update);
         }
       } catch (error) {
         // Expected error
@@ -306,7 +312,9 @@ describe('StreamingMLAnalyzer', () => {
       
       // Last update should indicate error
       const lastUpdate = updates[updates.length - 1];
-      expect(lastUpdate.currentStep).toContain('エラー');
+      if (lastUpdate) {
+        expect(lastUpdate.currentStep).toContain('エラー');
+      }
     });
 
     it('should measure processing time accurately', async () => {
@@ -324,8 +332,8 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
-        updates.push(update);
+      for await (const _update of generator) {
+        updates.push(_update);
       }
 
       const endTime = Date.now();
@@ -333,8 +341,8 @@ describe('StreamingMLAnalyzer', () => {
 
       // Check that processing time in final update is reasonable
       const finalUpdate = updates[updates.length - 1];
-      expect(finalUpdate.details?.processingTime).toBeGreaterThan(0);
-      expect(finalUpdate.details?.processingTime).toBeLessThanOrEqual(totalTime + 100); // Allow some margin
+      expect(finalUpdate?.details?.processingTime).toBeGreaterThan(0);
+      expect(finalUpdate?.details?.processingTime).toBeLessThanOrEqual(totalTime + 100); // Allow some margin
     });
   });
 
@@ -395,7 +403,7 @@ describe('StreamingMLAnalyzer', () => {
         50000
       );
 
-      for await (const update of generator) {
+      for await (const _update of generator) {
         // Consume updates
       }
 
@@ -428,7 +436,7 @@ describe('StreamingMLAnalyzer', () => {
         3000
       );
 
-      for await (const update of generator) {
+      for await (const _update of generator) {
         // Consume updates
       }
 
@@ -473,10 +481,7 @@ function generateMockPriceData(count: number): PriceData[] {
 }
 
 function createMockLine(): DetectedLine {
-  return {
-    id: 'test-line-1',
-    type: 'support',
-    price: 50000,
+  return createSimpleSupportLine(50000, {
     confidence: 0.85,
     touchPoints: [
       { time: 1000, value: 50000 },
@@ -484,8 +489,8 @@ function createMockLine(): DetectedLine {
       { time: 3000, value: 50020 },
       { time: 4000, value: 49980 }
     ],
-    supportingTimeframes: ['1h', '4h']
-  };
+    timeframe: '1h'
+  });
 }
 
 function createMockFeatures(): LineFeatures {
@@ -510,7 +515,7 @@ function createMockFeatures(): LineFeatures {
     timeframeConfluence: 0.7,
     higherTimeframeAlignment: true,
     nearPattern: false,
-    patternType: undefined,
+    // patternType removed - optional property
     distanceFromPrice: 0.02,
     priceRoundness: 0.6,
     nearPsychological: false

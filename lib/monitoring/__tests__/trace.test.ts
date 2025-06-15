@@ -175,7 +175,7 @@ describe('TraceManager', () => {
 
   describe('withTrace Decorator', () => {
     it('should trace successful async function execution', async () => {
-      const mockFn = jest.fn(async (input: { sessionId: string; data: string }) => {
+      const mockFn = jest.fn(async (_input: { sessionId: string; data: string }) => {
         return { 
           result: 'success',
           tokensUsed: { input: 150, output: 75 }
@@ -226,7 +226,7 @@ describe('TraceManager', () => {
 
       const tracedFn = withTrace('failing-agent', 'tool_execution', mockFn);
 
-      await expect(tracedFn({ sessionId: 'session-fail' })).rejects.toThrow('Agent execution failed');
+      await expect(tracedFn()).rejects.toThrow('Agent execution failed');
 
       // Verify error trace
       const endLog = consoleLogSpy.mock.calls.find(call => 
@@ -246,7 +246,7 @@ describe('TraceManager', () => {
       const mockFn = jest.fn(async () => ({ result: 'ok' }));
       const tracedFn = withTrace('no-session-agent', 'workflow_step', mockFn);
 
-      await tracedFn({});
+      await tracedFn();
 
       const startLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_start')
@@ -267,7 +267,7 @@ describe('TraceManager', () => {
 
       const tracedFn = withTrace('analysis-agent', 'agent_call', mockFn);
 
-      await tracedFn({ sessionId: 'session-tokens' });
+      await tracedFn();
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -282,7 +282,7 @@ describe('TraceManager', () => {
       const mockFn = jest.fn(async () => ({ result: 'no tokens' }));
       const tracedFn = withTrace('no-tokens-agent', 'tool_execution', mockFn);
 
-      await tracedFn({ sessionId: 'session-no-tokens' });
+      await tracedFn();
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -301,7 +301,7 @@ describe('TraceManager', () => {
       }));
 
       const tracedFn = withTrace('orchestrator', 'agent_call', mockFn);
-      await tracedFn({ sessionId: 'cost-test' });
+      await tracedFn();
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -319,7 +319,7 @@ describe('TraceManager', () => {
       }));
 
       const tracedFn = withTrace('market-data', 'tool_execution', mockFn);
-      await tracedFn({ sessionId: 'cost-test-2' });
+      await tracedFn();
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -337,7 +337,7 @@ describe('TraceManager', () => {
       }));
 
       const tracedFn = withTrace('unknown-agent', 'workflow_step', mockFn);
-      await tracedFn({ sessionId: 'cost-test-3' });
+      await tracedFn();
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -368,7 +368,7 @@ describe('TraceManager', () => {
 
       const tracedFn = withTrace('timing-agent', 'agent_call', mockFn);
 
-      const promise = tracedFn({ sessionId: 'timing-test' });
+      const promise = tracedFn();
       
       // Fast-forward time
       jest.advanceTimersByTime(250);
@@ -418,7 +418,11 @@ describe('TraceManager', () => {
 
   describe('Traced Function Examples', () => {
     it('should trace trading analysis execution', async () => {
-      const result = await tracedExecuteTradingAnalysis({ sessionId: 'trading-test' });
+      const result = await tracedExecuteTradingAnalysis({ 
+        sessionId: 'trading-test',
+        symbol: 'BTCUSDT',
+        timeframe: '1h'
+      });
       
       expect(result).toEqual({ analysis: 'mock result' });
 
@@ -458,7 +462,7 @@ describe('TraceManager', () => {
 
       const tracedFn = withTrace('error-agent', 'tool_execution', mockFn);
 
-      await expect(tracedFn({ sessionId: 'error-test' })).rejects.toThrow('Generic error');
+      await expect(tracedFn()).rejects.toThrow('Generic error');
 
       const endLog = consoleLogSpy.mock.calls.find(call => 
         call[0].includes('trace_end')
@@ -476,7 +480,7 @@ describe('TraceManager', () => {
 
       const tracedFn = withTrace('failing-trace-agent', 'agent_call', mockFn);
 
-      await expect(tracedFn({ sessionId: 'trace-fail' })).rejects.toThrow(originalError);
+      await expect(tracedFn()).rejects.toThrow(originalError);
     });
   });
 
@@ -508,7 +512,7 @@ describe('TraceManager', () => {
           tokensOutput: i * 5,
           costUsd: i * 0.001,
           success: i % 10 !== 0,
-          errorCode: i % 10 === 0 ? 'TEST_ERROR' : undefined,
+          ...(i % 10 === 0 && { errorCode: 'TEST_ERROR' }),
         });
       });
 

@@ -1,17 +1,19 @@
 import {
+  ChartDrawingSchema,
+  PatternDataSchema,
+  validateDrawing,
+  validateDrawingPoints,
+  isValidDrawing
+} from '../chart-drawing.schema';
+import {
   DrawingPointSchema,
   DrawingStyleSchema,
   DrawingTypeSchema,
-  ChartDrawingSchema,
-  PatternDataSchema,
   DrawingModeSchema,
-  validateDrawing,
-  validateDrawingPoints,
-  isValidDrawing,
   type ChartDrawing,
-  type DrawingPoint,
-  type PatternData
-} from '../chart-drawing.schema';
+  type DrawingPoint
+} from '@/types/drawing';
+import type { PatternData } from '@/store/chart/types';
 
 describe('Chart Drawing Schema Validation', () => {
   describe('DrawingPointSchema', () => {
@@ -286,7 +288,7 @@ describe('Chart Drawing Schema Validation', () => {
       type: 'head-and-shoulders',
       visualization: {
         keyPoints: [
-          { time: 1704067200, value: 45000, type: 'peak' }
+          { time: 1704067200, price: 45000 }
         ],
         lines: []
       }
@@ -418,7 +420,7 @@ describe('Chart Drawing Schema Validation', () => {
       it('throws for invalid points', () => {
         expect(() => validateDrawingPoints([{ time: 'invalid', value: 100 }])).toThrow();
         expect(() => validateDrawingPoints([{ time: 1 }])).toThrow();
-        expect(() => validateDrawingPoints('not-array')).toThrow();
+        expect(() => validateDrawingPoints('not-array' as any)).toThrow();
       });
     });
 

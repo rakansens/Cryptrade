@@ -5,7 +5,7 @@
  * Uses Puppeteer via MCP tools to verify browser behavior
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll } from '@jest/globals';
 
 // This test requires the development server to be running
 // Run with: npm run dev

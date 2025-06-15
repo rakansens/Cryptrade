@@ -12,7 +12,8 @@ describe('FeatureExtractor', () => {
   beforeEach(() => {
     // Create realistic price data
     mockPriceData = generateMockPriceData(100);
-    currentPrice = mockPriceData[mockPriceData.length - 1].close;
+    const lastCandle = mockPriceData[mockPriceData.length - 1];
+    currentPrice = lastCandle?.close ?? 50000;
     extractor = new FeatureExtractor(mockPriceData, currentPrice);
   });
 
@@ -93,16 +94,15 @@ describe('FeatureExtractor', () => {
       // Create line with specific touch types
       const price = 50000;
       const mockLine: DetectedLine = {
-        id: 'test-line',
         type: 'horizontal',
         price,
         confidence: 0.85,
         touchPoints: [
-          { time: mockPriceData[10].time, value: mockPriceData[10].high }, // Wick touch
-          { time: mockPriceData[20].time, value: (mockPriceData[20].open + mockPriceData[20].close) / 2 }, // Body touch
-          { time: mockPriceData[30].time, value: price }, // Exact touch
+          { time: mockPriceData[10]?.time ?? 0, value: mockPriceData[10]?.high ?? 0 }, // Wick touch
+          { time: mockPriceData[20]?.time ?? 0, value: ((mockPriceData[20]?.open ?? 0) + (mockPriceData[20]?.close ?? 0)) / 2 }, // Body touch
+          { time: mockPriceData[30]?.time ?? 0, value: price }, // Exact touch
         ],
-        supportingTimeframes: ['1h']
+        timeframe: '1h'
       };
 
       const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
@@ -135,7 +135,6 @@ describe('FeatureExtractor', () => {
 
       const firstTouch = Math.min(...mockLine.touchPoints.map(t => t.time));
       const lastTouch = Math.max(...mockLine.touchPoints.map(t => t.time));
-      const currentTime = mockPriceData[mockPriceData.length - 1].time;
 
       const firstIndex = mockPriceData.findIndex(p => p.time >= firstTouch);
       const lastIndex = mockPriceData.findIndex(p => p.time >= lastTouch);
@@ -148,7 +147,7 @@ describe('FeatureExtractor', () => {
     it('should detect market conditions correctly', () => {
       // Test trending market
       const trendingData = generateTrendingPriceData(100, 'up');
-      const trendingExtractor = new FeatureExtractor(trendingData, trendingData[trendingData.length - 1].close);
+      const trendingExtractor = new FeatureExtractor(trendingData, trendingData[trendingData.length - 1]?.close ?? 0);
       const mockLine = createMockLine(trendingData);
       const features = trendingExtractor.extractFeatures(mockLine, 'BTCUSDT');
 
@@ -160,12 +159,11 @@ describe('FeatureExtractor', () => {
       const linePrice = 50000;
       const currentPrice = 52000;
       const mockLine: DetectedLine = {
-        id: 'test-line',
         type: 'horizontal',
         price: linePrice,
         confidence: 0.85,
-        touchPoints: [{ time: mockPriceData[0].time, value: linePrice }],
-        supportingTimeframes: ['1h']
+        touchPoints: [{ time: mockPriceData[0]?.time ?? 0, value: linePrice }],
+        timeframe: '1h'
       };
 
       const customExtractor = new FeatureExtractor(mockPriceData, currentPrice);
@@ -180,12 +178,11 @@ describe('FeatureExtractor', () => {
 
       psychologicalPrices.forEach(price => {
         const mockLine: DetectedLine = {
-          id: 'test-line',
           type: 'horizontal',
           price,
           confidence: 0.85,
-          touchPoints: [{ time: mockPriceData[0].time, value: price }],
-          supportingTimeframes: ['1h']
+          touchPoints: [{ time: mockPriceData[0]?.time ?? 0, value: price }],
+          timeframe: '1h'
         };
 
         const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
@@ -205,7 +202,7 @@ describe('FeatureExtractor', () => {
       expect(normalized.length).toBe(23); // Should match number of features
 
       // All normalized values should be between 0 and 1
-      normalized.forEach((value, index) => {
+      normalized.forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0);
         expect(value).toBeLessThanOrEqual(1);
         expect(isFinite(value)).toBe(true);
@@ -265,12 +262,11 @@ describe('FeatureExtractor', () => {
   describe('edge cases', () => {
     it('should handle empty touch points', () => {
       const mockLine: DetectedLine = {
-        id: 'test-line',
         type: 'horizontal',
         price: 50000,
         confidence: 0.85,
         touchPoints: [],
-        supportingTimeframes: ['1h']
+        timeframe: '1h'
       };
 
       const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
@@ -291,14 +287,16 @@ describe('FeatureExtractor', () => {
         volume: 1000
       }];
 
-      const singleExtractor = new FeatureExtractor(singleData, singleData[0].close);
+      const firstCandle = singleData[0];
+      if (!firstCandle) return;
+      
+      const singleExtractor = new FeatureExtractor(singleData, firstCandle.close);
       const mockLine: DetectedLine = {
-        id: 'test-line',
         type: 'horizontal',
         price: 50000,
         confidence: 0.85,
-        touchPoints: [{ time: singleData[0].time, value: 50000 }],
-        supportingTimeframes: ['1h']
+        touchPoints: [{ time: firstCandle.time, value: 50000 }],
+        timeframe: '1h'
       };
 
       const features = singleExtractor.extractFeatures(mockLine, 'BTCUSDT');
@@ -309,14 +307,13 @@ describe('FeatureExtractor', () => {
 
     it('should handle missing touch point data', () => {
       const mockLine: DetectedLine = {
-        id: 'test-line',
         type: 'horizontal',
         price: 50000,
         confidence: 0.85,
         touchPoints: [
           { time: 999999999, value: 50000 } // Time not in price data
         ],
-        supportingTimeframes: ['1h']
+        timeframe: '1h'
       };
 
       const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
@@ -388,18 +385,31 @@ function generateTrendingPriceData(count: number, direction: 'up' | 'down'): Pri
 function createMockLine(priceData: PriceData[]): DetectedLine {
   // Create a line with touches at different points
   const indices = [10, 25, 40, 60, 75].filter(i => i < priceData.length);
-  const price = priceData[indices[0]].low;
+  const firstIndex = indices[0];
+  if (firstIndex === undefined) {
+    throw new Error('Invalid price data - no indices');
+  }
+  const firstCandle = priceData[firstIndex];
+  if (!firstCandle) {
+    throw new Error('Invalid price data - candle not found');
+  }
+  const price = firstCandle.low;
 
   return {
-    id: 'test-line-1',
     type: 'support',
     price,
     confidence: 0.85,
     rSquared: 0.92,
-    touchPoints: indices.map(i => ({
-      time: priceData[i].time,
-      value: priceData[i].low + (Math.random() - 0.5) * 50
-    })),
-    supportingTimeframes: ['1h', '4h']
+    touchPoints: indices.map(i => {
+      const candle = priceData[i];
+      if (!candle) {
+        throw new Error(`No candle at index ${i}`);
+      }
+      return {
+        time: candle.time,
+        value: candle.low + (Math.random() - 0.5) * 50
+      };
+    }),
+    timeframe: '1h'
   };
 }

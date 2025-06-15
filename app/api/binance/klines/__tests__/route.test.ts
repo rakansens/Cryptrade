@@ -5,7 +5,6 @@ const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
 import { GET, OPTIONS } from '../route';
-import { BinanceKlinesResponseSchema } from '@/types/market';
 
 // Mock fetch globally
 const mockFetch = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>();
@@ -230,7 +229,7 @@ describe('Binance Klines API Route', () => {
     it('should handle timeout appropriately', async () => {
       // Mock fetch to never resolve
       mockFetch.mockImplementationOnce(() => 
-        new Promise((resolve) => {
+        new Promise(() => {
           // Never resolve to simulate timeout
         })
       );
@@ -238,7 +237,7 @@ describe('Binance Klines API Route', () => {
       const request = new NextRequest('http://localhost/api/binance/klines?symbol=BTCUSDT&interval=1h');
       
       // This should eventually timeout due to AbortSignal
-      const responsePromise = GET(request);
+      GET(request);
       
       // Wait a bit and verify fetch was called with abort signal
       await new Promise(resolve => setTimeout(resolve, 100));

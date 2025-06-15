@@ -167,7 +167,7 @@ describe('useCandlestickData', () => {
 
     it('should handle closed klines', async () => {
       let messageHandler: (data: BinanceKlineMessage) => void;
-      mockBinanceConnection.subscribe.mockImplementation((stream, handler) => {
+      mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
         return jest.fn();
       });
@@ -222,7 +222,7 @@ describe('useCandlestickData', () => {
 
     it('should handle updating klines', async () => {
       let messageHandler: (data: BinanceKlineMessage) => void;
-      mockBinanceConnection.subscribe.mockImplementation((stream, handler) => {
+      mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
         return jest.fn();
       });
@@ -277,7 +277,7 @@ describe('useCandlestickData', () => {
 
     it('should filter messages by symbol', async () => {
       let messageHandler: (data: BinanceKlineMessage) => void;
-      mockBinanceConnection.subscribe.mockImplementation((stream, handler) => {
+      mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
         return jest.fn();
       });
@@ -326,7 +326,7 @@ describe('useCandlestickData', () => {
 
     it('should handle websocket errors', async () => {
       let messageHandler: (data: BinanceKlineMessage) => void;
-      mockBinanceConnection.subscribe.mockImplementation((stream, handler) => {
+      mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
         return jest.fn();
       });

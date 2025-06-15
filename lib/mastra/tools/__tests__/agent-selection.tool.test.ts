@@ -1,6 +1,6 @@
 import { agentSelectionTool } from '../agent-selection.tool';
 import { agentNetwork } from '../../network/agent-network';
-import { FallbackHandler } from '../../utils/fallback-handler';
+import { FallbackHandler, type FallbackResponse } from '../../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
 import { logger } from '@/lib/utils/logger';
 
@@ -53,7 +53,7 @@ describe('agentSelectionTool', () => {
           query: 'What is the current BTC price?',
           correlationId: 'test-123',
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -113,7 +113,7 @@ describe('agentSelectionTool', () => {
           query: 'Show me BTCUSDT 1h chart with RSI',
           context: { currentState: { symbol: 'ETHUSDT' } },
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -158,12 +158,12 @@ describe('agentSelectionTool', () => {
           agentType: 'trading_analysis',
           query: 'Analyze BTC chart patterns',
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
       expect(result.selectedAgent).toBe('tradingAnalysisAgent');
-      expect(result.executionResult?.proposalGroup).toEqual(mockProposalGroup);
+      expect((result.executionResult as any)?.proposalGroup).toEqual(mockProposalGroup);
       
       // Should not emit UI events for proposal mode
       expect(mockEmitUIEvent).not.toHaveBeenCalled();
@@ -185,7 +185,7 @@ describe('agentSelectionTool', () => {
           agentType: 'custom_agent' as any,
           query: 'Custom query',
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -204,10 +204,14 @@ describe('agentSelectionTool', () => {
     it('should use fallback when A2A communication fails', async () => {
       mockAgentNetwork.sendMessage.mockRejectedValue(new Error('Network error'));
       
-      const mockFallbackResult = {
+      const mockFallbackResult: FallbackResponse = {
         response: 'Fallback response for price inquiry',
-        data: { fallback: true },
-        metadata: { model: 'fallback-model' },
+        metadata: { 
+          model: 'fallback-model',
+          fallbackType: 'static',
+          originalAgent: 'price_inquiry',
+          timestamp: Date.now()
+        },
       };
       
       mockFallbackHandler.handle.mockResolvedValue(mockFallbackResult);
@@ -217,7 +221,7 @@ describe('agentSelectionTool', () => {
           agentType: 'price_inquiry',
           query: 'What is BTC price?',
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -236,12 +240,23 @@ describe('agentSelectionTool', () => {
     it('should handle A2A timeout', async () => {
       // Mock a delayed response that will trigger timeout
       mockAgentNetwork.sendMessage.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ type: 'success' }), 15000))
+        new Promise(resolve => setTimeout(() => resolve({ 
+          id: 'timeout-test',
+          type: 'response' as const,
+          source: 'testAgent',
+          timestamp: Date.now(),
+          result: 'Timeout response'
+        }), 15000))
       );
       
       mockFallbackHandler.handle.mockResolvedValue({
         response: 'Timeout fallback response',
-        metadata: {},
+        metadata: {
+          model: 'fallback',
+          fallbackType: 'static' as const,
+          originalAgent: 'ui_control',
+          timestamp: Date.now()
+        },
       });
 
       const result = await agentSelectionTool.execute({
@@ -249,7 +264,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Update chart',
         },
-        runtimeContext: { sessionId: 'test-session' }
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -266,8 +281,11 @@ describe('agentSelectionTool', () => {
     it('should handle A2A error response', async () => {
       const mockErrorResponse = {
         id: 'msg-err',
-        type: 'error',
+        type: 'error' as const,
+        source: 'testAgent',
+        timestamp: Date.now(),
         error: {
+          code: 500,
           message: 'Agent not available',
         },
       };
@@ -275,7 +293,12 @@ describe('agentSelectionTool', () => {
       mockAgentNetwork.sendMessage.mockResolvedValue(mockErrorResponse);
       mockFallbackHandler.handle.mockResolvedValue({
         response: 'Error fallback response',
-        metadata: {},
+        metadata: {
+          model: 'fallback',
+          fallbackType: 'error' as const,
+          originalAgent: 'trading_analysis',
+          timestamp: Date.now()
+        },
       });
 
       const result = await agentSelectionTool.execute({
@@ -283,6 +306,7 @@ describe('agentSelectionTool', () => {
           agentType: 'trading_analysis',
           query: 'Analyze patterns',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(true);
@@ -303,6 +327,7 @@ describe('agentSelectionTool', () => {
           agentType: 'price_inquiry',
           query: 'Get price',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.success).toBe(false);
@@ -326,17 +351,17 @@ describe('agentSelectionTool', () => {
       // Test different response structures
       const responseVariants = [
         // Direct operations
-        { type: 'success', result: 'Done', operations },
+        { id: 'test-1', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', operations },
         // In data
-        { type: 'success', result: 'Done', data: { operations } },
+        { id: 'test-2', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', data: { operations } },
         // In result
-        { type: 'success', result: 'Done', result: { operations } },
+        { id: 'test-3', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: { operations } },
         // In executionResult.data
-        { type: 'success', result: 'Done', executionResult: { data: { operations } } },
+        { id: 'test-4', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', executionResult: { data: { operations } } },
         // In toolResults
-        { type: 'success', result: 'Done', toolResults: [{ result: { operations } }] },
+        { id: 'test-5', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', toolResults: [{ result: { operations } }] },
         // In steps->toolResults
-        { type: 'success', result: 'Done', steps: [{ toolResults: [{ result: { operations } }] }] },
+        { id: 'test-6', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', steps: [{ toolResults: [{ result: { operations } }] }] },
       ];
 
       for (const response of responseVariants) {
@@ -348,7 +373,7 @@ describe('agentSelectionTool', () => {
             agentType: 'ui_control',
             query: 'Change timeframe',
           },
-          runtimeContext: { sessionId: 'test-session' }
+          runtimeContext: {} as any
         });
 
         expect(mockEmitUIEvent).toHaveBeenCalledWith({
@@ -360,6 +385,7 @@ describe('agentSelectionTool', () => {
 
     it('should not broadcast for non-UI agents', async () => {
       const mockResponse = {
+        id: 'test-response-1',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -381,6 +407,7 @@ describe('agentSelectionTool', () => {
           agentType: 'price_inquiry',
           query: 'Get price',
         },
+        runtimeContext: {} as any
       });
 
       expect(mockEmitUIEvent).not.toHaveBeenCalled();
@@ -388,6 +415,7 @@ describe('agentSelectionTool', () => {
 
     it('should not broadcast when proposal group exists', async () => {
       const mockResponse = {
+        id: 'test-response-2',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -410,6 +438,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Generate proposals',
         },
+        runtimeContext: {} as any
       });
 
       expect(mockEmitUIEvent).not.toHaveBeenCalled();
@@ -417,6 +446,7 @@ describe('agentSelectionTool', () => {
 
     it('should handle operations without clientEvent', async () => {
       const mockResponse = {
+        id: 'test-response-3',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -439,6 +469,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Mixed operations',
         },
+        runtimeContext: {} as any
       });
 
       // Should only emit the valid event
@@ -458,6 +489,7 @@ describe('agentSelectionTool', () => {
       };
 
       mockAgentNetwork.sendMessage.mockResolvedValue({
+        id: 'test-response-4',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -470,6 +502,7 @@ describe('agentSelectionTool', () => {
           query: 'Analyze with context',
           context: userContext,
         },
+        runtimeContext: {} as any
       });
 
       expect(mockAgentNetwork.sendMessage).toHaveBeenCalledWith(
@@ -487,6 +520,7 @@ describe('agentSelectionTool', () => {
 
     it('should use provided correlation ID', async () => {
       mockAgentNetwork.sendMessage.mockResolvedValue({
+        id: 'test-response-5',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -499,6 +533,7 @@ describe('agentSelectionTool', () => {
           query: 'Get price',
           correlationId: 'user-correlation-123',
         },
+        runtimeContext: {} as any
       });
 
       expect(mockAgentNetwork.sendMessage).toHaveBeenCalledWith(
@@ -512,6 +547,7 @@ describe('agentSelectionTool', () => {
 
     it('should generate correlation ID if not provided', async () => {
       mockAgentNetwork.sendMessage.mockResolvedValue({
+        id: 'test-response-6',
         type: 'response' as const,
         source: 'testAgent',
         timestamp: Date.now(),
@@ -523,6 +559,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Update UI',
         },
+        runtimeContext: {} as any
       });
 
       expect(mockAgentNetwork.sendMessage).toHaveBeenCalledWith(
@@ -557,6 +594,7 @@ describe('agentSelectionTool', () => {
           agentType: 'ui_control',
           query: 'Complex operation',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.executionResult?.metadata).toMatchObject({
@@ -587,6 +625,7 @@ describe('agentSelectionTool', () => {
           agentType: 'trading_analysis',
           query: 'Full analysis',
         },
+        runtimeContext: {} as any
       });
 
       expect(result.executionResult).toMatchObject({

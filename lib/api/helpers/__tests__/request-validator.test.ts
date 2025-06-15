@@ -6,8 +6,7 @@ const restoreEnv = mockTestEnv();
 import { NextRequest } from 'next/server';
 import { 
   validateChatRequest, 
-  registerAgentsSafely,
-  type ValidatedChatRequest 
+  registerAgentsSafely
 } from '../request-validator';
 import { ValidationError } from '../error-handler';
 import { logger } from '@/lib/utils/logger';

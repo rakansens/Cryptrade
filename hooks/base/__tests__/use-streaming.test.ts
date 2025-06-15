@@ -167,7 +167,7 @@ describe('useStreaming', () => {
       const mockResponse = {
         ok: true,
         body: new ReadableStream({
-          start(controller) {
+          start() {
             // Keep stream open
           }
         })
@@ -215,7 +215,7 @@ describe('useStreaming', () => {
       const messages: any[] = [];
       const onMessage = jest.fn((data) => messages.push(data));
 
-      const { result } = renderHook(() => 
+      renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
           onMessage
@@ -249,7 +249,7 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      const { result } = renderHook(() => 
+      renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
           onMessage: (data) => messages.push(data)
@@ -282,7 +282,7 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      const { result } = renderHook(() => 
+      renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
           parseResponse: (chunk) => {
@@ -322,7 +322,7 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      const { result } = renderHook(() => 
+      renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
           onMessage: (data) => messages.push(data)
@@ -708,7 +708,7 @@ describe('useSSE', () => {
       expect(result.current.eventSource).toBeTruthy();
     });
 
-    const eventSource = result.current.eventSource as MockEventSource;
+    const eventSource = result.current.eventSource as unknown as MockEventSource;
 
     // Simulate custom event
     const updateEvent = new MessageEvent('update', {

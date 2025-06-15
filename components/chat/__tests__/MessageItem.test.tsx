@@ -2,7 +2,6 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageItem } from '../MessageItem'
 import type { ChatMessage } from '@/store/chat.store'
-import type { ProposalMessage } from '@/types/proposal'
 
 // Mock child components
 jest.mock('../ProposalCard', () => ({
@@ -156,10 +155,13 @@ describe('MessageItem', () => {
       timestamp: Date.now(),
       proposalGroup: {
         id: 'group-1',
+        groupId: 'group-1',
         title: 'Trend Analysis',
         description: 'Based on current market trends',
         status: 'pending' as const,
+        timestamp: Date.now(),
         createdAt: Date.now(),
+        symbol: 'BTCUSDT',
         proposals: []
       }
     }

@@ -89,7 +89,14 @@ describe('useAnalysisStream', () => {
 
       // Set some initial state
       act(() => {
-        result.current.steps.push({ id: 'old-step', type: 'data_fetch' as any, name: 'Old Step', status: 'completed', progress: 100 });
+        result.current.steps.push({ 
+          id: 'old-step', 
+          type: 'data-collection', 
+          title: 'Old Step', 
+          description: 'Old step description',
+          status: 'completed', 
+          progress: 100 
+        });
       });
 
       const mockResponse = { ok: true, body: {} };
@@ -137,7 +144,7 @@ describe('useAnalysisStream', () => {
       });
 
       const calls: string[] = [];
-      (fetch as jest.Mock).mockImplementation((url, options) => {
+      (fetch as jest.Mock).mockImplementation((_url, options) => {
         const body = JSON.parse(options.body);
         calls.push(body.sessionId);
         return Promise.resolve(mockResponse);
@@ -168,13 +175,15 @@ describe('useAnalysisStream', () => {
     });
 
     it('should handle analysis:start event', () => {
-      const { result } = renderHook(() => useAnalysisStream());
+      renderHook(() => useAnalysisStream());
 
       act(() => {
         onMessage({
           type: 'analysis:start',
-          data: { totalSteps: 5, sessionId: 'session-123' },
-        });
+          data: { totalSteps: 5, analysisType: 'all', symbol: 'BTCUSDT', interval: '1h' },
+          sessionId: 'session-123',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(logger.info).toHaveBeenCalledWith('[Analysis Stream] Analysis started', expect.any(Object));
@@ -186,17 +195,20 @@ describe('useAnalysisStream', () => {
 
       const step: AnalysisStep = {
         id: 'step-1',
-        type: 'data_fetch' as AnalysisStepType,
-        name: 'Fetching data',
-        status: 'in_progress',
+        type: 'data-collection',
+        title: 'Fetching data',
+        description: 'Fetching market data',
+        status: 'in-progress',
         progress: 0,
       };
 
       act(() => {
         onMessage({
           type: 'analysis:step-start',
-          data: { step, currentStepIndex: 0 },
-        });
+          data: { step, currentStepIndex: 0, totalSteps: 5 },
+          sessionId: 'test-session',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(result.current.steps[0]).toEqual(step);
@@ -210,17 +222,20 @@ describe('useAnalysisStream', () => {
 
       const step: AnalysisStep = {
         id: 'step-1',
-        type: 'ml_analysis' as AnalysisStepType,
-        name: 'ML Analysis',
-        status: 'in_progress',
+        type: 'technical-analysis',
+        title: 'ML Analysis',
+        description: 'Performing ML analysis',
+        status: 'in-progress',
         progress: 50,
       };
 
       act(() => {
         onMessage({
           type: 'analysis:step-progress',
-          data: { step, currentStepIndex: 1 },
-        });
+          data: { step, currentStepIndex: 1, totalSteps: 5 },
+          sessionId: 'test-session',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(result.current.steps[1]).toEqual(step);
@@ -233,8 +248,9 @@ describe('useAnalysisStream', () => {
 
       const step: AnalysisStep = {
         id: 'step-1',
-        type: 'proposal_generation' as AnalysisStepType,
-        name: 'Generating proposals',
+        type: 'proposal-creation',
+        title: 'Generating proposals',
+        description: 'Creating proposal suggestions',
         status: 'completed',
         progress: 100,
       };
@@ -242,8 +258,10 @@ describe('useAnalysisStream', () => {
       act(() => {
         onMessage({
           type: 'analysis:step-complete',
-          data: { step, currentStepIndex: 2 },
-        });
+          data: { step, currentStepIndex: 2, totalSteps: 5 },
+          sessionId: 'test-session',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(result.current.steps[2]).toEqual(step);
@@ -252,7 +270,7 @@ describe('useAnalysisStream', () => {
 
     it('should handle analysis:complete event', () => {
       const onComplete = jest.fn();
-      const { result } = renderHook(() => useAnalysisStream({ onComplete }));
+      renderHook(() => useAnalysisStream({ onComplete }));
 
       const completeData = {
         duration: 2500,
@@ -264,7 +282,9 @@ describe('useAnalysisStream', () => {
         onMessage({
           type: 'analysis:complete',
           data: completeData,
-        });
+          sessionId: 'test-session',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(onComplete).toHaveBeenCalledWith(completeData);
@@ -273,13 +293,15 @@ describe('useAnalysisStream', () => {
 
     it('should handle analysis:error event', () => {
       const onError = jest.fn();
-      const { result } = renderHook(() => useAnalysisStream({ onError }));
+      renderHook(() => useAnalysisStream({ onError }));
 
       act(() => {
         onMessage({
           type: 'analysis:error',
           data: { error: 'Analysis failed' },
-        });
+          sessionId: 'test-session',
+          timestamp: Date.now(),
+        } as AnalysisProgressEvent);
       });
 
       expect(onError).toHaveBeenCalledWith('Analysis failed');
@@ -292,8 +314,8 @@ describe('useAnalysisStream', () => {
       act(() => {
         onMessage({
           type: 'unknown:event' as any,
-          data: {},
-        });
+          data: {} as any,
+        } as any);
       });
 
       expect(logger.warn).toHaveBeenCalledWith('[Analysis Stream] Unknown event type', { type: 'unknown:event' });
@@ -380,11 +402,12 @@ describe('useAnalysisStream', () => {
 
       // Set some state
       act(() => {
-        const step: AnalysisStep = {
+        const step = {
           id: 'step-1',
-          type: 'data_fetch' as AnalysisStepType,
-          name: 'Test Step',
-          status: 'completed',
+          type: 'data-collection' as const,
+          title: 'Test Step',
+          description: 'Test description',
+          status: 'completed' as const,
           progress: 100,
         };
         result.current.steps.push(step);

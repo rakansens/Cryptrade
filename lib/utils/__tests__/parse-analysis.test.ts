@@ -1,5 +1,4 @@
 import { parseAnalysisText, isAnalysisMessage } from '../parse-analysis';
-import type { AnalysisResultData } from '@/components/chat/AnalysisResultCard';
 
 describe('parse-analysis', () => {
   describe('parseAnalysisText', () => {

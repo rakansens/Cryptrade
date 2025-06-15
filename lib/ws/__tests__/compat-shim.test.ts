@@ -58,7 +58,6 @@ describe('BinanceConnectionManagerShim', () => {
       // Arrange
       const streamName = 'btcusdt@trade';
       const handler = jest.fn();
-      const mockSubscription = { unsubscribe: jest.fn() };
       
       mockWSManager.subscribe.mockReturnValue(of({ test: 'data' }) as any);
       
@@ -86,7 +85,6 @@ describe('BinanceConnectionManagerShim', () => {
       // Arrange
       const streamName = 'btcusdt@trade';
       const handler = jest.fn();
-      const mockSubscription = { unsubscribe: jest.fn() };
       
       mockWSManager.subscribe.mockReturnValue(of({ test: 'data' }) as any);
       
@@ -158,13 +156,13 @@ describe('BinanceConnectionManagerShim', () => {
       mockWSManager.subscribe.mockReturnValue(of({ test: 'data' }) as any);
       
       // Act
-      const unsub1 = shim.subscribe(streamName, handler1);
-      const unsub2 = shim.subscribe(streamName, handler2);
+      shim.subscribe(streamName, handler1);
+      shim.subscribe(streamName, handler2);
       
       // Assert
       const debugInfo = shim.getDebugInfo();
       expect(debugInfo.activeStreams).toBe(1);
-      expect(debugInfo.subscriptions[0].subscriptionCount).toBe(2);
+      expect(debugInfo.subscriptions[0]?.subscriptionCount).toBe(2);
     });
 
     it('should properly unsubscribe individual handlers', () => {
@@ -172,27 +170,25 @@ describe('BinanceConnectionManagerShim', () => {
       const streamName = 'btcusdt@trade';
       const handler1 = jest.fn();
       const handler2 = jest.fn();
-      const mockSubscription = { unsubscribe: jest.fn() };
       
       mockWSManager.subscribe.mockReturnValue(of({ test: 'data' }) as any);
       
       // Act
       const unsub1 = shim.subscribe(streamName, handler1);
-      const unsub2 = shim.subscribe(streamName, handler2);
+      shim.subscribe(streamName, handler2);
       
       // Unsubscribe first handler
       unsub1();
       
       // Assert
       const debugInfo = shim.getDebugInfo();
-      expect(debugInfo.subscriptions[0].subscriptionCount).toBe(1);
+      expect(debugInfo.subscriptions[0]?.subscriptionCount).toBe(1);
     });
 
     it('should remove stream when all handlers unsubscribe', () => {
       // Arrange
       const streamName = 'btcusdt@trade';
       const handler = jest.fn();
-      const mockSubscription = { unsubscribe: jest.fn() };
       
       mockWSManager.subscribe.mockReturnValue(of({ test: 'data' }) as any);
       

@@ -7,7 +7,16 @@ import {
 } from '../market-data-resilient.tool';
 import { logger } from '@/lib/utils/logger';
 import { incrementMetric } from '@/lib/monitoring/metrics';
-import { BaseService } from '@/lib/api/base-service';
+// Import test utilities
+import type { ToolExecutionContext } from '@mastra/core';
+
+// Create test execution context helper
+function createTestToolExecutionContext<T extends Record<string, any>>(context: T): ToolExecutionContext<any> {
+  return {
+    context,
+    runtimeContext: {} as any // Simplified for testing
+  };
+}
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -87,9 +96,9 @@ describe('marketDataResilientTool', () => {
     it('should fetch market data successfully', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(result).toMatchObject({
         symbol: 'BTCUSDT',
@@ -119,15 +128,15 @@ describe('marketDataResilientTool', () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
       // First call - fetch from API
-      const result1 = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result1 = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
       expect(result1.metadata?.fromCache).toBe(false);
 
       // Second call - should return from cache
-      const result2 = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result2 = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
       
       expect(result2.metadata?.fromCache).toBe(true);
       expect(mockGet).toHaveBeenCalledTimes(1); // Not called again
@@ -143,12 +152,12 @@ describe('marketDataResilientTool', () => {
       // we'll test the fallback behavior instead when API fails
       mockGet.mockRejectedValueOnce(new Error('Circuit breaker is OPEN'));
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       // Should return fallback data
-      expect(result.metadata?.isFallback).toBe(true);
+      expect((result.metadata as any)?.isFallback).toBe(true);
       expect(result.analysis.recommendation).toContain('注意');
     });
 
@@ -156,9 +165,9 @@ describe('marketDataResilientTool', () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
       
       // First, populate cache
-      await marketDataResilientTool.execute({
-        context: { symbol: 'BTCUSDT' }
-      });
+      await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       // Mock circuit breaker to be open
       const { CircuitBreaker } = require('@/lib/utils/retry-with-circuit-breaker');
@@ -183,9 +192,9 @@ describe('marketDataResilientTool', () => {
     it('should handle API errors and return fallback data', async () => {
       mockGet.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'ETHUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'ETHUSDT' })
+      );
 
       expect(result).toMatchObject({
         symbol: 'ETHUSDT',
@@ -224,9 +233,9 @@ describe('marketDataResilientTool', () => {
       for (const symbol of validSymbols) {
         mockGet.mockResolvedValueOnce(mockMarketData);
         
-        const result = await marketDataResilientTool.execute!({
-          context: { symbol }
-        });
+        const result = await marketDataResilientTool.execute!(
+          createTestToolExecutionContext({ symbol })
+        );
         
         expect(result.symbol).toBe(symbol.toUpperCase());
       }
@@ -270,9 +279,9 @@ describe('marketDataResilientTool', () => {
         mockGet.mockResolvedValueOnce({ data: testCase.data });
         clearMarketDataCache(); // Clear cache between tests
         
-        const result = await marketDataResilientTool.execute!({
-          context: { symbol: 'BTCUSDT' }
-        });
+        const result = await marketDataResilientTool.execute!(
+          createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+        );
         
         expect(result.analysis.trend).toBe(testCase.expectedTrend);
         expect(result.analysis.volatility).toBe(testCase.expectedVolatility);
@@ -282,9 +291,9 @@ describe('marketDataResilientTool', () => {
     it('should track metrics correctly', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      await marketDataResilientTool.execute({
-        context: { symbol: 'BTCUSDT' }
-      });
+      await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(incrementMetric).toHaveBeenCalledWith('market_data_requests');
       expect(incrementMetric).toHaveBeenCalledWith('market_data_success');
@@ -295,9 +304,9 @@ describe('marketDataResilientTool', () => {
     it('should include metadata in response', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(result.metadata).toBeDefined();
       expect(result.metadata?.latency).toBeGreaterThan(0);
@@ -307,9 +316,9 @@ describe('marketDataResilientTool', () => {
     it('should log appropriate messages', async () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
-      await marketDataResilientTool.execute({
-        context: { symbol: 'BTCUSDT' }
-      });
+      await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(logger.info).toHaveBeenCalledWith(
         '[Market Data Tool] Execute called',
@@ -364,13 +373,13 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       // Should fallback gracefully
       expect(result.currentPrice).toBeGreaterThan(0);
-      expect(result.metadata?.isFallback).toBe(true);
+      expect((result.metadata as any)?.isFallback).toBe(true);
     });
 
     it('should handle very high volatility correctly', async () => {
@@ -383,9 +392,9 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(result.analysis.volatility).toBe('high');
       expect(result.analysis.recommendation).toContain('High volatility');
@@ -399,9 +408,9 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(result.volume24h).toBe(0);
     });
@@ -415,9 +424,9 @@ describe('marketDataResilientTool', () => {
         }
       });
 
-      const result = await marketDataResilientTool.execute!({
-        context: { symbol: 'BTCUSDT' }
-      });
+      const result = await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
 
       expect(result.priceChange24h).toBe(-5000);
       expect(result.priceChangePercent24h).toBe(-10.5);
@@ -430,9 +439,9 @@ describe('marketDataResilientTool', () => {
       mockGet.mockResolvedValueOnce(mockMarketData);
 
       const startTime = Date.now();
-      await marketDataResilientTool.execute({
-        context: { symbol: 'BTCUSDT' }
-      });
+      await marketDataResilientTool.execute!(
+        createTestToolExecutionContext({ symbol: 'BTCUSDT' })
+      );
       const endTime = Date.now();
 
       expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
@@ -446,7 +455,9 @@ describe('marketDataResilientTool', () => {
       });
 
       const promises = symbols.map(symbol => 
-        marketDataResilientTool.execute({ context: { symbol } })
+        marketDataResilientTool.execute!(
+          createTestToolExecutionContext({ symbol })
+        )
       );
 
       const results = await Promise.all(promises);

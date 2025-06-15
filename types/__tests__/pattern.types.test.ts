@@ -3,8 +3,6 @@ import type {
   PatternVisualization, 
   PatternPoint, 
   PatternLine, 
-  PatternChannel,
-  PatternLabel,
   PatternMetrics,
   PatternState,
   PatternRenderer

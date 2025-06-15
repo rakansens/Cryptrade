@@ -1,22 +1,20 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
 import {
-  DrawingPointSchema,
-  DrawingStyleSchema,
-  DrawingTypeSchema,
   ChartDrawingSchema,
   PatternDataSchema,
-  DrawingModeSchema,
   validateDrawing,
   validateDrawingPoints,
   isValidDrawing,
-  type DrawingPoint,
-  type DrawingStyle,
   type DrawingType,
-  type ChartDrawing,
-  type PatternData,
   type DrawingMode
 } from '../chart-drawing.schema';
+import {
+  DrawingPointSchema,
+  DrawingStyleSchema,
+  DrawingTypeSchema,
+  DrawingModeSchema
+} from '@/types/drawing';
 
 describe('DrawingPointSchema', () => {
   describe('valid points', () => {

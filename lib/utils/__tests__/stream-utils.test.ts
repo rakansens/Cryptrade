@@ -223,15 +223,15 @@ describe('stream-utils', () => {
       
       // Override getReader to spy on releaseLock
       const originalGetReader = response.body!.getReader;
-      response.body!.getReader = function() {
-        const reader = originalGetReader.call(this);
+      response.body!.getReader = function(this: ReadableStream, options?: ReadableStreamGetReaderOptions) {
+        const reader = originalGetReader.call(this, options);
         const originalReleaseLock = reader.releaseLock;
         reader.releaseLock = function() {
           releaseLockSpy();
           return originalReleaseLock.call(this);
         };
         return reader;
-      };
+      } as any;
 
       const lines: string[] = [];
       for await (const line of streamToLines(response)) {
@@ -260,15 +260,15 @@ describe('stream-utils', () => {
 
       // Override getReader to spy on releaseLock
       const originalGetReader = response.body!.getReader;
-      response.body!.getReader = function() {
-        const reader = originalGetReader.call(this);
+      response.body!.getReader = function(this: ReadableStream, options?: ReadableStreamGetReaderOptions) {
+        const reader = originalGetReader.call(this, options);
         const originalReleaseLock = reader.releaseLock;
         reader.releaseLock = function() {
           releaseLockSpy();
           return originalReleaseLock.call(this);
         };
         return reader;
-      };
+      } as any;
 
       await expect(async () => {
         const lines: string[] = [];

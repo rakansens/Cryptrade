@@ -99,7 +99,7 @@ describe('log-viewer.types', () => {
     });
 
     it('should handle null error', () => {
-      expect(formatLogError(null)).toBe('null');
+      expect(formatLogError(null as unknown as string | Error)).toBe('null');
     });
 
     it('should handle undefined error', () => {
@@ -107,11 +107,11 @@ describe('log-viewer.types', () => {
     });
 
     it('should convert number to string', () => {
-      expect(formatLogError(404 as any)).toBe('404');
+      expect(formatLogError(404 as unknown as string | Error)).toBe('404');
     });
 
     it('should convert boolean to string', () => {
-      expect(formatLogError(false as any)).toBe('false');
+      expect(formatLogError(false as unknown as string | Error)).toBe('false');
     });
   });
 

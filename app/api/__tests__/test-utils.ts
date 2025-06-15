@@ -3,7 +3,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ProposalGroup, Proposal, ChartDrawing } from '@/types/proposal';
+import { DrawingProposalGroup, DrawingProposal, ProposalStatus, ProposalType } from '@/types/proposals';
 import { BinanceKline, BinanceTicker24hr } from '@/types/market';
 
 // Mock data generators
@@ -43,29 +43,37 @@ export const mockData = {
   },
 
   // Proposal mocks
-  createProposal(overrides?: Partial<Proposal>): Proposal {
+  createProposal(overrides?: Partial<DrawingProposal>): DrawingProposal {
     return {
       id: `prop_${Date.now()}`,
-      type: 'trendline',
+      type: ProposalType.TRENDLINE,
+      analysisType: 'trendline',
+      coordinates: {
+        start: { x: 1640995200000, y: 46432.01 },
+        end: { x: 1641081600000, y: 47890.12 }
+      },
       reasoning: 'Strong uptrend detected',
       confidence: 0.85,
-      parameters: {},
-      drawings: [],
-      createdAt: new Date().toISOString(),
-      ...overrides
-    };
-  },
-
-  createProposalGroup(overrides?: Partial<ProposalGroup>): ProposalGroup {
-    return {
-      id: `pg_${Date.now()}`,
-      proposals: [mockData.createProposal()],
+      priority: 'medium',
+      status: ProposalStatus.PENDING,
       createdAt: Date.now(),
       ...overrides
     };
   },
 
-  createChartDrawing(overrides?: Partial<ChartDrawing>): ChartDrawing {
+  createProposalGroup(overrides?: Partial<DrawingProposalGroup>): DrawingProposalGroup {
+    return {
+      id: `pg_${Date.now()}`,
+      title: 'Test Proposal Group',
+      description: 'Test proposal group for unit tests',
+      proposals: [mockData.createProposal()],
+      groupType: 'analysis',
+      createdAt: Date.now(),
+      ...overrides
+    };
+  },
+
+  createChartDrawing(overrides?: Partial<any>): any {
     return {
       id: `drawing_${Date.now()}`,
       type: 'trendline',
@@ -87,21 +95,22 @@ export const mockData = {
   },
 
   // Market data mocks
-  createKline(overrides?: Partial<BinanceKline>): BinanceKline {
-    return {
-      openTime: 1640995200000,
-      open: "46432.01",
-      high: "46505.00",
-      low: "46247.01",
-      close: "46306.01",
-      volume: "1458.50600000",
-      closeTime: 1640998799999,
-      quoteAssetVolume: "67591014.88",
-      numberOfTrades: 7890,
-      takerBuyBaseAssetVolume: "729.25300000",
-      takerBuyQuoteAssetVolume: "33784638.26",
-      ...overrides
-    };
+  createKline(_overrides?: Partial<BinanceKline>): BinanceKline {
+    const kline: BinanceKline = [
+      1640995200000,  // openTime
+      "46432.01",     // open
+      "46505.00",     // high
+      "46247.01",     // low
+      "46306.01",     // close
+      "1458.50600000", // volume
+      1640998799999,  // closeTime
+      "67591014.88",  // quoteAssetVolume
+      7890,           // numberOfTrades
+      "729.25300000", // takerBuyBaseAssetVolume
+      "33784638.26",  // takerBuyQuoteAssetVolume
+      "0"             // unused
+    ];
+    return kline;
   },
 
   createTicker(overrides?: Partial<BinanceTicker24hr>): BinanceTicker24hr {
@@ -186,7 +195,7 @@ export const responseHelpers = {
       reader.cancel();
     }, timeoutMs);
 
-    let currentEvent: { event?: string; data: string[] } = { event: undefined, data: [] };
+    let currentEvent: { event: string | undefined; data: string[] } = { event: undefined, data: [] };
 
     try {
       while (true) {

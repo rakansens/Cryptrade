@@ -104,15 +104,16 @@ describe('WSManager E2E - Error Handling', () => {
         debug: true
       });
 
-      let errorMessageReceived = false;
+      // let errorMessageReceived = false; // Currently unused
 
       const subscription = manager.subscribe('invalid@stream').subscribe({
         next: (data) => {
           // Check if it's an error message
-          if (data['error']) {
+          if (data && typeof data === 'object' && 'error' in data) {
             errorMessageReceived = true;
-            expect(data['error'].code).toBe(-1121);
-            expect(data['error'].msg).toBe('Invalid symbol');
+            const error = data['error'] as any;
+            expect(error.code).toBe(-1121);
+            expect(error.msg).toBe('Invalid symbol');
             subscription.unsubscribe();
             done();
           }
@@ -161,7 +162,8 @@ describe('WSManager E2E - Error Handling', () => {
           
           // Try to send malformed data (should be handled gracefully)
           try {
-            ws.trigger('message', { data: 'invalid json {' });
+            // @ts-expect-error - Accessing private method for testing
+            ws['trigger']('message', { data: 'invalid json {' } as MessageEvent);
           } catch (e) {
             // Expected - malformed JSON should be caught
           }
@@ -183,7 +185,7 @@ describe('WSManager E2E - Error Handling', () => {
 
       let disconnectDetected = false;
 
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
+      manager.subscribe('btcusdt@trade').subscribe({
         next: () => {},
         error: (error) => {
           if (!disconnectDetected) {
@@ -235,7 +237,6 @@ describe('WSManager E2E - Error Handling', () => {
         baseRetryDelay: 10
       });
 
-      const initialMetrics = manager.getMetrics();
 
       manager.subscribe('btcusdt@trade').subscribe({
         next: () => {},
@@ -273,8 +274,8 @@ describe('WSManager E2E - Error Handling', () => {
       });
 
       // Create some connections
-      const sub1 = manager.subscribe('stream1').subscribe({ next: () => {} });
-      const sub2 = manager.subscribe('stream2').subscribe({ next: () => {} });
+      manager.subscribe('stream1').subscribe({ next: () => {} });
+      manager.subscribe('stream2').subscribe({ next: () => {} });
 
       // Force error in one WebSocket
       const instances = MockWebSocket.getAllInstances();

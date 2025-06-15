@@ -43,7 +43,7 @@ describe('useMarketTicker', () => {
     count: 1000000,
   };
 
-  const mockStoreActions = {
+  const mockStoreActions: Record<string, jest.Mock> = {
     setTicker: jest.fn(),
     setConnectionError: jest.fn(),
     setSymbolLoading: jest.fn(),
@@ -71,9 +71,9 @@ describe('useMarketTicker', () => {
     
     // Setup store mock
     (useMarketStore as unknown as jest.Mock).mockImplementation((selector) => {
-      if (selector.toString().includes('setTicker')) return mockStoreActions.setTicker;
-      if (selector.toString().includes('setConnectionError')) return mockStoreActions.setConnectionError;
-      if (selector.toString().includes('setSymbolLoading')) return mockStoreActions.setSymbolLoading;
+      if (selector.toString().includes('setTicker')) return mockStoreActions['setTicker'];
+      if (selector.toString().includes('setConnectionError')) return mockStoreActions['setConnectionError'];
+      if (selector.toString().includes('setSymbolLoading')) return mockStoreActions['setSymbolLoading'];
       if (selector.toString().includes('currentPrices')) return mockPriceUpdate;
       if (selector.toString().includes('tickers')) return mockTicker;
       return null;
@@ -90,14 +90,14 @@ describe('useMarketTicker', () => {
 
   describe('initialization', () => {
     it('should fetch ticker data on mount', async () => {
-      const { result } = renderHook(() => useMarketTicker('BTCUSDT'));
+      renderHook(() => useMarketTicker('BTCUSDT'));
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledWith('BTCUSDT');
       });
 
-      expect(mockStoreActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', true);
-      expect(mockStoreActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', false);
+      expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', true);
+      expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', false);
     });
 
     it('should not fetch if symbol is empty', () => {
@@ -122,10 +122,10 @@ describe('useMarketTicker', () => {
 
   describe('ticker fetching', () => {
     it('should convert Binance ticker to store format', async () => {
-      const { result } = renderHook(() => useMarketTicker('BTCUSDT'));
+      renderHook(() => useMarketTicker('BTCUSDT'));
 
       await waitFor(() => {
-        expect(mockStoreActions.setTicker).toHaveBeenCalledWith('BTCUSDT', {
+        expect(mockStoreActions['setTicker']).toHaveBeenCalledWith('BTCUSDT', {
           symbol: 'BTCUSDT',
           price: '41000.00',
           priceChange: '1000.00',
@@ -151,7 +151,7 @@ describe('useMarketTicker', () => {
         );
       });
 
-      expect(mockStoreActions.setConnectionError).toHaveBeenCalledWith(
+      expect(mockStoreActions['setConnectionError']).toHaveBeenCalledWith(
         'Failed to fetch market stats for BTCUSDT'
       );
     });
@@ -166,7 +166,7 @@ describe('useMarketTicker', () => {
       renderHook(() => useMarketTicker('BTCUSDT'));
 
       await waitFor(() => {
-        expect(mockStoreActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', true);
+        expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', true);
       });
 
       await act(async () => {
@@ -174,7 +174,7 @@ describe('useMarketTicker', () => {
       });
 
       await waitFor(() => {
-        expect(mockStoreActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', false);
+        expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', false);
       });
     });
   });
@@ -348,12 +348,6 @@ describe('useMarketTicker', () => {
   describe('dependency optimization', () => {
     it('should not cause unnecessary re-renders', async () => {
       const renderSpy = jest.fn();
-      
-      const TestComponent = ({ symbol }: { symbol: string }) => {
-        renderSpy();
-        useMarketTicker(symbol);
-        return null;
-      };
 
       const { rerender } = renderHook(
         ({ symbol }) => useMarketTicker(symbol),

@@ -5,10 +5,9 @@ const restoreEnv = mockTestEnv();
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createApiHandler, createStreamingHandler, createOptionsHandler, type ApiHandlerConfig, type StreamingHandlerConfig } from '../create-api-handler';
-import { createApiMiddleware } from '../middleware';
+import { createApiHandler, createStreamingHandler, createOptionsHandler } from '../create-api-handler';
 import { ValidationError } from '../helpers/error-handler';
-import { createSuccessResponse, createErrorResponse } from '../helpers/response-builder';
+import type { StreamEvent } from '../types';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -79,7 +78,7 @@ describe('create-api-handler', () => {
       });
 
       const response = await handler(validRequest);
-      const data = await response.json();
+      await response.json();
 
       expect(response.status).toBe(200);
       expect(mockHandler).toHaveBeenCalledWith({
@@ -157,18 +156,14 @@ describe('create-api-handler', () => {
     it('should apply middleware in correct order', async () => {
       const executionOrder: string[] = [];
       
-      const middleware1 = async (req: NextRequest, next: () => Promise<NextResponse>) => {
-          executionOrder.push('middleware1-start');
-          const result = await next();
-          executionOrder.push('middleware1-end');
-          return result;
+      const middleware1 = async (_req: NextRequest): Promise<NextResponse | null> => {
+          executionOrder.push('middleware1');
+          return null; // Continue to next middleware
       };
 
-      const middleware2 = async (req: NextRequest, next: () => Promise<NextResponse>) => {
-          executionOrder.push('middleware2-start');
-          const result = await next();
-          executionOrder.push('middleware2-end');
-          return result;
+      const middleware2 = async (_req: NextRequest): Promise<NextResponse | null> => {
+          executionOrder.push('middleware2');
+          return null; // Continue to handler
       };
 
       const handler = createApiHandler({
@@ -186,11 +181,9 @@ describe('create-api-handler', () => {
       await handler(request);
 
       expect(executionOrder).toEqual([
-        'middleware1-start',
-        'middleware2-start',
-        'handler',
-        'middleware2-end',
-        'middleware1-end'
+        'middleware1',
+        'middleware2',
+        'handler'
       ]);
     });
 
@@ -355,7 +348,7 @@ describe('create-api-handler', () => {
       });
 
       const handler = createStreamingHandler({
-        streamHandler: async () => stream
+        streamHandler: () => stream
       });
 
       const request = new NextRequest('http://localhost/api/stream', {
@@ -376,7 +369,7 @@ describe('create-api-handler', () => {
 
       const handler = createStreamingHandler({
         schema,
-        streamHandler: async function* ({ data }) {
+        streamHandler: async function* ({ data }): AsyncGenerator<StreamEvent<unknown>, void, unknown> {
           yield { event: 'data', data };
         }
       });
@@ -395,10 +388,10 @@ describe('create-api-handler', () => {
     });
 
     it('should handle string chunks in async generator', async () => {
-      const streamHandler = async function* () {
-        yield 'Hello';
-        yield ' ';
-        yield 'World';
+      const streamHandler = async function* (): AsyncGenerator<StreamEvent<unknown>, void, unknown> {
+        yield { event: 'data', data: 'Hello' };
+        yield { event: 'data', data: ' ' };
+        yield { event: 'data', data: 'World' };
       };
 
       const handler = createStreamingHandler({
