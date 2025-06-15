@@ -120,6 +120,25 @@ export interface DrawingProposal {
   status: ProposalStatus;
   createdAt: number;
   expiresAt?: number;
+  // Legacy compatibility properties
+  title?: string;
+  description?: string;
+  reason?: string; // Alias for reasoning
+  touches?: number; // Number of price touches for the drawing
+  drawingData?: {
+    type: string;
+    points: Array<{ time: number; value: number }>;
+    style?: {
+      color?: string;
+      lineWidth?: number;
+      lineStyle?: 'solid' | 'dashed' | 'dotted';
+      showLabels?: boolean;
+    };
+    metadata?: Record<string, unknown>;
+    price?: number;
+    time?: number;
+    levels?: number[];
+  };
   metadata?: {
     touchPoints?: number;
     angle?: number;
@@ -141,6 +160,33 @@ export interface ExtendedDrawingProposal extends DrawingProposal {
     approved?: boolean;
     rating?: number;
     comment?: string;
+  };
+}
+
+/**
+ * Extended proposal with ML prediction and trading data
+ */
+export interface ExtendedProposal extends DrawingProposal {
+  symbol: string;
+  interval: string;
+  targets?: number[];
+  stopLoss?: number;
+  mlPrediction?: MLPrediction;
+}
+
+/**
+ * Enhanced proposal action event with full payload
+ */
+export interface EnhancedProposalActionEvent {
+  type: 'ui:proposal-action';
+  timestamp: number;
+  payload: {
+    action: 'approve' | 'reject';
+    proposalId: string;
+    proposalGroupId: string;
+    drawingId?: string;
+    symbol?: string;
+    interval?: string;
   };
 }
 
@@ -234,6 +280,7 @@ export interface EntryProposal {
   conditions: EntryConditions;
   marketContext: MarketContext;
   reasoning: EntryReasoning;
+  reason?: string; // Legacy compatibility - simple string version of reasoning
   status: ProposalStatus;
   createdAt: number;
   expiresAt?: number;
@@ -356,6 +403,21 @@ export interface ProposalActionEvent {
 }
 
 /**
+ * ML Prediction type for proposals
+ */
+export interface ProposalMLPrediction {
+  successProbability: number;
+  expectedBounces: number;
+  direction: 'up' | 'down' | 'neutral';
+  reasoning: Array<{
+    factor: string;
+    impact: 'positive' | 'negative' | 'neutral';
+    weight: number;
+    description: string;
+  }>;
+}
+
+/**
  * Proposal message in chat
  */
 export interface ProposalMessage {
@@ -462,6 +524,34 @@ function determinePriority(data: DrawingProposalGroup | EntryProposalGroup): 'hi
   return 'low';
 }
 
+// ====================================
+// Validation Helpers
+// ====================================
+
+/**
+ * Validate drawing proposal at runtime
+ */
+export function validateDrawingProposal(data: unknown): DrawingProposal {
+  if (!isDrawingProposal(data)) {
+    throw new Error('Invalid drawing proposal data');
+  }
+  return data as DrawingProposal;
+}
+
+/**
+ * Validate proposal group at runtime
+ */
+export function validateProposalGroup(data: unknown): DrawingProposalGroup {
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Invalid proposal group: not an object');
+  }
+  const obj = data as Record<string, unknown>;
+  if (!obj['id'] || !obj['title'] || !Array.isArray(obj['proposals'])) {
+    throw new Error('Invalid proposal group: missing required fields');
+  }
+  return data as DrawingProposalGroup;
+}
+
 /**
  * Extract all proposals from an API response
  */
@@ -502,6 +592,20 @@ export function extractUnifiedProposals(response: unknown): UnifiedProposal[] {
 
   return proposals;
 }
+
+// ====================================
+// Additional Types
+// ====================================
+
+/**
+ * Map of approved drawing IDs by message and proposal
+ */
+export type ApprovedDrawingIds = Map<string, Map<string, string>>;
+
+/**
+ * Drawing type for tracking
+ */
+export type DrawingType = 'pattern' | 'drawing';
 
 // ====================================
 // Re-exports for backward compatibility

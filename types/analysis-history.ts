@@ -15,6 +15,16 @@ export const TouchEventSchema = z.object({
   strength: z.number().min(0).max(1).optional().describe('Touch strength 0-1')
 });
 
+export const SentimentDataSchema = z.object({
+  overall: z.enum(['bullish', 'bearish', 'neutral']),
+  strength: z.number().min(0).max(1),
+  signals: z.array(z.object({
+    type: z.string(),
+    value: z.string(),
+    weight: z.number()
+  })).optional()
+});
+
 export const TrackingDataSchema = z.object({
   status: z.enum(['active', 'completed', 'expired', 'cancelled']),
   startTime: z.number().describe('Tracking start timestamp'),
@@ -38,7 +48,8 @@ export const ProposalDataSchema = z.object({
       description: z.string()
     }))
   }).optional(),
-  drawingData: z.lazy(() => DrawingDataSchema).describe('Drawing configuration data')
+  drawingData: z.lazy(() => DrawingDataSchema).describe('Drawing configuration data'),
+  sentiment: SentimentDataSchema.optional().describe('Market sentiment data')
 });
 
 export const AnalysisRecordSchema = z.object({
@@ -82,6 +93,7 @@ export const AnalysisRecordSchema = z.object({
 // =============================================================================
 
 export type TouchEvent = z.infer<typeof TouchEventSchema>;
+export type SentimentData = z.infer<typeof SentimentDataSchema>;
 export type TrackingData = z.infer<typeof TrackingDataSchema>;
 export type ProposalData = z.infer<typeof ProposalDataSchema>;
 export type AnalysisRecord = z.infer<typeof AnalysisRecordSchema>;

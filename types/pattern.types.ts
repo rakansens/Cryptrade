@@ -6,7 +6,7 @@ import type { LineStyle, LineWidth } from 'lightweight-charts';
 
 // ===== Pattern Types =====
 
-export interface PatternVisualization {
+export interface PatternRenderVisualization {
   type: 'triangle' | 'channel' | 'wedge' | 'pennant' | 'flag';
   points: PatternPoint[];
   lines?: PatternLine[];
@@ -54,7 +54,7 @@ export interface PatternMetrics {
 export interface PatternState {
   id: string;
   type: string;
-  visualization: PatternVisualization;
+  visualization: PatternRenderVisualization;
   metrics?: PatternMetrics;
   timestamp: number;
 }
@@ -82,7 +82,7 @@ export interface MetricLineDetail {
 export interface PatternRenderer {
   renderPattern(
     id: string,
-    visualization: PatternVisualization,
+    visualization: PatternRenderVisualization,
     patternType: string,
     metrics?: PatternMetrics
   ): void;
@@ -106,7 +106,10 @@ export interface PatternDebugState {
 
 // ===== Type Guards =====
 
-export function isPatternVisualization(value: unknown): value is PatternVisualization {
+// Export PatternVisualization as alias for PatternRenderVisualization
+export type PatternVisualization = PatternRenderVisualization;
+
+export function isPatternVisualization(value: unknown): value is PatternRenderVisualization {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
   

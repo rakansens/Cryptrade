@@ -1,6 +1,5 @@
-import { Agent } from '@mastra/core';
 import { z } from 'zod';
-import type { ProposalGroup as ImportedProposalGroup } from './proposals';
+import type { DrawingProposalGroup } from './proposals';
 
 /**
  * Agent Network Type Definitions
@@ -63,8 +62,8 @@ export interface MarketDataResult {
   timestamp: number;
 }
 
-// Use ProposalGroup from proposals types
-export type ProposalGroup = ImportedProposalGroup;
+// Use DrawingProposalGroup from proposals types
+export type ProposalGroup = DrawingProposalGroup;
 
 // Tool Result Specific Types
 export interface ProposalGenerationResult {
@@ -174,7 +173,7 @@ export interface AgentNetworkConfig {
 // Agent Registration Info
 export interface RegisteredAgent {
   id: string;
-  agent: Agent<unknown, unknown>;
+  agent: unknown; // Agent type is from external package
   capabilities: string[];
   description: string;
   isActive: boolean;

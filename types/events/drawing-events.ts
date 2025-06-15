@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DrawingStyleSchema, DrawingPointSchema } from '../drawing';
 
 /**
  * Drawing Events
@@ -6,28 +7,10 @@ import { z } from 'zod';
  * イベント: 描画開始、追加、削除、スタイル更新、undo/redo操作
  */
 
-// Drawing Style Schema
-export const DrawingStyleSchema = z.object({
-  color: z.string().optional(),
-  lineWidth: z.number().min(1).max(10).optional(),
-  lineStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
-  showLabels: z.boolean().optional(),
-});
-
-export type DrawingStyle = z.infer<typeof DrawingStyleSchema>;
-
-// Drawing Point Schema
-export const DrawingPointSchema = z.object({
-  time: z.number(),
-  value: z.number(),
-});
-
-export type DrawingPoint = z.infer<typeof DrawingPointSchema>;
-
 // Start Drawing Event
 export const StartDrawingEventSchema = z.object({
   type: z.string().min(1, 'Drawing type is required'),
-  style: DrawingStyleSchema.optional(),
+  style: DrawingStyleSchema.partial().optional(),
 });
 
 export type StartDrawingEvent = z.infer<typeof StartDrawingEventSchema>;
@@ -37,7 +20,7 @@ export const AddDrawingEventSchema = z.object({
   id: z.string().min(1, 'Drawing ID is required'),
   type: z.string().min(1, 'Drawing type is required'),
   points: z.array(DrawingPointSchema).optional(),
-  style: DrawingStyleSchema.optional(),
+  style: DrawingStyleSchema.partial().optional(),
   price: z.number().optional(), // For horizontal lines
   time: z.number().optional(),  // For vertical lines
   levels: z.array(z.number()).optional(),   // For fibonacci/support-resistance levels
@@ -84,7 +67,7 @@ export type RedoLastDrawingEvent = z.infer<typeof RedoLastDrawingEventSchema>;
 // Update Drawing Style Event
 export const UpdateDrawingStyleEventSchema = z.object({
   drawingId: z.string().min(1, 'Drawing ID is required'),
-  style: DrawingStyleSchema,
+  style: DrawingStyleSchema.partial(),
   immediate: z.boolean().optional(),
 });
 
@@ -93,7 +76,7 @@ export type UpdateDrawingStyleEvent = z.infer<typeof UpdateDrawingStyleEventSche
 // Update All Styles Event
 export const UpdateAllStylesEventSchema = z.object({
   type: z.string().min(1, 'Drawing type is required'),
-  style: DrawingStyleSchema,
+  style: DrawingStyleSchema.partial(),
 });
 
 export type UpdateAllStylesEvent = z.infer<typeof UpdateAllStylesEventSchema>;

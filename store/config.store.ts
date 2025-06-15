@@ -337,7 +337,7 @@ const useConfigStoreBase = create<ConfigStore>()(
           }
           
           // Apply imported configuration
-          set((state) => ({
+          set(() => ({
             theme: { ...DEFAULT_THEME, ...importData.theme },
             chart: { ...DEFAULT_CHART, ...importData.chart },
             indicators: { ...DEFAULT_INDICATORS, ...importData.indicators },
@@ -348,7 +348,7 @@ const useConfigStoreBase = create<ConfigStore>()(
           logger.info('[ConfigStore] Config imported successfully');
           return true;
         } catch (error) {
-          logger.error('[ConfigStore] Config import failed', error);
+          logger.error('[ConfigStore] Config import failed', { error });
           return false;
         }
       },

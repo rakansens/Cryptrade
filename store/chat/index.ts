@@ -1,21 +1,18 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
-import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
-import type { ChatMessage, ChatSession } from './types';
+import type { ChatMessage } from './types';
 import { createSessionSlice, SessionSlice } from './session.store';
 import { createMessageSlice, MessageSlice } from './message.store';
 import { createUISlice, UISlice } from './ui.store';
 
 export type ChatStore = SessionSlice & MessageSlice & UISlice;
 
-const debug = createStoreDebugger('ChatStore');
-
 export const useChatStoreBase = create<ChatStore>()(
   persist(
     subscribeWithSelector<ChatStore>((set, get) => ({
       ...createSessionSlice(set, get),
       ...createMessageSlice(set, get),
-      ...createUISlice(set, get),
+      ...createUISlice(set),
     })),
     {
       name: 'chat-storage',

@@ -1,14 +1,21 @@
 // types/shared/proposal.ts
 // Proposal 系共通型 (shared)
-// [2025-06-11] 初版 - proposal.ts に定義されている型を再エクスポート
+// [2025-06-14] 更新 - proposals.ts から再エクスポートに変更
 
 export type {
-  ProposalStatus,
-  ProposalType,
   DrawingProposal,
-  ProposalGroup,
+  DrawingProposalGroup,
+  ExtendedProposal,
   ProposalMessage,
   ProposalActionEvent,
-  ProposalGenerationParams,
-  ProposalResponse,
-} from '../proposal'; 
+  EnhancedProposalActionEvent,
+  MLPrediction,
+  // Legacy aliases
+  DrawingProposalGroup as ProposalGroup,
+  DrawingProposal as Proposal
+} from '../proposals';
+
+export {
+  ProposalStatus,
+  ProposalType
+} from '../proposals'; 

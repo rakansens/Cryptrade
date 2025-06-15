@@ -1,6 +1,6 @@
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import { logger } from '@/lib/utils/logger';
-import type { ConversationMessage, ConversationSession } from '@/types/conversation-memory';
+import type { ConversationSession } from '@/types/conversation-memory';
 
 interface SyncState {
   currentSessionId?: string | null;
@@ -21,13 +21,14 @@ export function createDbSyncHandlers<T extends SyncState>(set: SetFn<T>, get: Ge
         try {
           set((s) => { s.isSyncing = true; });
           for (const session of Object.values(state.sessions)) {
+            if (!session || !session.messages) continue;
             for (const message of session.messages) {
               await ConversationMemoryAPI.addMessage({
                 sessionId: session.id,
                 role: message.role,
                 content: message.content,
-                agentId: message.agentId,
-                metadata: message.metadata,
+                ...(message.agentId && { agentId: message.agentId }),
+                ...(message.metadata && { metadata: message.metadata as any }),
               });
             }
           }
@@ -51,13 +52,14 @@ export function createDbSyncHandlers<T extends SyncState>(set: SetFn<T>, get: Ge
       set((s) => { s.isSyncing = true; });
       try {
         for (const session of Object.values(state.sessions)) {
+          if (!session || !session.messages) continue;
           for (const message of session.messages) {
             await ConversationMemoryAPI.addMessage({
               sessionId: session.id,
               role: message.role,
               content: message.content,
-              agentId: message.agentId,
-              metadata: message.metadata,
+              ...(message.agentId && { agentId: message.agentId }),
+              ...(message.metadata && { metadata: message.metadata as any }),
             });
           }
         }
@@ -77,7 +79,7 @@ export function createDbSyncHandlers<T extends SyncState>(set: SetFn<T>, get: Ge
         set((s) => {
           s.sessions = sessions;
           if (Object.keys(sessions).length > 0) {
-            s.currentSessionId = Object.keys(sessions)[0];
+            s.currentSessionId = Object.keys(sessions)[0] || null;
           }
         });
         logger.info('[ConversationMemory] Loaded from database', { sessionCount: Object.keys(sessions).length });

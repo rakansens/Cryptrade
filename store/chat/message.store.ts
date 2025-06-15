@@ -1,7 +1,7 @@
 import { ChatAPI } from '@/lib/api/chat-api';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
-import type { ChatMessage, ChatSession } from './types';
+import type { ChatMessage } from './types';
 
 export interface MessageSlice {
   messagesBySession: Record<string, ChatMessage[]>;
@@ -81,7 +81,8 @@ export const createMessageSlice = (set: any, get: any): MessageSlice => ({
         const updatedState = get();
         if (message.role === 'user' &&
             state.messagesBySession[sessionId]?.length === 1 &&
-            updatedState.sessions[sessionId]?.title !== 'New Conversation') {
+            updatedState.sessions[sessionId]?.title !== 'New Conversation' &&
+            updatedState.sessions[sessionId]) {
           await ChatAPI.updateSessionTitle(
             sessionId,
             updatedState.sessions[sessionId].title

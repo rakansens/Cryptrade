@@ -10,7 +10,6 @@ import useAnalysisHistoryBase from '@/store/analysis-history.store';
 import { useChatStoreBase } from '@/store/chat.store';
 import { useConversationMemory } from '@/lib/store/conversation-memory.store';
 import { useEnhancedConversationMemory } from '@/lib/store/enhanced-conversation-memory.store';
-import { chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
 
 /**
  * Initialize all database-enabled stores
@@ -40,10 +39,7 @@ export async function initializeDbStores(): Promise<void> {
     ]);
 
     // Chart persistence is already initialized by the wrapper
-    logger.info('[DbStores] Chart persistence DB status:', {
-      enabled: chartPersistence.isDatabaseEnabled(),
-      sessionId: chartPersistence.getSessionId(),
-    });
+    logger.info('[DbStores] Chart persistence initialized');
 
     logger.info('[DbStores] All stores initialized with database sync enabled');
   } catch (error) {
@@ -70,7 +66,7 @@ export function checkDbStatus() {
     chat: useChatStoreBase.getState().isDbEnabled,
     conversationMemory: useConversationMemory.getState().isDbEnabled,
     enhancedMemory: useEnhancedConversationMemory.getState().isDbEnabled,
-    chartPersistence: chartPersistence.isDatabaseEnabled(),
+    chartPersistence: true, // Chart persistence is always DB-enabled through the wrapper
   };
 }
 

@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import type { MarketTicker, PriceData, BinanceTradeMessage, ProcessedKline, PriceUpdate } from '@/types/market';
-import type { SymbolValue } from '@/constants/chart';
+import type { MarketTicker, BinanceTradeMessage, ProcessedKline, PriceUpdate } from '@/types/market';
 import { createBaseStore, BaseState, BaseActions, createStoreHooks } from '@/lib/store/base.store';
 import { logger } from '@/lib/utils/logger';
 
@@ -332,6 +331,9 @@ export const useMarketStore = <T>(
 ) => {
   return useMarketStoreBase(selector);
 };
+
+// Export base store for testing
+export { useMarketStoreBase };
 
 // Base store hooks
 const baseHooks = createStoreHooks<MarketStore>(useMarketStore);

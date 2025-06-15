@@ -219,6 +219,10 @@ export type MACDDataArray = z.infer<typeof MACDDataArraySchema>;
 export type MovingAverageDataArray = z.infer<typeof MovingAverageDataArraySchema>;
 export type BollingerBandsDataArray = z.infer<typeof BollingerBandsDataArraySchema>;
 
+// Compatibility aliases
+export type CandlestickData = ProcessedKline;
+export type BinanceKline = BinanceKlineTuple;
+
 // =============================================================================
 // COMPATIBILITY TYPES (for indicators that need UTCTimestamp)
 // =============================================================================

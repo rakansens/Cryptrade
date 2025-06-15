@@ -8,13 +8,13 @@ import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { logger } from '@/lib/utils/logger';
 import { showToast } from '@/components/ui/toast';
-import { ChartPersistenceManager, chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
+import { chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import type { 
   PatternState, 
-  PatternActions,
-  PatternData
+  PatternActions
 } from '../types';
+import type { PatternData } from '@/store/chart/types';
 
 const debug = createStoreDebugger('PatternStore');
 
@@ -34,7 +34,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
       initializePatterns: async () => {
         try {
           const patternsArray = await chartPersistence.loadPatterns();
-          const patterns = new Map(patternsArray.map(p => [p.id || crypto.randomUUID(), p]));
+          const patterns = new Map(patternsArray.map(p => [p.id || crypto.randomUUID(), p as any] as [string, PatternData]));
           set({ patterns });
           logger.info('[PatternStore] Patterns loaded', { count: patterns.size });
         } catch (error) {
@@ -48,7 +48,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
         set((state) => {
           const newPatterns = new Map(state.patterns);
           newPatterns.set(id, pattern);
-          chartPersistence.savePatterns(newPatterns);
+          chartPersistence.savePatterns(Array.from(newPatterns.values()) as any);
           return { patterns: newPatterns };
         });
         
@@ -67,7 +67,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
           const removed = newPatterns.delete(id);
           
           if (removed) {
-            chartPersistence.savePatterns(newPatterns);
+            chartPersistence.savePatterns(Array.from(newPatterns.values()) as any);
             showToast('Pattern removed', 'info');
             logger.info('[PatternStore] Pattern removed', { id });
           } else {
@@ -82,7 +82,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
         debug('clearPatterns');
         const emptyPatterns = new Map<string, PatternData>();
         set({ patterns: emptyPatterns });
-        chartPersistence.savePatterns(emptyPatterns);
+        chartPersistence.savePatterns([]);
         showToast('All patterns cleared', 'info');
         logger.info('[PatternStore] All patterns cleared');
       },
@@ -95,7 +95,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
       reset: () => {
         debug('reset');
         set(initialState);
-        chartPersistence.savePatterns(new Map());
+        chartPersistence.savePatterns([]);
         logger.info('[PatternStore] Store reset to initial state');
       },
     })),

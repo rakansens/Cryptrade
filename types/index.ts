@@ -37,27 +37,34 @@ export type {
 } from './drawing';
 
 // Proposal types (consolidated)
+export type {
+  // Drawing proposals
+  DrawingProposal,
+  DrawingProposalGroup,
+  ExtendedDrawingProposal,
+  // Entry proposals
+  EntryProposal,
+  EntryProposalGroup,
+  RiskParameters,
+  EntryConditions,
+  MarketContext,
+  EntryReasoning,
+  // Unified proposals
+  UnifiedProposal,
+  UnifiedProposalResponse,
+  // UI types
+  ProposalMessage,
+  ProposalActionEvent,
+  // Legacy support (to be deprecated)
+  ProposalGroup,
+  Proposal
+} from './proposals';
+
+// Proposal enums and runtime values (exported separately)
 export {
   // Enums
   ProposalStatus,
   ProposalType,
-  // Drawing proposals
-  type DrawingProposal,
-  type DrawingProposalGroup,
-  type ExtendedDrawingProposal,
-  // Entry proposals
-  type EntryProposal,
-  type EntryProposalGroup,
-  type RiskParameters,
-  type EntryConditions,
-  type MarketContext,
-  type EntryReasoning,
-  // Unified proposals
-  type UnifiedProposal,
-  type UnifiedProposalResponse,
-  // UI types
-  type ProposalMessage,
-  type ProposalActionEvent,
   // Type guards
   isDrawingProposal,
   isEntryProposal,
@@ -65,10 +72,7 @@ export {
   isDrawingProposalGroup,
   // Utilities
   toUnifiedProposal,
-  extractUnifiedProposals,
-  // Legacy support (to be deprecated)
-  type ProposalGroup,
-  type Proposal
+  extractUnifiedProposals
 } from './proposals';
 
 // Agent Network types
@@ -129,7 +133,6 @@ export type {
   AgentResponse,
   AgentResponseMetadata,
   OrchestratorContext,
-  OrchestratorError,
   // Data types
   AgentResponseData,
   PriceInquiryData,
@@ -148,7 +151,20 @@ export type {
   HandlerRegistry,
   MessageFormattingOptions,
   // Utility types
-  ChatMessage,
+  ChatMessage
+} from './orchestrator.types';
+
+// Export OrchestratorError class separately
+export { OrchestratorError } from './orchestrator.types';
+
+// Orchestrator constants and runtime values
+export {
+  IntentTypeSchema,
+  AgentResponseSchema,
+  INTENT_KEYWORDS,
+  DEFAULT_CONFIDENCE_THRESHOLD,
+  MAX_RETRY_ATTEMPTS,
+  HANDLER_TIMEOUT_MS,
   // Type guards
   isPriceInquiryData,
   isTradingAnalysisData,
@@ -156,16 +172,6 @@ export type {
   isPatternDetectionData,
   isEntryProposalData,
   isErrorData
-} from './orchestrator.types';
-
-// Orchestrator constants
-export {
-  IntentTypeSchema,
-  AgentResponseSchema,
-  INTENT_KEYWORDS,
-  DEFAULT_CONFIDENCE_THRESHOLD,
-  MAX_RETRY_ATTEMPTS,
-  HANDLER_TIMEOUT_MS
 } from './orchestrator.types';
 
 // ランタイムで利用する type guard 関数は値として再エクスポート

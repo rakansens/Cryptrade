@@ -347,3 +347,9 @@ export interface SSEEventData<T extends EventTypeName = EventTypeName> {
     correlationId?: string;
   };
 }
+
+// Additional exports for compatibility
+export type DrawingEventData = any; // Placeholder for drawing event data
+export type PatternEventData = any; // Placeholder for pattern event data
+export type ChartEventData = any;   // Placeholder for chart event data
+export type ProposalEventData = any; // Placeholder for proposal event data

@@ -80,6 +80,7 @@ export const useChartStore = <T>(selector: (state: ChartStore) => T): T => {
     setIsDrawing: drawingState.setIsDrawing,
     undo: drawingState.undo,
     redo: drawingState.redo,
+    initializeDrawings: drawingState.initializeDrawings,
     
     addPattern: patternState.addPattern,
     removePattern: patternState.removePattern,

@@ -1,4 +1,4 @@
-import { ConversationMessage } from './enhanced-conversation-memory.store';
+import type { ConversationMessage } from '@/types/conversation-memory';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -11,7 +11,7 @@ export interface ConversationContext {
   recentTopics: string[];
   userMood: 'positive' | 'neutral' | 'concerned' | 'excited';
   conversationDepth: number;
-  lastInteractionTime?: Date;
+  lastInteractionTime?: Date | undefined;
   preferredStyle: 'formal' | 'casual' | 'friendly';
   symbols: string[];
   relationshipLevel: 'new' | 'familiar' | 'regular';
@@ -26,11 +26,13 @@ export class ConversationContextProcessor {
   extractContext(messages: ConversationMessage[]): ConversationContext {
     const recentMessages = messages.slice(-this.TOPIC_WINDOW);
     
+    const lastMessage = messages[messages.length - 1];
+    
     return {
       recentTopics: this.extractRecentTopics(recentMessages),
       userMood: this.analyzeUserMood(recentMessages),
       conversationDepth: messages.length,
-      lastInteractionTime: messages[messages.length - 1]?.timestamp,
+      ...(lastMessage?.timestamp && { lastInteractionTime: lastMessage.timestamp }),
       preferredStyle: this.detectPreferredStyle(messages),
       symbols: this.extractMentionedSymbols(recentMessages),
       relationshipLevel: this.determineRelationshipLevel(messages),

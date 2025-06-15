@@ -19,23 +19,23 @@ export interface DrawingPoint {
 }
 
 export interface DrawingStyle {
-  color: string;
-  lineWidth: number;
-  lineStyle: 'solid' | 'dashed' | 'dotted';
-  showLabels: boolean;
+  color?: string | undefined;
+  lineWidth?: number | undefined;
+  lineStyle?: 'solid' | 'dashed' | 'dotted' | undefined;
+  showLabels?: boolean | undefined;
 }
 
 export interface ChartDrawing {
   id: string;
   type: 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | 'pattern';
   points: DrawingPoint[];
-  style?: DrawingStyle;
+  style?: DrawingStyle | undefined;
   visible: boolean;
   interactive: boolean;
-  time?: number;
-  price?: number;
-  levels?: number[];
-  metadata?: Record<string, unknown>;
+  time?: number | undefined;
+  price?: number | undefined;
+  levels?: number[] | undefined;
+  metadata?: Record<string, string | number | boolean | (string | number | boolean)[] | Record<string, string | number | boolean>> | undefined;
 }
 
 export type DrawingMode = 'none' | 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | null;
@@ -45,9 +45,15 @@ export type DrawingMode = 'none' | 'trendline' | 'fibonacci' | 'horizontal' | 'v
 // ========================================
 
 export interface PatternData {
+  id: string;
   type: string;
+  symbol: string;
+  interval: string;
+  startTime: number;
+  endTime: number;
   visualization: PatternVisualization;
   metrics?: PatternMetrics;
+  description?: string;
   tradingImplication?: string;
   confidence?: number;
 }
@@ -112,6 +118,7 @@ export interface DrawingActions {
   selectDrawing: (id: string | null) => void;
   clearAllDrawings: () => void;
   setIsDrawing: (isDrawing: boolean) => void;
+  initializeDrawings: () => Promise<void>;
 }
 
 // ========================================

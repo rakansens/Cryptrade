@@ -21,7 +21,7 @@ export interface UISlice {
 
 const debug = createStoreDebugger('ChatUISlice');
 
-export const createUISlice = (set: any, get: any): UISlice => ({
+export const createUISlice = (set: any): UISlice => ({
   isOpen: false,
   isStreaming: false,
   isLoading: false,

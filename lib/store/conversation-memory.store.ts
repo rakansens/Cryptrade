@@ -56,7 +56,6 @@ export const useConversationMemory = create<ConversationMemoryState>()(
         createSession: async (sessionId?: string) => {
           const id = sessionId || `session-${Date.now()}`;
           const now = new Date();
-          const state = get();
           
           // For now, just create locally since we need API endpoints for session creation
           // Local creation
@@ -100,13 +99,15 @@ export const useConversationMemory = create<ConversationMemoryState>()(
               };
             }
             
-            const currentSession = state.sessions[message.sessionId]!;
-            currentSession.messages.push(fullMessage);
-            currentSession.lastActiveAt = timestamp;
-            
-            // Keep only recent 8 messages per session for memory efficiency
-            if (currentSession.messages.length > 8) {
-              currentSession.messages = currentSession.messages.slice(-8);
+            const currentSession = state.sessions[message.sessionId];
+            if (currentSession) {
+              currentSession.messages.push(fullMessage);
+              currentSession.lastActiveAt = timestamp;
+              
+              // Keep only recent 8 messages per session for memory efficiency
+              if (currentSession.messages.length > 8) {
+                currentSession.messages = currentSession.messages.slice(-8);
+              }
             }
           });
           
@@ -151,11 +152,11 @@ export const useConversationMemory = create<ConversationMemoryState>()(
 
         getSessionContext: (sessionId) => {
           const session = get().sessions[sessionId];
-          if (!session || (session.messages?.length ?? 0) === 0) {
+          if (!session || !session.messages || session.messages.length === 0) {
             return 'No previous context available.';
           }
           
-          const recentMessages = session.messages!.slice(-5);
+          const recentMessages = session.messages.slice(-5);
           const context = recentMessages
             .map(msg => `${msg.role}: ${msg.content}`)
             .join('\n');
@@ -168,7 +169,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           
           set((state) => {
             for (const session of Object.values(state.sessions) as ConversationSession[]) {
-              const message = session!.messages.find(m => m.id === messageId);
+              if (!session) continue;
+              const message = session.messages.find(m => m.id === messageId);
               if (message) {
                 message.metadata = { ...message.metadata, ...metadata };
                 break;
@@ -200,9 +202,10 @@ export const useConversationMemory = create<ConversationMemoryState>()(
 
         clearSession: (sessionId) => {
           set((state) => {
-            if (state.sessions[sessionId]) {
-              state.sessions[sessionId].messages = [];
-              state.sessions[sessionId].lastActiveAt = new Date();
+            const session = state.sessions[sessionId];
+            if (session) {
+              session.messages = [];
+              session.lastActiveAt = new Date();
             }
           });
           
@@ -221,7 +224,7 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           for (const session of Object.values(sessions) as ConversationSession[]) {
             if (!session) continue;
             
-            for (const message of session!.messages) {
+            for (const message of session.messages) {
               if (message.content.toLowerCase().includes(queryLower) ||
                   message.metadata?.topics?.some(t => t.toLowerCase().includes(queryLower)) ||
                   message.metadata?.symbols?.some(s => s.toLowerCase().includes(queryLower))) {
@@ -235,15 +238,18 @@ export const useConversationMemory = create<ConversationMemoryState>()(
 
         summarizeSession: async (sessionId) => {
           const session = get().sessions[sessionId];
-          if (!session || session.messages.length === 0) return;
+          if (!session || !session.messages || session.messages.length === 0) return;
           
-          const summary = `Session with ${session!.messages.length} messages. Topics discussed: ${
-            [...new Set(session!.messages.flatMap(m => m.metadata?.topics || []))]
+          const summary = `Session with ${session.messages.length} messages. Topics discussed: ${
+            [...new Set(session.messages.flatMap(m => m.metadata?.topics || []))]
               .join(', ') || 'General conversation'
           }`;
           
           set((state) => {
-            state.sessions[sessionId].summary = summary;
+            const session = state.sessions[sessionId];
+            if (session) {
+              session.summary = summary;
+            }
           });
           
           logger.info('[ConversationMemory] Session summarized', { sessionId, summary });
@@ -254,7 +260,7 @@ export const useConversationMemory = create<ConversationMemoryState>()(
       {
         name: 'conversation-memory',
         version: 2, // Increment for DB integration
-        migrate: (persistedState: any, version: number) => {
+        migrate: (persistedState: unknown, version: number) => {
           if (version === 0 || version === 1) {
             return {
               ...persistedState,
@@ -286,9 +292,9 @@ export function calculateSimilarity(embedding1: number[], embedding2: number[]):
   let norm2 = 0;
   
   for (let i = 0; i < embedding1.length; i++) {
-    dotProduct += embedding1[i] * embedding2[i];
-    norm1 += embedding1[i] * embedding1[i];
-    norm2 += embedding2[i] * embedding2[i];
+    dotProduct += embedding1[i]! * embedding2[i]!;
+    norm1 += embedding1[i]! * embedding1[i]!;
+    norm2 += embedding2[i]! * embedding2[i]!;
   }
   
   const similarity = dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));

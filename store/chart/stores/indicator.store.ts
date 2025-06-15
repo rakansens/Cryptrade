@@ -24,7 +24,7 @@ const initialState: IndicatorState = {
 
 export const useIndicatorStore = create<IndicatorState & IndicatorActions>()(
   devtools(
-    subscribeWithSelector<IndicatorState & IndicatorActions>((set, get) => ({
+    subscribeWithSelector<IndicatorState & IndicatorActions>((set) => ({
       // Initial state
       ...initialState,
 

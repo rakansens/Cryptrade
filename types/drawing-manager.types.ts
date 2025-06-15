@@ -2,7 +2,7 @@
  * Type definitions for drawing manager
  */
 
-import type { DrawingStyle } from '@/types/ui-events.types';
+import type { DrawingStyle } from './ui-events.types';
 
 export interface DrawingMetadata {
   createdAt?: number;

@@ -3,7 +3,7 @@
  */
 
 import type { Time } from 'lightweight-charts';
-import type { DrawingPoint, DrawingStyle, DrawingData } from './ui-events.types';
+import type { DrawingPoint, DrawingStyle } from './ui-events.types';
 
 // ===== Chart Instance Types =====
 

@@ -18,6 +18,41 @@ import type {
   UndoRedoState
 } from '../types';
 
+// Helper to ensure drawing has all required properties
+function ensureCompleteDrawing(drawing: any): ChartDrawing {
+  const baseDrawing = {
+    id: drawing.id || `drawing-${Date.now()}`,
+    type: drawing.type || 'trendline',
+    points: drawing.points || [],
+    style: drawing.style || {
+      color: '#00e676',
+      lineWidth: 2,
+      lineStyle: 'solid' as const,
+      showLabels: false
+    },
+    visible: drawing.visible ?? true,
+    interactive: drawing.interactive ?? true
+  };
+
+  // Only add optional properties if they're defined
+  const result: any = { ...baseDrawing };
+  
+  if (drawing.time !== undefined) {
+    result.time = drawing.time;
+  }
+  if (drawing.price !== undefined) {
+    result.price = drawing.price;
+  }
+  if (drawing.levels !== undefined) {
+    result.levels = drawing.levels;
+  }
+  if (drawing.metadata !== undefined) {
+    result.metadata = drawing.metadata;
+  }
+  
+  return result as ChartDrawing;
+}
+
 const debug = createStoreDebugger('DrawingStore');
 
 // Define initial state for consistency
@@ -46,9 +81,10 @@ export const useDrawingStore = create<DrawingStoreState>()(
       // Initialize drawings asynchronously
       initializeDrawings: async () => {
         try {
-          const drawings = await chartPersistence.loadDrawings();
-          set({ drawings });
-          logger.info('[DrawingStore] Drawings loaded', { count: drawings.length });
+          const loadedDrawings = await chartPersistence.loadDrawings();
+          const completeDrawings = loadedDrawings.map(ensureCompleteDrawing);
+          set({ drawings: completeDrawings });
+          logger.info('[DrawingStore] Drawings loaded', { count: completeDrawings.length });
         } catch (error) {
           logger.error('[DrawingStore] Failed to load drawings', { error });
         }
@@ -65,10 +101,11 @@ export const useDrawingStore = create<DrawingStoreState>()(
         debug('addDrawing');
         try {
           const validDrawing = validateDrawing(drawing);
+          const completeDrawing = ensureCompleteDrawing(validDrawing);
           
           set((state) => {
-            const newDrawings = [...state.drawings, validDrawing];
-            chartPersistence.saveDrawings(newDrawings);
+            const newDrawings = [...state.drawings, completeDrawing];
+            chartPersistence.saveDrawings(newDrawings as ChartDrawing[]);
             
             return {
               drawings: newDrawings,
@@ -78,8 +115,8 @@ export const useDrawingStore = create<DrawingStoreState>()(
           });
           
           logger.info('[DrawingStore] Drawing added', { 
-            id: validDrawing.id, 
-            type: validDrawing.type 
+            id: completeDrawing.id, 
+            type: completeDrawing.type 
           });
         } catch (error) {
           logger.error('[DrawingStore] Invalid drawing', { error });
@@ -92,17 +129,18 @@ export const useDrawingStore = create<DrawingStoreState>()(
         return new Promise((resolve, reject) => {
           try {
             const validDrawing = validateDrawing(drawing);
+            const completeDrawing = ensureCompleteDrawing(validDrawing);
             
             const timeoutId = setTimeout(() => {
               window.removeEventListener('chart:drawingAdded', handleDrawingAdded);
               showToast('Drawing operation timed out', 'error');
-              reject(new Error(`Drawing ${validDrawing.id} addition timed out`));
+              reject(new Error(`Drawing ${completeDrawing.id} addition timed out`));
             }, 5000);
             
             // Add drawing to store
             set((state) => {
-              const newDrawings = [...state.drawings, validDrawing];
-              chartPersistence.saveDrawings(newDrawings);
+              const newDrawings = [...state.drawings, completeDrawing];
+              chartPersistence.saveDrawings(newDrawings as ChartDrawing[]);
               
               return {
                 drawings: newDrawings,
@@ -114,20 +152,20 @@ export const useDrawingStore = create<DrawingStoreState>()(
             // Listen for confirmation from chart
             const handleDrawingAdded = (event: Event) => {
               const customEvent = event as CustomEvent;
-              if (customEvent.detail.id === validDrawing.id) {
+              if (customEvent.detail.id === completeDrawing.id) {
                 clearTimeout(timeoutId);
                 window.removeEventListener('chart:drawingAdded', handleDrawingAdded);
                 logger.info('[DrawingStore] Drawing addition confirmed', { 
-                  id: validDrawing.id 
+                  id: completeDrawing.id 
                 });
                 showToast('Drawing added successfully', 'success');
-                resolve(validDrawing);
+                resolve(completeDrawing);
               }
             };
             
             window.addEventListener('chart:drawingAdded', handleDrawingAdded as EventListener);
             logger.info('[DrawingStore] Waiting for drawing confirmation', { 
-              id: validDrawing.id 
+              id: completeDrawing.id 
             });
           } catch (error) {
             logger.error('[DrawingStore] Invalid drawing in async add', { error });
@@ -144,7 +182,8 @@ export const useDrawingStore = create<DrawingStoreState>()(
             if (drawing.id === id) {
               const updated = { ...drawing, ...updates };
               try {
-                return validateDrawing(updated);
+                const validated = validateDrawing(updated);
+                return ensureCompleteDrawing(validated);
               } catch (error) {
                 logger.error('[DrawingStore] Invalid drawing update', { id, error });
                 return drawing; // Keep original if validation fails
@@ -153,7 +192,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
             return drawing;
           });
           
-          chartPersistence.saveDrawings(newDrawings);
+          chartPersistence.saveDrawings(newDrawings as ChartDrawing[]);
           return { drawings: newDrawings };
         });
         logger.info('[DrawingStore] Drawing updated', { id, updates });
@@ -163,7 +202,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
         debug('deleteDrawing');
         set((state) => {
           const newDrawings = state.drawings.filter((drawing) => drawing.id !== id);
-          chartPersistence.saveDrawings(newDrawings);
+          chartPersistence.saveDrawings(newDrawings as ChartDrawing[]);
           
           return {
             drawings: newDrawings,
@@ -186,7 +225,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
           
           set((state) => {
             const newDrawings = state.drawings.filter((drawing) => drawing.id !== id);
-            chartPersistence.saveDrawings(newDrawings);
+            chartPersistence.saveDrawings(newDrawings as ChartDrawing[]);
             
             return {
               drawings: newDrawings,
@@ -245,6 +284,8 @@ export const useDrawingStore = create<DrawingStoreState>()(
         if (undoStack.length === 0) return;
         
         const previousDrawings = undoStack[undoStack.length - 1];
+        if (!previousDrawings) return;
+        
         const newUndoStack = undoStack.slice(0, -1);
         
         set((state) => ({
@@ -253,7 +294,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
           redoStack: [...state.redoStack, drawings]
         }));
         
-        chartPersistence.saveDrawings(previousDrawings);
+        chartPersistence.saveDrawings(previousDrawings as ChartDrawing[]);
         showToast('Undo successful', 'info');
         logger.info('[DrawingStore] Undo performed');
       },
@@ -264,6 +305,8 @@ export const useDrawingStore = create<DrawingStoreState>()(
         if (redoStack.length === 0) return;
         
         const nextDrawings = redoStack[redoStack.length - 1];
+        if (!nextDrawings) return;
+        
         const newRedoStack = redoStack.slice(0, -1);
         
         set((state) => ({
@@ -272,7 +315,7 @@ export const useDrawingStore = create<DrawingStoreState>()(
           undoStack: [...state.undoStack, drawings]
         }));
         
-        chartPersistence.saveDrawings(nextDrawings);
+        chartPersistence.saveDrawings(nextDrawings as ChartDrawing[]);
         showToast('Redo successful', 'info');
         logger.info('[DrawingStore] Redo performed');
       },

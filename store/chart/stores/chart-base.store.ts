@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { logger } from '@/lib/utils/logger';
-import { ChartPersistenceManager, chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
+import { chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import type { 
   ChartBaseState, 

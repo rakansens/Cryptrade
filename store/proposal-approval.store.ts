@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { ApprovedDrawingIds, DrawingType } from '@/types/proposal';
+import type { ApprovedDrawingIds } from '@/types/proposals';
+
+// Drawing type definition
+type DrawingType = 'pattern' | 'drawing';
 
 // Define initial state for consistency
 const initialState = {

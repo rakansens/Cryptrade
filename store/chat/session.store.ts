@@ -25,13 +25,13 @@ const debug = createStoreDebugger('ChatSessionSlice');
 
 const generateSessionId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-const generateSessionTitle = (firstMessage: string) => {
-  return firstMessage.slice(0, 30) + (firstMessage.length > 30 ? '...' : '');
-};
 
 const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-export const createSessionSlice = (set: any, get: any): SessionSlice => ({
+export const createSessionSlice = (
+  set: (partial: Partial<SessionSlice & { messagesBySession: Record<string, ChatMessage[]> }> | ((state: SessionSlice & { messagesBySession: Record<string, ChatMessage[]> }) => Partial<SessionSlice & { messagesBySession: Record<string, ChatMessage[]> }>)) => void,
+  get: () => SessionSlice & { messagesBySession: Record<string, ChatMessage[]> }
+): SessionSlice => ({
   // State
   sessions: {},
   currentSessionId: null,
@@ -121,7 +121,7 @@ export const createSessionSlice = (set: any, get: any): SessionSlice => ({
     if (state.sessions[sessionId]) {
       set({ currentSessionId: sessionId });
 
-      if (state.isDbEnabled && isValidUUID(sessionId) && (!state.messagesBySession[sessionId] || state.messagesBySession[sessionId].length === 0)) {
+      if (state.isDbEnabled && isValidUUID(sessionId) && (!state.messagesBySession[sessionId] || state.messagesBySession[sessionId]?.length === 0)) {
         try {
           const sessionData = await ChatAPI.getSessionWithMessages(sessionId);
           if (sessionData) {
@@ -301,14 +301,14 @@ export const createSessionSlice = (set: any, get: any): SessionSlice => ({
         sessions[dbSession.id] = dbSession;
         const sessionData = await ChatAPI.getSessionWithMessages(dbSession.id);
         if (sessionData) {
-          messagesBySession[dbSession.id] = sessionData.messages;
+          messagesBySession[dbSession.id] = sessionData.messages as ChatMessage[];
         }
       }
 
       set({
         sessions,
         messagesBySession,
-        currentSessionId: dbSessions.length > 0 ? dbSessions[0].id : null,
+        currentSessionId: dbSessions.length > 0 ? dbSessions[0]?.id || null : null,
         isLoading: false,
         lastSyncTime: Date.now(),
       } as any);

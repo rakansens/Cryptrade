@@ -21,8 +21,8 @@ export interface ResponseMetadata {
 export interface ApiError {
   code: string;
   message: string;
-  details?: Record<string, unknown> | string | number | boolean | unknown[];
-  stack?: string;
+  details?: Record<string, unknown> | string | number | boolean | unknown[] | undefined;
+  stack?: string | undefined;
 }
 
 /**
@@ -124,7 +124,7 @@ export function createErrorResponse(
     typeof error === 'string' 
       ? { code: 'UNKNOWN_ERROR', message: error }
       : error instanceof Error
-      ? { code: 'INTERNAL_ERROR', message: error.message, stack: error.stack }
+      ? { code: 'INTERNAL_ERROR', message: error.message, ...(error.stack && { stack: error.stack }) }
       : error;
 
   return {
@@ -149,7 +149,7 @@ export function createStreamingResponse<T>(
     event,
     data,
     timestamp: Date.now(),
-    id,
+    ...(id !== undefined ? { id } : {}),
   };
 }
 

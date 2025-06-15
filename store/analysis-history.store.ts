@@ -133,6 +133,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           
           // Update local state immediately
           set((state) => ({
+            ...state,
             records: [...state.records, validatedRecord],
             performanceMetrics: null, // Invalidate cache
           }));
@@ -142,25 +143,18 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           if (state.isDbEnabled) {
             try {
               const recordId = await AnalysisAPI.saveAnalysis({
-                sessionId: state.currentSessionId || undefined,
+                ...(state.currentSessionId && { sessionId: state.currentSessionId }),
                 symbol: validatedRecord.symbol,
                 interval: validatedRecord.interval,
                 type: validatedRecord.type,
-                proposalData: {
-                  price: validatedRecord.proposal.price,
-                  confidence: validatedRecord.proposal.confidence,
-                  mlPrediction: validatedRecord.proposal.mlPrediction,
-                  zones: validatedRecord.proposal.zones,
-                  indicators: validatedRecord.proposal.indicators,
-                  patterns: validatedRecord.proposal.patterns,
-                  chartImageUrl: validatedRecord.proposal.chartImageUrl,
-                },
+                proposalData: validatedRecord.proposal,
               });
               
               // Update ID to match database
-              set(state => ({
-                records: state.records.map(r => 
-                  r.id === id ? { ...r, id: recordId, dbMeta: { ...r.dbMeta, synced: true } } : r
+              set((state) => ({
+                ...state,
+                records: state.records.map((r) => 
+                  r.id === id ? { ...r, id: recordId, dbMeta: { ...r.dbMeta, synced: true, version: r.dbMeta?.version || 1 } } : r
                 ),
               }));
               
@@ -173,9 +167,10 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
             } catch (error) {
               logger.error('[AnalysisHistory] Failed to save to DB', { error });
               // Mark as unsynced
-              set(state => ({
-                records: state.records.map(r => 
-                  r.id === id ? { ...r, dbMeta: { ...r.dbMeta, synced: false } } : r
+              set((state) => ({
+                ...state,
+                records: state.records.map((r) => 
+                  r.id === id ? { ...r, dbMeta: { ...r.dbMeta, synced: false, version: r.dbMeta?.version || 1 } } : r
                 ),
               }));
             }
@@ -189,7 +184,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           
           return id;
         } catch (error) {
-          logger.error('[AnalysisHistory] Failed to add record', error);
+          logger.error('[AnalysisHistory] Failed to add record', { error });
           throw error;
         }
       },
@@ -203,15 +198,15 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
             return state;
           }
           
-          const updatedRecord = {
+          const updatedRecord: AnalysisRecord = {
             ...state.records[recordIndex],
             ...updates,
             dbMeta: {
-              ...state.records[recordIndex].dbMeta,
+              ...state.records[recordIndex]?.dbMeta,
               synced: false, // Mark as needs sync
-              version: ((state.records[recordIndex].dbMeta?.version || 1) + 1)
+              version: ((state.records[recordIndex]?.dbMeta?.version || 1) + 1)
             }
-          };
+          } as AnalysisRecord;
           
           const newRecords = [...state.records];
           newRecords[recordIndex] = updatedRecord;
@@ -268,12 +263,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           const state = get();
           if (state.isDbEnabled) {
             try {
-              await AnalysisAPI.recordTouchEvent(recordId, {
-                price: touchEventData.price,
-                result: touchEventData.result as 'bounce' | 'break' | 'test',
-                strength: touchEventData.strength,
-                volume: touchEventData.volume,
-              });
+              await AnalysisAPI.recordTouchEvent(recordId, validatedTouchEvent);
               
               logger.info('[AnalysisHistory] Touch event saved to DB', { recordId });
             } catch (error) {
@@ -283,7 +273,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           
           logger.info('[AnalysisHistory] Touch event added', { recordId, result: touchEvent.result });
         } catch (error) {
-          logger.error('[AnalysisHistory] Failed to add touch event', error);
+          logger.error('[AnalysisHistory] Failed to add touch event', { error });
         }
       },
       
@@ -301,8 +291,8 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         };
         
         // Calculate duration if completing
-        if (status === 'completed' && record.tracking.startTime) {
-          updates.tracking!.duration = Date.now() - record.tracking.startTime;
+        if (status === 'completed' && record.tracking.startTime && updates.tracking) {
+          updates.tracking.duration = Date.now() - record.tracking.startTime;
         }
         
         get().updateRecord(recordId, updates);
@@ -426,8 +416,8 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         
         // Apply sorting
         filtered.sort((a, b) => {
-          type SortValue = string | number | undefined;
-          let aVal: SortValue, bVal: SortValue;
+          let aVal: string | number | undefined;
+          let bVal: string | number | undefined;
           
           switch (sortBy) {
             case 'timestamp':
@@ -482,7 +472,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
             logger.info('[AnalysisHistory] Data imported', { count: data.records.length });
           }
         } catch (error) {
-          logger.error('[AnalysisHistory] Failed to import data', error);
+          logger.error('[AnalysisHistory] Failed to import data', { error });
           throw new Error('Invalid import data format');
         }
       },
@@ -515,29 +505,27 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
             for (const record of state.records) {
               if (!record.dbMeta?.synced) {
                 await AnalysisAPI.saveAnalysis({
-                  sessionId: sessionId,
+                  ...(sessionId && { sessionId }),
                   symbol: record.symbol,
                   interval: record.interval,
                   type: record.type,
-                  proposalData: {
-                    price: record.proposal.price,
-                    confidence: record.proposal.confidence,
-                    mlPrediction: record.proposal.mlPrediction,
-                    zones: record.proposal.zones,
-                    indicators: record.proposal.indicators,
-                    patterns: record.proposal.patterns,
-                    chartImageUrl: record.proposal.chartImageUrl,
-                  },
+                  proposalData: record.proposal,
                 });
               }
             }
             
-            set(state => ({
+            set((state) => ({
+              ...state,
               isSyncing: false,
-              records: state.records.map(r => ({ 
+              records: state.records.map((r) => ({ 
                 ...r, 
-                dbMeta: { ...r.dbMeta, synced: true } 
-              })),
+                dbMeta: { 
+                  version: r.dbMeta?.version || 1,
+                  synced: true,
+                  createdAt: r.dbMeta?.createdAt,
+                  updatedAt: r.dbMeta?.updatedAt
+                } 
+              }))
             }));
             
             logger.info('[AnalysisHistory] DB sync enabled and data migrated');
@@ -568,29 +556,27 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           
           for (const record of unsynced) {
             await AnalysisAPI.saveAnalysis({
-              sessionId: state.currentSessionId || undefined,
+              ...(state.currentSessionId && { sessionId: state.currentSessionId }),
               symbol: record.symbol,
               interval: record.interval,
               type: record.type,
-              proposalData: {
-                price: record.proposal.price,
-                confidence: record.proposal.confidence,
-                mlPrediction: record.proposal.mlPrediction,
-                zones: record.proposal.zones,
-                indicators: record.proposal.indicators,
-                patterns: record.proposal.patterns,
-                chartImageUrl: record.proposal.chartImageUrl,
-              },
+              proposalData: record.proposal,
             });
           }
           
-          set((state) => {
-            state.isSyncing = false;
-            state.records = state.records.map(r => ({ 
+          set((state) => ({
+            ...state,
+            isSyncing: false,
+            records: state.records.map((r) => ({ 
               ...r, 
-              dbMeta: { ...r.dbMeta, synced: true } 
-            }));
-          });
+              dbMeta: { 
+                version: r.dbMeta?.version || 1,
+                synced: true,
+                createdAt: r.dbMeta?.createdAt,
+                updatedAt: r.dbMeta?.updatedAt
+              } 
+            }))
+          }));
           
           logger.info('[AnalysisHistory] Synced with database', { count: unsynced.length });
         } catch (error) {
@@ -646,7 +632,7 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         if (version === 0) {
           // Migration from version 0 to 1
           // Add dbMeta to existing records
-          const migratedState = persistedState ? { ...persistedState } : {} as any;
+          const migratedState = persistedState ? { ...persistedState } : {} as Partial<AnalysisHistoryStore>;
           
           if (migratedState.records && Array.isArray(migratedState.records)) {
             migratedState.records = migratedState.records.map((record: AnalysisRecord) => ({
@@ -664,11 +650,11 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         if (version === 1) {
           // Migration from version 1 to 2 (DB integration)
           return {
-            ...persistedState,
+            ...(persistedState || {}),
             isDbEnabled: true,
             isSyncing: false,
             currentSessionId: null,
-          };
+          } as Partial<AnalysisHistoryStore>;
         }
         
         return persistedState;

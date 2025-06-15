@@ -63,6 +63,12 @@ export interface PatternMetrics {
   volume?: number;
   priceChange?: number;
   duration?: number;
+  confidence?: number;
+  stopLoss?: number;
+  entryPrice?: number;
+  targetPrice?: number;
+  riskReward?: number;
+  breakoutLevel?: number;
 }
 
 // ===== Proposal Types =====

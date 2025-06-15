@@ -2,13 +2,12 @@ import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
-import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
 
 import { TokenLimiter, ToolCallFilter } from "@/lib/store/processors";
 import type { MemoryProcessor } from "@/lib/store/processors";
-import type { ConversationMessage } from "@/types/conversation-memory";
+import type { ConversationMessage, ConversationMessageMetadata } from "@/types/conversation-memory";
 /**
  * Enhanced Conversation Memory Store with Database Integration
  * 
@@ -195,19 +194,21 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             }
             
             const currentSession = state.sessions[message.sessionId];
-            currentSession.messages.push(fullMessage);
-            currentSession.lastActiveAt = timestamp;
-            
-            // Clear processed cache to force reprocessing
-            delete currentSession.processedMessages;
-            
-            // Update token usage
-            if (currentSession.tokenUsage) {
-              currentSession.tokenUsage.total += tokenCount;
-              if (message.role === 'user') {
-                currentSession.tokenUsage.input += tokenCount;
-              } else {
-                currentSession.tokenUsage.output += tokenCount;
+            if (currentSession) {
+              currentSession.messages.push(fullMessage);
+              currentSession.lastActiveAt = timestamp;
+              
+              // Clear processed cache to force reprocessing
+              delete currentSession.processedMessages;
+              
+              // Update token usage
+              if (currentSession.tokenUsage) {
+                currentSession.tokenUsage.total += tokenCount;
+                if (message.role === 'user') {
+                  currentSession.tokenUsage.input += tokenCount;
+                } else {
+                  currentSession.tokenUsage.output += tokenCount;
+                }
               }
             }
             
@@ -250,8 +251,8 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                   sessionId: message.sessionId,
                   role: message.role as any,
                   content: message.content,
-                  agentId: message.agentId,
-                  metadata: message.metadata,
+                  ...(message.agentId && { agentId: message.agentId }),
+                  metadata: message.metadata as any,
                 },
               });
               
@@ -324,8 +325,9 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           
           // Cache processed messages
           set((state) => {
-            if (state.sessions[sessionId]) {
-              state.sessions[sessionId].processedMessages = processedMessages;
+            const session = state.sessions[sessionId];
+            if (session) {
+              session.processedMessages = processedMessages;
             }
           });
           
@@ -379,7 +381,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             try {
               await prisma.conversationMessage.update({
                 where: { id: messageId },
-                data: { metadata },
+                data: { metadata: metadata as any },
               });
               logger.info('[EnhancedConversationMemory] Message metadata updated in DB', { messageId });
             } catch (error) {
@@ -395,10 +397,11 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
 
         clearSession: (sessionId) => {
           set((state) => {
-            if (state.sessions[sessionId]) {
-              state.sessions[sessionId].messages = [];
-              state.sessions[sessionId].lastActiveAt = new Date();
-              delete state.sessions[sessionId].processedMessages;
+            const session = state.sessions[sessionId];
+            if (session) {
+              session.messages = [];
+              session.lastActiveAt = new Date();
+              delete session.processedMessages;
             }
           });
           
@@ -439,7 +442,10 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           }`;
           
           set((state) => {
-            state.sessions[sessionId].summary = summary;
+            const session = state.sessions[sessionId];
+            if (session) {
+              session.summary = summary;
+            }
           });
           
           logger.info('[EnhancedConversationMemory] Session summarized', { sessionId, summary });
@@ -558,8 +564,8 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                       sessionId: dbSession.id,
                       role: message.role as any,
                       content: message.content,
-                      agentId: message.agentId,
-                      metadata: message.metadata,
+                      ...(message.agentId && { agentId: message.agentId }),
+                      metadata: message.metadata as any,
                       timestamp: message.timestamp,
                     },
                   });
@@ -635,8 +641,8 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                       sessionId: session.id,
                       role: message.role as any,
                       content: message.content,
-                      agentId: message.agentId,
-                      metadata: message.metadata,
+                      ...(message.agentId && { agentId: message.agentId }),
+                      metadata: message.metadata as any,
                       timestamp: message.timestamp,
                     },
                   });
@@ -689,15 +695,18 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                   id: dbSession.id,
                   startedAt: dbSession.createdAt,
                   lastActiveAt: dbSession.lastActiveAt,
-                  messages: sessionData.messages.map(msg => ({
-                    id: msg.id,
-                    sessionId: msg.sessionId,
-                    role: msg.role as any,
-                    content: msg.content,
-                    timestamp: msg.timestamp,
-                    agentId: msg.agentId || undefined,
-                    metadata: msg.metadata as any,
-                  })),
+                  messages: sessionData.messages.map(msg => {
+                    const message: ConversationMessage = {
+                      id: msg.id,
+                      sessionId: msg.sessionId,
+                      role: msg.role as 'user' | 'assistant' | 'system',
+                      content: msg.content,
+                      timestamp: msg.timestamp,
+                      ...(msg.agentId && { agentId: msg.agentId }),
+                      metadata: msg.metadata as ConversationMessageMetadata,
+                    };
+                    return message;
+                  }),
                   ...(dbSession.summary ? { summary: dbSession.summary } : {}),
                   processors,
                   tokenUsage: (dbSession.metadata as any)?.tokenUsage || { total: 0, input: 0, output: 0 },
@@ -708,7 +717,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             set((state) => {
               state.sessions = sessions;
               if (dbSessions.length > 0) {
-                state.currentSessionId = dbSessions[0].id;
+                state.currentSessionId = dbSessions[0]?.id || null;
               }
             });
             
@@ -798,64 +807,6 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           isDbEnabled: state.isDbEnabled,
           defaultProcessors: state.defaultProcessors,
         }),
-        // Custom serialization for processors
-        serialize: (state: any) => {
-          const serializedState = {
-            ...state,
-            state: {
-              ...state.state,
-              sessions: Object.fromEntries(
-                Object.entries(state.state.sessions).map(([id, session]) => [
-                  id,
-                  {
-                    ...session,
-                    processors: session.processors.map((p: any) => ({
-                      name: p.getName(),
-                      type: p.constructor.name,
-                    })),
-                  },
-                ])
-              ),
-              defaultProcessors: state.state.defaultProcessors.map((p: any) => ({
-                name: p.getName(),
-                type: p.constructor.name,
-              })),
-            },
-          };
-          return JSON.stringify(serializedState);
-        },
-        // Custom deserialization to recreate processors
-        deserialize: (str: string) => {
-          const parsed = JSON.parse(str);
-          if (parsed.state?.sessions) {
-            Object.values(parsed.state.sessions).forEach((session: any) => {
-              if (session.processors) {
-                session.processors = session.processors.map((p: any) => {
-                  // Recreate processors based on stored metadata
-                  if (p.type === 'TokenLimiter') {
-                    const match = p.name.match(/TokenLimiter\((\d+)\)/);
-                    return new TokenLimiter(match ? parseInt(match[1]) : 127000);
-                  } else if (p.type === 'ToolCallFilter') {
-                    return new ToolCallFilter();
-                  }
-                  return new TokenLimiter(127000); // Fallback
-                });
-              }
-            });
-          }
-          if (parsed.state?.defaultProcessors) {
-            parsed.state.defaultProcessors = parsed.state.defaultProcessors.map((p: any) => {
-              if (p.type === 'TokenLimiter') {
-                const match = p.name.match(/TokenLimiter\((\d+)\)/);
-                return new TokenLimiter(match ? parseInt(match[1]) : 127000);
-              } else if (p.type === 'ToolCallFilter') {
-                return new ToolCallFilter();
-              }
-              return new TokenLimiter(127000); // Fallback
-            });
-          }
-          return parsed;
-        },
         storage: createJSONStorage(() => {
           if (typeof window !== 'undefined') {
             return localStorage;
@@ -889,8 +840,8 @@ export function createEnhancedSession(
   
   if (options.excludeTools || options.includeAllTools !== undefined) {
     processors.push(new ToolCallFilter({
-      exclude: options.excludeTools,
-      includeAll: options.includeAllTools,
+      ...(options.excludeTools && { exclude: options.excludeTools }),
+      ...(options.includeAllTools !== undefined && { includeAll: options.includeAllTools }),
     }));
   }
   
@@ -916,9 +867,3 @@ export function addToolCallMessage(
   });
 }
 
-// Export archiveOldMessages function for testing
-export const archiveOldMessages = (sessionId: string) => 
-  useEnhancedConversationMemory.getState().archiveOldMessages(sessionId);
-
-export const getArchivedMessages = (sessionId: string) =>
-  useEnhancedConversationMemory.getState().getArchivedMessages(sessionId);
