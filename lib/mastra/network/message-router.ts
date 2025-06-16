@@ -327,7 +327,7 @@ Respond with ONLY the agent ID, no explanation:`;
               logger.info('[AgentNetwork] Entry proposal generation result extracted', {
                 success: (toolExecutionData as { success?: boolean })?.success,
                 proposalGroup: (toolExecutionData as { proposalGroup?: unknown })?.proposalGroup,
-                proposalCount: (toolExecutionData as { proposalGroup?: { proposals?: unknown[] } })?.proposalGroup?.proposals?.length,
+                error: (toolExecutionData as { error?: string })?.error,
               });
             }
           }
@@ -361,11 +361,42 @@ Respond with ONLY the agent ID, no explanation:`;
       }
 
       let extractedProposalGroup = null;
+      
+      // Handle entry proposal generation results
       if (
+        targetId === 'tradingAnalysisAgent' &&
+        hasToolExecution &&
+        toolExecutionData &&
+        ('success' in (toolExecutionData as any))
+      ) {
+        const result = toolExecutionData as { success: boolean; proposalGroup?: unknown; error?: string };
+        
+        if (!result.success && result.error) {
+          // エントリー提案が失敗した場合、エラーメッセージを返す
+          responseText = result.error;
+          logger.info('[AgentNetwork] Entry proposal failed with error', {
+            error: result.error,
+            originalText: (response as { text?: string }).text,
+          });
+        } else if (result.success && result.proposalGroup) {
+          // 成功した場合は提案グループを処理
+          const proposalGroup = result.proposalGroup as { proposals?: unknown[]; id: string };
+          const proposalCount = proposalGroup.proposals?.length || 0;
+          extractedProposalGroup = proposalGroup;
+          responseText = (response as { text?: string }).text || `${proposalCount}個の提案を生成しました。`;
+          logger.info('[AgentNetwork] Generated proposal response from tool data', {
+            originalText: (response as { text?: string }).text,
+            proposalCount,
+            proposalGroupId: proposalGroup.id,
+            isEmpty: proposalCount === 0,
+          });
+        }
+      } else if (
         targetId === 'tradingAnalysisAgent' &&
         hasToolExecution &&
         (toolExecutionData as { proposalGroup?: { proposals?: unknown[]; id: string } })?.proposalGroup
       ) {
+        // 通常の提案処理（後方互換性のため）
         const proposalCount = (toolExecutionData as { proposalGroup: { proposals?: unknown[] } }).proposalGroup.proposals?.length || 0;
         extractedProposalGroup = (toolExecutionData as { proposalGroup: unknown }).proposalGroup;
         responseText = (response as { text?: string }).text || `${proposalCount}個の提案を生成しました。`;

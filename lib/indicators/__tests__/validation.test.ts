@@ -165,7 +165,7 @@ describe('Indicator Validation', () => {
       
       const result = validatePriceData(mockPriceData, {
         ...defaultOptions,
-        customValidator,
+        customValidator: customValidator as any,
       });
       
       expect(result.valid).toBe(false);

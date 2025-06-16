@@ -4,6 +4,7 @@ import { logger } from '@/lib/utils/logger';
 import { withDatabase } from '@/lib/utils/db-connection';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 import type { ChartDrawing as PrismaChartDrawing, PatternAnalysis } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 // Mock dependencies
 jest.mock('@/lib/db/prisma', () => ({
@@ -60,25 +61,37 @@ describe('ChartDrawingDatabaseService', () => {
 
     it('should return empty array in loadDrawings when in browser (development)', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        configurable: true
+      });
 
       const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
       
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChartDrawingDB] Cannot use database in browser environment');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        configurable: true
+      });
     });
 
     it('should throw error in loadDrawings when in browser (production)', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        configurable: true
+      });
 
       await expect(ChartDrawingDatabaseService.loadDrawings('session-1')).rejects.toThrow(
         'ChartDrawingDB cannot be used in browser environment'
       );
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        configurable: true
+      });
     });
   });
 
@@ -92,17 +105,20 @@ describe('ChartDrawingDatabaseService', () => {
         {
           id: 'drawing-1',
           type: 'trendline',
-          points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-          style: { color: '#FF0000', width: 2 },
+          points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+          style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
           visible: true,
           interactive: true,
         },
         {
           id: 'drawing-2',
-          type: 'horizontalLine',
-          points: [{ x: 0, y: 50 }],
+          type: 'horizontal',
+          points: [{ time: 1640995200000, value: 50000 }],
+          style: { color: '#0000FF', lineWidth: 1, lineStyle: 'dashed', showLabels: false },
           price: 50000,
           time: 1640995200000,
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -118,8 +134,8 @@ describe('ChartDrawingDatabaseService', () => {
             id: 'drawing-1',
             sessionId: 'session-1',
             type: 'trendline',
-            points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-            style: { color: '#FF0000', width: 2 },
+            points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+            style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
             price: null,
             time: null,
             levels: null,
@@ -130,9 +146,9 @@ describe('ChartDrawingDatabaseService', () => {
           {
             id: 'drawing-2',
             sessionId: 'session-1',
-            type: 'horizontalLine',
-            points: [{ x: 0, y: 50 }],
-            style: undefined,
+            type: 'horizontal',
+            points: [{ time: 1640995200000, value: 50000 }],
+            style: { color: '#0000FF', lineWidth: 1, lineStyle: 'dashed', showLabels: false },
             price: 50000,
             time: BigInt(1640995200000),
             levels: null,
@@ -160,8 +176,12 @@ describe('ChartDrawingDatabaseService', () => {
       const drawings: ChartDrawing[] = [
         {
           id: 'drawing-1',
-          type: 'rectangle',
-          points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
+          type: 'pattern',
+          points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+          style: { color: '#00FF00', lineWidth: 2, lineStyle: 'solid', showLabels: false },
+          metadata: { patternType: 'rectangle' },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -172,7 +192,7 @@ describe('ChartDrawingDatabaseService', () => {
         data: [expect.objectContaining({
           id: 'drawing-1',
           sessionId: undefined,
-          type: 'rectangle',
+          type: 'pattern',
         })],
       });
     });
@@ -192,8 +212,8 @@ describe('ChartDrawingDatabaseService', () => {
         id: 'drawing-1',
         sessionId: 'session-1',
         type: 'trendline',
-        points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-        style: { color: '#FF0000' },
+        points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+        style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
         price: null,
         time: null,
         levels: null,
@@ -207,8 +227,8 @@ describe('ChartDrawingDatabaseService', () => {
         id: 'drawing-2',
         sessionId: 'session-1',
         type: 'fibonacci',
-        points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-        style: {},
+        points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+        style: { color: '#0000FF', lineWidth: 1, lineStyle: 'dashed', showLabels: true },
         price: new Decimal(50000),
         time: BigInt(1640995200000),
         levels: [0, 0.236, 0.382, 0.5, 0.618, 1],
@@ -234,16 +254,16 @@ describe('ChartDrawingDatabaseService', () => {
       expect(result[0]).toEqual({
         id: 'drawing-1',
         type: 'trendline',
-        points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-        style: { color: '#FF0000' },
+        points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+        style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
         visible: true,
         interactive: true,
       });
       expect(result[1]).toEqual({
         id: 'drawing-2',
         type: 'fibonacci',
-        points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
-        style: {},
+        points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+        style: { color: '#0000FF', lineWidth: 1, lineStyle: 'dashed', showLabels: true },
         price: 50000,
         time: 1640995200000,
         levels: [0, 0.236, 0.382, 0.5, 0.618, 1],
@@ -255,9 +275,12 @@ describe('ChartDrawingDatabaseService', () => {
 
     it('should handle database unavailability', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        configurable: true
+      });
 
-      (withDatabase as jest.Mock).mockImplementation(async (mainFn, fallbackFn) => fallbackFn());
+      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
 
       const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
 
@@ -266,18 +289,27 @@ describe('ChartDrawingDatabaseService', () => {
         sessionId: 'session-1',
       });
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        configurable: true
+      });
     });
 
     it('should throw error in production when database unavailable', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        configurable: true
+      });
 
-      (withDatabase as jest.Mock).mockImplementation(async (mainFn, fallbackFn) => fallbackFn());
+      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
 
       await expect(ChartDrawingDatabaseService.loadDrawings()).rejects.toThrow('Database unavailable for loading drawings');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        configurable: true
+      });
     });
   });
 
@@ -285,9 +317,12 @@ describe('ChartDrawingDatabaseService', () => {
     it('should save a single drawing', async () => {
       const drawing: ChartDrawing = {
         id: 'drawing-1',
-        type: 'verticalLine',
-        points: [{ x: 50, y: 0 }],
+        type: 'vertical',
+        points: [{ time: 1640995200000, value: 0 }],
+        style: { color: '#00FF00', lineWidth: 2, lineStyle: 'solid', showLabels: false },
         time: 1640995200000,
+        visible: true,
+        interactive: true,
       };
 
       const mockDbDrawing = {
@@ -305,14 +340,14 @@ describe('ChartDrawingDatabaseService', () => {
       expect(prisma.chartDrawing.upsert).toHaveBeenCalledWith({
         where: { id: 'drawing-1' },
         update: expect.objectContaining({
-          type: 'verticalLine',
-          points: [{ x: 50, y: 0 }],
+          type: 'vertical',
+          points: [{ time: 1640995200000, value: 0 }],
           time: BigInt(1640995200000),
         }),
         create: expect.objectContaining({
           id: 'drawing-1',
           sessionId: 'session-1',
-          type: 'verticalLine',
+          type: 'vertical',
         }),
       });
 
@@ -326,7 +361,14 @@ describe('ChartDrawingDatabaseService', () => {
     it('should return null in browser environment', async () => {
       global.window = {} as any;
 
-      const result = await ChartDrawingDatabaseService.saveDrawing({ id: 'test', type: 'trendline', points: [] });
+      const result = await ChartDrawingDatabaseService.saveDrawing({ 
+        id: 'test', 
+        type: 'trendline', 
+        points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+        style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
+        visible: true,
+        interactive: true
+      });
 
       expect(result).toBeNull();
       expect(logger.warn).toHaveBeenCalledWith('[ChartDrawingDB] Cannot use database in browser environment');
@@ -379,11 +421,10 @@ describe('ChartDrawingDatabaseService', () => {
         id: 'db-pattern-1',
         sessionId: 'session-1',
         ...pattern,
-        startTime: BigInt(pattern.startTime),
-        endTime: BigInt(pattern.endTime),
-        confidence: new Decimal(pattern.confidence),
+        startTime: pattern.startTime ? BigInt(pattern.startTime) : BigInt(0),
+        endTime: pattern.endTime ? BigInt(pattern.endTime) : BigInt(0),
+        confidence: new Decimal(pattern.confidence || 0),
         createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       (prisma.patternAnalysis.create as jest.Mock).mockResolvedValueOnce(mockDbPattern);
@@ -435,7 +476,7 @@ describe('ChartDrawingDatabaseService', () => {
       {
         id: 'pattern-1',
         sessionId: 'session-1',
-        type: 'head-and-shoulders',
+        type: 'headAndShoulders',
         symbol: 'BTCUSDT',
         interval: '1d',
         startTime: BigInt(1640995200000),
@@ -448,9 +489,8 @@ describe('ChartDrawingDatabaseService', () => {
         },
         metrics: {},
         description: 'Classic head and shoulders',
-        tradingImplication: 'Bearish reversal',
+        tradingImplication: 'bearish',
         createdAt: new Date(),
-        updatedAt: new Date(),
       },
     ];
 
@@ -467,7 +507,7 @@ describe('ChartDrawingDatabaseService', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         id: 'pattern-1',
-        type: 'head-and-shoulders',
+        type: 'headAndShoulders',
         symbol: 'BTCUSDT',
         interval: '1d',
         startTime: 1640995200000,
@@ -480,7 +520,7 @@ describe('ChartDrawingDatabaseService', () => {
         },
         metrics: {},
         description: 'Classic head and shoulders',
-        tradingImplication: 'Bearish reversal',
+        tradingImplication: 'bearish',
       });
     });
   });
@@ -499,7 +539,7 @@ describe('ChartDrawingDatabaseService', () => {
         {
           id: 'drawing-2',
           metadata: { symbol: 'BTCUSDT', timeframe: '4h' },
-          type: 'horizontalLine',
+          type: 'horizontal',
           points: [],
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -521,7 +561,7 @@ describe('ChartDrawingDatabaseService', () => {
       });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('drawing-1');
+      expect(result[0]?.id).toBe('drawing-1');
     });
 
     it('should handle drawings without metadata', async () => {
@@ -537,7 +577,7 @@ describe('ChartDrawingDatabaseService', () => {
         {
           id: 'drawing-2',
           metadata: { symbol: 'BTCUSDT' }, // Missing timeframe
-          type: 'horizontalLine',
+          type: 'horizontal',
           points: [],
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -558,7 +598,10 @@ describe('ChartDrawingDatabaseService', () => {
         {
           id: 'drawing-1',
           type: 'trendline',
-          points: [],
+          points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+          style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -594,18 +637,17 @@ describe('ChartDrawingDatabaseService', () => {
       (prisma.chartDrawing.deleteMany as jest.Mock).mockRejectedValueOnce(error);
 
       await expect(
-        ChartDrawingDatabaseService.migrateFromLocalStorage([{ id: 'test', type: 'trendline', points: [] }], [], 'session-1')
+        ChartDrawingDatabaseService.migrateFromLocalStorage([{ 
+          id: 'test', 
+          type: 'trendline', 
+          points: [{ time: 1640995200000, value: 50000 }, { time: 1640995300000, value: 51000 }],
+          style: { color: '#FF0000', lineWidth: 2, lineStyle: 'solid', showLabels: false },
+          visible: true,
+          interactive: true
+        }], [], 'session-1')
       ).rejects.toThrow('Migration failed');
 
       expect(logger.error).toHaveBeenCalledWith('[ChartDrawingDB] Migration failed', { error });
     });
   });
 });
-
-// Helper to create Decimal mock
-class Decimal {
-  constructor(private value: number) {}
-  toNumber() {
-    return this.value;
-  }
-}

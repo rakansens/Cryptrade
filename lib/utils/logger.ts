@@ -114,7 +114,7 @@ function getDefaultLogLevel(): LogLevel {
 function mapErrorProperties(error: Error): Record<string, unknown> {
   return Object.getOwnPropertyNames(error).reduce((acc, prop) => {
     if (!['name', 'message', 'stack'].includes(prop)) {
-      acc[prop] = (error as { [key: string]: unknown })[prop];
+      acc[prop] = (error as any)[prop];
     }
     return acc;
   }, {} as Record<string, unknown>);

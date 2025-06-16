@@ -91,11 +91,11 @@ export class PatternRendererAdapter implements IPatternRenderer {
       // レガシーレンダラーを使用
       if (this.legacy) {
         const legacyVisualization = this.convertVisualization(visualization);
-        const legacyMetrics = metrics ? {
+        const legacyMetrics: PatternMetrics | undefined = metrics ? {
           targetLevel: metrics.targetLevel,
           stopLoss: metrics.stopLoss,
           breakoutLevel: metrics.breakoutLevel,
-        } : undefined;
+        } as PatternMetrics : undefined;
         this.legacy.renderPattern(id, legacyVisualization, patternType, legacyMetrics);
       } else {
         logger.error('[PatternRendererAdapter] No legacy renderer available');

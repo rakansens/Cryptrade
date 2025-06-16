@@ -34,7 +34,7 @@ describe('useAIChat', () => {
     setLoading: jest.fn(),
     setStreaming: jest.fn(),
     setError: jest.fn(),
-    createSession: jest.fn().mockReturnValue('new-session-123'),
+    createSession: jest.fn().mockResolvedValue('new-session-123'),
   };
 
   beforeEach(() => {

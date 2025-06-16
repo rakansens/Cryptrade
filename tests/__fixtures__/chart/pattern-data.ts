@@ -2,7 +2,7 @@
  * チャートパターンデータのフィクスチャ
  */
 
-import { PatternAnalysis, PatternVisualization } from '@/types/pattern';
+import { PatternAnalysis } from '@/types/pattern';
 
 export const mockTrianglePattern: PatternAnalysis = {
   type: 'ascendingTriangle',

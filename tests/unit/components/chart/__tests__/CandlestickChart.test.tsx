@@ -21,6 +21,17 @@ jest.mock('@/components/chart/hooks/useChartData')
 jest.mock('@/components/chart/hooks/useAgentEventHandlers')
 jest.mock('@/components/chart/hooks/usePatternRestore')
 jest.mock('@/components/chart/hooks/usePatternDebug')
+
+// Type assertions for mocked modules
+const mockedUseChart = useChart as jest.MockedFunction<typeof useChart>
+const mockedUseIsChartReady = useIsChartReady as jest.MockedFunction<typeof useIsChartReady>
+const mockedUseCandlestickData = useCandlestickData as jest.MockedFunction<typeof useCandlestickData>
+const mockedUseChartInstance = useChartInstance as jest.MockedFunction<typeof useChartInstance>
+const mockedUseChartData = useChartData as jest.MockedFunction<typeof useChartData>
+const mockedUseAgentEventHandlers = useAgentEventHandlers as jest.MockedFunction<typeof useAgentEventHandlers>
+const mockedUsePatternRestore = usePatternRestore as jest.MockedFunction<typeof usePatternRestore>
+const mockedUsePatternDebug = usePatternDebug as jest.MockedFunction<typeof usePatternDebug>
+const mockedUseDrawingRestore = useDrawingRestore as jest.MockedFunction<typeof useDrawingRestore>
 jest.mock('@/components/chart/hooks/useDrawingRestore')
 
 describe('CandlestickChart', () => {
@@ -30,23 +41,23 @@ describe('CandlestickChart', () => {
     indicators: { ma: true, rsi: false, macd: false, boll: false },
     settings: { boll: {} },
     setChartReady: jest.fn()
-  }
+  } as const
 
   const mockPriceData = [
     { time: 1704067200, open: 45000, high: 45500, low: 44800, close: 45200, volume: 100 },
     { time: 1704070800, open: 45200, high: 45700, low: 45000, close: 45500, volume: 120 }
-  ]
+  ] as const
 
-  const mockChartInstance: any = {
+  const mockChartInstance = {
     chartContainerRef: { current: null },
     initializeChart: jest.fn(() => jest.fn()),
     addIndicatorSeries: jest.fn(),
     getSeries: jest.fn(),
     fitContent: jest.fn(),
-    drawingManager: {},
-    patternRenderer: {},
+    drawingManager: {} as any,
+    patternRenderer: {} as any,
     getPatternRenderer: jest.fn(),
-    chartInstance: null
+    chartInstance: null as any
   }
 
   const defaultMocks = {
@@ -63,15 +74,15 @@ describe('CandlestickChart', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(useChart as jest.Mock).mockReturnValue(defaultMocks.useChart)
-    ;(useIsChartReady as jest.Mock).mockReturnValue(defaultMocks.useIsChartReady)
-    ;(useCandlestickData as jest.Mock).mockReturnValue(defaultMocks.useCandlestickData)
-    ;(useChartInstance as jest.Mock).mockReturnValue(defaultMocks.useChartInstance)
-    ;(useChartData as jest.Mock).mockReturnValue(defaultMocks.useChartData)
-    ;(useAgentEventHandlers as jest.Mock).mockReturnValue(defaultMocks.useAgentEventHandlers)
-    ;(usePatternRestore as jest.Mock).mockReturnValue(defaultMocks.usePatternRestore)
-    ;(usePatternDebug as jest.Mock).mockReturnValue(defaultMocks.usePatternDebug)
-    ;(useDrawingRestore as jest.Mock).mockReturnValue(defaultMocks.useDrawingRestore)
+    mockedUseChart.mockReturnValue(defaultMocks.useChart as any)
+    mockedUseIsChartReady.mockReturnValue(defaultMocks.useIsChartReady)
+    mockedUseCandlestickData.mockReturnValue(defaultMocks.useCandlestickData as any)
+    mockedUseChartInstance.mockReturnValue(defaultMocks.useChartInstance as any)
+    mockedUseChartData.mockReturnValue(defaultMocks.useChartData as any)
+    mockedUseAgentEventHandlers.mockReturnValue(defaultMocks.useAgentEventHandlers)
+    mockedUsePatternRestore.mockReturnValue(defaultMocks.usePatternRestore as any)
+    mockedUsePatternDebug.mockReturnValue(defaultMocks.usePatternDebug as any)
+    mockedUseDrawingRestore.mockReturnValue(defaultMocks.useDrawingRestore as any)
   })
 
   describe('Basic Rendering', () => {
@@ -82,10 +93,10 @@ describe('CandlestickChart', () => {
     })
 
     it('renders loading state when loading data', () => {
-      ;(useCandlestickData as jest.Mock).mockReturnValue({
+      mockedUseCandlestickData.mockReturnValue({
         priceData: [],
         isLoading: true
-      })
+      } as any)
       
       render(<CandlestickChart />)
       
@@ -133,10 +144,10 @@ describe('CandlestickChart', () => {
       expect(mockChartInstance.initializeChart).toHaveBeenCalledTimes(1)
       
       // Change symbol
-      ;(useChart as jest.Mock).mockReturnValue({
+      mockedUseChart.mockReturnValue({
         ...mockChartData,
         symbol: 'ETHUSDT'
-      })
+      } as any)
       
       rerender(<CandlestickChart />)
       
@@ -149,10 +160,10 @@ describe('CandlestickChart', () => {
       expect(mockChartInstance.initializeChart).toHaveBeenCalledTimes(1)
       
       // Change timeframe
-      ;(useChart as jest.Mock).mockReturnValue({
+      mockedUseChart.mockReturnValue({
         ...mockChartData,
         timeframe: '4h'
-      })
+      } as any)
       
       rerender(<CandlestickChart />)
       
@@ -173,10 +184,10 @@ describe('CandlestickChart', () => {
       const { rerender } = render(<CandlestickChart />)
       
       // Disable MA
-      ;(useChart as jest.Mock).mockReturnValue({
+      mockedUseChart.mockReturnValue({
         ...mockChartData,
         indicators: { ...mockChartData.indicators, ma: false }
-      })
+      } as any)
       
       rerender(<CandlestickChart />)
       
@@ -186,10 +197,10 @@ describe('CandlestickChart', () => {
     })
 
     it('adds Bollinger Bands when enabled', async () => {
-      ;(useChart as jest.Mock).mockReturnValue({
+      mockedUseChart.mockReturnValue({
         ...mockChartData,
         indicators: { ...mockChartData.indicators, boll: true }
-      })
+      } as any)
       
       render(<CandlestickChart />)
       
@@ -200,7 +211,7 @@ describe('CandlestickChart', () => {
 
     it('updates indicator data after adding', async () => {
       const updateIndicatorData = jest.fn()
-      ;(useChartData as jest.Mock).mockReturnValue({ updateIndicatorData })
+      mockedUseChartData.mockReturnValue({ updateIndicatorData } as any)
       
       render(<CandlestickChart />)
       
@@ -221,10 +232,10 @@ describe('CandlestickChart', () => {
       const { rerender } = render(<CandlestickChart />)
       
       // Remove pattern renderer
-      ;(useChartInstance as jest.Mock).mockReturnValue({
+      mockedUseChartInstance.mockReturnValue({
         ...mockChartInstance,
         patternRenderer: null
-      })
+      } as any)
       
       rerender(<CandlestickChart />)
       
@@ -308,10 +319,10 @@ describe('CandlestickChart', () => {
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
       
       // Data loads
-      ;(useCandlestickData as jest.Mock).mockReturnValue({
+      mockedUseCandlestickData.mockReturnValue({
         priceData: mockPriceData,
         isLoading: false
-      })
+      } as any)
       
       rerender(<CandlestickChart />)
       
@@ -344,8 +355,8 @@ describe('CandlestickChart', () => {
 
       render(<CandlestickChart />)
 
-      const handlers = (useAgentEventHandlers as jest.Mock).mock.calls[0][0]
-      handlers.zoomIn?.(2)
+      const handlers = mockedUseAgentEventHandlers.mock.calls[0][0]
+      handlers?.zoomIn?.(2)
 
       expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 25, to: 75 })
     })
@@ -359,8 +370,8 @@ describe('CandlestickChart', () => {
 
       render(<CandlestickChart />)
 
-      const handlers = (useAgentEventHandlers as jest.Mock).mock.calls[0][0]
-      handlers.zoomOut?.(0.5)
+      const handlers = mockedUseAgentEventHandlers.mock.calls[0][0]
+      handlers?.zoomOut?.(0.5)
 
       expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 0, to: 100 })
     })

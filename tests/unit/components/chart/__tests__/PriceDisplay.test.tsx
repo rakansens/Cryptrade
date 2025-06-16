@@ -10,6 +10,10 @@ import { useMarketTicker } from '@/hooks/market/use-market-stats'
 // Mock dependencies
 jest.mock('@/hooks/market/use-price-stream')
 jest.mock('@/hooks/market/use-market-stats')
+
+// Type assertions for mocked modules
+const mockedUsePriceStream = usePriceStream as jest.MockedFunction<typeof usePriceStream>
+const mockedUseMarketTicker = useMarketTicker as jest.MockedFunction<typeof useMarketTicker>
 jest.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' ')
 }))
@@ -30,8 +34,8 @@ describe('PriceDisplay', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(usePriceStream as jest.Mock).mockReturnValue(mockPriceStream)
-    ;(useMarketTicker as jest.Mock).mockReturnValue(mockMarketTicker)
+    mockedUsePriceStream.mockReturnValue(mockPriceStream as any)
+    mockedUseMarketTicker.mockReturnValue(mockMarketTicker as any)
   })
 
   describe('Basic Rendering', () => {
@@ -69,10 +73,10 @@ describe('PriceDisplay', () => {
     })
 
     it('shows --- when price is 0', () => {
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         currentPrice: 0
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -87,11 +91,11 @@ describe('PriceDisplay', () => {
     })
 
     it('shows negative values without extra sign', () => {
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         change: -523.45,
         changePercent: -1.17
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -111,10 +115,10 @@ describe('PriceDisplay', () => {
     })
 
     it('shows disconnected status with red indicator', () => {
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         isConnected: false
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -144,11 +148,11 @@ describe('PriceDisplay', () => {
     })
 
     it('shows red color for negative changes', () => {
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         change: -523.45,
         changePercent: -1.17
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -165,10 +169,10 @@ describe('PriceDisplay', () => {
       const { rerender } = render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
       // Update price
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         currentPrice: 45223.45
-      })
+      } as any)
       
       rerender(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -184,10 +188,10 @@ describe('PriceDisplay', () => {
     it('does not trigger animation when price is 0', () => {
       const { rerender } = render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         currentPrice: 0
-      })
+      } as any)
       
       rerender(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -204,11 +208,11 @@ describe('PriceDisplay', () => {
     })
 
     it('shows down arrow for negative changes', () => {
-      ;(usePriceStream as jest.Mock).mockReturnValue({
+      mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         change: -523.45,
         changePercent: -1.17
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
@@ -240,7 +244,7 @@ describe('PriceDisplay', () => {
         high24h: null,
         low24h: null,
         volume: null
-      })
+      } as any)
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       

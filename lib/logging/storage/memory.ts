@@ -7,18 +7,18 @@
 import type {
   IUnifiedStorage,
   UnifiedLogEntry,
-  UnifiedLoggerConfig,
   LogFilter,
   PaginationOptions,
   LogQueryResult,
   LogStats
 } from '../unified-logger';
+import type { StorageConfig } from './factory';
 
 export class UnifiedMemoryStorage implements IUnifiedStorage {
   private entries: UnifiedLogEntry[] = [];
   private initialized = false;
 
-  constructor(_config: UnifiedLoggerConfig) {
+  constructor(_config: StorageConfig) {
   }
 
   async init(): Promise<void> {

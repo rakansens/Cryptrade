@@ -3,7 +3,7 @@
 [![Test CI](https://github.com/yourusername/cryptrade/actions/workflows/test.yml/badge.svg)](https://github.com/yourusername/cryptrade/actions/workflows/test.yml)
 [![E2E Tests](https://github.com/yourusername/cryptrade/actions/workflows/e2e.yml/badge.svg)](https://github.com/yourusername/cryptrade/actions/workflows/e2e.yml)
 [![codecov](https://codecov.io/gh/yourusername/cryptrade/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/cryptrade)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 A modern cryptocurrency trading application built with Next.js, featuring real-time market data, technical indicators, and AI-powered trading insights.
 
@@ -260,7 +260,7 @@ Ensure these variables are set in your production environment:
 └── docs/                   # Documentation and ADRs
 ```
 
-For detailed architecture decisions, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+For detailed architecture decisions, see [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md).
 
 ## Intent Classification
 
@@ -296,10 +296,10 @@ When contributing, ensure you:
 
 ## Support
 
-- 📖 Documentation: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- 📖 Documentation: [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md)
 - 🐛 Issues: Use GitHub Issues for bug reports
 - 💬 Discussions: Use GitHub Discussions for questions
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.

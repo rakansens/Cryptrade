@@ -7,13 +7,13 @@
 import type {
   IUnifiedStorage,
   UnifiedLogEntry,
-  UnifiedLoggerConfig,
   LogFilter,
   PaginationOptions,
   LogQueryResult,
   LogStats,
   LogLevel
 } from '../unified-logger';
+import type { StorageConfig } from './factory';
 
 // Minimal SQLite type definitions
 interface SQLiteStatement {
@@ -49,11 +49,11 @@ interface SQLiteLogRow {
 }
 
 export class UnifiedSQLiteStorage implements IUnifiedStorage {
-  private config: UnifiedLoggerConfig;
+  private config: StorageConfig;
   private db: SQLiteDatabase | null = null;
   private initialized = false;
 
-  constructor(config: UnifiedLoggerConfig) {
+  constructor(config: StorageConfig) {
     this.config = config;
   }
 
@@ -65,7 +65,7 @@ export class UnifiedSQLiteStorage implements IUnifiedStorage {
       const Database = (await import('better-sqlite3')).default;
       
       // Use configured connection string or default path
-      const dbPath = this.config.connectionString || './logs/unified.db';
+      const dbPath = this.config['connectionString'] || './logs/unified.db';
       
       // Ensure directory exists
       const path = await import('path');

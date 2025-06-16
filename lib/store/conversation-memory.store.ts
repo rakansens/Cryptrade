@@ -355,11 +355,14 @@ const persistConfig: PersistOptions<ConversationMemoryStore> = {
     }
     return persistedState as ConversationMemoryStore;
   },
-  partialize: (state: ConversationMemoryStore) => ({
-    sessions: state.sessions,
-    currentSessionId: state.currentSessionId,
-    isDbEnabled: state.isDbEnabled,
-  }),
+  partialize: (state) => {
+    // Only persist the data, not the functions
+    return {
+      sessions: state.sessions,
+      currentSessionId: state.currentSessionId,
+      isDbEnabled: state.isDbEnabled,
+    } as Pick<ConversationMemoryState, 'sessions' | 'currentSessionId' | 'isDbEnabled'>;
+  },
 };
 
 // Create store with explicit typing to avoid deep instantiation
@@ -433,12 +436,20 @@ export async function semanticSearch(
       if (!msg.metadata?.embedding) {
         try {
           const { embedding } = await embeddingService.generateEmbedding(msg.content);
-          useConversationMemory.setState(s => {
-            const m = s.sessions[msg.sessionId]?.messages.find(m => m.id === msg.id);
-            if (m) {
-              m.metadata = { ...(m.metadata || {}), embedding };
+          useConversationMemory.setState((state) => ({
+            ...state,
+            sessions: {
+              ...state.sessions,
+              [msg.sessionId]: state.sessions[msg.sessionId] ? {
+                ...state.sessions[msg.sessionId],
+                messages: state.sessions[msg.sessionId].messages.map(m => 
+                  m.id === msg.id 
+                    ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
+                    : m
+                )
+              } : { id: msg.sessionId, startedAt: new Date(), lastActiveAt: new Date(), messages: [] }
             }
-          });
+          }));
           msg.metadata = { ...(msg.metadata || {}), embedding };
         } catch (_) {
           continue;
@@ -471,12 +482,20 @@ export async function generateMessageEmbedding(message: ConversationMessage): Pr
     if (message.role === 'system') return;
     const { embedding } = await embeddingService.generateEmbedding(message.content);
 
-    useConversationMemory.setState(state => {
-      const msg = state.sessions[message.sessionId]?.messages.find(m => m.id === message.id);
-      if (msg) {
-        msg.metadata = { ...(msg.metadata || {}), embedding };
+    useConversationMemory.setState((state) => ({
+      ...state,
+      sessions: {
+        ...state.sessions,
+        [message.sessionId]: state.sessions[message.sessionId] ? {
+          ...state.sessions[message.sessionId],
+          messages: state.sessions[message.sessionId].messages.map(m => 
+            m.id === message.id 
+              ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
+              : m
+          )
+        } : state.sessions[message.sessionId]
       }
-    });
+    }));
 
     logger.info('[ConversationMemory] Embedding generated', {
       messageId: message.id,

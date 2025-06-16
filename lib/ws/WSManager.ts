@@ -499,7 +499,7 @@ export class WSManager {
   private stopPeriodicCleanup(): void {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      this.cleanupTimer = undefined;
+      delete this.cleanupTimer;
       
       if (this.options.debug) {
         logger.debug('[WSManager] Stopped periodic cleanup');

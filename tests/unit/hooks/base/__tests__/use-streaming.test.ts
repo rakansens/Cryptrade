@@ -674,7 +674,7 @@ describe('useSSE', () => {
       expect(result.current.eventSource).toBeTruthy();
     });
 
-    const eventSource = result.current.eventSource as typeof MockEventSource;
+    const eventSource = result.current.eventSource as any;
 
     // Simulate custom event
     const updateEvent = new MessageEvent('update', {

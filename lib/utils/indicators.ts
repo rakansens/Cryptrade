@@ -194,7 +194,7 @@ export function calculateMACD(data: number[]) {
     const result = properCalculateMACD(formattedData);
     
     // Return only the values for backward compatibility
-    return result.map(item => ({
+    return result.map((item: any) => ({
       macd: item.macd,
       signal: item.signal,
       histogram: item.histogram
@@ -236,7 +236,7 @@ export function calculateRSI(data: number[], period: number = 14) {
     const result = properCalculateRSI(formattedData, period);
     
     // Return only the RSI values for backward compatibility
-    return result.map(item => item.value);
+    return result.map((item: any) => item.value);
   } catch (error) {
     logger.error('[Indicators] Failed to calculate RSI', { error });
     
@@ -270,7 +270,7 @@ export function calculateBollingerBands(data: number[], period: number = 20, std
     const result = properCalculateBB(formattedData, period, stdDev);
     
     // Return in backward compatible format
-    return result.map(item => ({
+    return result.map((item: any) => ({
       upper: item.upper,
       middle: item.middle,
       lower: item.lower
@@ -312,7 +312,7 @@ export function calculateSMA(data: number[], period: number = 20) {
     const result = properCalculateSMA(formattedData, period);
     
     // Return only the SMA values for backward compatibility
-    return result.map(item => item.value);
+    return result.map((item: any) => item.value);
   } catch (error) {
     logger.error('[Indicators] Failed to calculate SMA', { error });
     

@@ -98,21 +98,22 @@ class TraceManager {
       );
       
       // Record token usage
-      if (metrics.tokensUsed > 0) {
+      const totalTokens = metrics.tokensInput + metrics.tokensOutput;
+      if (totalTokens > 0) {
         prometheusMetrics.agentTokenUsage.inc(
           {
             agent_id: trace.agentId,
             operation_type: trace.operationType
           },
-          metrics.tokensUsed
+          totalTokens
         );
       }
       
       // Record errors
-      if (!metrics.success && metrics.errorType) {
+      if (!metrics.success && metrics.errorCode) {
         prometheusMetrics.agentErrors.inc({
           agent_id: trace.agentId,
-          error_type: metrics.errorType
+          error_type: metrics.errorCode
         });
       }
       
@@ -124,8 +125,8 @@ class TraceManager {
         success: metrics.success,
         duration_ms: duration,
         duration_seconds: duration / 1000,
-        tokens_used: metrics.tokensUsed,
-        error_type: metrics.errorType,
+        tokens_used: metrics.tokensInput + metrics.tokensOutput,
+        error_type: metrics.errorCode,
         timestamp: new Date().toISOString()
       });
       
@@ -138,8 +139,8 @@ class TraceManager {
         operation_type: trace.operationType,
         success: metrics.success,
         duration_ms: duration,
-        tokens_used: metrics.tokensUsed,
-        error_type: metrics.errorType
+        tokens_used: metrics.tokensInput + metrics.tokensOutput,
+        error_type: metrics.errorCode
       });
     }
   }
@@ -189,9 +190,9 @@ export function withTrace<T extends TraceableParams[], R extends TraceableResult
       if (result.tokensUsed) {
         tokensInput = result.tokensUsed.input || 0;
         tokensOutput = result.tokensUsed.output || 0;
-      } else if ('usage' in result && typeof result.usage === 'object') {
+      } else if ('usage' in result && typeof result['usage'] === 'object') {
         // Alternative format from some AI providers
-        const usage = result.usage as any;
+        const usage = result['usage'] as any;
         tokensInput = usage.prompt_tokens || usage.input_tokens || 0;
         tokensOutput = usage.completion_tokens || usage.output_tokens || 0;
       }

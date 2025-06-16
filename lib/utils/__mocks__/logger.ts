@@ -24,8 +24,8 @@ export const logger = {
   // Test helpers
   reset: () => {
     Object.values(logger).forEach(value => {
-      if (typeof value === 'function' && value.mockReset) {
-        value.mockReset();
+      if (typeof value === 'function' && typeof (value as any).mockReset === 'function') {
+        (value as jest.Mock).mockReset();
       }
     });
   },

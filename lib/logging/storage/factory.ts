@@ -14,13 +14,21 @@
  *   prevent再試行 and spammy error logs on subsequent storage creations.
  */
 
-import type { IUnifiedStorage, UnifiedLoggerConfig } from '../unified-logger';
+import type { IUnifiedStorage } from '../unified-logger';
 import { isTest } from '@/config/env';
+
+// Storage configuration type
+export interface StorageConfig {
+  storage?: 'memory' | 'sqlite' | 'postgres';
+  connectionUrl?: string;
+  tableName?: string;
+  [key: string]: any;
+}
 
 // Track whether SQLite storage is unavailable to avoid repeated costly attempts
 let sqliteUnavailable = false;
 
-export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise<IUnifiedStorage> {
+export async function createUnifiedStorage(config: StorageConfig): Promise<IUnifiedStorage> {
   // Browser environment always uses memory storage
   if (typeof window !== 'undefined') {
     const { UnifiedMemoryStorage } = await import('./memory');
@@ -61,7 +69,10 @@ export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise
     case 'postgres':
       try {
         const { UnifiedPostgreSQLStorage } = await import('./postgres');
-        return new UnifiedPostgreSQLStorage(config);
+        return new UnifiedPostgreSQLStorage({
+          connectionUrl: config.connectionUrl || undefined,
+          tableName: config.tableName || undefined
+        });
       } catch (error) {
         // If PostgreSQL module fails to load, fall back to memory storage
         console.warn('[UnifiedStorage] PostgreSQL storage failed to initialize, using memory storage as fallback.', error);

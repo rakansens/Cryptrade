@@ -5,7 +5,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useApproveProposal } from '@/hooks/chat/use-approve-proposal';
 import { useAnalysisActions } from '@/store/analysis-history.store';
 import { useChat } from '@/store/chat.store';
-import { useProposalApprovalActions } from '@/store/proposal-approval.store';
+import { useAddApprovedDrawing } from '@/store/proposal-approval.store';
 import { useUIEventPublisher } from '@/store/ui-event.store';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
@@ -30,9 +30,7 @@ const mockAnalysisActions = {
   addRecord: jest.fn(),
 };
 
-const mockApprovalActions = {
-  addApprovedDrawing: jest.fn(),
-};
+const mockAddApprovedDrawing = jest.fn();
 
 const mockPublish = jest.fn();
 
@@ -85,7 +83,7 @@ describe('useApproveProposal', () => {
     
     (useAnalysisActions as jest.Mock).mockReturnValue(mockAnalysisActions);
     (useChat as jest.Mock).mockReturnValue({ currentSessionId: 'session-1' });
-    (useProposalApprovalActions as jest.Mock).mockReturnValue(mockApprovalActions);
+    (useAddApprovedDrawing as jest.Mock).mockReturnValue(mockAddApprovedDrawing);
     (useUIEventPublisher as jest.Mock).mockReturnValue({ publish: mockPublish });
   });
 
@@ -96,7 +94,7 @@ describe('useApproveProposal', () => {
       await result.current.approveProposal(mockProposalMessage, 'proposal-1');
     });
 
-    expect(mockApprovalActions.addApprovedDrawing).toHaveBeenCalledWith(
+    expect(mockAddApprovedDrawing).toHaveBeenCalledWith(
       'message-1',
       'proposal-1',
       expect.stringContaining('proposal-1_'),
@@ -189,7 +187,7 @@ describe('useApproveProposal', () => {
       await result.current.approveAllProposals(messageWithMultipleProposals as any);
     });
 
-    expect(mockApprovalActions.addApprovedDrawing).toHaveBeenCalledTimes(2);
+    expect(mockAddApprovedDrawing).toHaveBeenCalledTimes(2);
     expect(showProposalApprovalSuccess).toHaveBeenCalledTimes(2);
   });
 

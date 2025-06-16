@@ -16,7 +16,7 @@ export const ChartDrawingSchema = z.object({
 });
 
 // Re-import from types/pattern.ts to avoid duplication
-import { PatternTypeSchema } from '@/types/pattern';
+// import { PatternTypeSchema } from '@/types/pattern';
 
 // Additional pattern types not in main schema (if needed)
 export const ExtendedPatternTypeSchema = z.enum([

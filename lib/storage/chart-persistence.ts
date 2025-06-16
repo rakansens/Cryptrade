@@ -61,7 +61,7 @@ export class ChartPersistenceManager {
             await ChartDrawingAPI.migrateFromLocalStorage({
               drawings: localDrawings,
               patterns: localPatterns,
-              sessionId: config.sessionId
+              sessionId: ChartPersistenceManager.config.sessionId || undefined
             });
             
             logger.info('[ChartPersistence] Successfully migrated data to database', {

@@ -297,6 +297,37 @@ async function executeWithA2ACommunication(
       hasToolResults: !!a2aMessage.toolResults,
     });
 
+    // エントリー提案などでツール実行が失敗した場合の特別処理
+    // responseがエラーメッセージの場合（例: "有効なエントリーポイントが見つかりませんでした"）
+    if (response && (
+      response.includes('見つかりませんでした') ||
+      response.includes('失敗しました') ||
+      response.includes('できません')
+    )) {
+      logger.info('[agentSelectionTool] Tool execution failed but A2A succeeded', {
+        targetAgent: targetAgentId,
+        response,
+      });
+      
+      // A2A通信は成功したが、ツールの実行結果として失敗メッセージを返す
+      return {
+        success: true,
+        targetAgent: targetAgentId,
+        response,
+        toolExecutionFailed: true,
+        ...a2aMessage,
+        metadata: {
+          ...(a2aMessage as any).metadata,
+          toolExecutionFailed: true,
+        },
+        data: undefined,
+        error: undefined,
+        steps: undefined,
+        toolResults: undefined,
+        proposalGroup: undefined,
+      };
+    }
+
     // a2aMessageの全体構造を返す（stepsやtoolResultsを含む）
     const { error: _unusedError, ...messageRest } = a2aMessage as { error?: unknown; [key: string]: unknown };
 

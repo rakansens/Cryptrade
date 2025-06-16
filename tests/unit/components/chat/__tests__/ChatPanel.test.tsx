@@ -15,6 +15,12 @@ jest.mock('@/hooks/use-ai-chat')
 jest.mock('@/hooks/chat/use-message-handling')
 jest.mock('@/hooks/chat/use-proposal-management')
 
+// Type assertions for mocked modules
+const mockedUseChat = useChat as jest.MockedFunction<typeof useChat>
+const mockedUseAIChat = useAIChat as jest.MockedFunction<typeof useAIChat>
+const mockedUseMessageHandling = useMessageHandling as jest.MockedFunction<typeof useMessageHandling>
+const mockedUseProposalManagement = useProposalManagement as jest.MockedFunction<typeof useProposalManagement>
+
 // Mock child components
 jest.mock('@/components/chat/SessionAnalysisHistory', () => ({
   SessionAnalysisHistory: ({ sessionId, resetKey }: any) => (
@@ -117,10 +123,10 @@ describe('ChatPanel', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(useChat as jest.Mock).mockReturnValue(mockUseChatReturn)
-    ;(useAIChat as jest.Mock).mockReturnValue(mockUseAIChatReturn)
-    ;(useMessageHandling as jest.Mock).mockReturnValue(mockUseMessageHandlingReturn)
-    ;(useProposalManagement as jest.Mock).mockReturnValue(mockUseProposalManagementReturn)
+    mockedUseChat.mockReturnValue(mockUseChatReturn as any)
+    mockedUseAIChat.mockReturnValue(mockUseAIChatReturn as any)
+    mockedUseMessageHandling.mockReturnValue(mockUseMessageHandlingReturn as any)
+    mockedUseProposalManagement.mockReturnValue(mockUseProposalManagementReturn as any)
   })
 
   describe('Basic Rendering', () => {
@@ -145,7 +151,7 @@ describe('ChatPanel', () => {
         { id: '2', role: 'assistant' as const, content: 'Hi', timestamp: Date.now() }
       ]
       
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         messages: mockMessages
       })
@@ -167,7 +173,7 @@ describe('ChatPanel', () => {
     })
 
     it('calls handleSendMessage when send button is clicked', () => {
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         inputValue: 'Test message'
       })
@@ -181,7 +187,7 @@ describe('ChatPanel', () => {
     })
 
     it('disables input when not ready', () => {
-      ;(useAIChat as jest.Mock).mockReturnValue({
+      mockedUseAIChat.mockReturnValue({
         isReady: false
       })
       
@@ -192,7 +198,7 @@ describe('ChatPanel', () => {
     })
 
     it('disables input when loading', () => {
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         isLoading: true
       })
@@ -206,7 +212,7 @@ describe('ChatPanel', () => {
 
   describe('Auto-send from Home Screen', () => {
     it('auto-sends message when coming from home screen', async () => {
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         inputValue: 'Auto message',
         isInputFromHomeScreen: true
@@ -222,7 +228,7 @@ describe('ChatPanel', () => {
     it('only auto-sends once', async () => {
       const { rerender } = render(<ChatPanel />)
       
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         inputValue: 'Auto message',
         isInputFromHomeScreen: true
@@ -236,11 +242,11 @@ describe('ChatPanel', () => {
     })
 
     it('does not auto-send when not ready', () => {
-      ;(useAIChat as jest.Mock).mockReturnValue({
+      mockedUseAIChat.mockReturnValue({
         isReady: false
       })
       
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         inputValue: 'Auto message',
         isInputFromHomeScreen: true
@@ -263,7 +269,7 @@ describe('ChatPanel', () => {
       // The tabs component would handle switching but we're testing the state here
       
       // Simulate tab change
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         currentSessionId: 'session-1'
       })
@@ -293,7 +299,7 @@ describe('ChatPanel', () => {
   describe('Error Handling', () => {
     it('passes error to MessageList', () => {
       const errorMessage = 'Connection failed'
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         error: errorMessage
       })
@@ -307,7 +313,7 @@ describe('ChatPanel', () => {
 
   describe('Loading States', () => {
     it('shows loading state in MessageList', () => {
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         isLoading: true
       })
@@ -319,7 +325,7 @@ describe('ChatPanel', () => {
     })
 
     it('shows streaming state in MessageList', () => {
-      ;(useChat as jest.Mock).mockReturnValue({
+      mockedUseChat.mockReturnValue({
         ...mockUseChatReturn,
         isStreaming: true
       })
@@ -340,7 +346,7 @@ describe('ChatPanel', () => {
         analysisType: 'trendline' as const
       }
       
-      ;(useMessageHandling as jest.Mock).mockReturnValue({
+      mockedUseMessageHandling.mockReturnValue({
         ...mockUseMessageHandlingReturn,
         analysisInProgress: analysisProgress
       })
@@ -369,7 +375,7 @@ describe('ChatPanel', () => {
         ['msg-1', new Map([['proposal-1', 'drawing-1']])]
       ])
       
-      ;(useProposalManagement as jest.Mock).mockReturnValue({
+      mockedUseProposalManagement.mockReturnValue({
         ...mockUseProposalManagementReturn,
         approvedDrawingIds: approvedIds
       })
@@ -388,7 +394,7 @@ describe('ChatPanel', () => {
     })
 
     it('tracks copied message ID', () => {
-      ;(useMessageHandling as jest.Mock).mockReturnValue({
+      mockedUseMessageHandling.mockReturnValue({
         ...mockUseMessageHandlingReturn,
         copiedMessageId: 'msg-1'
       })

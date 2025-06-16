@@ -4,7 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
-import { isDevelopment, env } from '@/config/env';
+import { isDevelopment } from '@/config/env';
 
 import { TokenLimiter, ToolCallFilter } from "@/lib/store/processors";
 import type { MemoryProcessor } from "@/lib/store/processors";
@@ -110,12 +110,12 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               await prisma.conversationSession.update({
                 where: { id: dbSession.id },
                 data: {
-                  metadata: {
+                  metadata: JSON.parse(JSON.stringify({
                     processors: sessionProcessors.map(p => ({
                       name: p.getName(),
                       type: p.constructor.name,
                     })),
-                  },
+                  })) as any,
                 },
               });
               
@@ -572,13 +572,13 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                 await prisma.conversationSession.update({
                   where: { id: dbSession.id },
                   data: {
-                    metadata: {
+                    metadata: JSON.parse(JSON.stringify({
                       processors: session.processors.map(p => ({
                         name: p.getName(),
                         type: p.constructor.name,
                       })),
                       tokenUsage: session.tokenUsage,
-                    },
+                    })) as any,
                   },
                 });
                 
@@ -644,13 +644,13 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                 await prisma.conversationSession.update({
                   where: { id: session.id },
                   data: {
-                    metadata: {
+                    metadata: JSON.parse(JSON.stringify({
                       processors: session.processors.map(p => ({
                         name: p.getName(),
                         type: p.constructor.name,
                       })),
                       tokenUsage: session.tokenUsage,
-                    },
+                    })) as any,
                   },
                 });
               }
@@ -703,8 +703,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               if (sessionData) {
                 // Reconstruct processors from metadata
                 let processors = DEFAULT_PROCESSORS;
-                if (dbSession.metadata && typeof dbSession.metadata === 'object') {
-                  const metadata = dbSession.metadata as any;
+                const sessionWithMetadata = dbSession as any;
+                if (sessionWithMetadata.metadata && typeof sessionWithMetadata.metadata === 'object') {
+                  const metadata = sessionWithMetadata.metadata;
                   if (metadata.processors && Array.isArray(metadata.processors)) {
                     processors = metadata.processors.map((p: any) => {
                       if (p.type === 'TokenLimiter') {
@@ -736,7 +737,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                   }),
                   ...(dbSession.summary ? { summary: dbSession.summary } : {}),
                   processors,
-                  tokenUsage: (dbSession.metadata as any)?.tokenUsage || { total: 0, input: 0, output: 0 },
+                  tokenUsage: (sessionWithMetadata.metadata as any)?.tokenUsage || { total: 0, input: 0, output: 0 },
                 };
               }
             }
@@ -852,7 +853,7 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
   migrate: (persistedState: EnhancedConversationMemoryStore | unknown, version: number) => {
     if (version < 3) {
       return {
-        ...persistedState,
+        ...(persistedState as any),
         isDbEnabled: true,
         isSyncing: false,
         defaultProcessors: DEFAULT_PROCESSORS,
@@ -860,12 +861,15 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
     }
     return persistedState as EnhancedConversationMemoryStore;
   },
-  partialize: (state: EnhancedConversationMemoryStore) => ({
-    sessions: state.sessions,
-    currentSessionId: state.currentSessionId,
-    isDbEnabled: state.isDbEnabled,
-    defaultProcessors: state.defaultProcessors,
-  }),
+  partialize: (state) => {
+    // Only persist the data, not the functions
+    return {
+      sessions: state.sessions,
+      currentSessionId: state.currentSessionId,
+      isDbEnabled: state.isDbEnabled,
+      defaultProcessors: state.defaultProcessors,
+    } as Pick<EnhancedConversationMemoryState, 'sessions' | 'currentSessionId' | 'isDbEnabled' | 'defaultProcessors'>;
+  },
   storage: createJSONStorage(() => {
     if (typeof window !== 'undefined') {
       return localStorage;

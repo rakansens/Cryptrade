@@ -118,7 +118,7 @@ export class ConnectionManager {
       if (!connection.isDestroyed) {
         callback();
       }
-      connection.reconnectTimeout = undefined;
+      delete connection.reconnectTimeout;
     }, delay);
   }
 
@@ -159,12 +159,12 @@ export class ConnectionManager {
     // Clear timers
     if (connection.reconnectTimeout) {
       clearTimeout(connection.reconnectTimeout);
-      connection.reconnectTimeout = undefined;
+      delete connection.reconnectTimeout;
     }
 
     if (connection.heartbeatInterval) {
       clearInterval(connection.heartbeatInterval);
-      connection.heartbeatInterval = undefined;
+      delete connection.heartbeatInterval;
     }
 
     // Remove event listeners
@@ -198,11 +198,11 @@ export class ConnectionManager {
   pauseAll(): void {
     logger.info('[ConnectionManager] Pausing all connections');
     
-    this.connections.forEach((connection, id) => {
+    this.connections.forEach((connection) => {
       // Clear heartbeats but keep connections
       if (connection.heartbeatInterval) {
         clearInterval(connection.heartbeatInterval);
-        connection.heartbeatInterval = undefined;
+        delete connection.heartbeatInterval;
       }
     });
   }

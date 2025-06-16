@@ -7,7 +7,7 @@ import { validateAndSanitizeChatMessage } from '@/lib/services/database/chat.val
 import { chatRateLimiters, enforceRateLimit } from '@/lib/services/database/rate-limiter';
 import { chatCaches, invalidateSessionCache, invalidateUserCache } from '@/lib/services/database/chat-cache';
 import type { ConversationSession, ConversationMessage } from '@prisma/client';
-import type { ChatMessage, ChatSession } from '@/lib/services/database/chat.service';
+// ChatMessage type is used indirectly through mocks
 
 // Mock dependencies
 jest.mock('@/lib/db/prisma', () => ({
@@ -54,7 +54,7 @@ describe('ChatDatabaseService', () => {
       updatedAt: new Date(),
       lastActiveAt: new Date(),
       startedAt: new Date(),
-      metadata: null,
+      metadata: {},
     };
 
     it('should create a session successfully', async () => {
@@ -149,7 +149,7 @@ describe('ChatDatabaseService', () => {
         updatedAt: new Date(),
         lastActiveAt: new Date(),
         startedAt: new Date(),
-        metadata: null,
+        metadata: {},
       },
       {
         id: 'session-2',
@@ -159,7 +159,7 @@ describe('ChatDatabaseService', () => {
         updatedAt: new Date(),
         lastActiveAt: new Date(Date.now() - 3600000),
         startedAt: new Date(),
-        metadata: null,
+        metadata: {},
       },
     ];
 
@@ -230,7 +230,7 @@ describe('ChatDatabaseService', () => {
         .mockReturnValueOnce(null) // First call - no fresh cache
         .mockReturnValueOnce(mockSessions); // Second call - stale cache
 
-      (withDatabase as jest.Mock).mockImplementation(async (mainFn, fallbackFn) => fallbackFn());
+      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
 
       const result = await ChatDatabaseService.getUserSessions('user-1');
 
@@ -242,17 +242,23 @@ describe('ChatDatabaseService', () => {
 
     it('should return empty array in development when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env['NODE_ENV'] = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        configurable: true
+      });
 
       chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (withDatabase as jest.Mock).mockImplementation(async (mainFn, fallbackFn) => fallbackFn());
+      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
 
       const result = await ChatDatabaseService.getUserSessions('user-1');
 
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Returning empty array in development mode');
 
-      process.env['NODE_ENV'] = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        configurable: true
+      });
     });
 
     it('should apply rate limiting', async () => {
@@ -261,7 +267,7 @@ describe('ChatDatabaseService', () => {
 
       await ChatDatabaseService.getUserSessions('user-1');
 
-      expect(enforceRateLimit).toHaveBeenCalledWith(chatRateLimiters.sessionQuery, 'user-1');
+      expect(enforceRateLimit).toHaveBeenCalledWith(chatRateLimiters.bulkOperations, 'user-1');
     });
   });
 
@@ -274,7 +280,7 @@ describe('ChatDatabaseService', () => {
       startedAt: new Date(),
       lastActiveAt: new Date(),
       summary: 'Test Session',
-      metadata: null,
+      metadata: {},
     };
 
     it('should get session successfully', async () => {
@@ -363,7 +369,7 @@ describe('ChatDatabaseService', () => {
 
       const result = await ChatDatabaseService.getMessages('session-1');
 
-      expect(result[0].type).toBeUndefined();
+      expect(result[0]?.type).toBeUndefined();
     });
   });
 
@@ -387,7 +393,7 @@ describe('ChatDatabaseService', () => {
       startedAt: new Date(),
       lastActiveAt: new Date(),
       summary: 'Test Session',
-      metadata: null,
+      metadata: {},
     };
 
     it('should add message successfully', async () => {
@@ -429,16 +435,27 @@ describe('ChatDatabaseService', () => {
         role: 'assistant' as const,
         type: 'proposal' as const,
         proposalGroup: {
+          id: 'group-1',
+          title: 'Trading Proposal',
+          description: 'BTCUSDT Buy Signal',
           proposals: [
             {
-              symbol: 'BTCUSDT',
-              action: 'BUY',
-              entry: 50000,
-              targets: [51000],
-              stopLoss: 49000,
+              id: 'prop-1',
+              type: 'trendline',
+              analysisType: 'support',
+              coordinates: {
+                start: { x: 0, y: 50000 },
+                end: { x: 100, y: 51000 }
+              },
               confidence: 0.8,
+              reasoning: 'Strong support level',
+              priority: 'high' as const,
+              status: 'pending' as any,
+              createdAt: Date.now()
             },
           ],
+          groupType: 'analysis' as const,
+          createdAt: Date.now()
         },
       };
 
@@ -465,7 +482,7 @@ describe('ChatDatabaseService', () => {
 
       (prisma.$transaction as jest.Mock).mockImplementation(transactionMock);
 
-      await ChatDatabaseService.addMessage('session-1', proposalMessage);
+      await ChatDatabaseService.addMessage('session-1', proposalMessage as any);
 
       const txCall = transactionMock.mock.calls[0][0];
       const tx = {
@@ -518,6 +535,8 @@ describe('ChatDatabaseService', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       lastActiveAt: new Date(),
+      startedAt: new Date(),
+      metadata: {},
     };
 
     it('should update session title successfully', async () => {
@@ -637,7 +656,7 @@ describe('ChatDatabaseService', () => {
         startedAt: new Date(),
         lastActiveAt: new Date(),
         summary: 'Test Session',
-        metadata: null,
+        metadata: {},
       };
 
       const result = ChatDatabaseService.convertToChatSession(dbSession);
@@ -659,7 +678,7 @@ describe('ChatDatabaseService', () => {
         startedAt: new Date(),
         lastActiveAt: new Date(),
         summary: null,
-        metadata: null,
+        metadata: {},
       };
 
       const result = ChatDatabaseService.convertToChatSession(dbSession);

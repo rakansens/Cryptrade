@@ -25,7 +25,8 @@ class MockPlugin implements IRendererPlugin {
   disposed = false;
 
   supports(data: PatternVisualization): boolean {
-    return data.type === 'triangle' || data.type === 'flag';
+    // Check if pattern has certain characteristics
+    return data.keyPoints.length >= 3;
   }
 
   async render(id: string, data: PatternVisualization): Promise<void> {
@@ -53,9 +54,9 @@ class MockPlugin implements IRendererPlugin {
 
 // Async dispose plugin
 class AsyncDisposePlugin extends MockPlugin {
-  name = 'async-dispose-plugin';
+  override name = 'async-dispose-plugin';
   
-  async dispose(): Promise<void> {
+  override async dispose(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 10));
     this.disposed = true;
   }
@@ -63,25 +64,25 @@ class AsyncDisposePlugin extends MockPlugin {
 
 // Error-prone plugin
 class ErrorPlugin extends MockPlugin {
-  name = 'error-plugin';
+  override name = 'error-plugin';
   
-  supports(): boolean {
+  override supports(): boolean {
     throw new Error('Support check failed');
   }
 
-  async render(): Promise<void> {
+  override async render(): Promise<void> {
     throw new Error('Render failed');
   }
 
-  async remove(): Promise<void> {
+  override async remove(): Promise<void> {
     throw new Error('Remove failed');
   }
 
-  initialize(): void {
+  override initialize(): void {
     throw new Error('Initialize failed');
   }
 
-  dispose(): void {
+  override dispose(): void {
     throw new Error('Dispose failed');
   }
 }
@@ -97,24 +98,28 @@ describe('PluginRegistry', () => {
     
     mockContext = {
       instanceId: 123,
-      chartApi: {} as any,
-      series: {} as any,
+      chart: {} as any,
+      mainSeries: {} as any,
+      registry: {} as any,
+      utilities: {
+        getLineColor: jest.fn(),
+        convertLineStyle: jest.fn(),
+        addOpacity: jest.fn(),
+        calculateTimeRange: jest.fn(),
+      } as any,
     };
 
     mockPlugin = new MockPlugin();
     
     mockPattern = {
-      id: 'pattern-1',
-      type: 'triangle',
-      name: 'Test Triangle',
-      confidence: 0.85,
-      points: [],
-      matchedCandles: 10,
-      direction: 'bullish',
-      startTime: 1234567890,
-      endTime: 1234567900,
-      supportLevels: [],
-      resistanceLevels: [],
+      keyPoints: [
+        { time: 1234567890, value: 50000, type: 'peak' as const },
+        { time: 1234567895, value: 49000, type: 'trough' as const },
+        { time: 1234567900, value: 51000, type: 'peak' as const }
+      ],
+      lines: [
+        { from: 0, to: 2, type: 'resistance' as const }
+      ]
     };
 
     registry = new PluginRegistry(mockContext);
@@ -164,14 +169,15 @@ describe('PluginRegistry', () => {
 
     it('should register plugin with metadata and options', () => {
       const metadata: PluginMetadata = {
+        name: 'test-plugin',
         version: '1.0.0',
         author: 'Test Author',
         description: 'Test plugin',
+        supports: ['triangle', 'flag'],
       };
       
       const options: PluginOptions = {
         enabled: true,
-        priority: 1,
       };
       
       registry.register(mockPlugin, metadata, options);
@@ -458,7 +464,7 @@ describe('PluginRegistry', () => {
 
     it('should pass extra data to render', async () => {
       const customPlugin = new MockPlugin();
-      customPlugin.render = jest.fn().mockResolvedValue(undefined);
+      customPlugin.render = jest.fn().mockResolvedValue(undefined) as any;
       
       registry.register(customPlugin);
       
@@ -481,11 +487,11 @@ describe('PluginRegistry', () => {
     it('should remove from all plugins', async () => {
       const plugin1 = new MockPlugin();
       plugin1.name = 'plugin1';
-      plugin1.remove = jest.fn().mockResolvedValue(undefined);
+      plugin1.remove = jest.fn().mockResolvedValue(undefined) as any;
       
       const plugin2 = new MockPlugin();
       plugin2.name = 'plugin2';
-      plugin2.remove = jest.fn().mockResolvedValue(undefined);
+      plugin2.remove = jest.fn().mockResolvedValue(undefined) as any;
       
       registry.register(plugin1);
       registry.register(plugin2);
@@ -522,7 +528,6 @@ describe('PluginRegistry', () => {
       
       const options: PluginOptions = {
         enabled: true,
-        priority: 1,
       };
       
       registry.register(mockPlugin, metadata, options);

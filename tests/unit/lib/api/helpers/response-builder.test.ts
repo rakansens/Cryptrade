@@ -71,13 +71,27 @@ describe('response-builder', () => {
 
     it('should include proposalGroup when provided', () => {
       const proposalGroup: ProposalGroup = {
-        id: 'group-123', // Add the required id property
-        groupId: 'group-123',
-        timestamp: Date.now(),
-        symbol: 'BTCUSDT',
+        id: 'group-123',
+        title: 'Test Proposal Group',
+        description: 'Test proposal group description',
         proposals: [
-          { id: '1', type: 'trendline' } as any
-        ]
+          { 
+            id: '1', 
+            type: 'trendline' as any,
+            analysisType: 'trendline',
+            coordinates: {
+              start: { x: 0, y: 0 },
+              end: { x: 100, y: 100 }
+            },
+            confidence: 0.9,
+            reasoning: 'Test reasoning',
+            priority: 'high',
+            status: 'pending' as any,
+            createdAt: Date.now()
+          }
+        ],
+        groupType: 'analysis',
+        createdAt: Date.now()
       };
 
       const params: ChatResponseParams = {

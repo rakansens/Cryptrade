@@ -10,7 +10,7 @@
 
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { env } from '@/config/env';
 
 export interface TransactionOptions {
@@ -102,9 +102,9 @@ export class DatabaseConnection {
   static handlePrismaError(error: Prisma.PrismaClientKnownRequestError): Error {
     switch (error.code) {
       case 'P2002':
-        return new Error(`Unique constraint violation: ${error.meta?.target}`);
+        return new Error(`Unique constraint violation: ${error.meta?.['target']}`);
       case 'P2003':
-        return new Error(`Foreign key constraint violation: ${error.meta?.field_name}`);
+        return new Error(`Foreign key constraint violation: ${error.meta?.['field_name']}`);
       case 'P2025':
         return new Error('Record not found');
       case 'P2024':

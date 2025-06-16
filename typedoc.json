@@ -40,7 +40,12 @@
     "@fixme",
     "@internal",
     "@experimental",
-    "@notImplemented"
+    "@notImplemented",
+    "@example",
+    "@param",
+    "@returns",
+    "@throws",
+    "@module"
   ],
   "modifierTags": [
     "@alpha",

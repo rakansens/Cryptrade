@@ -41,20 +41,33 @@ export function renderPatternAreas(
           return;
         }
         
+        // Get actual points from indices
+        const keyPoints = visualization.keyPoints || [];
+        const areaPoints = area.points.map(idx => keyPoints[idx]).filter(Boolean);
+        
+        if (areaPoints.length < 2) {
+          logger.warn('[PatternAreaRenderer] Insufficient valid points for area', {
+            id,
+            areaIndex,
+            pointCount: areaPoints.length
+          });
+          return;
+        }
+        
         // Find time bounds
-        const times = area.points.map(p => p.time);
+        const times = areaPoints.map(p => p!.time);
         const startTime = Math.min(...times);
         const endTime = Math.max(...times);
         
         // Find value bounds
-        const values = area.points.map(p => p.value);
+        const values = areaPoints.map(p => p!.value);
         const minValue = Math.min(...values);
         const maxValue = Math.max(...values);
         const heightValue = maxValue - minValue;
         
         // Create histogram series for rectangular area highlight
         const histogramSeries = chart.addHistogramSeries({
-          color: area.color || 'rgba(33, 150, 243, 0.1)',
+          color: area.style?.fillColor || 'rgba(33, 150, 243, 0.1)',
           priceFormat: {
             type: 'price',
           },

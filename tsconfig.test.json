@@ -13,6 +13,8 @@
     "**/__tests__/**/*.tsx",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "jest.setup.js"
+    "jest.setup.js",
+    "types/jest.d.ts",
+    "tests/types/**/*.d.ts"
   ]
 }

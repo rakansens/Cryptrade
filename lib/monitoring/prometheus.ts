@@ -36,13 +36,13 @@ export interface GaugeOptions {
 export class Histogram {
   private name: string;
   private help: string;
-  private labelNames: string[];
+  // private _labelNames: string[];
   private buckets: number[];
   
   constructor(options: HistogramOptions) {
     this.name = options.name;
     this.help = options.help;
-    this.labelNames = options.labelNames || [];
+    // this._labelNames = options.labelNames || [];
     this.buckets = options.buckets || [0.1, 0.5, 1, 2, 5, 10];
   }
   
@@ -67,13 +67,13 @@ export class Histogram {
 export class Counter {
   private name: string;
   private help: string;
-  private labelNames: string[];
+  // private _labelNames: string[];
   private values: Map<string, number> = new Map();
   
   constructor(options: CounterOptions) {
     this.name = options.name;
     this.help = options.help;
-    this.labelNames = options.labelNames || [];
+    // this._labelNames = options.labelNames || [];
   }
   
   inc(labels?: MetricLabels, value: number = 1): void {
@@ -104,13 +104,13 @@ export class Counter {
 export class Gauge {
   private name: string;
   private help: string;
-  private labelNames: string[];
+  // private _labelNames: string[];
   private values: Map<string, number> = new Map();
   
   constructor(options: GaugeOptions) {
     this.name = options.name;
     this.help = options.help;
-    this.labelNames = options.labelNames || [];
+    // this._labelNames = options.labelNames || [];
   }
   
   set(labels: MetricLabels, value: number): void {
@@ -178,7 +178,7 @@ export class Registry {
   /**
    * Get metrics in Prometheus format (placeholder)
    */
-  async metrics(): Promise<string> {
+  async getMetrics(): Promise<string> {
     // In production, this would return actual Prometheus-formatted metrics
     const lines: string[] = [];
     

@@ -84,7 +84,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should handle initialization errors', async () => {
       const Database = (await import('better-sqlite3')).default;
-      (Database as jest.Mock).mockImplementationOnce(() => {
+      (Database as unknown as jest.Mock).mockImplementationOnce(() => {
         throw new Error('Database connection failed');
       });
 
@@ -268,7 +268,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should include agent and tool stats when available', async () => {
       const mockDb = {
-        prepare: jest.fn().mockImplementation((query: string) => {
+        prepare: jest.fn().mockImplementation((query: string): any => {
           if (query.includes('agent_name')) {
             return {
               all: jest.fn().mockReturnValue([
@@ -296,7 +296,7 @@ describe('UnifiedSQLiteStorage', () => {
       };
 
       const Database = (await import('better-sqlite3')).default;
-      (Database as jest.Mock).mockImplementationOnce(() => mockDb);
+      (Database as unknown as jest.Mock).mockImplementationOnce(() => mockDb);
 
       const newStorage = new UnifiedSQLiteStorage(mockConfig);
       await newStorage.init();
@@ -315,7 +315,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should calculate performance stats when durations are available', async () => {
       const mockDb = {
-        prepare: jest.fn().mockImplementation((query: string) => {
+        prepare: jest.fn().mockImplementation((query: string): any => {
           if (query.includes('AVG(duration)')) {
             return {
               all: jest.fn().mockReturnValue([
@@ -338,7 +338,7 @@ describe('UnifiedSQLiteStorage', () => {
       };
 
       const Database = (await import('better-sqlite3')).default;
-      (Database as jest.Mock).mockImplementationOnce(() => mockDb);
+      (Database as unknown as jest.Mock).mockImplementationOnce(() => mockDb);
 
       const newStorage = new UnifiedSQLiteStorage(mockConfig);
       await newStorage.init();
@@ -454,7 +454,7 @@ describe('UnifiedSQLiteStorage', () => {
       };
 
       const Database = (await import('better-sqlite3')).default;
-      (Database as jest.Mock).mockImplementationOnce(() => mockDb);
+      (Database as unknown as jest.Mock).mockImplementationOnce(() => mockDb);
 
       const newStorage = new UnifiedSQLiteStorage(mockConfig);
       await newStorage.init();

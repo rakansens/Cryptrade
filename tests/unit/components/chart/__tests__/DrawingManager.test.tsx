@@ -8,6 +8,12 @@ import { useChartDrawings, useChartPatterns, useDrawingActions, usePatternAction
 
 // Mock dependencies
 jest.mock('@/store/chart.store')
+
+// Type assertions for mocked modules
+const mockedUseChartDrawings = useChartDrawings as jest.MockedFunction<typeof useChartDrawings>
+const mockedUseChartPatterns = useChartPatterns as jest.MockedFunction<typeof useChartPatterns>
+const mockedUseDrawingActions = useDrawingActions as jest.MockedFunction<typeof useDrawingActions>
+const mockedUsePatternActions = usePatternActions as jest.MockedFunction<typeof usePatternActions>
 jest.mock('@/components/chat/StyleEditor', () => ({
   StyleEditor: ({ drawingId, isPattern }: any) => (
     <div data-testid="style-editor">
@@ -83,16 +89,16 @@ describe('DrawingManager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(useChartDrawings as jest.Mock).mockReturnValue(mockDrawings)
-    ;(useChartPatterns as jest.Mock).mockReturnValue(mockPatterns)
-    ;(useDrawingActions as jest.Mock).mockReturnValue({
+    mockedUseChartDrawings.mockReturnValue(mockDrawings as any)
+    mockedUseChartPatterns.mockReturnValue(mockPatterns as any)
+    mockedUseDrawingActions.mockReturnValue({
       deleteDrawing: mockActions.deleteDrawing,
       clearAllDrawings: mockActions.clearAllDrawings
-    })
-    ;(usePatternActions as jest.Mock).mockReturnValue({
+    } as any)
+    mockedUsePatternActions.mockReturnValue({
       removePattern: mockActions.removePattern,
       clearPatterns: mockActions.clearPatterns
-    })
+    } as any)
     
     // Mock window.dispatchEvent
     window.dispatchEvent = jest.fn()
@@ -114,7 +120,7 @@ describe('DrawingManager', () => {
         ...mockDrawings[0],
         id: `drawing-${i}`
       }))
-      ;(useChartDrawings as jest.Mock).mockReturnValue(manyDrawings)
+      mockedUseChartDrawings.mockReturnValue(manyDrawings as any)
       
       render(<DrawingManager />)
       
@@ -122,8 +128,8 @@ describe('DrawingManager', () => {
     })
 
     it('disables list button when no drawings or patterns', () => {
-      ;(useChartDrawings as jest.Mock).mockReturnValue([])
-      ;(useChartPatterns as jest.Mock).mockReturnValue(new Map())
+      mockedUseChartDrawings.mockReturnValue([] as any)
+      mockedUseChartPatterns.mockReturnValue(new Map() as any)
       
       render(<DrawingManager />)
       
@@ -132,8 +138,8 @@ describe('DrawingManager', () => {
     })
 
     it('does not show count badge when empty', () => {
-      ;(useChartDrawings as jest.Mock).mockReturnValue([])
-      ;(useChartPatterns as jest.Mock).mockReturnValue(new Map())
+      mockedUseChartDrawings.mockReturnValue([] as any)
+      mockedUseChartPatterns.mockReturnValue(new Map() as any)
       
       render(<DrawingManager />)
       
@@ -149,8 +155,8 @@ describe('DrawingManager', () => {
     })
 
     it('shows empty state when no drawings', () => {
-      ;(useChartDrawings as jest.Mock).mockReturnValue([])
-      ;(useChartPatterns as jest.Mock).mockReturnValue(new Map())
+      mockedUseChartDrawings.mockReturnValue([] as any)
+      mockedUseChartPatterns.mockReturnValue(new Map() as any)
       
       render(<DrawingManager />)
       
@@ -268,8 +274,8 @@ describe('DrawingManager', () => {
     })
 
     it('disables clear all button when no items', () => {
-      ;(useChartDrawings as jest.Mock).mockReturnValue([])
-      ;(useChartPatterns as jest.Mock).mockReturnValue(new Map())
+      mockedUseChartDrawings.mockReturnValue([] as any)
+      mockedUseChartPatterns.mockReturnValue(new Map() as any)
       
       render(<DrawingManager />)
       

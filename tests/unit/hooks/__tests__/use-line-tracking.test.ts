@@ -321,11 +321,11 @@ describe('usePriceStream', () => {
 
     expect(logger.error).toHaveBeenCalledWith(
       '[PriceStream] Failed to initialize WebSocket',
-      expect.any(Error)
+      { error: expect.any(Error) }
     );
     expect(logger.info).toHaveBeenCalledWith(
       '[PriceStream] Falling back to mock price stream',
-      ['BTCUSDT']
+      { symbols: ['BTCUSDT'] }
     );
   });
 

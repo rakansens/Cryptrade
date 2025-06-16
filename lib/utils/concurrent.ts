@@ -323,7 +323,7 @@ export class AsyncBatcher<TItem, TResult> {
           
           // Resolve all promises in the batch
           batch.forEach((item, index) => {
-            item.resolve(results[index]);
+            item.resolve(results[index] as TResult);
           });
         } catch (error) {
           // Reject all promises in the batch

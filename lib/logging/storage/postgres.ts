@@ -50,6 +50,26 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     }
   }
   
+  async write(entry: LogEntry): Promise<void> {
+    return this.store(entry);
+  }
+
+  async writeMany(entries: LogEntry[]): Promise<void> {
+    if (!this.isConnected) {
+      throw new Error('PostgreSQL storage not initialized');
+    }
+    
+    try {
+      // Placeholder: In production, this would use batch INSERT
+      for (const entry of entries) {
+        await this.store(entry);
+      }
+    } catch (error) {
+      logger.error('[PostgreSQLStorage] Batch write failed', { error });
+      throw error;
+    }
+  }
+
   async store(entry: LogEntry): Promise<void> {
     if (!this.isConnected) {
       throw new Error('PostgreSQL storage not initialized');
@@ -76,7 +96,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     }
   }
   
-  async query(query: LogQuery): Promise<LogEntry[]> {
+  async queryLogs(query: LogQuery): Promise<LogEntry[]> {
     if (!this.isConnected) {
       throw new Error('PostgreSQL storage not initialized');
     }
@@ -109,7 +129,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     }
   }
   
-  async count(query?: LogQuery): Promise<number> {
+  async count(_query?: LogQuery): Promise<number> {
     if (!this.isConnected) {
       throw new Error('PostgreSQL storage not initialized');
     }
@@ -133,7 +153,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     }
   }
   
-  async clear(query?: LogQuery): Promise<number> {
+  async clear(_query?: LogQuery): Promise<void> {
     if (!this.isConnected) {
       throw new Error('PostgreSQL storage not initialized');
     }
@@ -144,18 +164,16 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
       // 2. Return actual deleted count
       
       logger.info('[PostgreSQLStorage] Simulating clear operation', {
-        hasQuery: !!query
+        hasQuery: !!_query
       });
       
       await new Promise(resolve => setTimeout(resolve, 20));
-      
-      return 0;
       
     } catch (error) {
       logger.error('[PostgreSQLStorage] Clear operation failed', { error });
       
       if (env.NODE_ENV === 'development') {
-        return 0;
+        return;
       }
       
       throw new Error(`PostgreSQL clear failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -198,12 +216,10 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
       // Placeholder: In production, this would query actual metrics
       const metrics: StorageMetrics = {
         totalEntries: 0,
-        totalSize: 0,
-        oldestEntry: Date.now(),
-        newestEntry: Date.now(),
-        categoryCounts: {},
-        levelCounts: {},
-        avgEntrySize: 0
+        storageSize: 0,
+        lastWriteTime: new Date(),
+        writeErrors: 0,
+        readErrors: 0
       };
       
       return metrics;
@@ -214,16 +230,22 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
       // Return empty metrics as fallback
       return {
         totalEntries: 0,
-        totalSize: 0,
-        oldestEntry: Date.now(),
-        newestEntry: Date.now(),
-        categoryCounts: {},
-        levelCounts: {},
-        avgEntrySize: 0
+        storageSize: 0,
+        lastWriteTime: new Date(),
+        writeErrors: 0,
+        readErrors: 0
       };
     }
   }
   
+  async connect(): Promise<void> {
+    return this.initialize();
+  }
+
+  async disconnect(): Promise<void> {
+    return this.close();
+  }
+
   async close(): Promise<void> {
     if (!this.isConnected) {
       return;
@@ -245,6 +267,72 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
       logger.error('[PostgreSQLStorage] Failed to close connection', { error });
       throw error;
     }
+  }
+  
+  // IUnifiedStorage implementation methods
+  async save(entries: any[]): Promise<void> {
+    // Convert to LogEntry format and delegate to writeMany
+    const logEntries = entries.map(e => ({
+      id: e.id,
+      timestamp: new Date(e.timestamp),
+      level: e.level,
+      message: e.message,
+      category: e.category,
+      metadata: e.metadata
+    }));
+    await this.writeMany(logEntries);
+  }
+  
+  async query(filter: any, pagination?: any): Promise<any> {
+    // Convert to LogQuery format and delegate
+    const logQuery: LogQuery = {
+      level: filter?.level,
+      category: filter?.category,
+      startDate: filter?.timeRange?.from ? new Date(filter.timeRange.from) : undefined,
+      endDate: filter?.timeRange?.to ? new Date(filter.timeRange.to) : undefined,
+      limit: pagination?.limit,
+      offset: pagination?.offset
+    };
+    
+    const entries = await this.queryLogs(logQuery);
+    
+    return {
+      entries: entries.map((e: LogEntry) => ({
+        id: e.id,
+        timestamp: e.timestamp,
+        level: e.level,
+        message: e.message,
+        category: e.category,
+        metadata: e.metadata,
+        source: 'postgres'
+      })),
+      total: entries.length,
+      hasMore: false
+    };
+  }
+  
+  async getStats(_filter?: any): Promise<any> {
+    // Return basic stats using getMetrics
+    const metrics = await this.getMetrics();
+    return {
+      totalEntries: metrics.totalEntries,
+      storageSize: metrics.storageSize,
+      lastActivity: metrics.lastWriteTime,
+      errors: {
+        write: metrics.writeErrors || 0,
+        read: metrics.readErrors || 0
+      }
+    };
+  }
+  
+  async delete(_filter: any): Promise<number> {
+    // For now, just clear all
+    await this.clear();
+    return 0;
+  }
+  
+  async init(): Promise<void> {
+    await this.initialize();
   }
   
   /**

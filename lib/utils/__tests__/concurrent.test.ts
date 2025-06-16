@@ -275,7 +275,7 @@ describe('Concurrent Utilities', () => {
 
     it('should handle async updaters', async () => {
       const onUpdate = jest.fn();
-      const queue = new StateUpdateQueue({ count: 0 }, onUpdate);
+      const queue = new StateUpdateQueue({ count: 0 }, onUpdate as any);
       
       await queue.enqueue(async (state) => {
         await new Promise(resolve => setTimeout(resolve, 50));

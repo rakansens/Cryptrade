@@ -10,6 +10,10 @@ import { useIndicatorValues } from '@/hooks/market/use-indicator-values'
 // Mock dependencies
 jest.mock('@/store/chart.store')
 jest.mock('@/hooks/market/use-indicator-values')
+
+// Type assertions for mocked modules
+const mockedUseChart = useChart as jest.MockedFunction<typeof useChart>
+const mockedUseIndicatorValues = useIndicatorValues as jest.MockedFunction<typeof useIndicatorValues>
 jest.mock('@/components/chart/toolbar/DrawingManager', () => ({
   __esModule: true,
   default: () => <div data-testid="drawing-manager">Drawing Manager</div>
@@ -92,8 +96,8 @@ describe('ChartToolbar', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(useChart as jest.Mock).mockReturnValue(mockChartStore)
-    ;(useIndicatorValues as jest.Mock).mockReturnValue(mockIndicatorValues)
+    mockedUseChart.mockReturnValue(mockChartStore as any)
+    mockedUseIndicatorValues.mockReturnValue(mockIndicatorValues as any)
   })
 
   describe('Basic Rendering', () => {
