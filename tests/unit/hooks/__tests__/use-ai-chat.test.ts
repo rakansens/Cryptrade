@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAIChat } from '@/hooks/use-ai-chat';
 import { useChat } from '@/store/chat.store';

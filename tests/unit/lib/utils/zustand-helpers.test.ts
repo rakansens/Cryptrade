@@ -1,5 +1,13 @@
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 
+// Mock the env module
+jest.mock('@/config/env', () => ({
+  isDevelopment: jest.fn(() => process.env.NODE_ENV === 'development'),
+  isProduction: jest.fn(() => process.env.NODE_ENV === 'production'),
+  isTest: jest.fn(() => process.env.NODE_ENV === 'test'),
+  env: { NODE_ENV: 'test' }
+}));
+
 describe('zustand-helpers', () => {
   describe('createStoreDebugger', () => {
     let originalEnv: string | undefined;

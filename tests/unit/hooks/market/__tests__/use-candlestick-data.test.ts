@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useCandlestickData } from '@/hooks/market/use-candlestick-data';
 import { binanceAPI } from '@/lib/binance/api-service';

@@ -1,30 +1,21 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook } from '@testing-library/react';
 import { useIsClient } from '@/hooks/use-is-client';
 
 describe('useIsClient', () => {
-  it('should return false on initial render (SSR)', () => {
+  it('should return true after initial render in jsdom', () => {
     const { result } = renderHook(() => useIsClient());
     
-    // On the first render (which simulates SSR), it should be false
-    expect(result.current).toBe(false);
-  });
-
-  it('should return true after effect runs (client-side)', () => {
-    const { result, rerender } = renderHook(() => useIsClient());
-    
-    // Initially false
-    expect(result.current).toBe(false);
-    
-    // After effect runs (simulating hydration), it should be true
-    rerender();
+    // In jsdom, effects run synchronously, so it's immediately true
     expect(result.current).toBe(true);
   });
 
   it('should maintain true state on subsequent renders', () => {
     const { result, rerender } = renderHook(() => useIsClient());
     
-    // After first effect
-    rerender();
+    // Already true after initial render
     expect(result.current).toBe(true);
     
     // Should stay true
@@ -33,5 +24,18 @@ describe('useIsClient', () => {
     
     rerender();
     expect(result.current).toBe(true);
+  });
+
+  it('should be a stable hook with no dependencies', () => {
+    const { result, rerender } = renderHook(() => useIsClient());
+    
+    const firstResult = result.current;
+    
+    // Multiple rerenders should give same result
+    rerender();
+    expect(result.current).toBe(firstResult);
+    
+    rerender();
+    expect(result.current).toBe(firstResult);
   });
 });

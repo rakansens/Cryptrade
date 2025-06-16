@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAsyncState } from '@/hooks/base/use-async-state';
 

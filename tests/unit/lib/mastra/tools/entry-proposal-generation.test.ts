@@ -232,7 +232,7 @@ describe('entryProposalGenerationTool', () => {
   describe('Proposal Generation', () => {
     it('should limit proposals to maxProposals', async () => {
       // Mock the entry calculator to return many entry points
-      const { calculateEntryPoints } = require('../entry-proposal-generation/calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValue([
         { price: 100000, direction: 'long', strategy: 'dayTrading', confidence: 0.8, zone: { start: 99500, end: 100500 }, reasoning: { factors: [] }, relatedPatterns: [], relatedDrawings: [] },
         { price: 101000, direction: 'long', strategy: 'dayTrading', confidence: 0.7, zone: { start: 100500, end: 101500 }, reasoning: { factors: [] }, relatedPatterns: [], relatedDrawings: [] },
@@ -288,7 +288,7 @@ describe('entryProposalGenerationTool', () => {
   describe('Error Handling', () => {
     it('should handle unexpected errors gracefully', async () => {
       // Mock an unexpected error in the market context analyzer
-      const { analyzeMarketContext } = require('../entry-proposal-generation/analyzers/market-context-analyzer');
+      const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset binanceAPI mock to return valid data
       jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
@@ -316,8 +316,8 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should handle empty entry points', async () => {
-      const { calculateEntryPoints } = require('../entry-proposal-generation/calculators/entry-calculator');
-      const { analyzeMarketContext } = require('../entry-proposal-generation/analyzers/market-context-analyzer');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
+      const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset mocks to default behavior
       jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
@@ -379,7 +379,7 @@ describe('entryProposalGenerationTool', () => {
       expect(result.success).toBe(true);
       
       // Verify that calculateEntryPoints was called with analysis results
-      const { calculateEntryPoints } = require('../entry-proposal-generation/calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
       expect(calculateEntryPoints).toHaveBeenCalledWith(
         expect.objectContaining({
           analysisResults,

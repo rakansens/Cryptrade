@@ -3,14 +3,7 @@ import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 
 const restoreEnv = mockTestEnv();
 
-import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/ai/analysis-stream/route';
-import { 
-  AnalysisProgressEvent, 
-  getAnalysisSteps 
-} from '@/types/analysis-progress';
-
-// Mock the proposal generation tool before it's imported
+// Mock the proposal generation tool before importing any modules that use it
 const mockProposalGenerationTool = {
   execute: jest.fn().mockResolvedValue({
     proposalGroup: {
@@ -29,6 +22,13 @@ const mockProposalGenerationTool = {
 jest.mock('@/lib/mastra/tools/proposal-generation.tool', () => ({
   proposalGenerationTool: mockProposalGenerationTool
 }));
+
+import { NextRequest } from 'next/server';
+import { GET } from '@/app/api/ai/analysis-stream/route';
+import { 
+  AnalysisProgressEvent, 
+  getAnalysisSteps 
+} from '@/types/analysis-progress';
 
 jest.mock('@/lib/utils/logger', () => ({
   logger: {

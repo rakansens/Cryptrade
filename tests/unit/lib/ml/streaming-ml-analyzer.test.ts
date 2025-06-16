@@ -8,8 +8,8 @@ import type { StreamingMLUpdate, LineFeatures, MLPrediction } from '@/lib/ml/lin
 import { createSimpleSupportLine } from '@/tests/helpers/simple-detected-line-factory';
 
 // Mock dependencies
-jest.mock('@/lib/feature-extractor');
-jest.mock('@/lib/line-predictor');
+jest.mock('@/lib/ml/feature-extractor');
+jest.mock('@/lib/ml/line-predictor');
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),

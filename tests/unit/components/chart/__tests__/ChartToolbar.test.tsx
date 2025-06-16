@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ChartToolbar from '@/components/chart/toolbar/ChartToolbar'

@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook } from '@testing-library/react';
 import { useAnalysisFormatting } from '@/hooks/use-analysis-formatting';
 

@@ -1,13 +1,13 @@
-import { ChatDatabaseService } from '../chat.service';
+import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/utils/logger';
 import { checkDatabaseHealth } from '@/lib/db/health-check';
 import { withDatabase } from '@/lib/utils/db-connection';
-import { validateAndSanitizeChatMessage } from '../chat.validation';
-import { chatRateLimiters, enforceRateLimit } from '../rate-limiter';
-import { chatCaches, invalidateSessionCache, invalidateUserCache } from '../chat-cache';
+import { validateAndSanitizeChatMessage } from '@/lib/services/database/chat.validation';
+import { chatRateLimiters, enforceRateLimit } from '@/lib/services/database/rate-limiter';
+import { chatCaches, invalidateSessionCache, invalidateUserCache } from '@/lib/services/database/chat-cache';
 import type { ConversationSession, ConversationMessage } from '@prisma/client';
-import type { ChatMessage, ChatSession } from '../chat.service';
+import type { ChatMessage, ChatSession } from '@/lib/services/database/chat.service';
 
 // Mock dependencies
 jest.mock('@/lib/db/prisma', () => ({

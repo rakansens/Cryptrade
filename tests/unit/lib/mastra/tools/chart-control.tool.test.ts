@@ -73,7 +73,7 @@ describe('chartControlTool', () => {
 
     // Re-import to apply mocks
     jest.isolateModules(() => {
-      require('../chart-control.tool');
+      require('@/lib/mastra/tools/chart-control.tool');
     });
   });
 

@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAnalysisStream } from '@/hooks/use-analysis-stream';
 import { useStreaming } from '@/hooks/base/use-streaming';

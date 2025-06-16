@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook, act } from '@testing-library/react';
 import { useApproveProposal } from '@/hooks/chat/use-approve-proposal';
 import { useAnalysisActions } from '@/store/analysis-history.store';
