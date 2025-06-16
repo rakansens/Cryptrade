@@ -52,7 +52,7 @@ export function useRejectProposal() {
       }
     };
     
-    publish(rejectionEvent as unknown as Record<string, unknown>);
+    publish(rejectionEvent);
     
     // Show success notification
     showProposalRejectionSuccess(symbol, type);

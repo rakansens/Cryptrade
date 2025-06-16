@@ -190,3 +190,6 @@ export type {
   ConversationSession,
   ConversationMessageMetadata
 } from './conversation-memory';
+
+// Generic event types
+export type { PublishableEvent } from './events';

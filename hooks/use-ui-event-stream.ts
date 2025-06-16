@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { logger } from '@/lib/utils/logger';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
+import type { PublishableEvent } from '@/types/events';
 
 /**
  * UIイベントストリームを購読するフック
@@ -19,7 +20,7 @@ function hasTypeProperty(obj: unknown): obj is { type: string; [key: string]: un
 }
 
 export function useUIEventStream() {
-  const publish = useCallback(async (eventData: Event | CustomEvent | Record<string, unknown>) => {
+  const publish = useCallback(async (eventData: PublishableEvent) => {
     // CustomEvent 判定（ブラウザ環境のみ）
     const isCustomEvent = typeof window !== 'undefined' && eventData instanceof CustomEvent;
 

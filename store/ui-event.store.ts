@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useUIEventStream } from '@/hooks/use-ui-event-stream';
+import type { PublishableEvent } from '@/types/events';
 
 // Define initial state for consistency
 const initialState = {
@@ -22,9 +23,9 @@ export const useUIEventStore = create<UIEventState>((set) => ({
 // Custom hook for UI event publishing
 export function useUIEventPublisher() {
   const { publish } = useUIEventStream();
-  
+
   return {
-    publish,
+    publish: publish as (event: PublishableEvent) => Promise<unknown>,
     isAvailable: !!publish,
   };
 }

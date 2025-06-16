@@ -27,6 +27,11 @@ export interface UIEvent extends BaseEvent {
 }
 
 /**
+ * Common type for events that can be published via the UI event system
+ */
+export type PublishableEvent = Event | CustomEvent | Record<string, unknown>;
+
+/**
  * System event for internal system operations
  */
 export interface SystemEvent extends BaseEvent {

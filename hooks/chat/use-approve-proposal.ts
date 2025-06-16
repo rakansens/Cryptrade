@@ -215,7 +215,7 @@ export function useApproveProposal(): UseApproveProposalReturn {
       }
     };
     
-    publish(approvalEvent as unknown as Record<string, unknown>);
+    publish(approvalEvent);
 
     // Show success notification
     showProposalApprovalSuccess(proposal.symbol, proposal.type || validatedData.type);

@@ -14,32 +14,7 @@ import type { PatternMetrics } from '@/types/pattern.types';
 // Drawing Types
 // ========================================
 
-export interface DrawingPoint {
-  time: number;
-  value: number; // lightweight-charts標準のvalueキーを使用
-}
-
-export interface DrawingStyle {
-  color?: string | undefined;
-  lineWidth?: number | undefined;
-  lineStyle?: 'solid' | 'dashed' | 'dotted' | undefined;
-  showLabels?: boolean | undefined;
-}
-
-export interface ChartDrawing {
-  id: string;
-  type: 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | 'pattern';
-  points: DrawingPoint[];
-  style?: DrawingStyle | undefined;
-  visible: boolean;
-  interactive: boolean;
-  time?: number | undefined;
-  price?: number | undefined;
-  levels?: number[] | undefined;
-  metadata?: Record<string, string | number | boolean | (string | number | boolean)[] | Record<string, string | number | boolean>> | undefined;
-}
-
-export type DrawingMode = 'none' | 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | null;
+export type { DrawingPoint, DrawingStyle, ChartDrawing, DrawingMode } from '@/types/chart.types';
 
 // ========================================
 // Pattern Types

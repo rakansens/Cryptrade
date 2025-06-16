@@ -6,16 +6,17 @@ import type { Time, SeriesDataItemTypeMap, ISeriesApi, SeriesType } from 'lightw
 
 // ===== Drawing Types =====
 
-export type DrawingType = 
-  | 'horizontal' 
-  | 'vertical' 
-  | 'trendline' 
-  | 'rectangle' 
+export type DrawingType =
+  | 'horizontal'
+  | 'vertical'
+  | 'trendline'
+  | 'rectangle'
   | 'fibonacci'
   | 'channel'
   | 'pitchfork'
   | 'text'
-  | 'arrow';
+  | 'arrow'
+  | 'pattern';
 
 export interface DrawingPoint {
   time: Time;
@@ -41,8 +42,23 @@ export interface ChartDrawing {
   style: DrawingStyle;
   visible: boolean;
   interactive: boolean;
+  /** Timestamp used for vertical lines */
+  time?: number;
+  /** Price value used for horizontal lines */
+  price?: number;
+  /** Fibonacci retracement levels */
+  levels?: number[];
   metadata?: DrawingMetadata;
 }
+
+/** Drawing mode state for the drawing tools */
+export type DrawingMode =
+  | 'none'
+  | 'trendline'
+  | 'fibonacci'
+  | 'horizontal'
+  | 'vertical'
+  | null;
 
 export interface DrawingMetadata {
   label?: string;

@@ -1,3 +1,11 @@
+/**
+ * [変更履歴]
+ * - マージコンフリクトを解消し、raceWithCleanup と emitUIEvent 用の型をインポート整理
+ * - A2AMessage インターフェースを拡張（id/result/steps/toolResults などを追加）
+ * - 成功レスポンス返却時に error プロパティを除外し型整合性を確保
+ * - error ハンドリングを安全に (文字列/オブジェクト両対応)
+ * - emitUIEvent への引数を UIEventPayload に合わせキャストを除去
+ */
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { agentNetwork } from '../network/agent-network';
@@ -9,9 +17,21 @@ import { raceWithCleanup } from '@/lib/utils/concurrent';
 // Agent-to-Agent message type
 interface A2AMessage {
   type: 'response' | 'error';
+  /** unique id of the message */
+  id?: string;
+  /** textual content (legacy) */
   content?: string;
-  error?: string;
+  /** result payload returned by target agent */
+  result?: unknown;
+  /** error can be string or structured */
+  error?: { message?: string; [key: string]: unknown } | string;
+  /** additional metadata */
   metadata?: Record<string, unknown>;
+  /** tool execution details */
+  steps?: unknown[];
+  toolResults?: unknown[];
+  /** fallback index signature */
+  [key: string]: unknown;
 }
 
 /**
@@ -251,11 +271,15 @@ async function executeWithA2ACommunication(
     }
 
     if (a2aMessage.type === 'error') {
+      const errMsg = typeof a2aMessage.error === 'string'
+        ? a2aMessage.error
+        : (a2aMessage.error as { message?: string })?.message || 'Agent execution error';
+
       return {
         success: false,
         targetAgent: targetAgentId,
         response: '',
-        error: a2aMessage.error?.message || 'Agent execution error',
+        error: errMsg,
       };
     }
 
@@ -274,12 +298,14 @@ async function executeWithA2ACommunication(
     });
 
     // a2aMessageの全体構造を返す（stepsやtoolResultsを含む）
+    const { error: _unusedError, ...messageRest } = a2aMessage as { error?: unknown; [key: string]: unknown };
+
     return {
       success: true,
       targetAgent: targetAgentId,
       response,
-      // a2aMessageの構造を保持
-      ...a2aMessage, // steps, toolResults等を含む
+      // a2aMessageの構造を保持（error は除外）
+      ...messageRest,
       metadata: {
         model: 'a2a-communication',
         communicationType: 'agent-to-agent',
@@ -472,7 +498,7 @@ async function broadcastUIOperations(
           });
         } else {
           // サーバー環境ではSSE経由で配信
-          await emitUIEvent({ event: event as string, data: (data || {}) as Record<string, any> } as any);
+          await emitUIEvent({ event: event as string, data: (data || {}) as Record<string, unknown> });
           
           logger.info('[Agent Selection Tool] UI event emitted to SSE', {
             event,
