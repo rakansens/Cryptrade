@@ -16,6 +16,7 @@ import {
 import { chatRateLimiters, enforceRateLimit } from './rate-limiter';
 import { chatCaches, invalidateSessionCache, invalidateUserCache } from './chat-cache';
 import type { ChatMessageMetadata, ProposalGroup, EntryProposalGroup } from '@/types/database.types';
+import { isDevelopment } from '@/config/env';
 
 export interface ChatMessage {
   id: string;
@@ -143,7 +144,7 @@ export class ChatDatabaseService {
         }
         
         // If no cache available, return empty array in development
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           logger.warn('[ChatDB] Returning empty array in development mode');
           return [];
         }
@@ -204,7 +205,7 @@ export class ChatDatabaseService {
         }
         
         // If no cache available, return empty array in development
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           logger.warn('[ChatDB] Returning empty array in development mode');
           return [];
         }

@@ -12,6 +12,7 @@ import { logger } from '@/lib/utils/logger';
 import { binanceAPI } from '@/lib/binance/api-service';
 import type { PriceData as CandlestickData } from '@/types/market';
 import { SharedDataStore } from '@/lib/mastra/utils/shared-data-store';
+import { isDevelopment } from '@/config/env';
 
 // Types and schemas
 import { 
@@ -114,7 +115,7 @@ export const ProposalGenerationTool = createTool({
             );
           } catch (error) {
             // Klineデータの取得に失敗した場合は空配列を返す
-            if (process.env.NODE_ENV === 'development') {
+            if (isDevelopment()) {
               console.warn(`[ProposalGenerationTool] Failed to fetch klines for ${input.symbol} ${interval}:`, error);
               return [];
             }
@@ -188,7 +189,7 @@ export const ProposalGenerationTool = createTool({
               }
               
               // 開発環境では空配列を返す
-              if (process.env.NODE_ENV === 'development') {
+              if (isDevelopment()) {
                 logger.debug(`[ProposalGeneration] Returning empty array for failed generator ${generator.name}`);
                 return [];
               }

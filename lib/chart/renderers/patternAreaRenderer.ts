@@ -4,6 +4,7 @@
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 export interface PatternAreaRendererDeps {
   chart: IChartApi;
@@ -131,7 +132,7 @@ export function renderPatternAreas(
     });
     
     // 開発環境では空配列を返す
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment()) {
       return [];
     }
     

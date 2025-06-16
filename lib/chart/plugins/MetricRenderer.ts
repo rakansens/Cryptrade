@@ -14,6 +14,7 @@ import type {
 import { PluginError } from './interfaces';
 import { ValidationUtils, NumberUtils } from './utils';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 interface MetricLineData {
   time: number;
@@ -348,7 +349,7 @@ export class MetricRenderer implements IMetricRendererPlugin {
   ): Promise<ISeriesApi<SeriesType>[]> {
     if (!this.context) {
       // コンテキストがない場合は空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         console.warn('[MetricRenderer] Context not initialized for pattern metrics');
         return [];
       }

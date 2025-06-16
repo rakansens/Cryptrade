@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
+import { isDevelopment, env } from '@/config/env';
 
 import { TokenLimiter, ToolCallFilter } from "@/lib/store/processors";
 import type { MemoryProcessor } from "@/lib/store/processors";
@@ -244,7 +245,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
           if (state.isDbEnabled) {
             try {
               // First ensure session exists in DB
-              // Get user ID from a safe source (not process.env in browser)
+              // Get user ID from a safe source (not env in browser)
               // In a real app, this would come from authentication context
               const userId = 'system';
               
@@ -795,7 +796,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             }
             
             // メモリにもデータがない場合
-            if (process.env.NODE_ENV === 'development') {
+            if (isDevelopment()) {
               logger.debug('[EnhancedConversationMemory] No archived messages available (DB disabled)');
               return [];
             }
@@ -830,7 +831,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             }
             
             // 開発環境では空配列を返す
-            if (process.env.NODE_ENV === 'development') {
+            if (isDevelopment()) {
               logger.warn('[EnhancedConversationMemory] Returning empty array in development');
               return [];
             }

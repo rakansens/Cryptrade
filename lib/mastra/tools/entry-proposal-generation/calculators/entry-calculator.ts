@@ -7,6 +7,7 @@
 import type { PriceData } from '@/types/market';
 import type { MarketContext, TradingDirection, TradingStrategyType, EntryReasoning } from '@/types/trading';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 export interface EntryPoint {
   price: number;
@@ -85,7 +86,7 @@ export async function calculateEntryPoints(
     logger.warn('[EntryCalculator] No market data available');
     
     // マーケットデータがない場合は空配列を返す
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment()) {
       return [];
     }
     

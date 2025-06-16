@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
+import { isDevelopment } from '@/config/env';
 /**
  * Conversation Memory Store with Database Integration
  * 
@@ -410,7 +411,7 @@ export async function semanticSearch(
     
     if (allMessages.length === 0) {
       // メッセージがない場合は空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         logger.debug('[ConversationMemory] No messages found for semantic search');
         return [];
       }

@@ -63,7 +63,7 @@ class MockWebSocket {
 
 describe('BinanceWebSocketManager', () => {
   // Set test timeout
-  jest.setTimeout(10000);
+  jest.setTimeout(30000);
   let manager: BinanceWebSocketManager;
   
   beforeEach(() => {

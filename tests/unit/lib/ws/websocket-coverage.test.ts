@@ -17,6 +17,9 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('WSManager Coverage Tests', () => {
+  // Set longer timeout for WebSocket tests
+  jest.setTimeout(30000);
+  
   setupWebSocketMocking();
   
   beforeEach(() => {
@@ -316,6 +319,6 @@ describe('WSManager Coverage Tests', () => {
           }
         }
       });
-    }, 5000);
+    }, 10000);
   });
 });

@@ -2,6 +2,7 @@ import { logger } from '@/lib/utils/logger';
 import { ChartDrawingSchema, PatternDataSchema } from '@/lib/validation/chart-drawing.schema';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 import { ChartDrawingAPI } from '@/lib/api/chart-drawing-api';
+import { isDevelopment } from '@/config/env';
 
 const STORAGE_KEYS = {
   DRAWINGS: 'cryptrade_chart_drawings',
@@ -148,7 +149,7 @@ export class ChartPersistenceManager {
               logger.error('[ChartPersistence] Local fallback also failed', { localError });
               
               // 開発環境では空配列を返す
-              if (process.env.NODE_ENV === 'development') {
+              if (isDevelopment()) {
                 logger.warn('[ChartPersistence] Returning empty array in development');
                 return [];
               }
@@ -159,7 +160,7 @@ export class ChartPersistenceManager {
           }
           
           // 開発環境では空配列を返す
-          if (process.env.NODE_ENV === 'development') {
+          if (isDevelopment()) {
             logger.warn('[ChartPersistence] Returning empty array in development (no fallback)');
             return [];
           }
@@ -187,7 +188,7 @@ export class ChartPersistenceManager {
       }
       
       // 開発環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         logger.warn('[ChartPersistence] Returning empty array in development');
         return [];
       }
@@ -253,7 +254,7 @@ export class ChartPersistenceManager {
           }
           
           // 開発環境では空配列を返す
-          if (process.env.NODE_ENV === 'development') {
+          if (isDevelopment()) {
             return [];
           }
           
@@ -267,7 +268,7 @@ export class ChartPersistenceManager {
       logger.error('[ChartPersistence] Failed to load patterns', { error });
       
       // 開発環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       
@@ -379,7 +380,7 @@ export class ChartPersistenceManager {
   private static loadDrawingsFromLocal(): ChartDrawing[] {
     if (typeof window === 'undefined') {
       // サーバーサイドでは空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       throw new Error('Cannot access localStorage in server environment');
@@ -408,7 +409,7 @@ export class ChartPersistenceManager {
       logger.error('[ChartPersistence] Failed to load drawings from localStorage', { error });
       
       // 開発環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       
@@ -426,7 +427,7 @@ export class ChartPersistenceManager {
   private static loadPatternsFromLocal(): PatternData[] {
     if (typeof window === 'undefined') {
       // サーバーサイドでは空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       throw new Error('Cannot access localStorage in server environment');
@@ -455,7 +456,7 @@ export class ChartPersistenceManager {
       logger.error('[ChartPersistence] Failed to load patterns from localStorage', { error });
       
       // 開発環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       

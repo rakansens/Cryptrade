@@ -1,4 +1,5 @@
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 /**
  * Shared Data Store
@@ -164,7 +165,7 @@ export class SharedDataStore {
     
     if (!namespaceStore) {
       // 名前空間が存在しない場合は空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         logger.debug(`[SharedDataStore] Namespace '${namespace}' not found`);
         return [];
       }

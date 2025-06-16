@@ -49,7 +49,8 @@
         "lib/utils/logger.ts",
         "lib/utils/zustand-helpers.ts",
         "lib/ws/compat-shim.ts",
-        "lib/ws/migration.ts"
+        "lib/ws/migration.ts",
+        "lib/utils/client-env.ts"
       ],
       "rules": {
         "no-restricted-syntax": "off"

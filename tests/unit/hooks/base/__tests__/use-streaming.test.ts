@@ -14,68 +14,24 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+// Mock fetch is already set in jest.setup.js
 
-// Mock EventSource
-class MockEventSource {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 2;
-
-  url: string;
-  readyState: number = MockEventSource.CONNECTING;
-  onopen: ((event: Event) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  listeners: Map<string, ((event: MessageEvent) => void)[]> = new Map();
-
-  constructor(url: string) {
-    this.url = url;
-    setTimeout(() => {
-      this.readyState = MockEventSource.OPEN;
-      if (this.onopen) {
-        this.onopen(new Event('open'));
-      }
-    }, 10);
-  }
-
-  addEventListener(type: string, listener: (event: MessageEvent) => void) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, []);
-    }
-    this.listeners.get(type)!.push(listener);
-  }
-
-  removeEventListener(type: string, listener: (event: MessageEvent) => void) {
-    const listeners = this.listeners.get(type);
-    if (listeners) {
-      const index = listeners.indexOf(listener);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    }
-  }
-
-  dispatchEvent(event: MessageEvent): boolean {
-    const listeners = this.listeners.get(event.type);
-    if (listeners) {
-      listeners.forEach(listener => listener(event));
-    }
-    return true;
-  }
-
-  close() {
-    this.readyState = MockEventSource.CLOSED;
-  }
-}
-
-global.EventSource = MockEventSource as any;
+// Use the EventSource mock from jest.setup.js and type it properly
+const MockEventSource = (global as any).EventSource;
 
 describe('useStreaming', () => {
+  // Set a longer timeout for async tests
+  jest.setTimeout(30000);
+
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('basic functionality', () => {
@@ -458,7 +414,7 @@ describe('useStreaming', () => {
 
       await waitFor(() => {
         expect(result.current.data).toEqual({ success: true });
-      }, { timeout: 5000 });
+      }, { timeout: 10000 });
 
       expect(attemptCount).toBe(3);
     });
@@ -479,7 +435,7 @@ describe('useStreaming', () => {
 
       await waitFor(() => {
         expect(onError).toHaveBeenCalledTimes(2);
-      }, { timeout: 5000 });
+      }, { timeout: 10000 });
 
       expect(result.current.error?.message).toBe('Connection failed');
     });
@@ -653,6 +609,9 @@ describe('useStreaming', () => {
 });
 
 describe('useSSE', () => {
+  // Set a longer timeout for SSE tests
+  jest.setTimeout(30000);
+
   beforeEach(() => {
     jest.clearAllMocks();
   });

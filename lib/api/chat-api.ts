@@ -6,6 +6,7 @@
 import { logger } from '@/lib/utils/logger';
 import { apiCache } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
+import { env } from '@/config/env';
 import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
 import type { 
   CreateSessionRequest, 
@@ -158,7 +159,7 @@ export class ChatAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[ChatAPI] Returning empty array in development mode');
         return [];
       }
@@ -259,7 +260,7 @@ export class ChatAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[ChatAPI] Returning empty array in development mode');
         return [];
       }
@@ -323,7 +324,7 @@ export class ChatAPI {
       }
       
       // 開発環境ではnullを返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[ChatAPI] Returning null in development mode');
         return null;
       }

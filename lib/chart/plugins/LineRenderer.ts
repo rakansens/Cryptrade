@@ -14,6 +14,7 @@ import type {
 import { PluginError } from './interfaces';
 import { ValidationUtils, ColorUtils, TimeUtils } from './utils';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 interface LineData {
   time: number;
@@ -249,7 +250,7 @@ export class LineRenderer implements ILineRendererPlugin {
   ): Promise<ISeriesApi<SeriesType>[]> {
     if (!this.context || !data.lines) {
       // コンテキストまたはラインデータがない場合は空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         if (!this.context) {
           console.warn('[LineRenderer] Context not initialized');
         } else {
@@ -356,7 +357,7 @@ export class LineRenderer implements ILineRendererPlugin {
     
     if (lineData.length < 2) {
       // ラインデータが不足している場合は空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         console.warn(`[LineRenderer] Insufficient data points for line: ${lineData.length} points, need at least 2`);
         return [];
       }

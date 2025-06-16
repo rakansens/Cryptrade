@@ -5,6 +5,7 @@
 import { logger } from '@/lib/utils/logger';
 import { apiCache } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
+import { env } from '@/config/env';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 
 export interface TimeframeState {
@@ -89,7 +90,7 @@ export class ChartDrawingAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[ChartDrawingAPI] Returning empty array in development mode');
         return [];
       }
@@ -174,7 +175,7 @@ export class ChartDrawingAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[ChartDrawingAPI] Returning empty array in development mode');
         return [];
       }
@@ -226,7 +227,7 @@ export class ChartDrawingAPI {
       logger.error('[ChartDrawingAPI] Failed to load timeframe state', { error });
       
       // 開発環境ではnullを返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         return null;
       }
       

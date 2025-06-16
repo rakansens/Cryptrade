@@ -32,6 +32,26 @@ process.env.NODE_ENV = 'test';
 // Mock fetch if needed for Node.js environment
 global.fetch = jest.fn();
 
+// Mock AbortController if not available
+if (typeof global.AbortController === 'undefined') {
+  global.AbortController = class AbortController {
+    signal = {
+      aborted: false,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+      onabort: null
+    };
+    
+    abort = jest.fn(() => {
+      this.signal.aborted = true;
+      if (this.signal.onabort) {
+        this.signal.onabort();
+      }
+    });
+  };
+}
+
 // Mock console methods for cleaner test output
 const originalConsole = console;
 global.console = {
@@ -45,18 +65,106 @@ global.console = {
   error: process.env.SHOW_TEST_ERRORS ? originalConsole.error : jest.fn(),
 };
 
+// Mock EventSource for SSE tests
+class MockEventSource {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSED = 2;
+
+  url = '';
+  readyState = MockEventSource.CONNECTING;
+  onopen = null;
+  onerror = null;
+  onmessage = null;
+  listeners = new Map();
+
+  constructor(url) {
+    this.url = url;
+    // Simulate connection opening
+    setTimeout(() => {
+      this.readyState = MockEventSource.OPEN;
+      if (this.onopen) {
+        this.onopen(new Event('open'));
+      }
+    }, 0);
+  }
+
+  addEventListener(type, listener) {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, []);
+    }
+    this.listeners.get(type).push(listener);
+  }
+
+  removeEventListener(type, listener) {
+    const listeners = this.listeners.get(type);
+    if (listeners) {
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
+  }
+
+  dispatchEvent(event) {
+    const listeners = this.listeners.get(event.type);
+    if (listeners) {
+      listeners.forEach(listener => listener(event));
+    }
+    return true;
+  }
+
+  close() {
+    this.readyState = MockEventSource.CLOSED;
+    this.listeners.clear();
+  }
+}
+
+global.EventSource = MockEventSource;
+
 // Mock WebSocket for connection manager tests
-global.WebSocket = jest.fn().mockImplementation(() => ({
-  close: jest.fn(),
-  send: jest.fn(),
-  readyState: 1, // OPEN
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  onopen: null,
-  onclose: null,
-  onmessage: null,
-  onerror: null
-}));
+// Only mock if WebSocket doesn't exist (avoid overriding test-specific mocks)
+if (typeof global.WebSocket === 'undefined') {
+  class MockWebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+
+    url = '';
+    readyState = MockWebSocket.CONNECTING;
+    onopen = null;
+    onclose = null;
+    onmessage = null;
+    onerror = null;
+
+    constructor(url) {
+      this.url = url;
+      // Simulate async connection
+      setTimeout(() => {
+        this.readyState = MockWebSocket.OPEN;
+        if (this.onopen) {
+          this.onopen(new Event('open'));
+        }
+      }, 0);
+    }
+
+    close = jest.fn(() => {
+      this.readyState = MockWebSocket.CLOSED;
+      if (this.onclose) {
+        setTimeout(() => {
+          this.onclose(new Event('close'));
+        }, 0);
+      }
+    });
+
+    send = jest.fn();
+    addEventListener = jest.fn();
+    removeEventListener = jest.fn();
+  }
+
+  global.WebSocket = MockWebSocket;
+}
 
 // Mock TextEncoder/TextDecoder for Node.js test environment
 if (typeof global.TextEncoder === 'undefined') {
@@ -71,39 +179,97 @@ if (typeof global.ReadableStream === 'undefined') {
   global.ReadableStream = class ReadableStream {
     constructor(underlyingSource) {
       this.underlyingSource = underlyingSource;
-      this.controller = {
-        chunks: [],
+      this._controller = null;
+      this._started = false;
+      this._chunks = [];
+      this._closed = false;
+      
+      // Create controller
+      this._controller = {
+        chunks: this._chunks,
         closed: false,
-        enqueue: function(chunk) {
-          this.chunks.push(chunk);
+        enqueue: (chunk) => {
+          if (!this._closed) {
+            this._chunks.push(chunk);
+          }
         },
-        close: function() {
-          this.closed = true;
+        close: () => {
+          this._closed = true;
+          this._controller.closed = true;
+        },
+        error: (e) => {
+          this._closed = true;
+          this._controller.closed = true;
+          this._error = e;
         }
       };
+      
+      // Start the underlying source
       if (underlyingSource && underlyingSource.start) {
-        underlyingSource.start(this.controller);
+        Promise.resolve(underlyingSource.start(this._controller)).then(() => {
+          this._started = true;
+        });
+      } else {
+        this._started = true;
       }
     }
 
     async *[Symbol.asyncIterator]() {
-      for (const chunk of this.controller.chunks) {
-        yield chunk;
+      // Wait for start to complete
+      while (!this._started) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      
+      let index = 0;
+      while (true) {
+        if (index < this._chunks.length) {
+          yield this._chunks[index++];
+        } else if (this._closed) {
+          break;
+        } else {
+          // Wait for more chunks
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
     }
 
     getReader() {
-      const controller = this.controller;
       let index = 0;
+      const chunks = this._chunks;
+      const self = this;
+      
       return {
+        closed: Promise.resolve(),
         async read() {
-          if (index < controller.chunks.length) {
-            return { value: controller.chunks[index++], done: false };
+          // Wait for start to complete
+          while (!self._started) {
+            await new Promise(resolve => setTimeout(resolve, 0));
           }
-          return { done: true };
+          
+          if (self._error) {
+            throw self._error;
+          }
+          
+          if (index < chunks.length) {
+            return { value: chunks[index++], done: false };
+          } else if (self._closed) {
+            return { done: true, value: undefined };
+          } else {
+            // Wait for more chunks or close
+            await new Promise(resolve => setTimeout(resolve, 10));
+            return this.read();
+          }
         },
-        releaseLock() {}
+        releaseLock() {},
+        cancel() {
+          self._closed = true;
+          return Promise.resolve();
+        }
       };
+    }
+    
+    get locked() {
+      return false;
     }
   };
 }

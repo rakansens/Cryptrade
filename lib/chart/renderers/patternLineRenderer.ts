@@ -3,6 +3,7 @@
 import type { IChartApi, ISeriesApi, SeriesType, Time, LineWidth } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
 import { logger } from '@/lib/utils/logger';
+import { isDevelopment } from '@/config/env';
 
 export interface PatternLineRendererDeps {
   chart: IChartApi;
@@ -96,7 +97,7 @@ export function renderPatternLines(
     }
     
     // 開発環境では空配列を返す
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment()) {
       logger.debug('[PatternLineRenderer] Returning empty array in development');
       return [];
     }

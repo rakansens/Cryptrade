@@ -4,6 +4,7 @@
  */
 
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 import { apiCache } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import type { 
@@ -127,7 +128,7 @@ export class AnalysisAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[AnalysisAPI] Returning empty array in development mode');
         return [];
       }
@@ -194,7 +195,7 @@ export class AnalysisAPI {
       }
       
       // 開発環境では空配列を返す（後方互換性のため）
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         logger.warn('[AnalysisAPI] Returning empty array in development mode');
         return [];
       }

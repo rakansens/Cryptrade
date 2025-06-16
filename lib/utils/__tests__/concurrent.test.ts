@@ -2,7 +2,7 @@
  * Tests for concurrent execution utilities
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import {
   raceWithCleanup,
   Mutex,
@@ -16,16 +16,16 @@ import {
 
 describe('Concurrent Utilities', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    jest.useFakeTimers();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('raceWithCleanup', () => {
     it('should return the result of the first resolved promise', async () => {
-      const promise1 = vi.fn((signal: AbortSignal) => 
+      const promise1 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           setTimeout(() => {
             if (!signal.aborted) resolve('first');
@@ -33,7 +33,7 @@ describe('Concurrent Utilities', () => {
         })
       );
       
-      const promise2 = vi.fn((signal: AbortSignal) => 
+      const promise2 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           setTimeout(() => {
             if (!signal.aborted) resolve('second');
@@ -44,7 +44,7 @@ describe('Concurrent Utilities', () => {
       const resultPromise = raceWithCleanup([promise1, promise2]);
       
       // Fast forward to first promise resolution
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       const result = await resultPromise;
       expect(result).toBe('first');
@@ -55,7 +55,7 @@ describe('Concurrent Utilities', () => {
     it('should abort losing promises', async () => {
       const abortedSignals: boolean[] = [];
       
-      const promise1 = vi.fn((signal: AbortSignal) => 
+      const promise1 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           signal.addEventListener('abort', () => {
             abortedSignals.push(true);
@@ -66,7 +66,7 @@ describe('Concurrent Utilities', () => {
         })
       );
       
-      const promise2 = vi.fn((signal: AbortSignal) => 
+      const promise2 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           signal.addEventListener('abort', () => {
             abortedSignals.push(true);
@@ -79,7 +79,7 @@ describe('Concurrent Utilities', () => {
 
       const resultPromise = raceWithCleanup([promise1, promise2]);
       
-      await vi.advanceTimersByTimeAsync(50);
+      await jest.advanceTimersByTimeAsync(50);
       await resultPromise;
       
       // The second promise should have been aborted
@@ -87,7 +87,7 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should handle timeout option', async () => {
-      const promise = vi.fn((signal: AbortSignal) => 
+      const promise = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           setTimeout(() => {
             if (!signal.aborted) resolve('result');
@@ -97,7 +97,7 @@ describe('Concurrent Utilities', () => {
 
       const resultPromise = raceWithCleanup([promise], { timeout: 100 });
       
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       await expect(resultPromise).rejects.toThrow('Operation timed out after 100ms');
     });
@@ -126,7 +126,7 @@ describe('Concurrent Utilities', () => {
       const results = Promise.all([task1, task2]);
       
       // Advance time to complete both tasks
-      await vi.advanceTimersByTimeAsync(150);
+      await jest.advanceTimersByTimeAsync(150);
       
       const [result1, result2] = await results;
       
@@ -162,17 +162,17 @@ describe('Concurrent Utilities', () => {
       ];
       
       // Let first batch start
-      await vi.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
       expect(runningTasks.size).toBe(2);
       
       // Complete first batch
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       // Let second batch start
-      await vi.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
       
       // Complete second batch
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       await Promise.all(tasks);
       
@@ -182,7 +182,7 @@ describe('Concurrent Utilities', () => {
 
   describe('createDebouncedAsync', () => {
     it('should debounce async function calls', async () => {
-      const asyncFn = vi.fn(async (value: string) => {
+      const asyncFn = jest.fn(async (value: string) => {
         await new Promise(resolve => setTimeout(resolve, 50));
         return `processed: ${value}`;
       });
@@ -195,10 +195,10 @@ describe('Concurrent Utilities', () => {
       const promise3 = execute('third');
       
       // Advance time past debounce delay
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       // Advance time for async function to complete
-      await vi.advanceTimersByTimeAsync(50);
+      await jest.advanceTimersByTimeAsync(50);
       
       // Only the last call should have been executed
       expect(asyncFn).toHaveBeenCalledTimes(1);
@@ -213,7 +213,7 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should cancel pending operations', async () => {
-      const asyncFn = vi.fn(async () => 'result');
+      const asyncFn = jest.fn(async () => 'result');
       const { execute, cancel } = createDebouncedAsync(asyncFn, 100);
       
       const promise = execute();
@@ -226,14 +226,14 @@ describe('Concurrent Utilities', () => {
 
   describe('withTimeout', () => {
     it('should complete if operation finishes before timeout', async () => {
-      const operation = vi.fn(async (signal: AbortSignal) => {
+      const operation = jest.fn(async (signal: AbortSignal) => {
         await new Promise(resolve => setTimeout(resolve, 50));
         return 'success';
       });
       
       const resultPromise = withTimeout(operation, 100);
       
-      await vi.advanceTimersByTimeAsync(50);
+      await jest.advanceTimersByTimeAsync(50);
       
       const result = await resultPromise;
       expect(result).toBe('success');
@@ -241,14 +241,14 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should timeout if operation takes too long', async () => {
-      const operation = vi.fn(async (signal: AbortSignal) => {
+      const operation = jest.fn(async (signal: AbortSignal) => {
         await new Promise(resolve => setTimeout(resolve, 200));
         return 'success';
       });
       
       const resultPromise = withTimeout(operation, 100);
       
-      await vi.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(100);
       
       await expect(resultPromise).rejects.toThrow('Operation timed out after 100ms');
     });
@@ -257,7 +257,7 @@ describe('Concurrent Utilities', () => {
   describe('StateUpdateQueue', () => {
     it('should process state updates sequentially', async () => {
       const updates: number[] = [];
-      const onUpdate = vi.fn(async (state: number) => {
+      const onUpdate = jest.fn(async (state: number) => {
         updates.push(state);
       });
       
@@ -274,7 +274,7 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should handle async updaters', async () => {
-      const onUpdate = vi.fn();
+      const onUpdate = jest.fn();
       const queue = new StateUpdateQueue({ count: 0 }, onUpdate);
       
       await queue.enqueue(async (state) => {
@@ -282,7 +282,7 @@ describe('Concurrent Utilities', () => {
         return { count: state.count + 1 };
       });
       
-      await vi.advanceTimersByTimeAsync(50);
+      await jest.advanceTimersByTimeAsync(50);
       
       expect(queue.getState()).toEqual({ count: 1 });
       expect(onUpdate).toHaveBeenCalledWith({ count: 1 });
@@ -291,7 +291,7 @@ describe('Concurrent Utilities', () => {
 
   describe('AsyncBatcher', () => {
     it('should batch multiple requests', async () => {
-      const batchFn = vi.fn(async (items: number[]) => {
+      const batchFn = jest.fn(async (items: number[]) => {
         return items.map(item => item * 2);
       });
       
@@ -309,7 +309,7 @@ describe('Concurrent Utilities', () => {
       ];
       
       // Let the batcher process
-      await vi.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
       
       const results = await Promise.all(promises);
       
@@ -320,7 +320,7 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should handle batch errors', async () => {
-      const batchFn = vi.fn(async () => {
+      const batchFn = jest.fn(async () => {
         throw new Error('Batch failed');
       });
       
@@ -332,7 +332,7 @@ describe('Concurrent Utilities', () => {
       const promise1 = batcher.add(1);
       const promise2 = batcher.add(2);
       
-      await vi.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
       
       await expect(promise1).rejects.toThrow('Batch failed');
       await expect(promise2).rejects.toThrow('Batch failed');

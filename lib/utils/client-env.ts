@@ -3,8 +3,12 @@
  * 
  * This module provides safe access to environment variables in the browser context.
  * Only NEXT_PUBLIC_* variables are available in the browser.
+ * 
+ * This file requires direct process.env access for client-side environment handling
+ * and should be added to ESLint overrides.
  */
 
+/* eslint-disable no-restricted-syntax */
 import { z } from 'zod';
 
 // Client-side environment schema (only NEXT_PUBLIC_* variables)
@@ -27,6 +31,32 @@ export type ClientEnv = z.infer<typeof ClientEnvSchema>;
 let _clientEnv: ClientEnv | null = null;
 
 /**
+ * Creates a client environment object from raw values
+ * This abstraction helps with testing and reduces direct process.env access
+ */
+function createClientEnv(rawEnv: Record<string, string | undefined>): ClientEnv | null {
+  const parseResult = ClientEnvSchema.safeParse({
+    NEXT_PUBLIC_BASE_URL: rawEnv.NEXT_PUBLIC_BASE_URL,
+    NEXT_PUBLIC_SUPABASE_URL: rawEnv.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: rawEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: rawEnv.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER,
+    NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: rawEnv.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
+    NEXT_PUBLIC_SENTRY_DSN: rawEnv.NEXT_PUBLIC_SENTRY_DSN,
+  });
+
+  if (!parseResult.success) {
+    console.warn('[ClientEnv] Some client environment variables are invalid:', parseResult.error.issues);
+    // Return partial data even if validation fails in client
+    return {
+      NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: false,
+      NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: false,
+    } as ClientEnv;
+  }
+  
+  return parseResult.data;
+}
+
+/**
  * Get client-side environment variables
  * 
  * This function provides type-safe access to NEXT_PUBLIC_* environment variables
@@ -40,40 +70,39 @@ export function getClientEnv(): ClientEnv {
     return _clientEnv;
   }
 
-  // In server context, use the full env
-  if (typeof window === 'undefined') {
-    // Import server env dynamically to avoid client-side bundling
-    const { env } = require('@/config/env');
-    _clientEnv = {
-      NEXT_PUBLIC_BASE_URL: env.NEXT_PUBLIC_BASE_URL,
-      NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER,
-      NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
-      NEXT_PUBLIC_SENTRY_DSN: env.NEXT_PUBLIC_SENTRY_DSN,
-    };
-    return _clientEnv;
+  // Server-side context detection
+  const isServer = typeof window === 'undefined';
+
+  if (isServer) {
+    try {
+      // Import server env dynamically to avoid client-side bundling
+      // This is safe because it only runs on the server
+      const { env } = require('@/config/env');
+      _clientEnv = {
+        NEXT_PUBLIC_BASE_URL: env.NEXT_PUBLIC_BASE_URL,
+        NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER,
+        NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
+        NEXT_PUBLIC_SENTRY_DSN: env.NEXT_PUBLIC_SENTRY_DSN,
+      };
+      return _clientEnv;
+    } catch (error) {
+      // Fallback if server env is not available (e.g., during build)
+      console.warn('[ClientEnv] Failed to load server environment, using process.env fallback');
+    }
   }
 
-  // In browser context, parse from process.env
-  const parseResult = ClientEnvSchema.safeParse({
-    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: process.env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER,
-    NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: process.env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER,
-    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  });
-
-  if (!parseResult.success) {
-    console.warn('[ClientEnv] Some client environment variables are invalid:', parseResult.error.issues);
-    // Return partial data even if validation fails in client
+  // Client-side or server-side fallback: read from process.env
+  // Next.js automatically injects NEXT_PUBLIC_* variables at build time
+  _clientEnv = createClientEnv(process.env);
+  
+  if (!_clientEnv) {
+    // This should never happen due to the createClientEnv fallback, but just in case
     _clientEnv = {
       NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: false,
       NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: false,
     } as ClientEnv;
-  } else {
-    _clientEnv = parseResult.data;
   }
 
   return _clientEnv;

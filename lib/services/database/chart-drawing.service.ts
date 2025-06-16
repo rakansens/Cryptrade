@@ -3,6 +3,7 @@ import type { ChartDrawing as PrismaChartDrawing, PatternAnalysis, DrawingType }
 import { logger } from '@/lib/utils/logger';
 import { withDatabase } from '@/lib/utils/db-connection';
 import { ChartDrawing, PatternData, DrawingPoint, DrawingStyle, PatternVisualization, PatternMetrics } from '@/lib/validation/chart-drawing.schema';
+import { isDevelopment } from '@/config/env';
 
 // Check if we're running in the browser
 const isBrowser = typeof window !== 'undefined';
@@ -67,7 +68,7 @@ export class ChartDrawingDatabaseService {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
       
       // ブラウザ環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       
@@ -87,7 +88,7 @@ export class ChartDrawingDatabaseService {
         // Fallback: Return empty array with warning
         logger.warn('[ChartDrawingDB] Database unavailable, returning empty array', { sessionId });
         
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           return [];
         }
         
@@ -228,7 +229,7 @@ export class ChartDrawingDatabaseService {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
       
       // ブラウザ環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       
@@ -248,7 +249,7 @@ export class ChartDrawingDatabaseService {
         // Fallback: Return empty array with warning
         logger.warn('[ChartDrawingDB] Database unavailable, returning empty array', { sessionId });
         
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           return [];
         }
         
@@ -366,7 +367,7 @@ export class ChartDrawingDatabaseService {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
       
       // ブラウザ環境では空配列を返す
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevelopment()) {
         return [];
       }
       
@@ -401,7 +402,7 @@ export class ChartDrawingDatabaseService {
           sessionId 
         });
         
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment()) {
           return [];
         }
         
