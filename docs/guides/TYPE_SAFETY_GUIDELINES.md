@@ -284,7 +284,7 @@ expectType<User>({
 ### 2. Mock Types
 Create type-safe mocks:
 ```typescript
-import { DeepPartial } from '@/types/generic.types';
+import { DeepPartial } from '@/types/utilities';
 
 function createMockUser(overrides?: DeepPartial<User>): User {
   return {

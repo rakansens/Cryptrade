@@ -271,9 +271,4 @@ export function isPriceInquiryContext(context: AgentContext): context is PriceIn
   return 'symbol' in context && !('isProposalMode' in context);
 }
 
-// Utility Types
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
 export type AsyncResult<T> = Promise<T | null>;

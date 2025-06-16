@@ -30,6 +30,13 @@ export type NonUndefined<T> = {
 };
 
 /**
+ * Recursively make all properties optional
+ */
+export type DeepPartial<T> = T extends object ? {
+  [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
+
+/**
  * Deep partial that allows undefined at all levels
  * Useful for nested configuration objects
  */

@@ -214,8 +214,4 @@ export type ValidationResult<T = unknown> =
   | { valid: false; error: string };
 
 // Utility Types
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
 export type RequiredKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;

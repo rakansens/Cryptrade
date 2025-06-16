@@ -115,9 +115,10 @@ export type {
   SupportedSymbol,
   // Type guards (types onlyは除外)
   // Utility types
-  DeepPartial,
   AsyncResult
 } from './agent-network.types';
+
+export type { DeepPartial } from './utilities';
 
 // Constants
 export {

@@ -240,11 +240,6 @@ export interface ChatMessage {
   content: string;
 }
 
-// Utility types
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
 export type AsyncHandler<T = void> = () => Promise<T>;
 
 // Execution result type
