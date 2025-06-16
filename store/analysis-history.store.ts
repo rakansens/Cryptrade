@@ -5,6 +5,7 @@ import { subscribeWithSelector, persist } from 'zustand/middleware';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
 import { AnalysisAPI } from '@/lib/api/analysis-api';
+import { withRetry } from '@/lib/utils/retry';
 import type { 
   AnalysisRecord, 
   TouchEvent, 
@@ -220,7 +221,15 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
         const stateAfterUpdate = get();
         if (stateAfterUpdate.isDbEnabled) {
           try {
-            await AnalysisAPI.updateAnalysis(id, updates);
+            const record = stateAfterUpdate.getRecord(id);
+            if (record) {
+              await withRetry(
+                () => AnalysisAPI.updateAnalysis(id, {
+                  ...(updates as Partial<AnalysisRecord>)
+                }),
+                { maxAttempts: 3 }
+              );
+            }
 
             set((state) => ({
               records: state.records.map((r) =>

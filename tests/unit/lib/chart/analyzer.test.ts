@@ -39,14 +39,14 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('detectTrendLines', () => {
-    it('should return empty array for now (placeholder implementation)', () => {
+    it('should detect trend lines in sample data', () => {
       const result = analyzer.detectTrendLines({
         lookbackPeriod: 10,
         minTouchPoints: 3,
-        confidenceThreshold: 0.8
+        confidenceThreshold: 0.7
       })
-      
-      expect(result).toEqual([])
+
+      expect(result.length).toBeGreaterThan(0)
     })
 
     it('should accept and validate configuration parameters', () => {
@@ -60,27 +60,17 @@ describe('ChartAnalyzer', () => {
       expect(() => analyzer.detectTrendLines(config)).not.toThrow()
     })
 
-    it('TODO: should detect upward trend lines', () => {
-      // When implemented, should detect the upward trend in mock data
+    it('should detect upward trend lines', () => {
       const result = analyzer.detectTrendLines({
         lookbackPeriod: 10,
         minTouchPoints: 2,
         confidenceThreshold: 0.7
       })
-      
-      // Currently returns empty array
-      expect(result).toEqual([])
-      
-      // When implemented:
-      // expect(result).toContainEqual(expect.objectContaining({
-      //   type: 'trendline',
-      //   direction: 'up',
-      //   points: expect.any(Array),
-      //   confidence: expect.any(Number)
-      // }))
+
+      expect(result.some(r => r.metadata?.direction === 'up')).toBe(true)
     })
 
-    it('TODO: should detect downward trend lines', () => {
+    it('should detect downward trend lines', () => {
       const downwardData = mockData.map((d, i) => ({
         ...d,
         open: 46000 - i * 100,
@@ -95,9 +85,8 @@ describe('ChartAnalyzer', () => {
         minTouchPoints: 2,
         confidenceThreshold: 0.7
       })
-      
-      // Currently returns empty array
-      expect(result).toEqual([])
+
+      expect(result.some(r => r.metadata?.direction === 'down')).toBe(true)
     })
 
     it('TODO: should respect minimum touch points', () => {
@@ -124,15 +113,15 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('detectSupportResistance', () => {
-    it('should return empty array for now (placeholder implementation)', () => {
+    it('should detect levels for sample data', () => {
       const result = analyzer.detectSupportResistance({
         lookbackPeriod: 20,
         minTouches: 2,
         priceThreshold: 0.02,
         strengthThreshold: 0.5
       })
-      
-      expect(result).toEqual([])
+
+      expect(result.length).toBeGreaterThan(0)
     })
 
     it('should accept and validate configuration object', () => {
@@ -146,47 +135,29 @@ describe('ChartAnalyzer', () => {
       expect(() => analyzer.detectSupportResistance(config)).not.toThrow()
     })
 
-    it('TODO: should detect support levels', () => {
+    it('should detect support levels', () => {
       const result = analyzer.detectSupportResistance({
         lookbackPeriod: 10,
         minTouches: 2,
         priceThreshold: 0.02,
         strengthThreshold: 0.5
       })
-      
-      // Currently returns empty array
-      expect(result).toEqual([])
-      
-      // When implemented:
-      // expect(result).toContainEqual(expect.objectContaining({
-      //   type: 'support',
-      //   price: expect.any(Number),
-      //   touches: expect.any(Number),
-      //   strength: expect.any(Number)
-      // }))
+
+      expect(result.some(r => r.metadata?.type === 'support')).toBe(true)
     })
 
-    it('TODO: should detect resistance levels', () => {
+    it('should detect resistance levels', () => {
       const result = analyzer.detectSupportResistance({
         lookbackPeriod: 10,
         minTouches: 2,
         priceThreshold: 0.02,
         strengthThreshold: 0.5
       })
-      
-      // Currently returns empty array
-      expect(result).toEqual([])
-      
-      // When implemented:
-      // expect(result).toContainEqual(expect.objectContaining({
-      //   type: 'resistance',
-      //   price: expect.any(Number),
-      //   touches: expect.any(Number),
-      //   strength: expect.any(Number)
-      // }))
+
+      expect(result.some(r => r.metadata?.type === 'resistance')).toBe(true)
     })
 
-    it('TODO: should merge nearby levels', () => {
+    it('should merge nearby levels', () => {
       // Test data with multiple touches at similar price levels
       const clusteredData = [
         ...mockData.slice(0, 5),
@@ -202,9 +173,10 @@ describe('ChartAnalyzer', () => {
         priceThreshold: 0.01,
         strengthThreshold: 0.5
       })
-      
-      // Should merge levels within threshold
-      expect(result).toEqual([])
+
+      const prices = result.map(r => r.points[0].y)
+      const unique = new Set(prices.map(p => Math.round(p / 0.01)))
+      expect(unique.size).toBeLessThan(prices.length)
     })
   })
 

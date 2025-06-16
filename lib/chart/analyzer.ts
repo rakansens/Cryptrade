@@ -122,6 +122,11 @@ export class ChartAnalyzer {
                 color: '#0ddfba',
                 lineWidth: 2,
                 lineStyle: 'solid'
+              },
+              metadata: {
+                direction: 'up',
+                confidence,
+                touches
               }
             });
           }
@@ -163,6 +168,11 @@ export class ChartAnalyzer {
                 color: '#ff4d4d',
                 lineWidth: 2,
                 lineStyle: 'solid'
+              },
+              metadata: {
+                direction: 'down',
+                confidence,
+                touches
               }
             });
           }
@@ -240,13 +250,30 @@ export class ChartAnalyzer {
         strength: Math.min(data.touches / config.minTouches, 2.0)
       }))
       .filter(level => level.strength >= config.strengthThreshold)
-      .sort((a, b) => b.strength - a.strength);
+      .sort((a, b) => a.price - b.price);
+
+    // Merge nearby levels within threshold
+    const mergedLevels: typeof significantLevels = [];
+    for (const level of significantLevels) {
+      const last = mergedLevels[mergedLevels.length - 1];
+      if (last && Math.abs(level.price - last.price) <= config.priceThreshold) {
+        const totalTouches = last.touches + level.touches;
+        last.price = (last.price * last.touches + level.price * level.touches) / totalTouches;
+        last.touches = totalTouches;
+        if (last.type !== level.type) {
+          last.type = 'both';
+        }
+        last.strength = Math.min(last.touches / config.minTouches, 2.0);
+      } else {
+        mergedLevels.push({ ...level });
+      }
+    }
     
-    // Create horizontal lines for significant levels
+    // Create horizontal lines for merged significant levels
     const startTime = recentData[0].time;
     const endTime = recentData[recentData.length - 1].time;
-    
-    for (const level of significantLevels) {
+
+    for (const level of mergedLevels) {
       const isSupportLine = level.type === 'support' || level.type === 'both';
       const isResistanceLine = level.type === 'resistance' || level.type === 'both';
       
@@ -262,6 +289,11 @@ export class ChartAnalyzer {
             color: '#0ddfba',
             lineWidth: Math.min(1 + level.strength, 3),
             lineStyle: level.strength > 1.5 ? 'solid' : 'dashed'
+          },
+          metadata: {
+            type: 'support',
+            touches: level.touches,
+            strength: level.strength
           }
         });
       }
@@ -278,6 +310,11 @@ export class ChartAnalyzer {
             color: '#ff4d4d',
             lineWidth: Math.min(1 + level.strength, 3),
             lineStyle: level.strength > 1.5 ? 'solid' : 'dashed'
+          },
+          metadata: {
+            type: 'resistance',
+            touches: level.touches,
+            strength: level.strength
           }
         });
       }

@@ -33,6 +33,7 @@ docs/
 - 開発環境構築
 - デプロイメント手順
 - トラブルシューティング
+- [Chart Analysis Guide](./analysis/README.md)
 
 ### API ドキュメント
 - [APIリファレンス](./api/index.html) - TypeDocで自動生成されたAPIドキュメント
