@@ -91,3 +91,28 @@ test_results*.json
 integration-test-results.json
 unit-test-results.json
 test-results-after-fix.json
+
+# Coverage reports
+coverage/
+coverage-api/
+.nyc_output/
+*.lcov
+
+# Test results
+*test-results.*
+test-results/
+e2e-test-results/
+playwright-report/
+
+# Logs
+*.log
+logs/
+
+# Test HTML files
+public/test-*.html
+public/debug-*.html
+
+# Reports
+performance-report.md
+mutation-report.html
+snapshot-*.json
