@@ -240,7 +240,7 @@ describe('PluginRegistry', () => {
       const supporting = registry.getSupporting(mockPattern);
       
       expect(supporting).toHaveLength(1);
-      expect(supporting[0].name).toBe('plugin1');
+      expect(supporting[0]?.name).toBe('plugin1');
     });
 
     it('should skip disabled plugins', () => {
@@ -261,7 +261,7 @@ describe('PluginRegistry', () => {
       const supporting = registry.getSupporting(mockPattern);
       
       expect(supporting).toHaveLength(1);
-      expect(supporting[0].name).toBe('good-plugin');
+      expect(supporting[0]?.name).toBe('good-plugin');
     });
 
     it('should return empty array when no plugins support data', () => {
@@ -529,8 +529,10 @@ describe('PluginRegistry', () => {
   describe('getDebugState', () => {
     it('should return complete debug state', () => {
       const metadata: PluginMetadata = {
+        name: 'test-plugin',
         version: '1.0.0',
         author: 'Test',
+        supports: ['pattern'],
       };
       
       const options: PluginOptions = {

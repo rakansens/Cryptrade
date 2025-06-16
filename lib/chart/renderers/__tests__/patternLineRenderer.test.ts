@@ -49,7 +49,7 @@ describe('renderPatternLines', () => {
         keyPoints: [
           { time: 1640995200000, value: 50000, type: 'peak' as const },
           { time: 1640998800000, value: 51000, type: 'trough' as const },
-          { time: 1641002400000, value: 49500 },
+          { time: 1641002400000, value: 49500, type: 'peak' as const },
         ],
         lines: [
           {
@@ -97,7 +97,7 @@ describe('renderPatternLines', () => {
 
       // Verify data was set
       expect(mockLineSeries.setData).toHaveBeenCalledTimes(2);
-      const firstLineData = mockLineSeries.setData.mock.calls[0][0];
+      const firstLineData = mockLineSeries.setData.mock.calls[0]?.[0];
       expect(firstLineData).toEqual([
         { time: 1640995200000, value: 50000, type: 'peak' as const },
         { time: 1640998800000, value: 51000, type: 'trough' as const },
@@ -106,8 +106,8 @@ describe('renderPatternLines', () => {
       // Verify global series tracking
       expect(globalAllSeries.size).toBe(2);
       const entries = Array.from(globalAllSeries.entries());
-      expect(entries[0][0]).toMatch(/^pattern-1_line_0_\d+$/);
-      expect(entries[0][1]).toEqual({
+      expect(entries[0]?.[0]).toMatch(/^pattern-1_line_0_\d+$/);
+      expect(entries[0]?.[1]).toEqual({
         patternId: 'pattern-1',
         series: mockLineSeries,
         type: 'line',
@@ -132,10 +132,10 @@ describe('renderPatternLines', () => {
 
       renderPatternLines('pattern-2', visualization, deps);
 
-      const setDataCall = mockLineSeries.setData.mock.calls[0][0];
+      const setDataCall = mockLineSeries.setData.mock.calls[0]?.[0];
       // Should be ordered with earlier time first
-      expect(setDataCall[0].time).toBe(1640995200000);
-      expect(setDataCall[1].time).toBe(1640998800000);
+      expect(setDataCall?.[0]?.time).toBe(1640995200000);
+      expect(setDataCall?.[1]?.time).toBe(1640998800000);
     });
 
     it('should use default line style when not specified', () => {
@@ -292,7 +292,10 @@ describe('renderPatternLines', () => {
 
     it('should return empty array in development mode when no fallback available', () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        writable: true,
+        value: 'development'
+      });
 
       const visualization: PatternVisualization = null as any;
 
@@ -301,12 +304,18 @@ describe('renderPatternLines', () => {
       expect(result).toEqual([]);
       expect(logger.debug).toHaveBeenCalledWith('[PatternLineRenderer] Returning empty array in development');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        writable: true,
+        value: originalEnv
+      });
     });
 
     it('should throw error in production mode when no fallback available', () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        writable: true,
+        value: 'production'
+      });
 
       const visualization: PatternVisualization = null as any;
 
@@ -314,7 +323,10 @@ describe('renderPatternLines', () => {
         'Failed to render pattern lines:'
       );
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        writable: true,
+        value: originalEnv
+      });
     });
   });
 

@@ -127,7 +127,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
         debug: true
       });
 
-      const errorPromise = new Promise((resolve, reject) => {
+      const errorPromise = new Promise<unknown>((resolve) => {
         manager.subscribe('btcusdt@trade').subscribe({
           next: () => {},
           error: (error) => {
@@ -146,7 +146,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
 
       const error = await errorPromise;
       expect(error).toBeDefined();
-      expect(error.message).toContain('Max retry attempts');
+      expect(error instanceof Error ? error.message : String(error)).toContain('Max retry attempts');
     });
   });
 

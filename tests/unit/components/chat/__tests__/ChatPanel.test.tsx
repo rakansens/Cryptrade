@@ -8,6 +8,7 @@ import { useChat } from '@/store/chat.store'
 import { useAIChat } from '@/hooks/use-ai-chat'
 import { useMessageHandling } from '@/hooks/chat/use-message-handling'
 import { useProposalManagement } from '@/hooks/chat/use-proposal-management'
+import type { UseAIChatReturn } from '@/hooks/use-ai-chat'
 
 // Mock dependencies
 jest.mock('@/store/chat.store')

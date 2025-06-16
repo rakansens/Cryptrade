@@ -53,7 +53,7 @@ const compose = (...middlewares: AIMiddleware[]) => {
 };
 
 
-interface UseAIChatReturn {
+export interface UseAIChatReturn {
   send: (text: string) => Promise<void>;
   isReady: boolean;
 }

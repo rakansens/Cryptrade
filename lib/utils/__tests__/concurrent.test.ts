@@ -225,7 +225,7 @@ describe('Concurrent Utilities', () => {
 
   describe('withTimeout', () => {
     it('should complete if operation finishes before timeout', async () => {
-      const operation = jest.fn(async (signal: AbortSignal) => {
+      const operation = jest.fn(async (_signal: AbortSignal) => {
         await new Promise(resolve => setTimeout(resolve, 50));
         return 'success';
       });
@@ -240,7 +240,7 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should timeout if operation takes too long', async () => {
-      const operation = jest.fn(async (signal: AbortSignal) => {
+      const operation = jest.fn(async (_signal: AbortSignal) => {
         await new Promise(resolve => setTimeout(resolve, 200));
         return 'success';
       });

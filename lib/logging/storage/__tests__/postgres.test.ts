@@ -113,11 +113,11 @@ describe('UnifiedPostgreSQLStorage', () => {
 
     it('should handle empty metadata', async () => {
       const entryNoMeta: LogEntry = {
-        id: mockLogEntry.id,
+        ...(mockLogEntry.id !== undefined && { id: mockLogEntry.id }),
         timestamp: mockLogEntry.timestamp,
         level: mockLogEntry.level,
         message: mockLogEntry.message,
-        category: mockLogEntry.category
+        ...(mockLogEntry.category !== undefined && { category: mockLogEntry.category })
         // metadata is optional, so omit it
       };
       
@@ -292,7 +292,7 @@ describe('UnifiedPostgreSQLStorage', () => {
         throw new Error('Connection refused');
       });
       
-      const newStorage = new UnifiedPostgreSQLStorage('invalid-url');
+      const newStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'invalid-url' });
       await expect(newStorage.initialize()).rejects.toThrow('Connection refused');
     });
 

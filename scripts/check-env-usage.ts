@@ -108,7 +108,7 @@ function main() {
   const byFile = usages.reduce((acc, usage) => {
     const file = usage.file;
     if (!acc[file]) acc[file] = [];
-    acc[file].push(usage);
+    acc[file]!.push(usage);
     return acc;
   }, {} as Record<string, EnvUsage[]>);
   

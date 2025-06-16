@@ -10,6 +10,9 @@ import { logger } from '@/lib/utils/logger';
 import { FallbackHandler } from '../../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
 
+// Type cast the execute function to avoid TypeScript errors
+const executeAgentTool = agentSelectionTool.execute as any;
+
 // Mock window for browser environment tests
 const mockDispatchEvent = jest.fn();
 const originalWindow = global.window;
@@ -49,7 +52,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'What is the current price of BTC?',
@@ -110,7 +113,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Change chart to 1 hour timeframe',
@@ -149,7 +152,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'trading_analysis',
           query: 'Analyze BTC trading opportunity',
@@ -171,7 +174,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'custom_agent' as any,
           query: 'Custom query',
@@ -203,7 +206,7 @@ describe('agentSelectionTool', () => {
 
       (FallbackHandler.handle as jest.Mock).mockResolvedValueOnce(mockFallbackResult);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'Test query',
@@ -228,7 +231,7 @@ describe('agentSelectionTool', () => {
         response: 'Fallback handled',
       });
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Test query',
@@ -245,7 +248,7 @@ describe('agentSelectionTool', () => {
         response: 'Fallback response',
       });
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'trading_analysis',
           query: 'Test query',
@@ -261,7 +264,7 @@ describe('agentSelectionTool', () => {
       (agentNetwork.sendMessage as jest.Mock).mockRejectedValueOnce(error);
       (FallbackHandler.handle as jest.Mock).mockRejectedValueOnce(error);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'Test query',
@@ -342,7 +345,7 @@ describe('agentSelectionTool', () => {
         mockDispatchEvent.mockClear();
         (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(testCase.response);
 
-        await agentSelectionTool.execute({
+        await executeAgentTool({
           context: {
             agentType: 'ui_control',
             query: 'Test query',
@@ -369,7 +372,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'Get price',
@@ -400,7 +403,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Analyze',
@@ -433,7 +436,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Server test',
@@ -468,7 +471,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Error test',
@@ -499,7 +502,7 @@ describe('agentSelectionTool', () => {
         result: 'Context received',
       });
 
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'trading_analysis',
           query: 'Analyze',
@@ -526,7 +529,7 @@ describe('agentSelectionTool', () => {
         result: 'Success',
       });
 
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'Test',
@@ -547,7 +550,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'price_inquiry',
           query: 'Test',
@@ -568,7 +571,7 @@ describe('agentSelectionTool', () => {
 
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
-      const result = await agentSelectionTool.execute({
+      const result = await executeAgentTool({
         context: {
           agentType: 'trading_analysis',
           query: 'Test',
@@ -595,7 +598,7 @@ describe('agentSelectionTool', () => {
       (agentNetwork.sendMessage as jest.Mock).mockResolvedValueOnce(mockA2AResponse);
 
       // First call
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'First',
@@ -603,7 +606,7 @@ describe('agentSelectionTool', () => {
       });
 
       // Second call
-      await agentSelectionTool.execute({
+      await executeAgentTool({
         context: {
           agentType: 'ui_control',
           query: 'Second',

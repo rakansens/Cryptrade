@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { initializeTest } from './helpers/test-utils';
+import type { TestContext } from './helpers/test-utils';
 
 /**
  * E2E Test for AI-powered Chart Control
@@ -7,53 +9,40 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('AI Chart Control Integration', () => {
+  let ctx: TestContext;
+
   test.beforeEach(async ({ page }) => {
-    // Navigate to the main page
-    await page.goto('http://localhost:3000');
-    
-    // Wait for chart to load
-    await page.waitForSelector('[data-testid="chart-container"]', { timeout: 10000 });
-    
-    // Open chat panel if not visible
-    const chatButton = await page.$('button:has(svg.lucide-message-square)');
-    if (chatButton) {
-      await chatButton.click();
-    }
-    
-    // Wait for chat panel to be visible
-    await page.waitForSelector('[data-testid="chat-input"]', { timeout: 5000 });
+    ctx = await initializeTest(page);
+    await ctx.chat.open();
   });
 
-  test('should change symbol via chat command', async ({ page }) => {
+  test('should change symbol via chat command', async () => {
     // Type command in chat
-    await page.fill('[data-testid="chat-input"]', 'ETHに切り替えて');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('ETHに切り替えて');
     
     // Wait for AI response
-    await page.waitForTimeout(2000);
+    await ctx.chat.waitForResponse();
     
     // Verify symbol changed in UI
-    const symbolDisplay = await page.textContent('[data-testid="symbol-display"]');
-    expect(symbolDisplay).toContain('ETH');
+    const currentSymbol = await ctx.chart.getCurrentSymbol();
+    expect(currentSymbol).toContain('ETH');
   });
 
-  test('should change timeframe via chat command', async ({ page }) => {
+  test('should change timeframe via chat command', async () => {
     // Type command in chat
-    await page.fill('[data-testid="chat-input"]', '1時間足に変更して');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('1時間足に変更して');
     
     // Wait for AI response
-    await page.waitForTimeout(2000);
+    await ctx.chat.waitForResponse();
     
     // Verify timeframe changed
-    const timeframeButton = await page.$('button[data-active="true"]:has-text("1h")');
-    expect(timeframeButton).toBeTruthy();
+    const currentTimeframe = await ctx.chart.getCurrentTimeframe();
+    expect(currentTimeframe).toBe('1h');
   });
 
   test('should toggle indicators via chat command', async ({ page }) => {
     // Enable MA indicator
-    await page.fill('[data-testid="chat-input"]', '移動平均を表示して');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('移動平均を表示して');
     
     await page.waitForTimeout(2000);
     
@@ -62,8 +51,7 @@ test.describe('AI Chart Control Integration', () => {
     expect(maIndicator).toBeTruthy();
     
     // Disable MA indicator
-    await page.fill('[data-testid="chat-input"]', '移動平均を非表示にして');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('移動平均を非表示にして');
     
     await page.waitForTimeout(2000);
     
@@ -74,8 +62,7 @@ test.describe('AI Chart Control Integration', () => {
 
   test('should draw trendline via chat command', async ({ page }) => {
     // Request trendline drawing
-    await page.fill('[data-testid="chat-input"]', 'トレンドラインを引いて');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('トレンドラインを引いて');
     
     await page.waitForTimeout(3000);
     
@@ -90,8 +77,7 @@ test.describe('AI Chart Control Integration', () => {
     await page.waitForTimeout(500);
     
     // Request chart fit
-    await page.fill('[data-testid="chat-input"]', 'チャートをフィットして');
-    await page.press('[data-testid="chat-input"]', 'Enter');
+    await ctx.chat.sendMessage('チャートをフィットして');
     
     await page.waitForTimeout(2000);
     
@@ -112,8 +98,7 @@ test.describe('AI Chart Control Integration', () => {
     ];
     
     for (const command of commands) {
-      await page.fill('[data-testid="chat-input"]', command);
-      await page.press('[data-testid="chat-input"]', 'Enter');
+      await ctx.chat.sendMessage(command);
       await page.waitForTimeout(2000);
     }
     

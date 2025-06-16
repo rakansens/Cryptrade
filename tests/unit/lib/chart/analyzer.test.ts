@@ -67,7 +67,7 @@ describe('ChartAnalyzer', () => {
         confidenceThreshold: 0.7
       })
 
-      expect(result.some(r => r.metadata?.direction === 'up')).toBe(true)
+      expect(result.some(r => r.metadata?.['direction'] === 'up')).toBe(true)
     })
 
     it('should detect downward trend lines', () => {
@@ -86,7 +86,7 @@ describe('ChartAnalyzer', () => {
         confidenceThreshold: 0.7
       })
 
-      expect(result.some(r => r.metadata?.direction === 'down')).toBe(true)
+      expect(result.some(r => r.metadata?.['direction'] === 'down')).toBe(true)
     })
 
     it('TODO: should respect minimum touch points', () => {
@@ -143,7 +143,7 @@ describe('ChartAnalyzer', () => {
         strengthThreshold: 0.5
       })
 
-      expect(result.some(r => r.metadata?.type === 'support')).toBe(true)
+      expect(result.some(r => r.metadata?.['type'] === 'support')).toBe(true)
     })
 
     it('should detect resistance levels', () => {
@@ -154,7 +154,7 @@ describe('ChartAnalyzer', () => {
         strengthThreshold: 0.5
       })
 
-      expect(result.some(r => r.metadata?.type === 'resistance')).toBe(true)
+      expect(result.some(r => r.metadata?.['type'] === 'resistance')).toBe(true)
     })
 
     it('should merge nearby levels', () => {
@@ -174,7 +174,7 @@ describe('ChartAnalyzer', () => {
         strengthThreshold: 0.5
       })
 
-      const prices = result.map(r => r.points[0].value)
+      const prices = result.map(r => r.points?.[0]?.value).filter((p): p is number => p !== undefined)
       const unique = new Set(prices.map(p => Math.round(p / 0.01)))
       expect(unique.size).toBeLessThan(prices.length)
     })

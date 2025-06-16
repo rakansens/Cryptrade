@@ -18,7 +18,6 @@ import {
   isValidPersistedState
 } from '@/types/store.types';
 import { ProposalType, ProposalStatus } from '@/types/enums';
-import type { MarketBias } from '@/types/proposals';
 
 describe('store.types', () => {
   describe('isPatternVisualization', () => {

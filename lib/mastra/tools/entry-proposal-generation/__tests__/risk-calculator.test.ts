@@ -292,8 +292,8 @@ describe('calculateRiskManagement', () => {
       const result = await calculateRiskManagement(baseParams);
 
       for (let i = 1; i < result.takeProfitTargets.length; i++) {
-        expect(result.takeProfitTargets[i].price).toBeGreaterThan(
-          result.takeProfitTargets[i - 1].price
+        expect(result.takeProfitTargets[i]?.price).toBeGreaterThan(
+          result.takeProfitTargets[i - 1]?.price ?? 0
         );
       }
     });
@@ -305,8 +305,8 @@ describe('calculateRiskManagement', () => {
       });
 
       for (let i = 1; i < result.takeProfitTargets.length; i++) {
-        expect(result.takeProfitTargets[i].price).toBeLessThan(
-          result.takeProfitTargets[i - 1].price
+        expect(result.takeProfitTargets[i]?.price).toBeLessThan(
+          result.takeProfitTargets[i - 1]?.price ?? Infinity
         );
       }
     });
@@ -315,8 +315,8 @@ describe('calculateRiskManagement', () => {
       const result = await calculateRiskManagement(baseParams);
 
       for (let i = 1; i < result.takeProfitTargets.length; i++) {
-        expect(result.takeProfitTargets[i].percentage).toBeLessThanOrEqual(
-          result.takeProfitTargets[i - 1].percentage
+        expect(result.takeProfitTargets[i]?.percentage).toBeLessThanOrEqual(
+          result.takeProfitTargets[i - 1]?.percentage ?? Infinity
         );
       }
     });
@@ -388,7 +388,7 @@ describe('calculateRiskManagement', () => {
       );
 
       // Risk percentage should be consistent
-      results.forEach(result => {
+      results.forEach(_result => {
         const riskPercentage = baseParams.riskPercentage;
         expect(Math.abs(riskPercentage - baseParams.riskPercentage)).toBeLessThan(0.1);
       });

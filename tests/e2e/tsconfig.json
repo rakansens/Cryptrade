@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "@playwright/test"],
+    "jsx": "react",
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolvePackageJsonExports": false,
+    "resolvePackageJsonImports": false,
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/app/*": ["./app/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "./types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

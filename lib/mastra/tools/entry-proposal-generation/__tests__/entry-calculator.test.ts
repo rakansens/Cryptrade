@@ -158,9 +158,9 @@ describe('calculateEntryPoints', () => {
       // Scalping entries should have tight zones
       const entry = scalpingEntries[0];
       expect(entry).toBeDefined();
-      expect(entry.zone).toBeDefined();
-      const zoneSize = Math.abs(entry.zone!.max - entry.zone!.min);
-      const pricePercentage = zoneSize / entry.price;
+      expect(entry?.zone).toBeDefined();
+      const zoneSize = Math.abs((entry?.zone?.max ?? 0) - (entry?.zone?.min ?? 0));
+      const pricePercentage = zoneSize / (entry?.price ?? 1);
       expect(pricePercentage).toBeLessThan(0.005); // Less than 0.5%
     });
 
@@ -187,8 +187,8 @@ describe('calculateEntryPoints', () => {
       
       // Swing entries should have wider zones
       const entry = swingEntries[0];
-      const zoneSize = Math.abs(entry.zone.max - entry.zone.min);
-      const pricePercentage = zoneSize / entry.price;
+      const zoneSize = Math.abs((entry?.zone?.max ?? 0) - (entry?.zone?.min ?? 0));
+      const pricePercentage = zoneSize / (entry?.price ?? 1);
       expect(pricePercentage).toBeGreaterThan(0.005); // More than 0.5%
     });
 
@@ -272,7 +272,7 @@ describe('calculateEntryPoints', () => {
     it('should handle missing analysis results', async () => {
       const entryPoints = await calculateEntryPoints({
         marketData: mockMarketData,
-        analysisResults: undefined,
+        // analysisResults is optional, so omit it
         marketContext: mockMarketContext,
         strategyPreference: 'auto',
       });
@@ -400,8 +400,8 @@ describe('calculateEntryPoints', () => {
 
       // Verify entries are sorted by confidence (descending)
       for (let i = 1; i < entryPoints.length; i++) {
-        expect(entryPoints[i - 1].confidence).toBeGreaterThanOrEqual(
-          entryPoints[i].confidence
+        expect(entryPoints[i - 1]?.confidence).toBeGreaterThanOrEqual(
+          entryPoints[i]?.confidence ?? 0
         );
       }
     });
@@ -437,7 +437,7 @@ describe('calculateEntryPoints', () => {
       expect(entryPoints).toBeDefined();
       // Entries should have wider zones in volatile markets
       if (entryPoints.length > 0) {
-        const zoneSize = entryPoints[0].zone.max - entryPoints[0].zone.min;
+        const zoneSize = (entryPoints[0]?.zone?.max ?? 0) - (entryPoints[0]?.zone?.min ?? 0);
         expect(zoneSize).toBeGreaterThan(0);
       }
     });

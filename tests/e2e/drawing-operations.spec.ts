@@ -1,18 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { initializeTest } from './helpers/test-utils';
 
 test.describe('Drawing Operations - Sprint 1', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the application
-    await page.goto('http://localhost:3000');
-    
-    // Wait for chart to be ready
-    await page.waitForSelector('[data-testid="chart-container"]', { 
-      state: 'visible',
-      timeout: 10000 
-    });
-    
-    // Give chart time to fully initialize
-    await page.waitForTimeout(2000);
+    await initializeTest(page);
   });
 
   test('trendline → undo → redraw workflow', async ({ page }) => {

@@ -29,6 +29,9 @@ import type { EntryProposalGenerationInput } from '../index';
 import type { PriceData as CandlestickData } from '@/types/market';
 import type { MarketContext } from '@/types/trading';
 
+// Type cast the execute function to avoid TypeScript errors
+const executeEntryProposalTool = EntryProposalGenerationTool.execute as any;
+
 jest.mock('../calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn(),
 }));
@@ -142,7 +145,7 @@ describe('EntryProposalGenerationTool', () => {
     };
 
     it('should generate entry proposals successfully', async () => {
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -165,7 +168,7 @@ describe('EntryProposalGenerationTool', () => {
       const { binanceAPI } = require('@/lib/binance/api-service');
       binanceAPI.fetchKlines.mockRejectedValue(new Error('API error'));
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -177,7 +180,7 @@ describe('EntryProposalGenerationTool', () => {
       const { binanceAPI } = require('@/lib/binance/api-service');
       binanceAPI.fetchKlines.mockResolvedValue(mockMarketData.slice(0, 30));
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -189,7 +192,7 @@ describe('EntryProposalGenerationTool', () => {
       const { calculateEntryPoints } = require('../calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValue([]);
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -205,7 +208,7 @@ describe('EntryProposalGenerationTool', () => {
         ...mockEntryPoints,
       ]);
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: { ...baseInput, maxProposals: 2 }
       });
 
@@ -222,7 +225,7 @@ describe('EntryProposalGenerationTool', () => {
         indicators: { rsi: 45, macd: { signal: 'bullish' } },
       };
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: { ...baseInput, analysisResults }
       });
 
@@ -240,7 +243,7 @@ describe('EntryProposalGenerationTool', () => {
       const strategies = ['scalping', 'dayTrading', 'swingTrading', 'position'] as const;
       
       for (const strategy of strategies) {
-        const result = await EntryProposalGenerationTool.execute({ 
+        const result = await executeEntryProposalTool({ 
           context: { ...baseInput, strategyPreference: strategy }
         });
 
@@ -256,7 +259,7 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should handle different risk percentages', async () => {
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: { ...baseInput, riskPercentage: 2.5 }
       });
 
@@ -279,7 +282,7 @@ describe('EntryProposalGenerationTool', () => {
         riskRewardRatio: 3,
       });
       
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -288,7 +291,7 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should generate appropriate group description', async () => {
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -304,7 +307,7 @@ describe('EntryProposalGenerationTool', () => {
       const { calculateEntryPoints } = require('../calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValue([mockEntryPoints[0]]);
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -316,7 +319,7 @@ describe('EntryProposalGenerationTool', () => {
       const { calculateEntryPoints } = require('../calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValue([mockEntryPoints[1]]);
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -327,7 +330,7 @@ describe('EntryProposalGenerationTool', () => {
     it('should dispatch UI event on success', async () => {
       const { uiEventDispatcher } = require('@/lib/utils/ui-event-dispatcher');
       
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -340,7 +343,7 @@ describe('EntryProposalGenerationTool', () => {
       const { analyzeMarketContext } = require('../analyzers/market-context-analyzer');
       analyzeMarketContext.mockRejectedValue(new Error('Unexpected error'));
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -355,7 +358,7 @@ describe('EntryProposalGenerationTool', () => {
         undefined,
       ]);
 
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -364,10 +367,10 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should generate unique IDs for proposals and groups', async () => {
-      const result1 = await EntryProposalGenerationTool.execute({ 
+      const result1 = await executeEntryProposalTool({ 
         context: baseInput 
       });
-      const result2 = await EntryProposalGenerationTool.execute({ 
+      const result2 = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -381,7 +384,7 @@ describe('EntryProposalGenerationTool', () => {
 
     it('should set correct expiration time', async () => {
       const now = Date.now();
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -392,7 +395,7 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should calculate average confidence correctly', async () => {
-      const result = await EntryProposalGenerationTool.execute({ 
+      const result = await executeEntryProposalTool({ 
         context: baseInput 
       });
 
@@ -411,7 +414,7 @@ describe('EntryProposalGenerationTool', () => {
           volatility,
         });
 
-        const result = await EntryProposalGenerationTool.execute({ 
+        const result = await executeEntryProposalTool({ 
           context: baseInput 
         });
 
@@ -434,7 +437,7 @@ describe('EntryProposalGenerationTool', () => {
           trend,
         });
 
-        const result = await EntryProposalGenerationTool.execute({ 
+        const result = await executeEntryProposalTool({ 
           context: baseInput 
         });
 

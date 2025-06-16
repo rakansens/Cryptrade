@@ -180,13 +180,13 @@ describe('renderPatternAreas', () => {
 
       renderPatternAreas('pattern-4', visualization, deps);
 
-      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      const histogramData = mockHistogramSeries.setData.mock.calls[0]?.[0];
       expect(histogramData).toBeDefined();
-      expect(histogramData.length).toBeGreaterThan(0);
-      expect(histogramData.length).toBeLessThanOrEqual(20); // Max limit
+      expect(histogramData?.length).toBeGreaterThan(0);
+      expect(histogramData?.length).toBeLessThanOrEqual(20); // Max limit
       
       // Check histogram data structure
-      histogramData.forEach((point: any) => {
+      histogramData?.forEach((point: any) => {
         expect(point).toHaveProperty('time');
         expect(point).toHaveProperty('value');
         expect(point).toHaveProperty('color');
@@ -391,9 +391,9 @@ describe('renderPatternAreas', () => {
       expect(result).toHaveLength(1);
       expect(mockHistogramSeries.setData).toHaveBeenCalled();
       
-      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      const histogramData = mockHistogramSeries.setData.mock.calls[0]?.[0];
       // All values should be 0 (maxValue - minValue = 50000 - 50000 = 0)
-      histogramData.forEach((point: any) => {
+      histogramData?.forEach((point: any) => {
         expect(point.value).toBe(0);
       });
     });
@@ -454,9 +454,9 @@ describe('renderPatternAreas', () => {
       expect(result).toHaveLength(1);
       expect(mockHistogramSeries.setData).toHaveBeenCalled();
       
-      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      const histogramData = mockHistogramSeries.setData.mock.calls[0]?.[0];
       // Should be limited to 20 points max
-      expect(histogramData.length).toBeLessThanOrEqual(20);
+      expect(histogramData?.length).toBeLessThanOrEqual(20);
     });
   });
 
