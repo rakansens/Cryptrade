@@ -1,4 +1,4 @@
-import { streamToLines } from '@/lib/stream-utils';
+import { streamToLines } from '@/lib/utils/stream-utils';
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger

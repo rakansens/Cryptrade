@@ -1,14 +1,15 @@
-import { calculateBollingerBands } from '@/lib/bollinger-bands';
+import { calculateBollingerBands } from '@/lib/indicators/bollinger-bands';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 // Simple test data for verification
 const testData = [
-  { time: 1 as any, close: 10 },
-  { time: 2 as any, close: 12 },
-  { time: 3 as any, close: 14 },
-  { time: 4 as any, close: 16 },
-  { time: 5 as any, close: 18 },
-  { time: 6 as any, close: 20 },
-  { time: 7 as any, close: 22 },
+  { time: 1 as UTCTimestamp, close: 10 },
+  { time: 2 as UTCTimestamp, close: 12 },
+  { time: 3 as UTCTimestamp, close: 14 },
+  { time: 4 as UTCTimestamp, close: 16 },
+  { time: 5 as UTCTimestamp, close: 18 },
+  { time: 6 as UTCTimestamp, close: 20 },
+  { time: 7 as UTCTimestamp, close: 22 },
 ];
 
 describe('calculateBollingerBands', () => {
@@ -41,7 +42,7 @@ describe('calculateBollingerBands', () => {
   test('verifies band relationships', () => {
     const result = calculateBollingerBands(testData, 3, 2);
     
-    result.forEach(point => {
+    result.forEach((point) => {
       expect(point.upper).toBeGreaterThan(point.middle);
       expect(point.middle).toBeGreaterThan(point.lower);
       expect(point.upper - point.middle).toBeCloseTo(point.middle - point.lower, 5);

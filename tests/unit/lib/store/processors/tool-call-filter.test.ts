@@ -1,4 +1,4 @@
-import { ToolCallFilter } from '@/lib/store/tool-call-filter';
+import { ToolCallFilter } from '@/lib/store/processors/tool-call-filter';
 import type { ConversationMessage } from '@/types/conversation-memory';
 
 describe('ToolCallFilter', () => {

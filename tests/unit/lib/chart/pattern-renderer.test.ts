@@ -1,5 +1,5 @@
-import { PatternRenderer } from '@/lib/pattern-renderer'
-import { GlobalStateManager } from '@/lib/GlobalStateManager'
+import { PatternRenderer } from '@/lib/chart/pattern-renderer'
+import { GlobalStateManager } from '@/lib/chart/GlobalStateManager'
 import type { IChartApi, ISeriesApi, Time, SeriesType } from 'lightweight-charts'
 import type { PatternVisualization } from '@/types/pattern'
 import { logger } from '@/lib/utils/logger'

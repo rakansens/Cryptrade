@@ -8,7 +8,7 @@ import {
   showDrawingCancellationSuccess,
   showProposalApprovalError,
   showValidationError
-} from '@/lib/toast';
+} from '@/lib/notifications/toast';
 import { showToast } from '@/components/ui/toast';
 
 // Mock the UI toast component

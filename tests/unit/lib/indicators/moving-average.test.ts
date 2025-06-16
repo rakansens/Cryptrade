@@ -1,13 +1,14 @@
-import { calculateSMA } from '@/lib/moving-average';
+import { calculateSMA } from '@/lib/indicators/moving-average';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 // Test data - simple case for easy verification
 const testData = [
-  { time: 1 as any, close: 10 },
-  { time: 2 as any, close: 20 },
-  { time: 3 as any, close: 30 },
-  { time: 4 as any, close: 40 },
-  { time: 5 as any, close: 50 },
-  { time: 6 as any, close: 60 },
+  { time: 1 as UTCTimestamp, close: 10 },
+  { time: 2 as UTCTimestamp, close: 20 },
+  { time: 3 as UTCTimestamp, close: 30 },
+  { time: 4 as UTCTimestamp, close: 40 },
+  { time: 5 as UTCTimestamp, close: 50 },
+  { time: 6 as UTCTimestamp, close: 60 },
 ];
 
 describe('calculateSMA', () => {
@@ -39,15 +40,15 @@ describe('calculateSMA', () => {
   });
 
   test('handles single period correctly', () => {
-    const result = calculateSMA([{ time: 1 as any, close: 42 }], 1);
+    const result = calculateSMA([{ time: 1 as UTCTimestamp, close: 42 }], 1);
     expect(result).toHaveLength(1);
     expect(result[0]?.value).toBe(42);
   });
 
   test('verifies O(N) optimization consistency', () => {
     // Test with larger dataset to ensure optimization doesn't break correctness
-    const largeData = Array.from({ length: 100 }, (_, i) => ({
-      time: i + 1 as any,
+    const largeData = Array.from({ length: 100 }, (_: unknown, i: number) => ({
+      time: (i + 1) as UTCTimestamp,
       close: i + 1
     }));
     

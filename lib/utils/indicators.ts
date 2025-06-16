@@ -3,6 +3,7 @@
 // - RSI (14)
 // - ATR (14)
 // 今後追加実装を容易にするため、シンプルな実装に留める
+import { env } from '@/config/env'
 import type { ProcessedKline } from '@/types/market'
 
 function ema(values: number[], period: number): number[] {
@@ -174,40 +175,72 @@ export function computeSupportResistanceDetailed(
 
 /**
  * Calculate MACD indicator
+ * @deprecated Use lib/indicators/macd.ts instead
+ * @notImplemented This is a placeholder - use the proper implementation
  */
 export function calculateMACD(data: number[]) {
-  // Placeholder implementation
-  return data.map(() => ({
-    macd: 0,
-    signal: 0,
-    histogram: 0
-  }));
+  console.warn('[Deprecated] calculateMACD in utils/indicators.ts is deprecated. Use lib/indicators/macd.ts instead');
+  
+  // 最小限のダミーデータを返す
+  if (env.NODE_ENV === 'development') {
+    return data.map(() => ({
+      macd: 0,
+      signal: 0,
+      histogram: 0
+    }));
+  }
+  
+  throw new Error('calculateMACD is not implemented. Please use lib/indicators/macd.ts');
 }
 
 /**
  * Calculate RSI indicator
+ * @deprecated Use lib/indicators/rsi.ts instead
+ * @notImplemented This is a placeholder - use the proper implementation
  */
 export function calculateRSI(data: number[]) {
-  // Placeholder implementation
-  return data.map(() => 50);
+  console.warn('[Deprecated] calculateRSI in utils/indicators.ts is deprecated. Use lib/indicators/rsi.ts instead');
+  
+  // 最小限のダミーデータを返す（RSI 50 = 中立）
+  if (env.NODE_ENV === 'development') {
+    return data.map(() => 50);
+  }
+  
+  throw new Error('calculateRSI is not implemented. Please use lib/indicators/rsi.ts');
 }
 
 /**
  * Calculate Bollinger Bands
+ * @deprecated Use lib/indicators/bollinger-bands.ts instead
+ * @notImplemented This is a placeholder - use the proper implementation
  */
 export function calculateBollingerBands(data: number[]) {
-  // Placeholder implementation
-  return data.map((value) => ({
-    upper: value * 1.02,
-    middle: value,
-    lower: value * 0.98
-  }));
+  console.warn('[Deprecated] calculateBollingerBands in utils/indicators.ts is deprecated. Use lib/indicators/bollinger-bands.ts instead');
+  
+  // 最小限のダミーデータを返す
+  if (env.NODE_ENV === 'development') {
+    return data.map((value) => ({
+      upper: value * 1.02,
+      middle: value,
+      lower: value * 0.98
+    }));
+  }
+  
+  throw new Error('calculateBollingerBands is not implemented. Please use lib/indicators/bollinger-bands.ts');
 }
 
 /**
  * Calculate Simple Moving Average
+ * @deprecated Use lib/indicators/moving-average.ts instead
+ * @notImplemented This is a placeholder - use the proper implementation
  */
 export function calculateSMA(data: number[]) {
-  // Placeholder implementation
-  return data.map((value) => value);
+  console.warn('[Deprecated] calculateSMA in utils/indicators.ts is deprecated. Use lib/indicators/moving-average.ts instead');
+  
+  // 最小限のダミーデータを返す
+  if (env.NODE_ENV === 'development') {
+    return data.map((value) => value);
+  }
+  
+  throw new Error('calculateSMA is not implemented. Please use lib/indicators/moving-average.ts');
 } 

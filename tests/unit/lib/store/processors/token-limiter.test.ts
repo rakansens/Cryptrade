@@ -1,4 +1,4 @@
-import { TokenLimiter } from '@/lib/store/token-limiter';
+import { TokenLimiter } from '@/lib/store/processors/token-limiter';
 import type { ConversationMessage } from '@/types/conversation-memory';
 
 describe('TokenLimiter', () => {

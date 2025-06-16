@@ -3,6 +3,7 @@
  */
 
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 import type { ConversationMemory } from '@/lib/api/types';
 
 export interface ConversationMessage extends Omit<ConversationMemory, 'timestamp'> {
@@ -69,8 +70,15 @@ export class ConversationMemoryAPI {
         timestamp: new Date(msg.timestamp),
       }));
     } catch (error) {
-      logger.error('[ConversationMemoryAPI] Failed to get messages', { error });
-      return [];
+      logger.error('[ConversationMemoryAPI] Failed to get messages', { error, sessionId });
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to retrieve messages for session ${sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -94,8 +102,15 @@ export class ConversationMemoryAPI {
         timestamp: new Date(msg.timestamp),
       }));
     } catch (error) {
-      logger.error('[ConversationMemoryAPI] Failed to search messages', { error });
-      return [];
+      logger.error('[ConversationMemoryAPI] Failed to search messages', { error, query, sessionId });
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to search messages with query "${query}": ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { StreamingMLAnalyzer } from '@/lib/streaming-ml-analyzer';
-import { FeatureExtractor } from '@/lib/feature-extractor';
-import { LineQualityPredictor } from '@/lib/line-predictor';
+import { StreamingMLAnalyzer } from '@/lib/ml/streaming-ml-analyzer';
+import { FeatureExtractor } from '@/lib/ml/feature-extractor';
+import { LineQualityPredictor } from '@/lib/ml/line-predictor';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
-import type { StreamingMLUpdate, LineFeatures, MLPrediction } from '@/lib/line-validation-types';
+import type { StreamingMLUpdate, LineFeatures, MLPrediction } from '@/lib/ml/line-validation-types';
 import { createSimpleSupportLine } from '@/tests/helpers/simple-detected-line-factory';
 
 // Mock dependencies

@@ -1,0 +1,53 @@
+{
+  "entryPoints": ["lib"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "name": "Cryptrade API Documentation",
+  "skipErrorChecking": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Core",
+    "API",
+    "Chart",
+    "Analysis",
+    "Trading",
+    "WebSocket",
+    "Database",
+    "Utils",
+    "*"
+  ],
+  "plugin": [],
+  "theme": "default",
+  "lightHighlightTheme": "github-light",
+  "darkHighlightTheme": "github-dark",
+  "readme": "./README.md",
+  "includeVersion": true,
+  "disableSources": false,
+  "gitRevision": "main",
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "blockTags": [
+    "@alpha",
+    "@beta", 
+    "@deprecated",
+    "@todo",
+    "@fixme",
+    "@internal",
+    "@experimental",
+    "@notImplemented"
+  ],
+  "modifierTags": [
+    "@alpha",
+    "@beta",
+    "@deprecated",
+    "@experimental",
+    "@internal",
+    "@notImplemented"
+  ]
+}

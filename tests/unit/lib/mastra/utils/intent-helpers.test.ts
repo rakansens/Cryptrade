@@ -10,7 +10,7 @@ import {
   detectHelpRequest,
   detectMarketChat,
   detectSmallTalk
-} from '@/lib/mastra/intent';
+} from '@/lib/mastra/utils/intent';
 
 describe('Intent helper functions', () => {
   test('detectShortInput returns conversational for short text', () => {

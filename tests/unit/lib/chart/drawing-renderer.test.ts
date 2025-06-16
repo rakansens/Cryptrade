@@ -1,4 +1,4 @@
-import { DrawingRenderer } from '@/lib/drawing-renderer'
+import { DrawingRenderer } from '@/lib/chart/drawing-renderer'
 import { useDrawingStore as useChartStoreBase } from '@/store/chart'
 import type { ChartDrawing } from '@/store/chart'
 import type { IChartApi, ISeriesApi, IPriceLine, SeriesType } from 'lightweight-charts'

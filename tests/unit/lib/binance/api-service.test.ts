@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { BinanceAPIService } from '@/lib/api-service';
+import { BinanceAPIService } from '@/lib/binance/api-service';
 import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline, BinanceTicker24hr } from '@/types/market';
 

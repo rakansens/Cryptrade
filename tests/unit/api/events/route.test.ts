@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { GET, OPTIONS, broadcastEvent, eventBroadcast } from '@/app/api/route';
+import { GET, OPTIONS, broadcastEvent, eventBroadcast } from '@/app/api/events/route';
 import { responseHelpers } from '@/tests/helpers/api-test-utils';
 
 // Mock console methods

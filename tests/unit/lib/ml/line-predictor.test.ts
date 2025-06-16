@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import * as tf from '@tensorflow/tfjs';
-import { LineQualityPredictor } from '@/lib/line-predictor';
-import type { LineFeatures } from '@/lib/line-validation-types';
+import { LineQualityPredictor } from '@/lib/ml/line-predictor';
+import type { LineFeatures } from '@/lib/ml/line-validation-types';
 
 // Mock TensorFlow.js
 jest.mock('@tensorflow/tfjs', () => ({
@@ -37,10 +37,10 @@ describe('LineQualityPredictor', () => {
     // Create mock model
     mockModel = {
       compile: jest.fn(),
-      fit: jest.fn().mockResolvedValue({} as any),
+      fit: jest.fn().mockImplementation(() => Promise.resolve({})),
       predict: jest.fn(),
       dispose: jest.fn()
-    } ;
+    } as any;
 
     // Setup TensorFlow mocks
     (tf.sequential as unknown as jest.Mock).mockReturnValue(mockModel);
@@ -90,10 +90,10 @@ describe('LineQualityPredictor', () => {
     it('should predict line success with ML model when ready', async () => {
       // Mock successful prediction
       const mockPredictionTensor = {
-        array: jest.fn().mockResolvedValue([[0.85, 0.6, 0.75, 0.95]] as any),
+        array: jest.fn().mockImplementation(() => Promise.resolve([[0.85, 0.6, 0.75, 0.95]])),
         dispose: jest.fn()
       };
-      mockModel.predict.mockReturnValue(mockPredictionTensor);
+      (mockModel.predict as jest.Mock).mockReturnValue(mockPredictionTensor);
 
       // Wait for initialization
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -128,7 +128,7 @@ describe('LineQualityPredictor', () => {
     it('should handle prediction errors gracefully', async () => {
       // Force model ready but make prediction fail
       (predictor as any).isModelReady = true;
-      mockModel.predict.mockImplementation(() => {
+      (mockModel.predict as jest.Mock).mockImplementation(() => {
         throw new Error('Prediction failed');
       });
 
@@ -210,10 +210,10 @@ describe('LineQualityPredictor', () => {
       // Force ML prediction
       (predictor as any).isModelReady = true;
       const mockPredictionTensor = {
-        array: jest.fn().mockResolvedValue([[0.8, 0.6, 0.7, 0.9]] as any),
+        array: jest.fn().mockImplementation(() => Promise.resolve([[0.8, 0.6, 0.7, 0.9]])),
         dispose: jest.fn()
       };
-      mockModel.predict.mockReturnValue(mockPredictionTensor);
+      (mockModel.predict as jest.Mock).mockReturnValue(mockPredictionTensor);
       
       const prediction = await predictor.predictLineSuccess(features, normalized);
 
@@ -355,8 +355,9 @@ describe('LineQualityPredictor', () => {
 
     it('should generate reasonable synthetic patterns', async () => {
       // This is tested indirectly through the fit call
-      const fitCall = mockModel.fit.mock.calls[0];
+      const fitCall = (mockModel.fit as jest.Mock).mock.calls[0];
       expect(fitCall).toBeDefined();
+      if (!fitCall) return;
       expect(fitCall[2]).toMatchObject({
         epochs: 20,
         batchSize: 32,

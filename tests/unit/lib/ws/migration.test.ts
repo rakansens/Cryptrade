@@ -4,9 +4,9 @@
  */
 
 import { mockEnv } from '@/config/testing/setupEnvMock';
-import { BinanceConnectionMigration, getBinanceConnection, createBinanceConnectionAPI } from '@/lib/migration';
+import { BinanceConnectionMigration, getBinanceConnection, createBinanceConnectionAPI } from '@/lib/ws/migration';
 import { binanceConnectionManager } from '@/lib/binance/connection-manager';
-import { binanceConnectionManagerShim } from '@/lib/compat-shim';
+import { binanceConnectionManagerShim } from '@/lib/ws/compat-shim';
 
 // Mock the dependencies
 jest.mock('@/lib/binance/connection-manager', () => ({

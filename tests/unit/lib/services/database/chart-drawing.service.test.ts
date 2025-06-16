@@ -1,4 +1,4 @@
-import { ChartDrawingDatabaseService } from '@/lib/services/chart-drawing.service';
+import { ChartDrawingDatabaseService } from '@/lib/services/database/chart-drawing.service';
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/utils/logger';
 

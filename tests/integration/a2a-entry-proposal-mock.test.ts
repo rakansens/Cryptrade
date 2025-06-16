@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { agentNetwork } from '@/tests/network/agent-network';
+import { agentNetwork } from '@/lib/mastra/network/agent-network';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -12,7 +12,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 // Mock the entire agent system
-jest.mock('@/tests/network/agent-registry', () => ({
+jest.mock('@/lib/mastra/network/agent-registry', () => ({
   registerAllAgents: jest.fn(),
   priceInquiryAgent: { name: 'priceInquiryAgent' },
   tradingAnalysisAgent: { name: 'tradingAnalysisAgent' },
@@ -21,7 +21,7 @@ jest.mock('@/tests/network/agent-registry', () => ({
 }));
 
 // Mock the agents
-jest.mock('@/tests/agents/trading.agent', () => ({
+jest.mock('@/lib/mastra/agents/trading.agent', () => ({
   tradingAgent: {
     name: 'tradingAgent',
     generate: jest.fn().mockResolvedValue({

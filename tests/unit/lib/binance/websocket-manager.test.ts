@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { BinanceWebSocketManager, PriceUpdateCallback } from '@/lib/websocket-manager';
+import { BinanceWebSocketManager, PriceUpdateCallback } from '@/lib/binance/websocket-manager';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies

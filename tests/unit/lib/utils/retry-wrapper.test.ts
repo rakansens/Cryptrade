@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { RetryWrapper } from '@/lib/retry-wrapper';
+import { RetryWrapper } from '@/lib/utils/retry-wrapper';
 
 // Mock metrics
 jest.mock('@/lib/monitoring/metrics', () => ({

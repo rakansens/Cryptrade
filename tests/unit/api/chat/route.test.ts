@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { POST, OPTIONS } from '@/app/api/route';
+import { POST, OPTIONS } from '@/app/api/ai/chat/route';
 import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
 import { extractProposalGroup } from '@/lib/api/helpers/proposal-extractor';
 import { memoryStore } from '@/lib/api/rate-limit';

@@ -8,7 +8,7 @@ import {
   UnifiedLogger, 
   createUnifiedLogger, 
   type UnifiedLoggerConfig
-} from '@/lib/unified-logger';
+} from '@/lib/logging/unified-logger';
 
 describe('UnifiedLogger', () => {
   let logger: UnifiedLogger;
@@ -209,7 +209,7 @@ describe('UnifiedLogger', () => {
 
 describe('Logger Helpers', () => {
   test('should support agent logger creation', async () => {
-    const { createAgentLogger } = await import('@/lib/helpers');
+    const { createAgentLogger } = await import('@/lib/logging/helpers');
     const agentLogger = createAgentLogger('test-agent');
     
     const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
@@ -225,7 +225,7 @@ describe('Logger Helpers', () => {
   });
 
   test('should support tool logger creation', async () => {
-    const { createToolLogger } = await import('@/lib/helpers');
+    const { createToolLogger } = await import('@/lib/logging/helpers');
     const toolLogger = createToolLogger('test-tool');
     
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -241,7 +241,7 @@ describe('Logger Helpers', () => {
   });
 
   test('should support performance logging', async () => {
-    const { logPerformance } = await import('@/lib/helpers');
+    const { logPerformance } = await import('@/lib/logging/helpers');
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
     
     const result = await logPerformance('test-operation', async () => {
@@ -261,7 +261,7 @@ describe('Logger Helpers', () => {
 
 describe('Backward Compatibility', () => {
   test('should export compatible logger interface', async () => {
-    const { logger } = await import('@/lib/index');
+    const { logger } = await import('@/lib/logging/index');
     
     expect(typeof logger.debug).toBe('function');
     expect(typeof logger.info).toBe('function');
@@ -280,7 +280,7 @@ describe('Backward Compatibility', () => {
   });
 
   test('should export enhanced logger interface', async () => {
-    const { enhancedLogger } = await import('@/lib/index');
+    const { enhancedLogger } = await import('@/lib/logging/index');
     
     expect(typeof enhancedLogger.debug).toBe('function');
     expect(typeof enhancedLogger.info).toBe('function');

@@ -22,14 +22,14 @@ interface TestCase {
   expectedTTLRange: [number, number]; // [min, max] in seconds
 }
 
-interface DynamicTTLTestResult {
+interface TestResult {
   success: boolean;
   error?: unknown;
   ttl: number | undefined;
   volatility: number | undefined;
 }
 
-async function testDynamicTTL(testCase: TestCase): Promise<DynamicTTLTestResult> {
+async function testDynamicTTL(testCase: TestCase): Promise<TestResult> {
   console.log(`\n${colors.blue('▶')} Testing: ${testCase.description}`);
   console.log(`  Symbol: ${testCase.symbol}`);
   
@@ -160,18 +160,24 @@ async function main() {
     },
   ];
   
-  interface DynamicTTLTestResult extends TestCase {
+  interface ExtendedTestResult extends TestCase {
     success: boolean;
     ttl?: number;
     volatility?: number;
     error?: unknown;
   }
   
-  const results: DynamicTTLTestResult[] = [];
+  const results: ExtendedTestResult[] = [];
   
   for (const testCase of testCases) {
     const result = await testDynamicTTL(testCase);
-    results.push({ ...testCase, ...result });
+    results.push({ 
+      ...testCase, 
+      success: result.success,
+      ...(result.ttl !== undefined && { ttl: result.ttl }),
+      ...(result.volatility !== undefined && { volatility: result.volatility }),
+      ...(result.error !== undefined && { error: result.error })
+    });
     
     // Wait between tests
     await new Promise(resolve => setTimeout(resolve, 2000));

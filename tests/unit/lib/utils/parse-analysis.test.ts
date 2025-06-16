@@ -1,4 +1,4 @@
-import { parseAnalysisText, isAnalysisMessage } from '@/lib/parse-analysis';
+import { parseAnalysisText, isAnalysisMessage } from '@/lib/utils/parse-analysis';
 
 describe('parse-analysis', () => {
   describe('parseAnalysisText', () => {

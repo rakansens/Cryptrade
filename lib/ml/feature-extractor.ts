@@ -1,5 +1,6 @@
 // Feature extraction for ML line validation
 
+import { env } from '@/config/env';
 import type { LineFeatures } from './line-validation-types';
 import { FEATURE_RANGES } from './line-validation-types';
 import type { DetectedLine } from '@/lib/analysis/types';
@@ -263,22 +264,49 @@ export class FeatureExtractor {
     };
   }
 
+  /**
+   * タイムフレーム間の一致度を計算
+   * @notImplemented 実装予定
+   */
   private calculateTimeframeConfluence(_line: DetectedLine): number {
-    // Simplified confluence calculation
-    // In real implementation, would check multiple timeframes
-    return Math.random() * 0.3 + 0.5; // Placeholder: 0.5-0.8
+    // 開発環境では固定値を返す
+    if (env.NODE_ENV === 'development') {
+      console.warn('[FeatureExtractor] Using mock timeframe confluence value');
+      return 0.65; // 中程度の一致度
+    }
+    
+    // 本番環境では最小値を返す（安全側に倒す）
+    return 0.5;
   }
 
+  /**
+   * 上位タイムフレームとの整合性をチェック
+   * @notImplemented 実装予定
+   */
   private checkHigherTimeframeAlignment(_line: DetectedLine): boolean {
-    // Simplified check
-    // In real implementation, would check if line exists on higher timeframes
-    return Math.random() > 0.5; // Placeholder
+    // 開発環境では固定値を返す
+    if (env.NODE_ENV === 'development') {
+      console.warn('[FeatureExtractor] Using mock higher timeframe alignment');
+      return true; // 開発時は常に整合性ありとする
+    }
+    
+    // 本番環境では常にfalseを返す（安全側に倒す）
+    return false;
   }
 
+  /**
+   * 近傍のパターンをチェック
+   * @notImplemented 実装予定
+   */
   private checkNearbyPatterns(_line: DetectedLine): boolean {
-    // Check if any patterns are near this line
-    // Placeholder implementation
-    return Math.random() > 0.7;
+    // 開発環境では固定値を返す
+    if (env.NODE_ENV === 'development') {
+      console.warn('[FeatureExtractor] Using mock nearby patterns check');
+      return false; // 開発時はパターンなしとする
+    }
+    
+    // 本番環境では常にfalseを返す（安全側に倒す）
+    return false;
   }
 
   private getNearbyPatternType(line: DetectedLine): string | undefined {

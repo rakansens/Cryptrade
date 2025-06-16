@@ -1,4 +1,4 @@
-import { compose, createFinalMiddleware, composeWithFetch } from '@/lib/compose';
+import { compose, createFinalMiddleware, composeWithFetch } from '@/lib/utils/compose';
 import type { ApiMiddleware, RequestCtx } from '@/types/api';
 
 // Mock fetch for testing

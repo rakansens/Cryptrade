@@ -5,7 +5,7 @@ import {
   getBaseChartOptions,
   getIndicatorChartOptions,
   SERIES_STYLES
-} from '@/lib/theme'
+} from '@/lib/chart/theme'
 
 describe('Chart Theme Configuration', () => {
   describe('CHART_THEME', () => {

@@ -1,4 +1,4 @@
-import { analyzeIntent } from '@/lib/mastra/intent';
+import { analyzeIntent } from '@/lib/mastra/utils/intent';
 
 describe('Intent Analysis Utility', () => {
   describe('Basic Intent Detection', () => {

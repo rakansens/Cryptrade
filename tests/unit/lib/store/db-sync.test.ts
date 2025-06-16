@@ -1,4 +1,4 @@
-import { createDbSyncHandlers } from '@/lib/db-sync';
+import { createDbSyncHandlers } from '@/lib/store/db-sync';
 
 describe('db sync handlers', () => {
   it('disableDbSync toggles flag', () => {

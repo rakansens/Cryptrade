@@ -1,5 +1,5 @@
-import { analyzeUserIntent as analyzeIntent } from '@/lib/mastra/orchestrator.agent';
-// import type { IntentAnalysisResult } from '@/lib/mastra/orchestrator.agent';
+import { analyzeUserIntent as analyzeIntent } from '@/lib/mastra/agents/orchestrator.agent';
+// import type { IntentAnalysisResult } from '@/lib/mastra/agents/orchestrator.agent';
 
 describe('Orchestrator Agent - Intent Analysis', () => {
   describe('analyzeIntent function', () => {

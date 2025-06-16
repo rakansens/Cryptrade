@@ -1,12 +1,12 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { ApiClient } from '@/lib/client';
+import { ApiClient } from '@/lib/api/client';
 import { 
   createTimeoutMiddleware,
   createRateLimitMiddleware,
   createRetryMiddleware,
   createErrorHandlerMiddleware
-} from '@/lib/middlewares';
+} from '@/lib/api/middlewares';
 import type { ApiMiddleware } from '@/types/api';
 
 // Test server setup

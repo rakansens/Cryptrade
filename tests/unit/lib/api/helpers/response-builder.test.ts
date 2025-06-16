@@ -4,7 +4,7 @@ import {
   createSuccessResponse, 
   processOrchestratorResult,
   type ChatResponseParams 
-} from '@/lib/api/response-builder';
+} from '@/lib/api/helpers/response-builder';
 import type { ProposalGroup } from '@/lib/api/types';
 
 // Mock middleware functions

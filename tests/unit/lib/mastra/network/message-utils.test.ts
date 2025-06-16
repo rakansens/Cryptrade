@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { formatMessageForAgent } from '@/lib/mastra/message-utils';
+import { formatMessageForAgent } from '@/lib/mastra/network/message-utils';
 import { AGENT_IDS } from '@/types';
 
 describe('message utils', () => {

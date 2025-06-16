@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { DrawingOperationQueue } from '@/lib/drawing-queue';
+import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
 import { metricsCollector } from '@/lib/monitoring/metrics';
 
 // Mock logger
@@ -25,9 +25,9 @@ describe('DrawingOperationQueue with Retry', () => {
   });
 
   it('should increment drawing_success_total on successful operation', async () => {
-    const mockOperation = jest.fn().mockResolvedValue('success');
+    const mockOperation = jest.fn<() => Promise<string>>().mockResolvedValue('success');
     
-    const result = await queue.enqueue(mockOperation as () => Promise<unknown>);
+    const result = await queue.enqueue(mockOperation);
     
     expect(result).toBe('success');
     expect(mockOperation).toHaveBeenCalledTimes(1);
@@ -42,11 +42,11 @@ describe('DrawingOperationQueue with Retry', () => {
   });
 
   it('should retry failed operation and increment counters', async () => {
-    const mockOperation = jest.fn()
+    const mockOperation = jest.fn<() => Promise<string>>()
       .mockRejectedValueOnce(new Error('First failure'))
       .mockResolvedValueOnce('success after retry');
     
-    const result = await queue.enqueue(mockOperation as () => Promise<unknown>);
+    const result = await queue.enqueue(mockOperation);
     
     expect(result).toBe('success after retry');
     expect(mockOperation).toHaveBeenCalledTimes(2);
@@ -61,10 +61,10 @@ describe('DrawingOperationQueue with Retry', () => {
   }, 10000);
 
   it('should increment drawing_failed_total after all retries fail', async () => {
-    const mockOperation = jest.fn()
+    const mockOperation = jest.fn<() => Promise<string>>()
       .mockRejectedValue(new Error('Persistent failure'));
     
-    await expect(queue.enqueue(mockOperation as () => Promise<unknown>))
+    await expect(queue.enqueue(mockOperation))
       .rejects.toThrow('Persistent failure');
     
     expect(mockOperation).toHaveBeenCalledTimes(3); // Initial + 2 retries
@@ -80,15 +80,15 @@ describe('DrawingOperationQueue with Retry', () => {
 
   it('should handle multiple operations with mixed results', async () => {
     const operations = [
-      jest.fn().mockResolvedValue('success1'),
-      jest.fn()
+      jest.fn<() => Promise<string>>().mockResolvedValue('success1'),
+      jest.fn<() => Promise<string>>()
         .mockRejectedValueOnce(new Error('Fail'))
         .mockResolvedValueOnce('success2'),
-      jest.fn().mockRejectedValue(new Error('Always fails')),
+      jest.fn<() => Promise<string>>().mockRejectedValue(new Error('Always fails')),
     ];
     
     const results = await Promise.allSettled(
-      operations.map(op => queue.enqueue(op as () => Promise<unknown>))
+      operations.map(op => queue.enqueue(op))
     );
     
     expect(results[0]).toEqual({ status: 'fulfilled', value: 'success1' });

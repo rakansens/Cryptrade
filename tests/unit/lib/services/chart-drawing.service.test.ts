@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { ChartDrawingDatabaseService } from '@/lib/database/chart-drawing.service';
+import { ChartDrawingDatabaseService } from '@/lib/services/database/chart-drawing.service';
 import { logger } from '@/lib/utils/logger';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 

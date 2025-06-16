@@ -259,12 +259,12 @@ describe('AI Tool Selection', () => {
     });
 
     it('should log tool selection for debugging', async () => {
-      const _debugContext = {
-        isProposalMode: true,
-        proposalType: 'entry',
-        isEntryProposal: true,
-        extractedSymbol: 'BTCUSDT',
-      };
+      // const _debugContext = {
+      //   isProposalMode: true,
+      //   proposalType: 'entry',
+      //   isEntryProposal: true,
+      //   extractedSymbol: 'BTCUSDT',
+      // };
       
       // The actual implementation logs tool selection
       console.log = jest.fn();

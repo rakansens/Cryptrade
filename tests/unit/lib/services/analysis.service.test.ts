@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { AnalysisService } from '@/lib/database/analysis.service';
+import { AnalysisService } from '@/lib/services/database/analysis.service';
 import { prisma } from '@/lib/db/prisma';
 import type { DrawingProposal } from '@/types/proposals';
 import { ProposalType, ProposalStatus } from '@/types/proposals';

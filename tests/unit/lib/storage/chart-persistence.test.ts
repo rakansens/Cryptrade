@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { ChartPersistenceManager } from '@/lib/chart-persistence';
+import { ChartPersistenceManager } from '@/lib/storage/chart-persistence';
 import { logger } from '@/lib/utils/logger';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 

@@ -1,19 +1,19 @@
 import { describe, it, expect } from '@jest/globals';
-import { calculateRSI, getRSIColor, getRSISignal } from '@/lib/rsi';
+import { calculateRSI, getRSIColor, getRSISignal } from '@/lib/indicators/rsi';
 
 describe('calculateRSI', () => {
   // Simple test data with known pattern
-  const simpleUptrend = Array.from({ length: 30 }, (_, i) => ({
+  const simpleUptrend = Array.from({ length: 30 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 100 + i * 2 // Steady uptrend
   }));
 
-  const simpleDowntrend = Array.from({ length: 30 }, (_, i) => ({
+  const simpleDowntrend = Array.from({ length: 30 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 200 - i * 2 // Steady downtrend
   }));
 
-  const oscillatingData = Array.from({ length: 30 }, (_, i) => ({
+  const oscillatingData = Array.from({ length: 30 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 100 + Math.sin(i * 0.5) * 10 // Oscillating pattern
   }));
@@ -25,7 +25,7 @@ describe('calculateRSI', () => {
       // Result length should be data.length - period
       expect(result.length).toBe(oscillatingData.length - 14);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(point).toHaveProperty('time');
         expect(point).toHaveProperty('rsi');
         
@@ -44,7 +44,7 @@ describe('calculateRSI', () => {
       
       expect(result.length).toBe(oscillatingData.length - period);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(point.rsi).toBeGreaterThanOrEqual(0);
         expect(point.rsi).toBeLessThanOrEqual(100);
       });
@@ -89,7 +89,7 @@ describe('calculateRSI', () => {
     });
 
     it('should be around 50 for sideways market', () => {
-      const sidewaysData = Array.from({ length: 30 }, (_, i) => ({
+      const sidewaysData = Array.from({ length: 30 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + (i % 2 === 0 ? 1 : -1) // Small oscillation
       }));
@@ -97,7 +97,7 @@ describe('calculateRSI', () => {
       const result = calculateRSI(sidewaysData);
       
       // Average RSI should be around 50
-      const avgRSI = result.reduce((sum, p) => sum + p.rsi, 0) / result.length;
+      const avgRSI = result.reduce((sum: number, p: { rsi: number }) => sum + p.rsi, 0) / result.length;
       expect(avgRSI).toBeGreaterThan(40);
       expect(avgRSI).toBeLessThan(60);
     });
@@ -135,7 +135,7 @@ describe('calculateRSI', () => {
     });
 
     it('should produce smooth RSI values', () => {
-      const volatileData = Array.from({ length: 50 }, (_, i) => ({
+      const volatileData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + Math.random() * 10 - 5 // Random walk
       }));
@@ -160,7 +160,7 @@ describe('calculateRSI', () => {
 
   describe('edge cases', () => {
     it('should handle constant price (RSI = 50)', () => {
-      const constantData = Array.from({ length: 30 }, (_, i) => ({
+      const constantData = Array.from({ length: 30 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 // No change
       }));
@@ -169,33 +169,33 @@ describe('calculateRSI', () => {
       
       // With no price changes, RSI calculation involves 0/0 which should be handled
       // The implementation should return RSI = 100 when avgLoss = 0
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(point.rsi).toBe(100); // When no losses, RS = infinity, RSI = 100
       });
     });
 
     it('should handle only gains correctly', () => {
-      const onlyGainsData = Array.from({ length: 20 }, (_, i) => ({
+      const onlyGainsData = Array.from({ length: 20 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + i // Only increases
       }));
       
       const result = calculateRSI(onlyGainsData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(point.rsi).toBe(100); // No losses means RSI = 100
       });
     });
 
     it('should handle only losses correctly', () => {
-      const onlyLossesData = Array.from({ length: 20 }, (_, i) => ({
+      const onlyLossesData = Array.from({ length: 20 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 - i // Only decreases
       }));
       
       const result = calculateRSI(onlyLossesData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(point.rsi).toBe(0); // No gains means RSI = 0
       });
     });
@@ -213,14 +213,14 @@ describe('calculateRSI', () => {
     });
 
     it('should handle large price movements', () => {
-      const volatileData = Array.from({ length: 30 }, (_, i) => ({
+      const volatileData = Array.from({ length: 30 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 * Math.exp(Math.sin(i * 0.3)) // Exponential swings
       }));
       
       const result = calculateRSI(volatileData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(isFinite(point.rsi)).toBe(true);
         expect(point.rsi).toBeGreaterThanOrEqual(0);
         expect(point.rsi).toBeLessThanOrEqual(100);
@@ -231,7 +231,7 @@ describe('calculateRSI', () => {
   describe('numerical accuracy', () => {
     it('should calculate first RSI value correctly', () => {
       // Create simple data for manual verification
-      const testData = Array.from({ length: 16 }, (_, i) => ({
+      const testData = Array.from({ length: 16 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + (i % 3 === 0 ? 2 : i % 3 === 1 ? -1 : 0)
       }));
@@ -244,14 +244,14 @@ describe('calculateRSI', () => {
     });
 
     it('should handle small price changes accurately', () => {
-      const smallChangeData = Array.from({ length: 30 }, (_, i) => ({
+      const smallChangeData = Array.from({ length: 30 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + Math.sin(i * 0.2) * 0.01 // Very small changes
       }));
       
       const result = calculateRSI(smallChangeData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; rsi: number }) => {
         expect(isFinite(point.rsi)).toBe(true);
         expect(point.rsi).toBeGreaterThanOrEqual(0);
         expect(point.rsi).toBeLessThanOrEqual(100);
@@ -302,7 +302,7 @@ describe('getRSISignal', () => {
 
 describe('RSI performance', () => {
   it('should calculate efficiently for large datasets', () => {
-    const largeData = Array.from({ length: 1000 }, (_, i) => ({
+    const largeData = Array.from({ length: 1000 }, (_: unknown, i: number) => ({
       time: 1000 + i * 1000,
       close: 100 + Math.sin(i * 0.1) * 20 + Math.random() * 5
     }));
@@ -320,8 +320,8 @@ describe('RSI performance', () => {
     const sizes = [100, 200, 400];
     const times: number[] = [];
     
-    sizes.forEach(size => {
-      const data = Array.from({ length: size }, (_, i) => ({
+    sizes.forEach((size: number) => {
+      const data = Array.from({ length: size }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + Math.random() * 10
       }));
@@ -346,7 +346,7 @@ describe('RSI performance', () => {
 describe('RSI integration scenarios', () => {
   it('should work with cryptocurrency price patterns', () => {
     // Simulate crypto-like volatility
-    const cryptoData = Array.from({ length: 100 }, (_, i) => {
+    const cryptoData = Array.from({ length: 100 }, (_: unknown, i: number) => {
       const trend = Math.sin(i * 0.1) * 1000;
       const volatility = Math.random() * 500 - 250;
       return {
@@ -360,9 +360,9 @@ describe('RSI integration scenarios', () => {
     expect(result.length).toBeGreaterThan(0);
     
     // Check for reasonable distribution
-    const overbought = result.filter(p => p.rsi >= 70).length;
-    const oversold = result.filter(p => p.rsi <= 30).length;
-    const neutral = result.filter(p => p.rsi > 30 && p.rsi < 70).length;
+    const overbought = result.filter((p: { rsi: number }) => p.rsi >= 70).length;
+    const oversold = result.filter((p: { rsi: number }) => p.rsi <= 30).length;
+    const neutral = result.filter((p: { rsi: number }) => p.rsi > 30 && p.rsi < 70).length;
     
     // Should have some of each in volatile data
     expect(overbought).toBeGreaterThan(0);
@@ -372,7 +372,7 @@ describe('RSI integration scenarios', () => {
 
   it('should identify divergences in trending markets', () => {
     // Create price making higher highs but momentum slowing
-    const divergenceData = Array.from({ length: 50 }, (_, i) => ({
+    const divergenceData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
       time: 1000 + i * 1000,
       close: 100 + i + Math.sin(i * 0.3) * (50 - i) * 0.1 // Decreasing momentum
     }));
@@ -381,8 +381,8 @@ describe('RSI integration scenarios', () => {
     
     if (result.length > 20) {
       // RSI should show weakening momentum despite rising price
-      const earlyRSI = result.slice(5, 10).reduce((sum, p) => sum + p.rsi, 0) / 5;
-      const lateRSI = result.slice(-5).reduce((sum, p) => sum + p.rsi, 0) / 5;
+      const earlyRSI = result.slice(5, 10).reduce((sum: number, p: { rsi: number }) => sum + p.rsi, 0) / 5;
+      const lateRSI = result.slice(-5).reduce((sum: number, p: { rsi: number }) => sum + p.rsi, 0) / 5;
       
       // Late RSI should be lower than early RSI (bearish divergence)
       expect(lateRSI).toBeLessThan(earlyRSI);

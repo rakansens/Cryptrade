@@ -1,4 +1,4 @@
-import { createStoreDebugger } from '@/lib/zustand-helpers';
+import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 
 describe('zustand-helpers', () => {
   describe('createStoreDebugger', () => {

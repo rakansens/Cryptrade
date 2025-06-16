@@ -7,7 +7,7 @@ import {
   type ILogTransport,
   type LogEntry,
   type LogLevel
-} from '@/lib/logger';
+} from '@/lib/utils/logger';
 
 // Mock console to avoid actual console output during tests
 const mockConsole = {

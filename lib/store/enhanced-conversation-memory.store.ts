@@ -68,6 +68,10 @@ interface EnhancedConversationMemoryState {
   disableDbSync: () => void;
   syncWithDatabase: () => Promise<void>;
   loadFromDatabase: () => Promise<void>;
+  
+  // Additional archive actions
+  archiveOldMessages?: (sessionId: string) => Promise<void>;
+  getArchivedMessages?: (sessionId: string) => Promise<ConversationMessage[]>;
 }
 
 // Memory management constants
@@ -79,12 +83,11 @@ const DEFAULT_PROCESSORS: MemoryProcessor[] = [
   new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] }) // Exclude heavy tools
 ];
 
-// Enhanced Memory Store Implementation with DB
-export const useEnhancedConversationMemory = create<EnhancedConversationMemoryState>()(
-  devtools(
-    persist(
-      // ストレージをブラウザ環境に限定
-      immer((set, get) => ({
+// Extract store implementation to simplify type inference
+type SetState = (state: (draft: EnhancedConversationMemoryState) => void) => void;
+type GetState = () => EnhancedConversationMemoryState;
+
+const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConversationMemoryState => ({
         sessions: {},
         currentSessionId: null,
         defaultProcessors: DEFAULT_PROCESSORS,
@@ -241,11 +244,19 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           if (state.isDbEnabled) {
             try {
               // First ensure session exists in DB
+              // Get user ID from a safe source (not process.env in browser)
+              // In a real app, this would come from authentication context
+              const userId = 'system';
+              
+              if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && userId === 'system') {
+                logger.warn('[EnhancedConversationMemory] Using system user ID in production. Consider implementing proper user authentication.');
+              }
+              
               await prisma.conversationSession.upsert({
                 where: { id: message.sessionId },
                 create: {
                   id: message.sessionId,
-                  userId: 'default-user', // TODO: Get actual user ID from context
+                  userId: userId,
                   startedAt: timestamp,
                   lastActiveAt: timestamp,
                 },
@@ -373,7 +384,9 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           const state = get();
           
           set((state) => {
-            for (const session of Object.values(state.sessions)) {
+            for (const sessionId in state.sessions) {
+            const session = state.sessions[sessionId];
+            if (!session) continue;
               const message = session.messages.find(m => m.id === messageId);
               if (message) {
                 message.metadata = { ...message.metadata, ...metadata };
@@ -425,7 +438,8 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           const results: ConversationMessage[] = [];
           const queryLower = query.toLowerCase();
           
-          for (const session of Object.values(sessions)) {
+          for (const sessionId in sessions) {
+            const session = sessions[sessionId];
             if (!session) continue;
             
             for (const message of session.messages) {
@@ -544,7 +558,9 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
                 state.isSyncing = true;
               });
               
-              for (const session of Object.values(state.sessions)) {
+              for (const sessionId in state.sessions) {
+            const session = state.sessions[sessionId];
+            if (!session) continue;
                 // Create session in DB
                 const dbSession = await ChatDatabaseService.createSession(
                   undefined,
@@ -611,7 +627,9 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           
           try {
             // Sync all sessions and messages
-            for (const session of Object.values(state.sessions)) {
+            for (const sessionId in state.sessions) {
+            const session = state.sessions[sessionId];
+            if (!session) continue;
               // Check if session exists in DB
               const dbSession = await prisma.conversationSession.findUnique({
                 where: { id: session.id },
@@ -737,7 +755,7 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           }
         },
         
-        // Archive old messages manually
+        // Additional actions that were defined in the store but not in the interface
         archiveOldMessages: async (sessionId: string) => {
           const state = get();
           const session = state.sessions[sessionId];
@@ -765,7 +783,6 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
           });
         },
         
-        // Get archived messages from DB
         getArchivedMessages: async (sessionId: string) => {
           const state = get();
           
@@ -783,52 +800,65 @@ export const useEnhancedConversationMemory = create<EnhancedConversationMemorySt
             return archivedMessages.map(msg => ({
               id: msg.id,
               sessionId: msg.sessionId,
-              role: msg.role,
+              role: msg.role as 'user' | 'assistant' | 'system',
               content: msg.content,
               timestamp: msg.timestamp,
               agentId: msg.agentId || undefined,
-              metadata: msg.metadata as any,
-            }));
+              metadata: msg.metadata as ConversationMessageMetadata,
+            } as ConversationMessage));
           } catch (error) {
             logger.error('[EnhancedConversationMemory] Failed to get archived messages', { error });
             return [];
           }
         },
-      })),
-      {
-        name: 'enhanced-conversation-memory',
-        version: 3, // Increment for DB integration
-        migrate: (persistedState: any, version: number) => {
-          if (version < 3) {
-            return {
-              ...persistedState,
-              isDbEnabled: true,
-              isSyncing: false,
-              defaultProcessors: DEFAULT_PROCESSORS,
-            };
-          }
-          return persistedState;
-        },
-        partialize: (state) => ({
-          sessions: state.sessions,
-          currentSessionId: state.currentSessionId,
-          isDbEnabled: state.isDbEnabled,
-          defaultProcessors: state.defaultProcessors,
-        }),
-        storage: createJSONStorage(() => {
-          if (typeof window !== 'undefined') {
-            return localStorage;
-          }
-          // SSR/Edge: return noop storage compatible with Storage interface
-          return {
-            getItem: (_key: string) => null,
-            setItem: (_key: string, _value: string) => {},
-            removeItem: (_key: string) => {},
-          } as unknown as Storage;
-        })
-      }
-    )
-  )
+});
+
+// Enhanced Memory Store Implementation with DB
+// Split the store creation to avoid deep type instantiation
+type EnhancedConversationMemoryStore = EnhancedConversationMemoryState;
+
+const persistConfig = {
+  name: 'enhanced-conversation-memory',
+  version: 3, // Increment for DB integration
+  migrate: (persistedState: any, version: number) => {
+    if (version < 3) {
+      return {
+        ...persistedState,
+        isDbEnabled: true,
+        isSyncing: false,
+        defaultProcessors: DEFAULT_PROCESSORS,
+      };
+    }
+    return persistedState;
+  },
+  partialize: (state: EnhancedConversationMemoryStore) => ({
+    sessions: state.sessions,
+    currentSessionId: state.currentSessionId,
+    isDbEnabled: state.isDbEnabled,
+    defaultProcessors: state.defaultProcessors,
+  }),
+  storage: createJSONStorage(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage;
+    }
+    // SSR/Edge: return noop storage compatible with Storage interface
+    const noopStorage = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    return noopStorage as any;
+  })
+};
+
+// Create store with explicit typing to avoid deep instantiation
+export const useEnhancedConversationMemory = create<EnhancedConversationMemoryStore>()(
+  devtools(
+    persist(
+      immer(enhancedStoreImplementation as any),
+      persistConfig as any
+    ) as any
+  ) as any
 );
 
 // Export convenience functions

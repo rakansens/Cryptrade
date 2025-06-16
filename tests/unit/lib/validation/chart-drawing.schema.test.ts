@@ -8,7 +8,7 @@ import {
   isValidDrawing,
   type DrawingType,
   type DrawingMode
-} from '@/lib/chart-drawing.schema';
+} from '@/lib/validation/chart-drawing.schema';
 import {
   DrawingPointSchema,
   DrawingStyleSchema,

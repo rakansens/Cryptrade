@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { ChatDatabaseService } from '@/lib/database/chat.service';
+import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies

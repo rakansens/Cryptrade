@@ -4,8 +4,8 @@ import {
   safeParseOrError, 
   validateWithCallbacks,
   CommonSchemas 
-} from '@/lib/validation';
-import { logger } from '@/lib/logger';
+} from '@/lib/utils/validation';
+import { logger } from '@/lib/utils/logger';
 
 // Mock logger
 jest.mock('@/lib/logger', () => ({

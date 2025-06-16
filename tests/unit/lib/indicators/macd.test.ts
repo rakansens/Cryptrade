@@ -1,20 +1,20 @@
 import { describe, it, expect } from '@jest/globals';
-import { calculateMACD, getMACDColor, getMACDSignal } from '@/lib/macd';
+import { calculateMACD, getMACDColor, getMACDSignal } from '@/lib/indicators/macd';
 
 describe('calculateMACD', () => {
   // Simple test data with known pattern
-  const simpleTestData = Array.from({ length: 50 }, (_, i) => ({
+  const simpleTestData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 100 + Math.sin(i * 0.2) * 10 // Sinusoidal pattern
   }));
 
   // Trending data for testing crossovers
-  const trendingUpData = Array.from({ length: 50 }, (_, i) => ({
+  const trendingUpData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 100 + i * 2 // Linear uptrend
   }));
 
-  const trendingDownData = Array.from({ length: 50 }, (_, i) => ({
+  const trendingDownData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
     time: 1000 + i * 1000,
     close: 200 - i * 2 // Linear downtrend
   }));
@@ -26,7 +26,7 @@ describe('calculateMACD', () => {
       expect(result.length).toBeGreaterThan(0);
       expect(result.length).toBe(simpleTestData.length - 26 - 9 + 1); // 50 - 26 - 9 + 1 = 16
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(point).toHaveProperty('time');
         expect(point).toHaveProperty('macd');
         expect(point).toHaveProperty('signal');
@@ -48,7 +48,7 @@ describe('calculateMACD', () => {
       // Result length should be data.length - slowPeriod - signalPeriod + 1
       expect(result.length).toBe(simpleTestData.length - 10 - 3 + 1); // 50 - 10 - 3 + 1 = 38
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(point.histogram).toBeCloseTo(point.macd - point.signal, 10);
       });
     });
@@ -77,7 +77,7 @@ describe('calculateMACD', () => {
       
       // In a strong uptrend, MACD should be mostly positive
       const lastFewPoints = result.slice(-5);
-      lastFewPoints.forEach(point => {
+      lastFewPoints.forEach((point: { macd: number }) => {
         expect(point.macd).toBeGreaterThan(0);
       });
     });
@@ -87,14 +87,14 @@ describe('calculateMACD', () => {
       
       // In a strong downtrend, MACD should be mostly negative
       const lastFewPoints = result.slice(-5);
-      lastFewPoints.forEach(point => {
+      lastFewPoints.forEach((point: { macd: number }) => {
         expect(point.macd).toBeLessThan(0);
       });
     });
 
     it('should detect convergence and divergence', () => {
       // Create data with convergence pattern
-      const convergenceData = Array.from({ length: 50 }, (_, i) => ({
+      const convergenceData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + (i < 25 ? i * 2 : 150 - (i - 25) * 0.5) // Up then slow down
       }));
@@ -130,14 +130,14 @@ describe('calculateMACD', () => {
 
   describe('edge cases', () => {
     it('should handle constant price data', () => {
-      const constantData = Array.from({ length: 50 }, (_, i) => ({
+      const constantData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 // Constant price
       }));
       
       const result = calculateMACD(constantData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(point.macd).toBeCloseTo(0, 10);
         expect(point.signal).toBeCloseTo(0, 10);
         expect(point.histogram).toBeCloseTo(0, 10);
@@ -145,7 +145,7 @@ describe('calculateMACD', () => {
     });
 
     it('should handle volatile data', () => {
-      const volatileData = Array.from({ length: 50 }, (_, i) => ({
+      const volatileData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 100 + (i % 2 === 0 ? 20 : -20) // Oscillating
       }));
@@ -153,7 +153,7 @@ describe('calculateMACD', () => {
       const result = calculateMACD(volatileData);
       
       expect(result.length).toBeGreaterThan(0);
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(isFinite(point.macd)).toBe(true);
         expect(isFinite(point.signal)).toBe(true);
         expect(isFinite(point.histogram)).toBe(true);
@@ -190,20 +190,20 @@ describe('calculateMACD', () => {
       
       expect(result.length).toBeGreaterThan(0);
       // Verify calculations are reasonable
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(Math.abs(point.macd)).toBeLessThan(50); // Should be reasonable given input range
       });
     });
 
     it('should handle large numbers without overflow', () => {
-      const largeNumberData = Array.from({ length: 50 }, (_, i) => ({
+      const largeNumberData = Array.from({ length: 50 }, (_: unknown, i: number) => ({
         time: 1000 + i * 1000,
         close: 50000 + Math.sin(i * 0.2) * 1000
       }));
       
       const result = calculateMACD(largeNumberData);
       
-      result.forEach(point => {
+      result.forEach((point: { time: number; macd: number; signal: number; histogram: number }) => {
         expect(isFinite(point.macd)).toBe(true);
         expect(isFinite(point.signal)).toBe(true);
         expect(isFinite(point.histogram)).toBe(true);
@@ -270,7 +270,7 @@ describe('getMACDSignal', () => {
 
 describe('MACD performance', () => {
   it('should calculate efficiently for large datasets', () => {
-    const largeData = Array.from({ length: 1000 }, (_, i) => ({
+    const largeData = Array.from({ length: 1000 }, (_: unknown, i: number) => ({
       time: 1000 + i * 1000,
       close: 100 + Math.sin(i * 0.1) * 20 + Math.random() * 5
     }));
@@ -287,7 +287,7 @@ describe('MACD performance', () => {
 describe('MACD integration scenarios', () => {
   it('should work with real-world Bitcoin price patterns', () => {
     // Simulate Bitcoin-like price movement
-    const btcData = Array.from({ length: 100 }, (_, i) => {
+    const btcData = Array.from({ length: 100 }, (_: unknown, i: number) => {
       const trend = i * 100;
       const volatility = Math.sin(i * 0.3) * 500;
       const noise = Math.random() * 200 - 100;
@@ -302,7 +302,7 @@ describe('MACD integration scenarios', () => {
     expect(result.length).toBeGreaterThan(0);
     
     // Check for reasonable values
-    result.forEach(point => {
+    result.forEach((point: { macd: number; signal: number; histogram: number }) => {
       expect(Math.abs(point.macd)).toBeLessThan(5000); // Reasonable for BTC
       expect(Math.abs(point.signal)).toBeLessThan(5000);
       expect(Math.abs(point.histogram)).toBeLessThan(1000);

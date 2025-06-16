@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { FeatureExtractor } from '@/lib/feature-extractor';
+import { FeatureExtractor } from '@/lib/ml/feature-extractor';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
-import type { LineFeatures } from '@/lib/line-validation-types';
+import type { LineFeatures } from '@/lib/ml/line-validation-types';
 
 describe('FeatureExtractor', () => {
   let extractor: FeatureExtractor;

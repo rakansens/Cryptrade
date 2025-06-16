@@ -104,13 +104,13 @@ describe('WSManager E2E - Error Handling', () => {
         debug: true
       });
 
-      let _errorMessageReceived = false;
+      // let _errorMessageReceived = false;
 
       const subscription = manager.subscribe('invalid@stream').subscribe({
         next: (data) => {
           // Check if it's an error message
           if (data && typeof data === 'object' && 'error' in data) {
-            _errorMessageReceived = true;
+            // _errorMessageReceived = true;
             const error = data['error'] as any;
             expect(error.code).toBe(-1121);
             expect(error.msg).toBe('Invalid symbol');

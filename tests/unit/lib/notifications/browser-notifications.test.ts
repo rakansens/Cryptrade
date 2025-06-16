@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { BrowserNotificationManager, notifications } from '@/lib/browser-notifications';
+import { BrowserNotificationManager, notifications } from '@/lib/notifications/browser-notifications';
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger
@@ -411,7 +411,7 @@ describe('BrowserNotificationManager', () => {
       }));
       
       // Dynamic import to trigger initialization
-      await import('@/lib/browser-notifications');
+      await import('@/lib/notifications/browser-notifications');
       
       // Should check localStorage
       expect(localStorageMock.getItem).toHaveBeenCalledWith('auto-request-notifications');

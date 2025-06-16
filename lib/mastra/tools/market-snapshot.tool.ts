@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createTool } from '@mastra/core';
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 
 /**
  * Market Snapshot Tool - Quick Market Overview for Casual Conversations
@@ -95,13 +96,23 @@ export const marketSnapshotTool = createTool({
           marketHighlight += ' 市場は慎重な動きを見せています。';
         }
         
+        // 開発環境用のモックデータ
+        const isDevelopment = env.NODE_ENV === 'development';
+        const mockMarketCap = 1.52e12;
+        const mockBtcDominance = 48.5;
+        
+        if (isDevelopment) {
+          logger.info('[MarketSnapshot] Using mock market cap and BTC dominance in development');
+        }
+        
         return {
           marketMood,
           topGainers,
           topLosers,
           marketHighlight,
-          totalMarketCap: 1.52e12, // TODO: 実際の時価総額を取得
-          btcDominance: 48.5, // TODO: 実際のBTCドミナンスを取得
+          totalMarketCap: isDevelopment ? mockMarketCap : 0, // 本番環境では0を返す（データ取得未実装）
+          btcDominance: isDevelopment ? mockBtcDominance : 0, // 本番環境では0を返す（データ取得未実装）
+          warning: isDevelopment ? undefined : 'Market cap and BTC dominance data not available',
         };
       } catch (error) {
         logger.warn('[MarketSnapshot] Failed to fetch live data, using fallback', { error });

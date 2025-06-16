@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { chartControlTool } from '@/tests/tools/chart-control.tool';
-import { uiStateTool } from '@/tests/tools/ui-state.tool';
+import { chartControlTool } from '@/lib/mastra/tools/chart-control.tool';
+import { uiStateTool } from '@/lib/mastra/tools/ui-state.tool';
 
 // Mock the chart store
 const mockSetSymbol = jest.fn();

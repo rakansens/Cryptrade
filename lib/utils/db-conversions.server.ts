@@ -1,3 +1,8 @@
+import { Decimal } from '@prisma/client/runtime/library';
+import type { 
+  AnalysisRecord as DbAnalysisRecord,
+  TouchEvent as DbTouchEvent
+} from '@prisma/client';
 import type { 
   AnalysisRecord,
   ProposalData,
@@ -5,38 +10,13 @@ import type {
   TrackingData
 } from '@/types/analysis-history';
 
-// Client-safe type definitions (without Prisma dependencies)
-type DbAnalysisRecord = {
-  id: string;
-  proposalId: string | null;
-  sessionId: string | null;
-  symbol: string;
-  interval: string;
-  type: string;
-  timestamp: bigint;
-  proposalData: unknown;
-  trackingData: unknown;
-  performanceData: unknown;
-  synced: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  touchEvents?: DbTouchEvent[];
-};
-
-type DbTouchEvent = {
-  id: string;
-  timestamp: bigint;
-  price: { toString(): string };
-  result: string;
-  volume: { toString(): string } | null;
-  strength: { toString(): string };
-};
-
 /**
  * Convert database analysis record to client format
  */
 export function convertDbAnalysisRecord(
-  dbRecord: DbAnalysisRecord
+  dbRecord: DbAnalysisRecord & {
+    touchEvents?: DbTouchEvent[];
+  }
 ): AnalysisRecord {
   // Parse JSON fields
   const proposalData = dbRecord.proposalData as ProposalData | null;
@@ -141,7 +121,7 @@ export function serializeBigInt(value: bigint): string {
 /**
  * Convert Decimal to number for JSON serialization
  */
-export function serializeDecimal(value: { toString(): string }): number {
+export function serializeDecimal(value: Decimal): number {
   return Number(value.toString());
 }
 
@@ -157,7 +137,7 @@ export function prepareChartDrawingData(drawing: any): any {
     type,
     points: points || [],
     style: style || {},
-    price: price !== undefined ? price : undefined,
+    price: price !== undefined ? new Decimal(price) : undefined,
     time: time !== undefined ? BigInt(time) : undefined,
     levels: levels || undefined,
     metadata: metadata || undefined,
@@ -193,7 +173,7 @@ export function preparePatternAnalysisData(pattern: any) {
     interval,
     startTime: BigInt(startTime),
     endTime: BigInt(endTime),
-    confidence,
+    confidence: new Decimal(confidence),
     visualization: visualization || {},
     metrics: metrics || {},
     description,

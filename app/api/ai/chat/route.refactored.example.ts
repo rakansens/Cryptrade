@@ -64,24 +64,27 @@ export const POST = createApiHandler<ChatRequest>({
       // Convert OrchestratorExecutionResponse to OrchestratorResult
       const orchestratorResult: OrchestratorResult = {
         success: orchestratorResponse.success,
-        proposalGroup: orchestratorResponse.executionResult?.proposalGroup,
-        error: orchestratorResponse.executionResult?.error ? {
-          code: orchestratorResponse.executionResult.error.code || 'UNKNOWN_ERROR',
-          message: orchestratorResponse.executionResult.error.message,
-          details: orchestratorResponse.executionResult.error.details
-        } : undefined,
-        metadata: orchestratorResponse.executionResult?.metadata,
         analysis: {
           intent: orchestratorResponse.analysis.intent as string,
           confidence: orchestratorResponse.analysis.confidence,
           reasoning: (orchestratorResponse.analysis as any).reasoning || '',
           analysisDepth: (orchestratorResponse.analysis as any).analysisDepth || 'basic',
           isProposalMode: (orchestratorResponse.analysis as any).isProposalMode === true,
-          proposalType: (orchestratorResponse.analysis as any).proposalType
+          proposalType: (orchestratorResponse.analysis as any).proposalType,
         },
         executionTime: orchestratorResponse.executionTime,
-        executionResult: orchestratorResponse.executionResult,
-        memoryContext: orchestratorResponse.memoryContext,
+        ...(orchestratorResponse.executionResult?.proposalGroup && { proposalGroup: orchestratorResponse.executionResult.proposalGroup }),
+        ...(orchestratorResponse.executionResult?.error && {
+          error: {
+            code: (orchestratorResponse.executionResult.error as any).code || 'UNKNOWN_ERROR',
+            message: orchestratorResponse.executionResult.error.message || 'Unknown error',
+            ...((orchestratorResponse.executionResult.error as any).details && { details: (orchestratorResponse.executionResult.error as any).details }),
+            ...((orchestratorResponse.executionResult.error as any).stack && { stack: (orchestratorResponse.executionResult.error as any).stack })
+          }
+        }),
+        ...(orchestratorResponse.executionResult?.metadata && { metadata: orchestratorResponse.executionResult.metadata }),
+        ...(orchestratorResponse.executionResult && { executionResult: orchestratorResponse.executionResult }),
+        ...(orchestratorResponse.memoryContext && { memoryContext: orchestratorResponse.memoryContext }),
       };
 
       // Process orchestrator result

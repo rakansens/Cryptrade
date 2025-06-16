@@ -7,8 +7,8 @@ const restoreEnv = mockTestEnv({
   TELEMETRY_API_KEY: ''
 });
 
-import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/error-tracker';
-import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/base-error';
+import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
+import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/errors/base-error';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
 

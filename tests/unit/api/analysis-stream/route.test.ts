@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/route';
+import { GET } from '@/app/api/ai/analysis-stream/route';
 import { 
   AnalysisProgressEvent, 
   getAnalysisSteps 

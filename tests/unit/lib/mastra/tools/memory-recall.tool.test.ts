@@ -3,7 +3,7 @@ import {
   memoryRecallTool,
   formatConversationContext,
   extractMetadataFromQuery 
-} from '@/lib/mastra/memory-recall.tool';
+} from '@/lib/mastra/tools/memory-recall.tool';
 import { useConversationMemory } from '@/lib/store/conversation-memory.store';
 import { logger } from '@/lib/utils/logger';
 

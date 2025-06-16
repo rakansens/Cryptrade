@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { executeImprovedOrchestrator } from '@/tests/agents/orchestrator.agent';
-import { registerAllAgents } from '@/tests/network/agent-registry';
+import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
+import { registerAllAgents } from '@/lib/mastra/network/agent-registry';
 import { extractProposalGroup } from '@/lib/api/helpers/proposal-extractor';
 import { logger } from '@/lib/utils/logger';
 
@@ -139,7 +139,7 @@ jest.mock('@ai-sdk/openai', () => ({
 }));
 
 // Mock entry proposal tool dependencies
-jest.mock('@/tests/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
   analyzeMarketContext: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     trend: 'bullish',
     volatility: 'normal',
@@ -149,7 +149,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/analyzers/market-context-anal
   }),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
   evaluateEntryConditions: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
@@ -160,7 +160,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/analyzers/condition-evaluator
   }),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/calculators/entry-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator', () => ({
   calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
     {
       price: 100500,
@@ -180,7 +180,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/calculators/entry-calculator'
   ]),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],

@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
-import { analyzeUserIntent, executeImprovedOrchestrator } from '@/lib/agents/orchestrator.agent';
-import { agentSelectionTool } from '@/lib/tools/agent-selection.tool';
+import { analyzeUserIntent, executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
+import { agentSelectionTool } from '@/lib/mastra/tools/agent-selection.tool';
 
 describe('Improved Orchestrator Agent', () => {
   describe('Intent Analysis (Pure Function)', () => {
@@ -217,7 +217,7 @@ describe('Improved Orchestrator Agent', () => {
 
     it('should return fallback analysis on complete failure', async () => {
       // Mock the analyzeIntent function to throw an error
-      const analyzeIntentModule = await import('@/lib/utils/intent');
+      const analyzeIntentModule = await import('@/lib/mastra/utils/intent');
       jest.spyOn(analyzeIntentModule, 'analyzeIntent').mockImplementationOnce(() => {
         throw new Error('Analysis failed');
       });

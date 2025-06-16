@@ -8,7 +8,7 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-import { metricsCollector, incrementMetric, setMetric, observeMetric } from '@/lib/metrics';
+import { metricsCollector, incrementMetric, setMetric, observeMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 
 describe('MetricsCollector', () => {

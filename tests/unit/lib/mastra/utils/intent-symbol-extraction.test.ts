@@ -1,4 +1,4 @@
-import { extractSymbol, analyzeIntent } from '@/lib/mastra/intent';
+import { extractSymbol, analyzeIntent } from '@/lib/mastra/utils/intent';
 
 describe('Symbol Extraction', () => {
   describe('extractSymbol', () => {

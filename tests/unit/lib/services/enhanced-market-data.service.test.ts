@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { EnhancedMarketDataService, TimeframeConfig } from '@/lib/enhanced-market-data.service';
+import { EnhancedMarketDataService, TimeframeConfig } from '@/lib/services/enhanced-market-data.service';
 import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline } from '@/types/market';
 
@@ -17,15 +17,15 @@ jest.mock('@/lib/api/base-service');
 
 describe('EnhancedMarketDataService', () => {
   let service: EnhancedMarketDataService;
-  let mockGet: jest.Mock;
+  let mockGet: jest.Mock<any>;
   
   beforeEach(() => {
     jest.clearAllMocks();
     service = new EnhancedMarketDataService();
     
     // Mock the get method
-    mockGet = jest.fn();
-    service['get'] = mockGet as typeof service['get'];
+    mockGet = jest.fn<any>();
+    (service as any)['get'] = mockGet;
   });
 
   describe('fetchMultiTimeframeData', () => {
@@ -55,10 +55,12 @@ describe('EnhancedMarketDataService', () => {
         { interval: '1h', weight: 0.3, dataPoints: 100 },
       ];
 
-      mockGet.mockImplementation((_url: string, _params?: Record<string, string>) => {
+      mockGet.mockImplementation(() => {
         return Promise.resolve({
           data: mockKlineData,
           status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
         });
       });
 
@@ -79,15 +81,25 @@ describe('EnhancedMarketDataService', () => {
       expect(result.symbol).toBe(symbol);
       expect(result.timeframes['15m']).toBeDefined();
       expect(result.timeframes['1h']).toBeDefined();
-      expect(result.timeframes['15m']?.data).toEqual(mockKlineData);
-      expect(result.timeframes['15m']?.weight).toBe(0.2);
+      expect(result.timeframes['15m']).toBeDefined();
+      if (result.timeframes['15m']) {
+        expect(result.timeframes['15m'].data).toEqual(mockKlineData);
+      }
+      if (result.timeframes['15m']) {
+        expect(result.timeframes['15m'].weight).toBe(0.2);
+      }
     });
 
     it('should use cached data when available', async () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
+      mockGet.mockResolvedValue({ 
+        data: mockKlineData, 
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+      });
       const result1 = await service.fetchMultiTimeframeData(symbol);
       
       // Second call - should use cache
@@ -102,11 +114,16 @@ describe('EnhancedMarketDataService', () => {
     it('should handle partial failures gracefully', async () => {
       const symbol = 'BTCUSDT';
       
-      mockGet.mockImplementation((_url: string, _params?: any) => {
+      mockGet.mockImplementation((_url: any, _params?: any) => {
         if (_params?.interval === '15m') {
           return Promise.reject(new Error('Network error'));
         }
-        return Promise.resolve({ data: mockKlineData, status: 200 });
+        return Promise.resolve({ 
+          data: mockKlineData, 
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+        });
       });
 
       const result = await service.fetchMultiTimeframeData(symbol);
@@ -133,7 +150,12 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // First call - should fetch
-      mockGet.mockResolvedValue({ data: mockKlineData, status: 200 });
+      mockGet.mockResolvedValue({ 
+        data: mockKlineData, 
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+      });
       await service.fetchMultiTimeframeData(symbol);
       
       // Simulate cache expiry by setting to a very small value
@@ -188,7 +210,10 @@ describe('EnhancedMarketDataService', () => {
         expect(level).toHaveProperty('timeframeSupport');
         expect(level).toHaveProperty('confidenceScore');
         expect(level).toHaveProperty('type');
-        expect(['support', 'resistance']).toContain(level?.type);
+        expect(level).toBeDefined();
+        if (level) {
+          expect(['support', 'resistance']).toContain(level.type);
+        }
       }
     });
 
@@ -249,15 +274,20 @@ describe('EnhancedMarketDataService', () => {
       if (zones.length > 0) {
         const zone = zones[0];
         expect(zone).toHaveProperty('priceRange');
-        expect(zone?.priceRange).toHaveProperty('min');
-        expect(zone?.priceRange).toHaveProperty('max');
-        expect(zone?.priceRange).toHaveProperty('center');
+        expect(zone).toBeDefined();
+        if (zone) {
+          expect(zone.priceRange).toHaveProperty('min');
+          expect(zone.priceRange).toHaveProperty('max');
+          expect(zone.priceRange).toHaveProperty('center');
+        }
         expect(zone).toHaveProperty('strength');
         expect(zone).toHaveProperty('timeframeCount');
         expect(zone).toHaveProperty('supportingTimeframes');
         expect(zone).toHaveProperty('levels');
         expect(zone).toHaveProperty('type');
-        expect(['support', 'resistance', 'pivot']).toContain(zone?.type);
+        if (zone) {
+          expect(['support', 'resistance', 'pivot']).toContain(zone.type);
+        }
       }
     });
 
@@ -355,7 +385,12 @@ describe('EnhancedMarketDataService', () => {
       const symbol = 'BTCUSDT';
       
       // Add some data to cache
-      mockGet.mockResolvedValue({ data: [], status: 200 });
+      mockGet.mockResolvedValue({ 
+        data: [], 
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+      });
       await service.fetchMultiTimeframeData(symbol);
       
       const stats = service.getCacheStats();
@@ -364,7 +399,10 @@ describe('EnhancedMarketDataService', () => {
       expect(stats.entries).toHaveLength(stats.size);
       expect(stats.entries[0]).toHaveProperty('key');
       expect(stats.entries[0]).toHaveProperty('age');
-      expect(stats.entries[0]?.age).toBeGreaterThanOrEqual(0);
+      expect(stats.entries[0]).toBeDefined();
+      if (stats.entries[0]) {
+        expect(stats.entries[0].age).toBeGreaterThanOrEqual(0);
+      }
     });
   });
 

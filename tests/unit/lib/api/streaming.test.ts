@@ -1,4 +1,4 @@
-import { StreamingResponseBuilder, streamJSON, streamTextWithEffect, ProgressStream } from '@/lib/streaming';
+import { StreamingResponseBuilder, streamJSON, streamTextWithEffect, ProgressStream } from '@/lib/api/streaming';
 import { logger } from '@/lib/utils/logger';
 import { NextRequest } from 'next/server';
 

@@ -4,7 +4,7 @@ import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
 import { NextRequest } from 'next/server';
-import { GET, POST, OPTIONS } from '@/app/api/route';
+import { GET, POST, OPTIONS } from '@/app/api/monitoring/circuit-breaker/route';
 import { 
   getMarketDataCircuitBreakerStatus, 
   resetMarketDataCircuitBreaker 

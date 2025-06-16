@@ -1,4 +1,4 @@
-import { AnalysisService } from '@/lib/services/analysis.service';
+import { AnalysisService } from '@/lib/services/database/analysis.service';
 import { prisma } from '@/lib/db/prisma';
 // import { DrawingProposal } from '@/types/proposals'; // Not used
 

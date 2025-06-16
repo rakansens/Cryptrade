@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
 import { ChartDrawingManager } from '@/lib/chart/drawing-primitives';
-import type { ChartDrawing } from '@/types/drawing';
+// import type { ChartDrawing } from '@/types/drawing';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -165,7 +165,7 @@ describe('Drawing Reliability Tests', () => {
         setVisible: jest.fn(),
       });
       
-      const drawing: ChartDrawing = {
+      const drawing = {
         id: 'test',
         type: 'trendline' as const,
         points: [
@@ -182,7 +182,7 @@ describe('Drawing Reliability Tests', () => {
         interactive: true,
       };
       
-      manager.addDrawing(drawing);
+      manager.addDrawing(drawing as any);
       
       expect(addEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({

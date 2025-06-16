@@ -3,8 +3,6 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
-
-import { createDbSyncHandlers } from "@/lib/store/db-sync";
 import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
 /**
  * Conversation Memory Store with Database Integration
@@ -43,11 +41,11 @@ interface ConversationMemoryState {
   loadFromDatabase: () => Promise<void>;
 }
 
-// Memory Store Implementation
-export const useConversationMemory = create<ConversationMemoryState>()(
-  devtools(
-    persist(
-      immer((set, get) => ({
+// Simplify the type by extracting the store implementation
+type SetState = (state: (draft: ConversationMemoryState) => void) => void;
+type GetState = () => ConversationMemoryState;
+
+const storeImplementation = (set: SetState, get: GetState): ConversationMemoryState => ({
         sessions: {},
         currentSessionId: null,
         isDbEnabled: true,
@@ -86,27 +84,28 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           
           // Update local state
           set((state) => {
-            const session = state.sessions[message.sessionId];
-            if (!session) {
+            const sessionId = message.sessionId;
+            if (!state.sessions[sessionId]) {
               logger.warn('[ConversationMemory] Session not found, creating new', { 
-                sessionId: message.sessionId 
+                sessionId 
               });
-              state.sessions[message.sessionId] = {
-                id: message.sessionId,
+              state.sessions[sessionId] = {
+                id: sessionId,
                 startedAt: timestamp,
                 lastActiveAt: timestamp,
                 messages: [],
               };
             }
             
-            const currentSession = state.sessions[message.sessionId];
-            if (currentSession) {
-              currentSession.messages.push(fullMessage);
-              currentSession.lastActiveAt = timestamp;
+            // Add message to session
+            if (state.sessions[sessionId]) {
+              const sess = state.sessions[sessionId]!;
+              sess.messages = sess.messages.concat(fullMessage);
+              sess.lastActiveAt = timestamp;
               
-              // Keep only recent 8 messages per session for memory efficiency
-              if (currentSession.messages.length > 8) {
-                currentSession.messages = currentSession.messages.slice(-8);
+              // Keep only recent 8 messages
+              if (sess.messages.length > 8) {
+                sess.messages = sess.messages.slice(-8);
               }
             }
           });
@@ -168,7 +167,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const state = get();
           
           set((state) => {
-            for (const session of Object.values(state.sessions) as ConversationSession[]) {
+            for (const sessionId in state.sessions) {
+            const session = state.sessions[sessionId];
               if (!session) continue;
               const message = session.messages.find(m => m.id === messageId);
               if (message) {
@@ -221,7 +221,8 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           const results: ConversationMessage[] = [];
           const queryLower = query.toLowerCase();
           
-          for (const session of Object.values(sessions) as ConversationSession[]) {
+          for (const sessionId in sessions) {
+            const session = sessions[sessionId];
             if (!session) continue;
             
             for (const message of session.messages) {
@@ -255,29 +256,115 @@ export const useConversationMemory = create<ConversationMemoryState>()(
           logger.info('[ConversationMemory] Session summarized', { sessionId, summary });
         },
         // DB sync handlers
-        ...createDbSyncHandlers(set, get),
-      })),
-      {
-        name: 'conversation-memory',
-        version: 2, // Increment for DB integration
-        migrate: (persistedState: unknown, version: number) => {
-          if (version === 0 || version === 1) {
-            return {
-              ...(persistedState as Record<string, unknown>),
-              isDbEnabled: true,
-              isSyncing: false,
-            };
+        enableDbSync: async () => {
+          set((state) => { state.isDbEnabled = true; });
+          const state = get();
+          if (Object.keys(state.sessions).length > 0) {
+            try {
+              set((s) => { s.isSyncing = true; });
+              for (const sessionId in state.sessions) {
+                const session = state.sessions[sessionId];
+                if (!session || !session.messages) continue;
+                for (const message of session.messages) {
+                  await ConversationMemoryAPI.addMessage({
+                    sessionId: session.id,
+                    role: message.role,
+                    content: message.content,
+                    ...(message.agentId && { agentId: message.agentId }),
+                    ...(message.metadata && { metadata: message.metadata as any }),
+                  });
+                }
+              }
+              set((s) => { s.isSyncing = false; });
+              logger.info('[ConversationMemory] DB sync enabled and data migrated');
+            } catch (error) {
+              logger.error('[ConversationMemory] Failed to migrate to DB', { error });
+              set((s) => { s.isSyncing = false; });
+            }
           }
-          return persistedState;
         },
-        partialize: (state) => ({
-          sessions: state.sessions,
-          currentSessionId: state.currentSessionId,
-          isDbEnabled: state.isDbEnabled,
-        }),
-      }
-    )
-  )
+
+        disableDbSync: () => {
+          set((state) => { state.isDbEnabled = false; });
+          logger.info('[ConversationMemory] DB sync disabled');
+        },
+
+        syncWithDatabase: async () => {
+          const state = get();
+          if (!state.isDbEnabled) return;
+          set((s) => { s.isSyncing = true; });
+          try {
+            for (const sessionId in state.sessions) {
+              const session = state.sessions[sessionId];
+              if (!session || !session.messages) continue;
+              for (const message of session.messages) {
+                await ConversationMemoryAPI.addMessage({
+                  sessionId: session.id,
+                  role: message.role,
+                  content: message.content,
+                  ...(message.agentId && { agentId: message.agentId }),
+                  ...(message.metadata && { metadata: message.metadata as any }),
+                });
+              }
+            }
+            set((s) => { s.isSyncing = false; });
+            logger.info('[ConversationMemory] Synced with database');
+          } catch (error) {
+            logger.error('[ConversationMemory] Sync failed', { error });
+            set((s) => { s.isSyncing = false; });
+          }
+        },
+
+        loadFromDatabase: async () => {
+          const state = get();
+          if (!state.isDbEnabled) return;
+          try {
+            const sessions: Record<string, ConversationSession> = {};
+            set((s) => {
+              s.sessions = sessions;
+              if (Object.keys(sessions).length > 0) {
+                s.currentSessionId = Object.keys(sessions)[0] || null;
+              }
+            });
+            logger.info('[ConversationMemory] Loaded from database', { sessionCount: Object.keys(sessions).length });
+          } catch (error) {
+            logger.error('[ConversationMemory] Failed to load from database', { error });
+          }
+        },
+});
+
+// Memory Store Implementation with simplified type inference
+// Split the store creation to avoid deep type instantiation
+type ConversationMemoryStore = ConversationMemoryState;
+
+const persistConfig = {
+  name: 'conversation-memory',
+  version: 2, // Increment for DB integration
+  migrate: (persistedState: unknown, version: number) => {
+    if (version === 0 || version === 1) {
+      return {
+        ...(persistedState as Record<string, unknown>),
+        isDbEnabled: true,
+        isSyncing: false,
+      };
+    }
+    return persistedState as any;
+  },
+  partialize: (state: ConversationMemoryStore) => ({
+    sessions: state.sessions,
+    currentSessionId: state.currentSessionId,
+    isDbEnabled: state.isDbEnabled,
+  }),
+};
+
+// Create store with explicit typing to avoid deep instantiation
+export const useConversationMemory = create<ConversationMemoryStore>()(
+  devtools(
+    persist(
+      immer(storeImplementation as any),
+      persistConfig as any
+    ) as any
+  ) as any
 );
 
 // Helper functions for semantic search (future implementation)
@@ -315,7 +402,8 @@ export async function semanticSearch(
     
     // Collect all messages with their embeddings
     const allMessages: ConversationMessage[] = [];
-    for (const session of Object.values(sessions)) {
+    for (const sessionId in sessions) {
+      const session = sessions[sessionId];
       if (!session) continue;
       allMessages.push(...session.messages);
     }

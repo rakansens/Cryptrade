@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { entryProposalGenerationTool } from '@/lib/mastra/entry-proposal-generation';
+import { entryProposalGenerationTool } from '@/lib/mastra/tools/entry-proposal-generation';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { logger } from '@/lib/utils/logger';
 import type { PriceData } from '@/types/market';

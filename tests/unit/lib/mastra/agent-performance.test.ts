@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { agentNetwork } from '@/lib/network/agent-network';
-import { executeImprovedOrchestrator } from '@/lib/agents/orchestrator.agent';
-import { marketDataResilientTool } from '@/lib/tools/market-data-resilient.tool';
+import { agentNetwork } from '@/lib/mastra/network/agent-network';
+import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
+import { marketDataResilientTool } from '@/lib/mastra/tools/market-data-resilient.tool';
 
 /**
  * エージェントシステムのパフォーマンステスト

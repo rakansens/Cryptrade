@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { entryProposalGenerationTool } from '@/tests/tools/entry-proposal-generation';
+import { entryProposalGenerationTool } from '@/lib/mastra/tools/entry-proposal-generation';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -65,7 +65,7 @@ jest.mock('@/lib/binance/api-service', () => ({
 }));
 
 // Mock the entry proposal dependencies
-jest.mock('@/tests/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
   analyzeMarketContext: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     trend: 'bullish',
     volatility: 'normal',
@@ -75,7 +75,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/analyzers/market-context-anal
   }),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
   evaluateEntryConditions: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
@@ -86,7 +86,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/analyzers/condition-evaluator
   }),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/calculators/entry-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator', () => ({
   calculateEntryPoints: jest.fn<() => Promise<unknown>>().mockResolvedValue([
     {
       price: 100500,
@@ -106,7 +106,7 @@ jest.mock('@/tests/tools/entry-proposal-generation/calculators/entry-calculator'
   ]),
 }));
 
-jest.mock('@/tests/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn<() => Promise<unknown>>().mockResolvedValue({
     stopLoss: 99500,
     takeProfit: [102000, 103000],

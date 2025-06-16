@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { AgentNetwork, agentNetwork } from '@/tests/network/agent-network';
-import { registerAllAgents } from '@/tests/network/agent-registry';
+import { AgentNetwork, agentNetwork } from '@/lib/mastra/network/agent-network';
+import { registerAllAgents } from '@/lib/mastra/network/agent-registry';
 import { logger } from '@/../../lib/utils/logger';
 import type { AgentContext } from '@/types';
 
@@ -420,7 +420,7 @@ describe('A2A Integration Tests', () => {
 
   test('should integrate with agent selection tool', async () => {
     // エージェント選択ツールがA2A通信を使用できることを確認
-    const { agentSelectionTool } = await import('@/tests/tools/agent-selection.tool');
+    const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
     
     const result = await agentSelectionTool.execute({
       context: {
@@ -455,7 +455,7 @@ describe('A2A Integration Tests', () => {
       }),
     }));
 
-    const { executeImprovedOrchestrator } = await import('@/tests/agents/orchestrator.agent');
+    const { executeImprovedOrchestrator } = await import('@/lib/mastra/agents/orchestrator.agent');
     
     const result = await executeImprovedOrchestrator(
       'BTCの現在価格を教えて',

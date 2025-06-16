@@ -56,11 +56,36 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
       try {
         // Create full PatternData object with required fields
         const visualization: PatternVisualization = {
-          type: pattern.visualization?.type || pattern.type,
-          lines: pattern.visualization?.lines || [],
-          zones: pattern.visualization?.zones,
-          labels: pattern.visualization?.labels,
-          keyPoints: pattern.visualization?.keyPoints
+          type: (pattern.visualization as any)?.type || pattern.type,
+          lines: (pattern.visualization?.lines || []).map((line: any) => {
+            // Convert to PatternLine format if needed
+            if ('start' in line && 'end' in line) {
+              return line;
+            } else if ('point1' in line && 'point2' in line) {
+              return {
+                start: { time: line.point1.time, price: line.point1.value },
+                end: { time: line.point2.time, price: line.point2.value },
+                type: line.type,
+                style: line.style
+              };
+            } else if ('points' in line && Array.isArray(line.points) && line.points.length >= 2) {
+              return {
+                start: { time: line.points[0].time, price: line.points[0].value },
+                end: { time: line.points[1].time, price: line.points[1].value },
+                type: line.type,
+                style: line.style?.lineStyle
+              };
+            }
+            // Default case - create dummy line
+            return {
+              start: { time: Date.now(), price: 0 },
+              end: { time: Date.now(), price: 0 },
+              type: 'trend'
+            };
+          }),
+          ...((pattern.visualization as any)?.zones && { zones: (pattern.visualization as any).zones }),
+          ...((pattern.visualization as any)?.labels && { labels: (pattern.visualization as any).labels }),
+          ...((pattern.visualization as any)?.keyPoints && { keyPoints: (pattern.visualization as any).keyPoints })
         };
         
         const fullPatternData: PatternData = {
@@ -302,17 +327,26 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
               // Update line styles
               if (pattern.visualization.lines) {
                 pattern.visualization.lines = pattern.visualization.lines.map((line: any) => {
-                  // Ensure line is an object before spreading
-                  const baseLine = typeof line === 'object' && line !== null ? line : {};
-                  return {
-                    ...baseLine,
-                    style: {
-                      ...(baseLine.style && typeof baseLine.style === 'object' ? baseLine.style : {}),
-                      ...(baseStyle.color !== undefined && { color: baseStyle.color }),
-                      ...(baseStyle.lineWidth !== undefined && { lineWidth: baseStyle.lineWidth }),
-                      ...(baseStyle.lineStyle !== undefined && { lineStyle: baseStyle.lineStyle }),
-                    }
-                  };
+                  // Handle different line structures
+                  if ('start' in line && 'end' in line) {
+                    // PatternLine structure from store.types.ts
+                    return {
+                      ...line,
+                      style: baseStyle.lineStyle || line.style,
+                    };
+                  } else {
+                    // Other line structure
+                    const baseLine = typeof line === 'object' && line !== null ? line : {};
+                    return {
+                      ...baseLine,
+                      style: {
+                        ...(baseLine.style && typeof baseLine.style === 'object' ? baseLine.style : {}),
+                        ...(baseStyle.color !== undefined && { color: baseStyle.color }),
+                        ...(baseStyle.lineWidth !== undefined && { lineWidth: baseStyle.lineWidth }),
+                        ...(baseStyle.lineStyle !== undefined && { lineStyle: baseStyle.lineStyle }),
+                      }
+                    };
+                  }
                 });
               }
               

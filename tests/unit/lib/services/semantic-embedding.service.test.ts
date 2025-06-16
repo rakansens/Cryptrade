@@ -1,7 +1,8 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SemanticEmbeddingService } from '@/lib/semantic-embedding.service';
+import { SemanticEmbeddingService } from '@/lib/services/semantic-embedding.service';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
+import type { ApiResponse } from '@/lib/api/client';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -29,7 +30,7 @@ jest.mock('@/lib/api/base-service', () => ({
 
 describe('SemanticEmbeddingService', () => {
   let service: SemanticEmbeddingService;
-  let mockPost: jest.Mock;
+  let mockPost: jest.Mock<any>;
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,8 +39,8 @@ describe('SemanticEmbeddingService', () => {
     service = SemanticEmbeddingService.getInstance();
     
     // Mock the post method
-    mockPost = jest.fn().mockImplementation(() => Promise.resolve());
-    service['post'] = mockPost as typeof service['post'];
+    mockPost = jest.fn<any>();
+    service['post'] = mockPost as any;
     
     // Clear cache before each test
     service.clearCache();
@@ -58,8 +59,15 @@ describe('SemanticEmbeddingService', () => {
   });
 
   describe('generateEmbedding', () => {
-    const mockEmbeddingResponse = {
+    const mockEmbeddingResponse: ApiResponse<{
+      object: string;
+      data: Array<{ embedding: number[]; index: number; object: string }>;
+      model: string;
+      usage: { prompt_tokens: number; total_tokens: number };
+    }> = {
       status: 200,
+      statusText: 'OK',
+      headers: new Headers(),
       data: {
         object: 'list',
         data: [
@@ -138,11 +146,11 @@ describe('SemanticEmbeddingService', () => {
       (env as any).OPENAI_API_KEY = '';
       
       // Override post to check for API key
-      service['post'] = async function<T>(url: string, data?: unknown): Promise<T> {
+      service['post'] = async function<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
         if (!env.OPENAI_API_KEY) {
           throw new Error('OPENAI_API_KEY environment variable is not set');
         }
-        return mockPost(url, data) as T;
+        return mockPost(url, data) as Promise<ApiResponse<T>>;
       };
       
       await expect(service.generateEmbedding('test')).rejects.toThrow('OPENAI_API_KEY environment variable is not set');
@@ -232,8 +240,15 @@ describe('SemanticEmbeddingService', () => {
       { content: 'BTC support level analysis', embedding: [0.15, 0.25, 0.35] },
     ];
 
-    const mockQueryEmbedding = {
+    const mockQueryEmbedding: ApiResponse<{
+      object: string;
+      data: Array<{ embedding: number[]; index: number; object: string }>;
+      model: string;
+      usage: { prompt_tokens: number; total_tokens: number };
+    }> = {
       status: 200,
+      statusText: 'OK',
+      headers: new Headers(),
       data: {
         object: 'list',
         data: [{ embedding: [0.12, 0.22, 0.32], index: 0, object: 'embedding' }],
@@ -265,8 +280,15 @@ describe('SemanticEmbeddingService', () => {
         { content: 'Ethereum analysis' },
       ];
 
-      const mockItemEmbedding = {
+      const mockItemEmbedding: ApiResponse<{
+        object: string;
+        data: Array<{ embedding: number[]; index: number; object: string }>;
+        model: string;
+        usage: { prompt_tokens: number; total_tokens: number };
+      }> = {
         status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
         data: {
           object: 'list',
           data: [{ embedding: [0.3, 0.4, 0.5], index: 0, object: 'embedding' }],
@@ -290,7 +312,7 @@ describe('SemanticEmbeddingService', () => {
       mockPost.mockResolvedValue(mockQueryEmbedding);
       
       const results = await service.findSimilar('support', mockItems, {
-        filter: (item) => 'content' in item && typeof item.content === 'string' && item.content.includes('Bitcoin'),
+        filter: (item: any) => 'content' in item && typeof item.content === 'string' && item.content.includes('Bitcoin'),
       });
       
       // Should only include items with 'Bitcoin' in content
@@ -320,8 +342,15 @@ describe('SemanticEmbeddingService', () => {
   });
 
   describe('batchGenerateEmbeddings', () => {
-    const mockBatchResponse = {
+    const mockBatchResponse: ApiResponse<{
+      object: string;
+      data: Array<{ embedding: number[]; index: number; object: string }>;
+      model: string;
+      usage: { prompt_tokens: number; total_tokens: number };
+    }> = {
       status: 200,
+      statusText: 'OK',
+      headers: new Headers(),
       data: {
         object: 'list',
         data: [{ embedding: Array(1536).fill(0.1), index: 0, object: 'embedding' }],
@@ -449,10 +478,12 @@ describe('SemanticEmbeddingService', () => {
     it('should handle invalid API responses', async () => {
       mockPost.mockResolvedValue({
         status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
         data: {
           // Missing required fields
           object: 'list',
-        },
+        } as any,
       });
       
       await expect(service.generateEmbedding('test')).rejects.toThrow();
@@ -461,12 +492,14 @@ describe('SemanticEmbeddingService', () => {
     it('should handle API errors with details', async () => {
       mockPost.mockResolvedValue({
         status: 400,
+        statusText: 'Bad Request',
+        headers: new Headers(),
         data: {
           error: {
             message: 'Invalid model specified',
             type: 'invalid_request_error',
           },
-        },
+        } as any,
       });
       
       await expect(service.generateEmbedding('test')).rejects.toThrow();

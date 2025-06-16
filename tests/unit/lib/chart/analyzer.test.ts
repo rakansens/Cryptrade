@@ -1,4 +1,4 @@
-import { ChartAnalyzer } from '@/lib/analyzer'
+import { ChartAnalyzer } from '@/lib/chart/analyzer'
 import type { CandlestickData, Time } from 'lightweight-charts'
 
 describe('ChartAnalyzer', () => {

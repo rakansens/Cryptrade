@@ -4,7 +4,7 @@ import {
   CircuitState,
   withRetryAndCircuitBreaker,
   MonitoredCircuitBreaker
-} from '@/lib/retry-with-circuit-breaker';
+} from '@/lib/utils/retry-with-circuit-breaker';
 
 describe('Retry with Circuit Breaker', () => {
   jest.setTimeout(20000); // Increase timeout for retry tests

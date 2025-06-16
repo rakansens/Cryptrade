@@ -1,4 +1,4 @@
-import { GlobalStateManager } from '@/lib/GlobalStateManager'
+import { GlobalStateManager } from '@/lib/chart/GlobalStateManager'
 import type { ISeriesApi, SeriesType } from 'lightweight-charts'
 
 describe('GlobalStateManager', () => {

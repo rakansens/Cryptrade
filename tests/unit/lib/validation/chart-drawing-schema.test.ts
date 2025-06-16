@@ -4,7 +4,7 @@ import {
   validateDrawing,
   validateDrawingPoints,
   isValidDrawing
-} from '@/lib/chart-drawing.schema';
+} from '@/lib/validation/chart-drawing.schema';
 import {
   DrawingPointSchema,
   DrawingStyleSchema,
@@ -285,14 +285,21 @@ describe('Chart Drawing Schema Validation', () => {
 
   describe('PatternDataSchema', () => {
     const validPattern: PatternData = {
+      id: 'pattern-1',
       type: 'head-and-shoulders',
+      symbol: 'BTCUSDT',
+      interval: '1h',
+      startTime: 1704067200,
+      endTime: 1704153600,
       visualization: {
         type: 'head-and-shoulders',
         keyPoints: [
           { time: 1704067200, price: 45000 }
         ],
         lines: []
-      }
+      },
+      tradingImplication: 'Bearish reversal pattern',
+      confidence: 0.8
     };
 
     it('validates basic pattern data', () => {
@@ -336,8 +343,10 @@ describe('Chart Drawing Schema Validation', () => {
 
     it('accepts any visualization structure', () => {
       const complexVisualization = {
-        type: 'complex',
+        ...validPattern,
+        type: 'triangle' as const,
         visualization: {
+          type: 'triangle',
           nested: {
             deeply: {
               structured: 'data',
@@ -414,7 +423,7 @@ describe('Chart Drawing Schema Validation', () => {
           { time: 1704153600, value: 47000 }
         ];
         
-        const result = validateDrawingPoints(points);
+        const result = validateDrawingPoints(points as unknown[]);
         expect(result).toEqual(points);
       });
 

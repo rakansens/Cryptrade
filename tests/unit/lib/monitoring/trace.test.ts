@@ -3,7 +3,7 @@ jest.mock('@/types/agent-payload', () => ({
   generateCorrelationId: jest.fn(() => `corr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 }));
 
-import { traceManager, withTrace, tracedExecuteTradingAnalysis, TraceContext, TraceMetrics } from '@/lib/trace';
+import { traceManager, withTrace, tracedExecuteTradingAnalysis, TraceContext, TraceMetrics } from '@/lib/monitoring/trace';
 
 // Mock console.log for structured logging verification
 const originalConsoleLog = console.log;
