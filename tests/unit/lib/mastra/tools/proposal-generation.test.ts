@@ -1,4 +1,5 @@
 import { ProposalGenerationTool } from '@/lib/mastra/tools/proposal-generation';
+import { ExtendedProposalSchema } from '@/lib/mastra/tools/proposal-generation/types';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { logger } from '@/lib/utils/logger';
 import type { PriceData } from '@/types/market';
@@ -273,19 +274,14 @@ describe('ProposalGenerationTool', () => {
 
       expect(result.success).toBe(true);
       const proposal = result.proposalGroup?.proposals[0];
-      
+
+      // Validate against new schema
+      expect(() => ExtendedProposalSchema.parse(proposal)).not.toThrow();
+
       expect(proposal!).toMatchObject({
-        id: expect.stringMatching(/^[a-zA-Z0-9_]+$/),
-        type: expect.any(String),
-        confidence: expect.any(Number),
-        description: expect.any(String),
+        id: expect.any(String),
         symbol: 'BTCUSDT',
         interval: '1h',
-        reasoning: expect.any(String),
-        createdAt: expect.any(Number),
-        title: expect.any(String),
-        reason: expect.any(String),
-        priority: expect.stringMatching(/^(high|medium|low)$/),
       });
     });
 

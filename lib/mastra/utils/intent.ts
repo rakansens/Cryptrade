@@ -150,7 +150,7 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
   const hasUIKeyword = ['チャート', '切り替え', '変更', '表示して', '見せて', 'にして', 'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム'].some(keyword => queryLower.includes(keyword));
 
   if ((queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('値段') || queryLower.includes('相場') || queryLower.includes('quote') || queryLower.includes('現在値') || queryLower.includes('prc') ||
-      /btc|eth|ada|sol|usdt|price|コイン/i.test(queryLower)) &&
+      /btc|eth|bnb|ada|sol|usdt|xrp|price|コイン/i.test(queryLower)) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
         hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
     const symbol = extractSymbol(userQuery);
@@ -398,7 +398,11 @@ export function detectSmallTalk(userQuery: string, queryLower: string): IntentAn
  * シンボル抽出関数
  */
 export function extractSymbol(query: string): string | undefined {
-  const symbols = ['BTC', 'ETH', 'ADA', 'SOL', 'DOGE', 'XRP', 'DOT', 'LINK', 'UNI', 'AVAX', 'MATIC', 'LTC'];
+  const symbols = [
+    'BTC', 'ETH', 'BNB', 'ADA', 'SOL',
+    'DOGE', 'XRP', 'DOT', 'LINK', 'UNI',
+    'AVAX', 'MATIC', 'LTC'
+  ];
   const queryUpper = query.toUpperCase();
   
   // 日本語の通貨名マッピング
@@ -406,6 +410,7 @@ export function extractSymbol(query: string): string | undefined {
     'ビットコイン': 'BTC',
     'イーサリアム': 'ETH',
     'イーサ': 'ETH',
+    'バイナンスコイン': 'BNB',
     'エイダ': 'ADA',
     'カルダノ': 'ADA',
     'ソラナ': 'SOL',
@@ -420,6 +425,23 @@ export function extractSymbol(query: string): string | undefined {
     'マティック': 'MATIC',
     'ライトコイン': 'LTC'
   };
+
+  const englishCurrencyMap: Record<string, string> = {
+    bitcoin: 'BTC',
+    ethereum: 'ETH',
+    'binance coin': 'BNB',
+    binancecoin: 'BNB',
+    cardano: 'ADA',
+    solana: 'SOL',
+    dogecoin: 'DOGE',
+    ripple: 'XRP',
+    polkadot: 'DOT',
+    chainlink: 'LINK',
+    uniswap: 'UNI',
+    avalanche: 'AVAX',
+    polygon: 'MATIC',
+    litecoin: 'LTC'
+  };
   
   // まず日本語の通貨名をチェック
   for (const [jaName, symbol] of Object.entries(japaneseCurrencyMap)) {
@@ -427,7 +449,15 @@ export function extractSymbol(query: string): string | undefined {
       return symbol + 'USDT';
     }
   }
-  
+
+  // 英語の通貨名をチェック
+  const queryLower = query.toLowerCase();
+  for (const [enName, symbol] of Object.entries(englishCurrencyMap)) {
+    if (queryLower.includes(enName)) {
+      return symbol + 'USDT';
+    }
+  }
+
   // 英語のシンボルをチェック
   for (const symbol of symbols) {
     if (queryUpper.includes(symbol)) {

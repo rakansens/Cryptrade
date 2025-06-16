@@ -226,7 +226,7 @@ export type AgentMethod =
 
 // Supported Symbols
 export const SUPPORTED_SYMBOLS = [
-  'BTC', 'ETH', 'ADA', 'SOL', 'DOGE', 'XRP', 
+  'BTC', 'ETH', 'BNB', 'ADA', 'SOL', 'DOGE', 'XRP',
   'DOT', 'LINK', 'UNI', 'AVAX', 'MATIC', 'LTC'
 ] as const;
 

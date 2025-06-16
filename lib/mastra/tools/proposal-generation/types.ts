@@ -31,71 +31,74 @@ export type ProposalGenerationInput = z.infer<typeof ProposalGenerationInputSche
 /**
  * 提案グループスキーマ
  */
+export const ExtendedProposalSchema = z.object({
+  id: z.string(),
+  type: z.string() as z.ZodType<DrawingType>,
+  confidence: z.number().min(0).max(1),
+  description: z.string(),
+  drawingData: z.object({
+    type: z.string() as z.ZodType<DrawingType>,
+    points: z.array(z.object({
+      time: z.number(),
+      value: z.number(),
+    })),
+    style: z.object({
+      color: z.string().optional(),
+      lineWidth: z.number().optional(),
+      lineStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
+    }).optional(),
+    price: z.number().optional(),
+    time: z.number().optional(),
+    levels: z.array(z.number()).optional(),
+  }),
+  symbol: z.string(),
+  interval: z.string(),
+  reasoning: z.string(),
+  createdAt: z.number(),
+  title: z.string(),
+  targets: z.array(z.number()).optional(),
+  stopLoss: z.number().optional(),
+  direction: z.enum(['up', 'down', 'neutral']).optional(),
+  reason: z.string(),
+  priority: z.enum(['high', 'medium', 'low']),
+  metadata: z.object({
+    patterns: z.array(z.string()).optional(),
+    indicators: z.record(z.string(), z.unknown()).optional(),
+    timeframe_alignment: z.record(z.string(), z.unknown()).optional(),
+  }).optional(),
+  technicalContext: z.object({
+    marketCondition: z.enum(['trending', 'ranging', 'volatile']).optional(),
+    volumeProfile: z.enum(['high', 'normal', 'low']).optional(),
+    momentum: z.enum(['bullish', 'bearish', 'neutral']).optional(),
+  }).optional(),
+  statistics: z.object({
+    points: z.number(),
+    touches: z.number(),
+    outliers: z.number(),
+    r_squared: z.number(),
+    angle: z.number(),
+    duration_hours: z.number(),
+    price_change_percent: z.number(),
+  }).optional(),
+  mlPrediction: z.object({
+    successProbability: z.number(),
+    expectedBounces: z.number(),
+    direction: z.enum(['up', 'down']),
+    reasoning: z.array(z.string()),
+  }).optional(),
+});
+
 export const ProposalGroupSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
   status: z.enum(['pending', 'approved', 'rejected', 'expired']),
   createdAt: z.number(),
-  proposals: z.array(z.object({
-    id: z.string(),
-    type: z.string() as z.ZodType<DrawingType>,
-    confidence: z.number().min(0).max(1),
-    description: z.string(),
-    drawingData: z.object({
-      type: z.string() as z.ZodType<DrawingType>,
-      points: z.array(z.object({
-        time: z.number(),
-        value: z.number(),
-      })),
-      style: z.object({
-        color: z.string().optional(),
-        lineWidth: z.number().optional(),
-        lineStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
-      }).optional(),
-      price: z.number().optional(),
-      time: z.number().optional(),
-      levels: z.array(z.number()).optional(),
-    }),
-    symbol: z.string(),
-    interval: z.string(),
-    reasoning: z.string(),
-    createdAt: z.number(),
-    title: z.string(),
-    targets: z.array(z.number()).optional(),
-    stopLoss: z.number().optional(),
-    direction: z.enum(['up', 'down', 'neutral']).optional(),
-    reason: z.string(),
-    priority: z.enum(['high', 'medium', 'low']),
-    metadata: z.object({
-      patterns: z.array(z.string()).optional(),
-      indicators: z.record(z.string(), z.unknown()).optional(),
-      timeframe_alignment: z.record(z.string(), z.unknown()).optional(),
-    }).optional(),
-    technicalContext: z.object({
-      marketCondition: z.enum(['trending', 'ranging', 'volatile']).optional(),
-      volumeProfile: z.enum(['high', 'normal', 'low']).optional(),
-      momentum: z.enum(['bullish', 'bearish', 'neutral']).optional(),
-    }).optional(),
-    statistics: z.object({
-      points: z.number(),
-      touches: z.number(),
-      outliers: z.number(),
-      r_squared: z.number(),
-      angle: z.number(),
-      duration_hours: z.number(),
-      price_change_percent: z.number(),
-    }).optional(),
-    mlPrediction: z.object({
-      successProbability: z.number(),
-      expectedBounces: z.number(),
-      direction: z.enum(['up', 'down']),
-      reasoning: z.array(z.string()),
-    }).optional(),
-  })),
+  proposals: z.array(ExtendedProposalSchema),
 });
 
 export type ProposalGroup = z.infer<typeof ProposalGroupSchema>;
+export type ExtendedProposal = z.infer<typeof ExtendedProposalSchema>;
 
 /**
  * ツール出力スキーマ
@@ -248,6 +251,10 @@ export function validateProposalGroup(group: unknown): ProposalGroup {
  */
 export function validateInput(input: unknown): ProposalGenerationInput {
   return ProposalGenerationInputSchema.parse(input);
+}
+
+export function validateExtendedProposal(proposal: unknown): ExtendedProposal {
+  return ExtendedProposalSchema.parse(proposal);
 }
 
 // ========================================

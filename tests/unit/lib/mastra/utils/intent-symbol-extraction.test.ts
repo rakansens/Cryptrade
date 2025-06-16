@@ -9,6 +9,12 @@ describe('Symbol Extraction', () => {
       expect(extractSymbol('ada')).toBe('ADAUSDT');
     });
 
+    it('should extract English currency names', () => {
+      expect(extractSymbol('bitcoin price')).toBe('BTCUSDT');
+      expect(extractSymbol('ethereum analysis')).toBe('ETHUSDT');
+      expect(extractSymbol('binance coin price')).toBe('BNBUSDT');
+    });
+
     it('should extract Japanese currency names', () => {
       expect(extractSymbol('ビットコインの価格')).toBe('BTCUSDT');
       expect(extractSymbol('イーサリアムを分析して')).toBe('ETHUSDT');

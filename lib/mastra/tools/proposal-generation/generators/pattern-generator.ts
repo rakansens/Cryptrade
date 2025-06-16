@@ -277,57 +277,69 @@ export class PatternGenerator implements IProposalGenerator {
     inverse: boolean
   ): DetectedPattern | null {
     const priceType = inverse ? 'low' : 'high';
+    const valleyType = inverse ? 'high' : 'low';
 
-    // 左肩を探す
     const leftShoulderIndex = this.findLocalPeak(
       data,
       centerIndex - window * 2,
       centerIndex - window,
       priceType
     );
-    if (!leftShoulderIndex) return null;
+    if (leftShoulderIndex == null) return null;
 
-    // 頭を探す
     const headIndex = this.findLocalPeak(
       data,
       centerIndex - window / 2,
       centerIndex + window / 2,
       priceType
     );
-    if (!headIndex) return null;
+    if (headIndex == null) return null;
 
-    // 右肩を探す
     const rightShoulderIndex = this.findLocalPeak(
       data,
       centerIndex + window,
       centerIndex + window * 2,
       priceType
     );
-    if (!rightShoulderIndex) return null;
+    if (rightShoulderIndex == null) return null;
 
-    const leftShoulderData = data[leftShoulderIndex];
-    const headData = data[headIndex];
-    const rightShoulderData = data[rightShoulderIndex];
-    if (!leftShoulderData || !headData || !rightShoulderData) return null;
-    
-    const leftShoulder = leftShoulderData[priceType];
-    const head = headData[priceType];
-    const rightShoulder = rightShoulderData[priceType];
+    const leftValleyIndex = this.findLocalPeak(
+      data,
+      leftShoulderIndex,
+      headIndex,
+      valleyType
+    );
+    const rightValleyIndex = this.findLocalPeak(
+      data,
+      headIndex,
+      rightShoulderIndex,
+      valleyType
+    );
+    if (leftValleyIndex == null || rightValleyIndex == null) return null;
 
-    // パターンの妥当性チェック
+    const leftShoulder = data[leftShoulderIndex]![priceType];
+    const head = data[headIndex]![priceType];
+    const rightShoulder = data[rightShoulderIndex]![priceType];
+    const leftValley = data[leftValleyIndex]![valleyType];
+    const rightValley = data[rightValleyIndex]![valleyType];
+
     if (inverse) {
-      if (head >= leftShoulder || head >= rightShoulder) return null;
-      if (Math.abs(leftShoulder - rightShoulder) / leftShoulder > 0.02) return null;
+      if (!(head < leftShoulder && head < rightShoulder)) return null;
     } else {
-      if (head <= leftShoulder || head <= rightShoulder) return null;
-      if (Math.abs(leftShoulder - rightShoulder) / leftShoulder > 0.02) return null;
+      if (!(head > leftShoulder && head > rightShoulder)) return null;
     }
 
-    const confidence = this.calculatePatternConfidence(
+    const shoulderDiff = Math.abs(leftShoulder - rightShoulder) / ((leftShoulder + rightShoulder) / 2);
+    if (shoulderDiff > 0.05) return null;
+    const necklineDiff = Math.abs(leftValley - rightValley) / ((leftValley + rightValley) / 2);
+    if (necklineDiff > 0.03) return null;
+
+    const baseConfidence = this.calculatePatternConfidence(
       data,
       [leftShoulderIndex, headIndex, rightShoulderIndex],
       inverse ? 'inverse_head_shoulders' : 'head_shoulders'
     );
+    const confidence = Math.min(baseConfidence * (1 - shoulderDiff) * (1 - necklineDiff * 1.5), 0.95);
 
     return {
       type: inverse ? 'inverse_head_shoulders' : 'head_shoulders',
@@ -335,9 +347,11 @@ export class PatternGenerator implements IProposalGenerator {
       startIndex: leftShoulderIndex,
       endIndex: rightShoulderIndex,
       keyPoints: [
-        { time: leftShoulderData.time, value: leftShoulder },
-        { time: headData.time, value: head },
-        { time: rightShoulderData.time, value: rightShoulder },
+        { time: data[leftShoulderIndex]!.time, value: leftShoulder },
+        { time: data[leftValleyIndex]!.time, value: leftValley },
+        { time: data[headIndex]!.time, value: head },
+        { time: data[rightValleyIndex]!.time, value: rightValley },
+        { time: data[rightShoulderIndex]!.time, value: rightShoulder },
       ],
       implication: inverse ? 'bullish' : 'bearish',
     };
@@ -681,13 +695,14 @@ export class PatternGenerator implements IProposalGenerator {
     params: GeneratorParams
   ): ProposalData | null {
     const patternInfo = this.getPatternInfo(pattern.type);
-    
+    const now = Date.now();
+    const reasonText = this.generateReason(pattern, data, params);
+
     const proposal: ProposalData = {
       id: generateProposalId(`pattern_${pattern.type}`),
       type: 'pattern',
       title: patternInfo.title,
       description: patternInfo.description,
-      // reason: this.generateReason(pattern, data, params), // Not in ProposalData type
       drawingData: (() => {
         const validated = validateDrawingData({
           type: 'pattern',
@@ -719,15 +734,21 @@ export class PatternGenerator implements IProposalGenerator {
       metadata: {
         symbol: params.symbol,
         interval: params.interval,
-        reason: this.generateReason(pattern, data, params),
+        reason: reasonText,
         patternType: pattern.type,
         implication: pattern.implication,
         keyPoints: pattern.keyPoints,
         duration: pattern.endIndex - pattern.startIndex,
       },
-    };
+      symbol: params.symbol,
+      interval: params.interval,
+      reasoning: reasonText,
+      createdAt: now,
+      reason: reasonText,
+      direction: pattern.implication === 'bullish' ? 'up' : pattern.implication === 'bearish' ? 'down' : 'neutral',
+    } as any;
 
-    return proposal;
+    return proposal as unknown as ProposalData;
   }
 
   /**

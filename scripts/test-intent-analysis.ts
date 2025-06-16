@@ -21,19 +21,36 @@ async function testIntentAnalysis() {
     { query: 'ETHに変更して', expectedIntent: 'ui_control', category: 'UI操作' },
     { query: 'チャートをBTCにして', expectedIntent: 'ui_control', category: 'UI操作' },
     { query: 'BTCを表示して', expectedIntent: 'ui_control', category: 'UI操作' },
-    
+    { query: 'Switch to the BTC chart', expectedIntent: 'ui_control', category: 'UI操作' },
+    { query: 'Cambia al gráfico de BTC', expectedIntent: 'ui_control', category: 'UI操作' },
+    { query: '切换到BTC图表', expectedIntent: 'ui_control', category: 'UI操作' },
+
     // 価格照会系（正しく判定されるはず）
     { query: 'BTCの価格は？', expectedIntent: 'price_inquiry', category: '価格照会' },
     { query: 'BTCいくら？', expectedIntent: 'price_inquiry', category: '価格照会' },
-    
+    { query: "What's the price of ETH?", expectedIntent: 'price_inquiry', category: '価格照会' },
+    { query: '¿Cuánto vale BTC?', expectedIntent: 'price_inquiry', category: '価格照会' },
+    { query: '比特币现在多少？', expectedIntent: 'price_inquiry', category: '価格照会' },
+
     // 分析系（将来性などは分析であるべき）
     { query: 'ビットコインの将来性についてどう思う？', expectedIntent: 'trading_analysis', category: '分析' },
     { query: 'BTCの見通しは？', expectedIntent: 'trading_analysis', category: '分析' },
     { query: 'ETHは買い時？', expectedIntent: 'trading_analysis', category: '分析' },
-    
+    { query: 'What do you think about the future of Bitcoin?', expectedIntent: 'trading_analysis', category: '分析' },
+    { query: '¿Es buen momento para comprar ETH?', expectedIntent: 'trading_analysis', category: '分析' },
+    { query: '你认为ETH值得投资吗？', expectedIntent: 'trading_analysis', category: '分析' },
+
     // 提案系
     { query: 'トレンドラインを描いて', expectedIntent: 'proposal_request', category: '提案' },
     { query: 'サポートラインを引いて', expectedIntent: 'proposal_request', category: '提案' },
+    { query: 'Draw a trendline on BTC', expectedIntent: 'proposal_request', category: '提案' },
+    { query: 'Muestra la línea de soporte', expectedIntent: 'proposal_request', category: '提案' },
+    { query: '画个趋势线', expectedIntent: 'proposal_request', category: '提案' },
+
+    // 挨拶・雑談系
+    { query: 'こんにちは', expectedIntent: 'greeting', category: '挨拶' },
+    { query: 'hola', expectedIntent: 'greeting', category: '挨拶' },
+    { query: 'ありがとう', expectedIntent: 'small_talk', category: '雑談' },
   ];
   
   let correctCount = 0;

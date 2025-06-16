@@ -278,9 +278,25 @@ export class TrendlineGenerator implements IProposalGenerator {
           patterns: confidenceResult.patterns,
           createdAt: Date.now(),
         },
-      };
+        symbol: params.symbol,
+        interval: params.interval,
+        reasoning: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        createdAt: Date.now(),
+        reason: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        direction: 'up',
+      } as any;
 
-      proposals.push(proposal);
+      proposals.push(proposal as unknown as ProposalData);
     }
 
     return proposals;
@@ -407,9 +423,25 @@ export class TrendlineGenerator implements IProposalGenerator {
           patterns: confidenceResult.patterns,
           createdAt: Date.now(),
         },
-      };
+        symbol: params.symbol,
+        interval: params.interval,
+        reasoning: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        createdAt: Date.now(),
+        reason: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        direction: 'down',
+      } as any;
 
-      proposals.push(proposal);
+      proposals.push(proposal as unknown as ProposalData);
     }
 
     return proposals;

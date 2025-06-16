@@ -316,7 +316,7 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     if (level.strength > 0.7) strengthText = '非常に強い';
     else if (level.strength > 0.5) strengthText = '強い';
     else if (level.strength > 0.3) strengthText = '中程度の';
-    
+
     const proposal: ProposalData = {
       id: generateProposalId(`sr_${level.type}`),
       type: 'horizontal',
@@ -373,9 +373,15 @@ export class SupportResistanceGenerator implements IProposalGenerator {
         distanceFromPrice: distance,
         volumeAnalysis: this.analyzeVolumeAtLevel(level, data),
       },
-    };
-    
-    return proposal;
+      symbol: params.symbol,
+      interval: params.interval,
+      reasoning: this.generateReason(level, data, params),
+      createdAt: Date.now(),
+      reason: this.generateReason(level, data, params),
+      direction: 'neutral',
+    } as any;
+
+    return proposal as unknown as ProposalData;
   }
 
   /**

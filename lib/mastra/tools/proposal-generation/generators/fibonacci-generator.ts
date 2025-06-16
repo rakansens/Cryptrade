@@ -357,13 +357,14 @@ export class FibonacciGenerator implements IProposalGenerator {
     const currentRetracement = direction === 'up'
       ? (end.price - currentPrice) / priceRange
       : (currentPrice - end.price) / priceRange;
-    
+    const now = Date.now();
+    const reasonText = this.generateReason(pair, data, currentRetracement, params);
+
     const proposal: ProposalData = {
       id: generateProposalId(`fib_${direction}`),
       type: 'fibonacci',
       title: `${direction === 'up' ? '上昇' : '下降'}フィボナッチリトレースメント`,
       description: this.generateDescription(start, end, currentRetracement),
-      // reasoning: this.generateReason(pair, data, currentRetracement, params), // Not in ProposalData type
       drawingData: (() => {
         const validated = validateDrawingData({
           type: 'fibonacci',
@@ -402,16 +403,22 @@ export class FibonacciGenerator implements IProposalGenerator {
       metadata: {
         symbol: params.symbol,
         interval: params.interval,
-        reasoning: this.generateReason(pair, data, currentRetracement, params),
+        reasoning: reasonText,
         direction,
         swingStrength: (start.strength + end.strength) / 2,
         priceChange: calculatePriceChangePercent(start.price, end.price),
         currentRetracement,
         nearestLevel: this.findNearestFibLevel(currentRetracement),
       },
-    };
-    
-    return proposal;
+      symbol: params.symbol,
+      interval: params.interval,
+      reasoning: reasonText,
+      createdAt: now,
+      reason: reasonText,
+      direction: direction === 'up' ? 'up' : 'down',
+    } as any;
+
+    return proposal as unknown as ProposalData;
   }
 
   /**

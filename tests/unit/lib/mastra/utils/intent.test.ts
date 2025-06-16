@@ -143,6 +143,7 @@ describe('Intent Analysis Utility', () => {
       { input: 'ethereum分析', symbol: 'ETH' },
       { input: 'リップル（XRP）', symbol: 'XRP' },
       { input: 'BNBチャート', symbol: 'BNB' },
+      { input: 'Binance coin price', symbol: 'BNB' },
       { input: 'SOLの動き', symbol: 'SOL' },
     ];
 

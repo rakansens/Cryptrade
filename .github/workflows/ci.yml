@@ -75,3 +75,23 @@ jobs:
         KAFKA_BROKER_URL: localhost:9092
         OPENAI_API_KEY: sk-test-key-for-ci
         NEXT_TELEMETRY_DISABLED: 1
+
+  intent-analysis:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run intent analysis script
+        run: npx tsx scripts/test-intent-analysis.ts
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

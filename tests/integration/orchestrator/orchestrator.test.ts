@@ -6,12 +6,46 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { OrchestratorRuntimeContext } from '@/types/orchestrator.types';
 
+// Optional metrics collector (no-op in CI/local unless library available)
+let metrics: typeof import('@/lib/monitoring/metrics') | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  metrics = require('@/lib/monitoring/metrics');
+  metrics!.metricsCollector.register('intent_test_total', {
+    type: 'counter',
+    help: 'Total intent analysis test cases',
+    value: 0,
+  });
+  metrics!.metricsCollector.register('intent_test_success', {
+    type: 'counter',
+    help: 'Successful intent analysis test cases',
+    value: 0,
+  });
+  metrics!.metricsCollector.register('intent_test_fail', {
+    type: 'counter',
+    help: 'Failed intent analysis test cases',
+    value: 0,
+  });
+} catch {
+  metrics = null;
+}
+
+// Threshold & result collector used across tests
+const CONFIDENCE_THRESHOLD = 0.7;
+const testResults: Array<{ query: string; intent: string; confidence: number }> = [];
+const intentSummary = { total: 0, success: 0, fail: 0 };
+
+// Shared default context
+const defaultContext: OrchestratorRuntimeContext = {
+  userLevel: 'intermediate',
+  marketStatus: 'open',
+};
+
 // Load environment variables
 config({ path: '.env.local' });
 
 describe('Orchestrator Agent Integration Tests', () => {
   const testSessionId = `test-${Date.now()}`;
-  const defaultContext: OrchestratorRuntimeContext = { userLevel: 'intermediate', marketStatus: 'open' };
 
   beforeAll(() => {
     // Suppress logs during tests unless debugging
@@ -34,7 +68,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe(expectedIntent);
-        expect(result.analysis.confidence).toBeGreaterThan(0.7);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
         expect(result.executionResult!.response).toBeDefined();
       });
@@ -51,7 +85,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe('market_chat');
-        expect(result.analysis.confidence).toBeGreaterThan(0.7);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
       });
     });
@@ -70,7 +104,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe('price_inquiry');
-        expect(result.analysis.confidence).toBeGreaterThan(0.7);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
         expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
       });
@@ -90,7 +124,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(['analysis', 'entry_proposal']).toContain(result.analysis.intent);
-        expect(result.analysis.confidence).toBeGreaterThan(0.7);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
         expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
       });
@@ -110,7 +144,7 @@ describe('Orchestrator Agent Integration Tests', () => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         expect(result.analysis.intent).toBe('ui_control');
-        expect(result.analysis.confidence).toBeGreaterThan(0.7);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
         expect(result.executionResult!.metadata?.['processedBy']).toContain('chart');
       });
@@ -220,38 +254,105 @@ describe('Intent Analysis Accuracy', () => {
     { query: 'テクニカル分析をお願い', expectedIntent: 'analysis', notIntent: 'ui_control' },
   ];
 
+  intentSummary.total = testCases.length;
+
   test.each(testCases)(
-    'should correctly identify "$query" as $expectedIntent (not $notIntent)', 
+    'should correctly identify "$query" as $expectedIntent (not $notIntent)',
     async ({ query, expectedIntent, notIntent }) => {
+      let passed = false;
       const result = await executeImprovedOrchestrator(
         query,
         `intent-test-${Date.now()}`,
-        { userLevel: 'intermediate', marketStatus: 'open' }
+        defaultContext
       );
-      
-      expect(result.analysis.intent).toBe(expectedIntent);
-      expect(result.analysis.intent).not.toBe(notIntent);
-      expect(result.analysis.confidence).toBeGreaterThan(0.7);
+
+      try {
+        expect(result.analysis.intent).toBe(expectedIntent);
+        expect(result.analysis.intent).not.toBe(notIntent);
+        expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
+        passed = true;
+      } finally {
+        if (passed) {
+          intentSummary.success++;
+          metrics?.metricsCollector?.increment('intent_test_success');
+        } else {
+          intentSummary.fail++;
+          metrics?.metricsCollector?.increment('intent_test_fail');
+        }
+        metrics?.metricsCollector?.increment('intent_test_total');
+      }
+
+      testResults.push({ query, intent: result.analysis.intent, confidence: result.analysis.confidence });
     }
   );
 });
 
+describe('Ambiguous and Multilingual Queries', () => {
+  const queries = [
+    { query: 'BTC価格チャート', expectedIntent: 'price_inquiry' },
+    { query: 'チャートのビットコイン価格', expectedIntent: 'price_inquiry' },
+    { query: '価格チャートを表示', expectedIntent: 'ui_control' },
+    { query: 'What is the price of Bitcoin?', expectedIntent: 'price_inquiry' },
+    { query: '¿Cuál es el precio de Bitcoin?', expectedIntent: 'price_inquiry' },
+    { query: '比特币价格是多少？', expectedIntent: 'price_inquiry' },
+  ];
+
+  test.each(queries)('should handle "$query" correctly', async ({ query, expectedIntent }) => {
+    const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
+
+    expect(result.analysis.intent).toBe(expectedIntent);
+    expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
+    expect(result.executionResult).toBeDefined();
+
+    testResults.push({ query, intent: result.analysis.intent, confidence: result.analysis.confidence });
+  });
+});
+
 // Export test results if needed
 afterAll(() => {
+  const summary = {
+    total: intentSummary.total,
+    success: intentSummary.success,
+    fail: intentSummary.fail,
+  };
+
+  console.log('[Intent Analysis Summary]', summary);
+
+  const reportsDir = path.join(__dirname, '../../../reports');
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+
+  fs.writeFileSync(
+    path.join(reportsDir, 'intent-analysis-summary.json'),
+    JSON.stringify({ timestamp: new Date().toISOString(), ...summary }, null, 2)
+  );
+
+  metrics?.metricsCollector?.increment('intent_test_success', summary.success);
+  metrics?.metricsCollector?.increment('intent_test_fail', summary.fail);
+
   if (process.env['SAVE_TEST_RESULTS'] === 'true') {
     const resultsDir = path.join(__dirname, '../../../test-results');
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
-    
+
     const timestamp = new Date().toISOString().replace(/:/g, '-');
     const filename = path.join(resultsDir, `orchestrator-test-${timestamp}.json`);
     
-    // Save test metadata
-    fs.writeFileSync(filename, JSON.stringify({
-      timestamp: new Date().toISOString(),
-      testFile: 'orchestrator.test.ts',
-      environment: process.env.NODE_ENV,
-    }, null, 2));
+    // Save test metadata and results
+    fs.writeFileSync(
+      filename,
+      JSON.stringify(
+        {
+          timestamp: new Date().toISOString(),
+          testFile: 'orchestrator.test.ts',
+          environment: process.env.NODE_ENV,
+          results: testResults,
+        },
+        null,
+        2
+      )
+    );
   }
 });

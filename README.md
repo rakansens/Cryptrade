@@ -143,6 +143,11 @@ npm run test:watch
 npm run test:coverage
 ```
 
+After running integration tests, particularly the orchestrator intent tests, a
+summary is written to `reports/intent-analysis-summary.json`. This JSON file
+includes the total number of cases and how many passed or failed.
+You can inspect it directly or feed the data into monitoring tools.
+
 ### Environment Variables in Tests
 
 Use the built-in testing utilities for clean environment mocking:
