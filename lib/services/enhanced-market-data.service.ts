@@ -2,7 +2,26 @@ import { logger } from '@/lib/utils/logger';
 import { BaseService } from '@/lib/api/base-service';
 import { APP_CONSTANTS } from '@/config/app-constants';
 import type { ProcessedKline } from '@/types/market';
-import { makeCancellable, withTimeout } from '@/lib/utils/concurrent';
+// import { makeCancellable, withTimeout } from '@/lib/utils/concurrent';
+
+// Simple withTimeout implementation
+function withTimeout<T>(
+  fn: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    fn(controller.signal)
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeoutId));
+  });
+}
 
 /**
  * Enhanced Market Data Service
@@ -103,7 +122,7 @@ export class EnhancedMarketDataService extends BaseService {
       // Fetch data for all timeframes in parallel with timeout and cancellation
       const fetchPromises = timeframeConfigs.map(async (config) => {
         return withTimeout(
-          async (innerSignal) => {
+          async (innerSignal: AbortSignal) => {
             try {
               // Create a combined signal that aborts if either the outer or inner signal aborts
               const controller = new AbortController();

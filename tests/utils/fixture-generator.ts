@@ -83,7 +83,7 @@ export class FixtureGenerator {
   /**
    * パターンを含むチャートデータを生成
    */
-  static generatePatternData(patternType: string, options: any = {}) {
+  static generatePatternData(patternType: string, options: any = {}): CandlestickData[] {
     const baseData = this.generateRealisticCandlestickData({ count: 200, ...options });
     
     switch (patternType) {
@@ -236,7 +236,7 @@ export class FixtureGenerator {
     return data;
   }
 
-  private static adjustCandle(data: CandlestickData[], index: number, adjustment: number) {
+  private static adjustCandle(data: CandlestickData[], index: number, adjustment: number): void {
     if (index >= data.length) return;
     
     const candle = data[index];
@@ -259,7 +259,7 @@ export class FixtureGenerator {
     interval?: string;
     count?: number;
     delay?: number;
-  }) {
+  }): Generator<any, void, unknown> {
     const { type, symbol = 'BTCUSDT', interval = '1m', count = 100 } = options;
     
     for (let i = 0; i < count; i++) {
@@ -280,7 +280,7 @@ export class FixtureGenerator {
     }
   }
 
-  private static generateKlineMessage(symbol: string, interval: string, index: number) {
+  private static generateKlineMessage(symbol: string, interval: string, index: number): any {
     const now = Date.now();
     const price = 48000 + Math.sin(index / 10) * 1000 + (Math.random() - 0.5) * 200;
     
@@ -310,7 +310,7 @@ export class FixtureGenerator {
     };
   }
 
-  private static generateTradeMessage(symbol: string, index: number) {
+  private static generateTradeMessage(symbol: string, index: number): any {
     const price = 48000 + (Math.random() - 0.5) * 100;
     
     return {
@@ -328,7 +328,7 @@ export class FixtureGenerator {
     };
   }
 
-  private static generateDepthMessage(symbol: string, index: number) {
+  private static generateDepthMessage(symbol: string, index: number): any {
     const basePrice = 48000;
     const bids = [];
     const asks = [];
@@ -355,7 +355,7 @@ export class FixtureGenerator {
     };
   }
 
-  private static generateTickerMessage(symbol: string, index: number) {
+  private static generateTickerMessage(symbol: string, index: number): any {
     const price = 48000 + Math.sin(index / 20) * 500;
     const change = (Math.random() - 0.5) * 1000;
     

@@ -69,7 +69,7 @@ export class MockBinanceAPIService {
     };
   }
 
-  async getOrderBook(symbol: string, limit: number = 100) {
+  async getOrderBook(_symbol: string, limit: number = 100) {
     const bids = [];
     const asks = [];
     const basePrice = 48500;

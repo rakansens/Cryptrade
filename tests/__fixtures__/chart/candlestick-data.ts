@@ -51,7 +51,7 @@ export const mockCandlestickData: CandlestickData[] = [
   { time: 1638392400 as Time, open: 48700, high: 49100, low: 48600, close: 49000 }
 ];
 
-export const mockVolumeData = mockCandlestickData.map((candle, index) => ({
+export const mockVolumeData = mockCandlestickData.map((candle) => ({
   time: candle.time,
   value: Math.random() * 1000 + 500,
   color: candle.close >= candle.open ? '#26a69a' : '#ef5350'

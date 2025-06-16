@@ -150,7 +150,7 @@ describe('MessageItem', () => {
   })
 
   describe('Proposal Messages', () => {
-    const proposalMessage = {
+    const proposalMessage: ChatMessage = {
       id: 'msg-3',
       role: 'assistant',
       type: 'proposal',
@@ -158,26 +158,26 @@ describe('MessageItem', () => {
       timestamp: Date.now(),
       proposalGroup: {
         id: 'group-1',
-        groupId: 'group-1',
         title: 'Trend Analysis',
         description: 'Based on current market trends',
-        status: 'pending' as const,
-        timestamp: Date.now(),
+        proposals: [],
+        groupType: 'analysis' as const,
         createdAt: Date.now(),
-        symbol: 'BTCUSDT',
-        proposals: []
+        metadata: {
+          symbol: 'BTCUSDT'
+        }
       }
     }
 
     it('renders ProposalCard for proposal messages', () => {
-      render(<MessageItem {...defaultProps} message={proposalMessage as ChatMessage} />)
+      render(<MessageItem {...defaultProps} message={proposalMessage} />)
       
       expect(screen.getByTestId('proposal-card')).toBeInTheDocument()
       expect(screen.getByText('Proposal Card - Trend Analysis')).toBeInTheDocument()
     })
 
     it('passes handlers to ProposalCard', () => {
-      render(<MessageItem {...defaultProps} message={proposalMessage as ChatMessage} />)
+      render(<MessageItem {...defaultProps} message={proposalMessage} />)
       
       const approveButton = screen.getByText('Approve Proposal')
       fireEvent.click(approveButton)
@@ -194,7 +194,7 @@ describe('MessageItem', () => {
       render(
         <MessageItem
           {...defaultProps}
-          message={proposalMessage as ChatMessage}
+          message={proposalMessage}
           approvedDrawingIds={approvedIds}
         />
       )

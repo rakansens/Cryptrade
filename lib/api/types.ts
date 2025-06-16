@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import type { ProposalGroup } from '@/types/proposals';
 
 // API Response Types
 export interface ApiResponse<T = unknown> {
@@ -89,16 +90,10 @@ export interface RateLimitInfo {
 // Retry Types
 export type RetryCondition = (error: Error | ApiError, attempt: number) => boolean;
 
-// Proposal Types
-export interface ProposalGroup {
-  id: string; // Added id property for compatibility
-  groupId: string;
-  timestamp: number;
-  symbol: string;
-  proposals: Proposal[];
-  metadata?: ProposalMetadata;
-}
+// Re-export proposal types for convenience
+export { ProposalGroup };
 
+// Legacy Proposal interface for backward compatibility
 export interface Proposal {
   id: string;
   type: string;

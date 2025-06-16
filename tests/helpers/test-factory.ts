@@ -4,8 +4,8 @@
  * Factory functions for creating test data consistently across tests
  */
 
-import type { EventPayload } from '@/types/events/all-event-types';
-import type { ProcessedKline } from '@/types/market';
+import type { EventPayload } from '../../types/events/all-event-types';
+import type { ProcessedKline } from '../../types/market';
 
 // Define custom types for test data
 interface ProposalData {
@@ -177,9 +177,9 @@ export function createMockPatternEvent(
         ],
       },
       metrics: {
-        targetLevel: 46000,
-        stopLoss: 43000,
-        breakoutLevel: 45500,
+        target_level: 46000,
+        stop_loss: 43000,
+        breakout_level: 45500,
       },
     },
     ...overrides,
@@ -232,7 +232,15 @@ export function createMockSSEEvent(
 /**
  * Creates mock market stats
  */
-export function createMockMarketStats() {
+export function createMockMarketStats(): {
+  price: number;
+  priceChange: number;
+  priceChangePercent: number;
+  high24h: number;
+  low24h: number;
+  volume24h: number;
+  marketCap: number;
+} {
   return {
     price: 45000,
     priceChange: 500,
@@ -247,7 +255,31 @@ export function createMockMarketStats() {
 /**
  * Creates mock indicator values
  */
-export function createMockIndicatorValues() {
+export function createMockIndicatorValues(): {
+  rsi: {
+    value: number;
+    signal: 'neutral' | 'bullish' | 'bearish';
+    overbought: boolean;
+    oversold: boolean;
+  };
+  macd: {
+    macd: number;
+    signal: number;
+    histogram: number;
+    trend: 'bullish' | 'bearish' | 'neutral';
+  };
+  sma: {
+    sma20: number;
+    sma50: number;
+    sma200: number;
+  };
+  bollinger: {
+    upper: number;
+    middle: number;
+    lower: number;
+    bandwidth: number;
+  };
+} {
   return {
     rsi: {
       value: 65,
@@ -278,7 +310,7 @@ export function createMockIndicatorValues() {
 /**
  * Creates a mock AI response
  */
-export function createMockAIResponse(type: 'analysis' | 'chat' | 'proposal') {
+export function createMockAIResponse(type: 'analysis' | 'chat' | 'proposal'): any {
   switch (type) {
     case 'analysis':
       return {

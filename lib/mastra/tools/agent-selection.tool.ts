@@ -251,7 +251,7 @@ async function executeWithA2ACommunication(
         ]);
       }
     ], {
-      timeout: 10000,
+      timeout: 20000, // 20 seconds timeout for A2A operations
       onCleanup: (error) => {
         logger.warn('[agentSelectionTool] A2A communication cleanup', {
           targetAgentId,

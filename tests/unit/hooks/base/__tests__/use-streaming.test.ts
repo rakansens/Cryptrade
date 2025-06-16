@@ -16,8 +16,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Mock fetch is already set in jest.setup.js
 
-// Use the EventSource mock from jest.setup.js and type it properly
-const MockEventSource = (global as any).EventSource;
+// Use the EventSource mock from jest.setup.js
 
 describe('useStreaming', () => {
   beforeEach(() => {
@@ -675,7 +674,7 @@ describe('useSSE', () => {
       expect(result.current.eventSource).toBeTruthy();
     });
 
-    const eventSource = result.current.eventSource as unknown as MockEventSource;
+    const eventSource = result.current.eventSource as typeof MockEventSource;
 
     // Simulate custom event
     const updateEvent = new MessageEvent('update', {

@@ -4,6 +4,9 @@
 
 import type { Time, SeriesDataItemTypeMap, ISeriesApi, SeriesType } from 'lightweight-charts';
 
+// Re-export Time type
+export type { Time } from 'lightweight-charts';
+
 // ===== Drawing Types =====
 
 export type DrawingType =

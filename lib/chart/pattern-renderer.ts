@@ -108,7 +108,10 @@ export class PatternRenderer {
       
       // 3. Add area highlights
       if (visualization.areas && visualization.areas.length > 0) {
-        renderPatternAreas(id, visualization);
+        renderPatternAreas(id, visualization, {
+          chart: this.chart,
+          globalAllSeries: this.stateManager.allSeriesMap
+        });
       }
       
       // 4. Add metric lines (target, stop loss, breakout)

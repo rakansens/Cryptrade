@@ -23,7 +23,7 @@ export * from './database/mock-data';
 
 // Utility function to get random fixture
 export const getRandomFixture = <T>(fixtures: T[]): T => {
-  return fixtures[Math.floor(Math.random() * fixtures.length)];
+  return fixtures[Math.floor(Math.random() * fixtures.length)] as T;
 };
 
 // Fixture categories for easy access

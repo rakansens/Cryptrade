@@ -61,11 +61,7 @@ export class PatternRendererAdapter implements IPatternRenderer {
       const coreVisualization: PatternVisualization = this.convertVisualization(visualization);
       
       // Convert PatternMetrics to core format if needed
-      const coreMetrics = metrics ? {
-        targetLevel: metrics.targetLevel,
-        stopLoss: metrics.stopLoss,
-        breakoutLevel: metrics.breakoutLevel,
-      } : undefined;
+      const coreMetrics: PatternMetrics | undefined = metrics ? { ...metrics } : undefined;
       
       // 新しいCoreを使用（非同期だが、既存APIとの互換性のためawaitしない）
       this.core.renderPattern(id, coreVisualization, patternType, coreMetrics)
@@ -81,11 +77,7 @@ export class PatternRendererAdapter implements IPatternRenderer {
             logger.info('[PatternRendererAdapter] Falling back to legacy renderer');
             try {
               const legacyVisualization = this.convertVisualization(visualization);
-              const legacyMetrics = metrics ? {
-                targetLevel: metrics.targetLevel,
-                stopLoss: metrics.stopLoss,
-                breakoutLevel: metrics.breakoutLevel,
-              } : undefined;
+              const legacyMetrics = metrics ? { ...metrics } : undefined;
               this.legacy.renderPattern(id, legacyVisualization, patternType, legacyMetrics);
             } catch (legacyError) {
               logger.error('[PatternRendererAdapter] Legacy fallback also failed', {

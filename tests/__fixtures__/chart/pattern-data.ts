@@ -2,379 +2,319 @@
  * チャートパターンデータのフィクスチャ
  */
 
-import { Pattern, PatternKeyPoint } from '@/types/pattern';
+import { PatternAnalysis, PatternVisualization } from '@/types/pattern';
 
-export const mockTrianglePattern: Pattern = {
-  id: 'pattern-triangle-1',
-  type: 'triangle',
-  name: 'Ascending Triangle',
+export const mockTrianglePattern: PatternAnalysis = {
+  type: 'ascendingTriangle',
   startTime: 1638360000,
   endTime: 1638446400,
-  timeframe: '1h',
   confidence: 0.85,
-  keyPoints: [
-    {
-      time: 1638360000,
-      price: 48000,
-      type: 'low',
-      label: 'Support Start'
-    },
-    {
-      time: 1638381600,
-      price: 48500,
-      type: 'high',
-      label: 'Resistance Level'
-    },
-    {
-      time: 1638403200,
-      price: 48100,
-      type: 'low',
-      label: 'Support Touch'
-    },
-    {
-      time: 1638424800,
-      price: 48500,
-      type: 'high',
-      label: 'Resistance Retest'
-    },
-    {
-      time: 1638446400,
-      price: 48200,
-      type: 'low',
-      label: 'Triangle Apex'
-    }
-  ],
-  trendlines: [
-    {
-      start: { time: 1638360000, price: 48000 },
-      end: { time: 1638446400, price: 48200 },
-      type: 'support'
-    },
-    {
-      start: { time: 1638381600, price: 48500 },
-      end: { time: 1638424800, price: 48500 },
-      type: 'resistance'
-    }
-  ],
+  visualization: {
+    keyPoints: [
+      {
+        time: 1638360000,
+        value: 48000,
+        type: 'trough',
+        label: 'Support Start'
+      },
+      {
+        time: 1638381600,
+        value: 48500,
+        type: 'peak',
+        label: 'Resistance Level'
+      },
+      {
+        time: 1638403200,
+        value: 48100,
+        type: 'trough',
+        label: 'Support Touch'
+      },
+      {
+        time: 1638424800,
+        value: 48500,
+        type: 'peak',
+        label: 'Resistance Retest'
+      },
+      {
+        time: 1638446400,
+        value: 48200,
+        type: 'trough',
+        label: 'Triangle Apex'
+      }
+    ],
+    lines: [
+      {
+        from: 0,
+        to: 4,
+        type: 'support'
+      },
+      {
+        from: 1,
+        to: 3,
+        type: 'resistance'
+      }
+    ]
+  },
   metrics: {
-    priceChange: 200,
-    percentageChange: 0.42,
-    volume: 15000,
-    volatility: 0.02
-  }
+    formation_period: 20,
+    symmetry: 0.85,
+    volume_pattern: 'neutral',
+    breakout_level: 48600,
+    target_level: 49000,
+    stop_loss: 47900
+  },
+  description: 'Ascending triangle pattern with strong resistance at 48500',
+  trading_implication: 'bullish'
 };
 
-export const mockHeadAndShouldersPattern: Pattern = {
-  id: 'pattern-hs-1',
-  type: 'head-and-shoulders',
-  name: 'Head and Shoulders',
+export const mockHeadAndShouldersPattern: PatternAnalysis = {
+  type: 'headAndShoulders',
   startTime: 1638360000,
   endTime: 1638532800,
-  timeframe: '4h',
   confidence: 0.92,
-  keyPoints: [
-    {
-      time: 1638360000,
-      price: 48000,
-      type: 'low',
-      label: 'Left Shoulder Base'
-    },
-    {
-      time: 1638388800,
-      price: 49000,
-      type: 'high',
-      label: 'Left Shoulder Peak'
-    },
-    {
-      time: 1638417600,
-      price: 48200,
-      type: 'low',
-      label: 'Neckline Left'
-    },
-    {
-      time: 1638446400,
-      price: 50000,
-      type: 'high',
-      label: 'Head Peak'
-    },
-    {
-      time: 1638475200,
-      price: 48200,
-      type: 'low',
-      label: 'Neckline Right'
-    },
-    {
-      time: 1638504000,
-      price: 49000,
-      type: 'high',
-      label: 'Right Shoulder Peak'
-    },
-    {
-      time: 1638532800,
-      price: 48000,
-      type: 'low',
-      label: 'Pattern Completion'
-    }
-  ],
-  trendlines: [
-    {
-      start: { time: 1638417600, price: 48200 },
-      end: { time: 1638475200, price: 48200 },
-      type: 'neckline'
-    }
-  ],
+  visualization: {
+    keyPoints: [
+      {
+        time: 1638360000,
+        value: 48000,
+        type: 'trough',
+        label: 'Left Shoulder Base'
+      },
+      {
+        time: 1638388800,
+        value: 49000,
+        type: 'peak',
+        label: 'Left Shoulder Peak'
+      },
+      {
+        time: 1638417600,
+        value: 48200,
+        type: 'neckline',
+        label: 'Neckline Left'
+      },
+      {
+        time: 1638446400,
+        value: 50000,
+        type: 'peak',
+        label: 'Head Peak'
+      },
+      {
+        time: 1638475200,
+        value: 48200,
+        type: 'neckline',
+        label: 'Neckline Right'
+      },
+      {
+        time: 1638504000,
+        value: 49000,
+        type: 'peak',
+        label: 'Right Shoulder Peak'
+      },
+      {
+        time: 1638532800,
+        value: 48000,
+        type: 'target',
+        label: 'Pattern Completion'
+      }
+    ],
+    lines: [
+      {
+        from: 2,
+        to: 4,
+        type: 'neckline'
+      }
+    ]
+  },
   metrics: {
-    priceChange: -2000,
-    percentageChange: -4.0,
-    volume: 25000,
-    volatility: 0.04
-  }
+    formation_period: 48,
+    symmetry: 0.88,
+    volume_pattern: 'decreasing',
+    breakout_level: 48000,
+    target_level: 46200,
+    stop_loss: 48500
+  },
+  description: 'Classic head and shoulders pattern indicating potential reversal',
+  trading_implication: 'bearish'
 };
 
-export const mockWedgePattern: Pattern = {
-  id: 'pattern-wedge-1',
+export const mockWedgePattern: PatternAnalysis = {
   type: 'wedge',
-  name: 'Rising Wedge',
   startTime: 1638360000,
   endTime: 1638489600,
-  timeframe: '2h',
   confidence: 0.78,
-  keyPoints: [
-    {
-      time: 1638360000,
-      price: 47500,
-      type: 'low',
-      label: 'Wedge Start'
-    },
-    {
-      time: 1638378000,
-      price: 48000,
-      type: 'high',
-      label: 'First High'
-    },
-    {
-      time: 1638396000,
-      price: 47700,
-      type: 'low',
-      label: 'Higher Low'
-    },
-    {
-      time: 1638414000,
-      price: 48300,
-      type: 'high',
-      label: 'Higher High'
-    },
-    {
-      time: 1638432000,
-      price: 47900,
-      type: 'low',
-      label: 'Converging Low'
-    },
-    {
-      time: 1638450000,
-      price: 48500,
-      type: 'high',
-      label: 'Wedge Top'
-    },
-    {
-      time: 1638489600,
-      price: 48100,
-      type: 'low',
-      label: 'Wedge End'
-    }
-  ],
-  trendlines: [
-    {
-      start: { time: 1638360000, price: 47500 },
-      end: { time: 1638489600, price: 48100 },
-      type: 'support'
-    },
-    {
-      start: { time: 1638378000, price: 48000 },
-      end: { time: 1638450000, price: 48500 },
-      type: 'resistance'
-    }
-  ],
+  visualization: {
+    keyPoints: [
+      {
+        time: 1638360000,
+        value: 47500,
+        type: 'trough',
+        label: 'Wedge Start'
+      },
+      {
+        time: 1638378000,
+        value: 48000,
+        type: 'peak',
+        label: 'First High'
+      },
+      {
+        time: 1638396000,
+        value: 47700,
+        type: 'trough',
+        label: 'Higher Low'
+      },
+      {
+        time: 1638414000,
+        value: 48300,
+        type: 'peak',
+        label: 'Higher High'
+      },
+      {
+        time: 1638432000,
+        value: 47900,
+        type: 'trough',
+        label: 'Converging Low'
+      },
+      {
+        time: 1638450000,
+        value: 48500,
+        type: 'peak',
+        label: 'Wedge Top'
+      },
+      {
+        time: 1638489600,
+        value: 48100,
+        type: 'breakout',
+        label: 'Wedge End'
+      }
+    ],
+    lines: [
+      {
+        from: 0,
+        to: 6,
+        type: 'support'
+      },
+      {
+        from: 1,
+        to: 5,
+        type: 'resistance'
+      }
+    ]
+  },
   metrics: {
-    priceChange: 600,
-    percentageChange: 1.26,
-    volume: 18000,
-    volatility: 0.025
-  }
+    formation_period: 36,
+    symmetry: 0.75,
+    volume_pattern: 'decreasing',
+    breakout_level: 47400,
+    target_level: 46800,
+    stop_loss: 48600
+  },
+  description: 'Rising wedge pattern suggesting potential downward breakout',
+  trading_implication: 'bearish'
 };
 
-export const mockFlagPattern: Pattern = {
-  id: 'pattern-flag-1',
+export const mockFlagPattern: PatternAnalysis = {
   type: 'flag',
-  name: 'Bull Flag',
   startTime: 1638360000,
   endTime: 1638403200,
-  timeframe: '30m',
   confidence: 0.88,
-  keyPoints: [
-    {
-      time: 1638360000,
-      price: 47000,
-      type: 'low',
-      label: 'Pole Start'
-    },
-    {
-      time: 1638367200,
-      price: 49000,
-      type: 'high',
-      label: 'Pole Top'
-    },
-    {
-      time: 1638374400,
-      price: 48500,
-      type: 'low',
-      label: 'Flag Start'
-    },
-    {
-      time: 1638381600,
-      price: 48800,
-      type: 'high',
-      label: 'Flag Channel Top'
-    },
-    {
-      time: 1638388800,
-      price: 48400,
-      type: 'low',
-      label: 'Flag Channel Bottom'
-    },
-    {
-      time: 1638396000,
-      price: 48700,
-      type: 'high',
-      label: 'Flag End'
-    },
-    {
-      time: 1638403200,
-      price: 49500,
-      type: 'high',
-      label: 'Breakout Target'
-    }
-  ],
-  trendlines: [
-    {
-      start: { time: 1638374400, price: 48500 },
-      end: { time: 1638388800, price: 48400 },
-      type: 'support'
-    },
-    {
-      start: { time: 1638381600, price: 48800 },
-      end: { time: 1638396000, price: 48700 },
-      type: 'resistance'
-    }
-  ],
+  visualization: {
+    keyPoints: [
+      {
+        time: 1638360000,
+        value: 47000,
+        type: 'trough',
+        label: 'Pole Start'
+      },
+      {
+        time: 1638367200,
+        value: 49000,
+        type: 'peak',
+        label: 'Pole Top'
+      },
+      {
+        time: 1638374400,
+        value: 48500,
+        type: 'trough',
+        label: 'Flag Start'
+      },
+      {
+        time: 1638381600,
+        value: 48800,
+        type: 'peak',
+        label: 'Flag Channel Top'
+      },
+      {
+        time: 1638388800,
+        value: 48400,
+        type: 'trough',
+        label: 'Flag Channel Bottom'
+      },
+      {
+        time: 1638396000,
+        value: 48700,
+        type: 'peak',
+        label: 'Flag End'
+      },
+      {
+        time: 1638403200,
+        value: 49500,
+        type: 'target',
+        label: 'Breakout Target'
+      }
+    ],
+    lines: [
+      {
+        from: 2,
+        to: 4,
+        type: 'support'
+      },
+      {
+        from: 3,
+        to: 5,
+        type: 'resistance'
+      }
+    ]
+  },
   metrics: {
-    priceChange: 2500,
-    percentageChange: 5.32,
-    volume: 22000,
-    volatility: 0.03
-  }
-};
-
-export const mockChannelPattern: Pattern = {
-  id: 'pattern-channel-1',
-  type: 'channel',
-  name: 'Ascending Channel',
-  startTime: 1638360000,
-  endTime: 1638619200,
-  timeframe: '6h',
-  confidence: 0.82,
-  keyPoints: [
-    {
-      time: 1638360000,
-      price: 47500,
-      type: 'low',
-      label: 'Channel Start Low'
-    },
-    {
-      time: 1638381600,
-      price: 48500,
-      type: 'high',
-      label: 'Channel Start High'
-    },
-    {
-      time: 1638424800,
-      price: 48000,
-      type: 'low',
-      label: 'Channel Low 2'
-    },
-    {
-      time: 1638468000,
-      price: 49000,
-      type: 'high',
-      label: 'Channel High 2'
-    },
-    {
-      time: 1638511200,
-      price: 48500,
-      type: 'low',
-      label: 'Channel Low 3'
-    },
-    {
-      time: 1638554400,
-      price: 49500,
-      type: 'high',
-      label: 'Channel High 3'
-    },
-    {
-      time: 1638619200,
-      price: 49000,
-      type: 'low',
-      label: 'Channel End'
-    }
-  ],
-  trendlines: [
-    {
-      start: { time: 1638360000, price: 47500 },
-      end: { time: 1638619200, price: 49000 },
-      type: 'support'
-    },
-    {
-      start: { time: 1638381600, price: 48500 },
-      end: { time: 1638554400, price: 49500 },
-      type: 'resistance'
-    }
-  ],
-  metrics: {
-    priceChange: 1500,
-    percentageChange: 3.16,
-    volume: 30000,
-    volatility: 0.028
-  }
+    formation_period: 12,
+    symmetry: 0.90,
+    volume_pattern: 'decreasing',
+    breakout_level: 48900,
+    target_level: 50900,
+    stop_loss: 48300
+  },
+  description: 'Bull flag pattern indicating continuation of uptrend',
+  trading_implication: 'bullish'
 };
 
 export const mockPatternCollection = [
   mockTrianglePattern,
   mockHeadAndShouldersPattern,
   mockWedgePattern,
-  mockFlagPattern,
-  mockChannelPattern
+  mockFlagPattern
 ];
 
-export const generateRandomPattern = (type: string = 'triangle'): Pattern => {
+export const generateRandomPattern = (type: 'ascendingTriangle' | 'headAndShoulders' | 'wedge' | 'flag' = 'ascendingTriangle'): PatternAnalysis => {
   const startTime = Date.now() / 1000 - 86400 * 7; // 7 days ago
   const endTime = Date.now() / 1000;
-  const basePrice = 48000 + Math.random() * 2000 - 1000;
   
   return {
-    id: `pattern-${type}-${Math.random().toString(36).substr(2, 9)}`,
     type,
-    name: `${type.charAt(0).toUpperCase() + type.slice(1)} Pattern`,
     startTime,
     endTime,
-    timeframe: '1h',
     confidence: 0.7 + Math.random() * 0.3,
-    keyPoints: [],
-    trendlines: [],
+    visualization: {
+      keyPoints: []
+    },
     metrics: {
-      priceChange: (Math.random() - 0.5) * 2000,
-      percentageChange: (Math.random() - 0.5) * 10,
-      volume: Math.random() * 50000 + 10000,
-      volatility: Math.random() * 0.05 + 0.01
-    }
+      formation_period: Math.floor(Math.random() * 50 + 10),
+      symmetry: 0.5 + Math.random() * 0.5,
+      volume_pattern: ['increasing', 'decreasing', 'neutral'][Math.floor(Math.random() * 3)] as 'increasing' | 'decreasing' | 'neutral',
+      breakout_level: 48000 + (Math.random() - 0.5) * 2000,
+      target_level: 48000 + (Math.random() - 0.5) * 4000,
+      stop_loss: 48000 + (Math.random() - 0.5) * 1000
+    },
+    description: `${type} pattern detected`,
+    trading_implication: Math.random() > 0.5 ? 'bullish' : 'bearish'
   };
 };

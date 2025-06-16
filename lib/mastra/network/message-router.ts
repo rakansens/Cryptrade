@@ -23,7 +23,7 @@ export class AgentNetwork {
   constructor(config: Partial<AgentNetworkConfig> = {}) {
     this.config = {
       maxHops: 5,
-      timeout: 10000,
+      timeout: 20000, // 20 seconds timeout for A2A operations
       enableLogging: true,
       enableMetrics: true,
       ...config,

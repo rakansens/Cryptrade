@@ -504,7 +504,7 @@ describe('Chart Store', () => {
 
       // Undo
       act(() => {
-        result.current.undo();
+        (result.current as any).undo();
       });
 
       expect(result.current.drawings).toHaveLength(1);
@@ -513,7 +513,7 @@ describe('Chart Store', () => {
 
       // Redo
       act(() => {
-        result.current.redo();
+        (result.current as any).redo();
       });
 
       expect(result.current.drawings).toHaveLength(2);

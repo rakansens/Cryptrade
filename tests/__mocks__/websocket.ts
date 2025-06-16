@@ -32,7 +32,7 @@ export class MockWebSocket {
     }, 10);
   }
 
-  send(data: string | ArrayBuffer | Blob | ArrayBufferView): void {
+  send(_data: string | ArrayBuffer | Blob | ArrayBufferView): void {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open');
     }
@@ -41,8 +41,8 @@ export class MockWebSocket {
 
   close(code?: number, reason?: string): void {
     this.readyState = MockWebSocket.CLOSING;
-    this.closeCode = code;
-    this.closeReason = reason;
+    this.closeCode = code ?? 1000;
+    this.closeReason = reason ?? '';
     
     setTimeout(() => {
       this.readyState = MockWebSocket.CLOSED;

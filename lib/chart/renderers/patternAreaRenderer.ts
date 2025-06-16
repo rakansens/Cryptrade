@@ -75,7 +75,7 @@ export function renderPatternAreas(
           histogramData.push({
             time: time as Time,
             value: heightValue,
-            color: `${area.color || 'rgba(33, 150, 243, 0.1)'}${Math.round((area.opacity || 0.1) * 255).toString(16).padStart(2, '0')}`
+            color: `${area.style?.fillColor || 'rgba(33, 150, 243, 0.1)'}${Math.round((area.style?.opacity || 0.1) * 255).toString(16).padStart(2, '0')}`
           });
         }
         
@@ -88,7 +88,7 @@ export function renderPatternAreas(
             top: 1 - (maxValue / 100), // Position based on pattern height
             bottom: minValue / 100,
           },
-        });
+        } as any);
         
         areaSeries.push(histogramSeries);
         

@@ -7,7 +7,7 @@ import { logger } from '@/lib/utils/logger';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { env } from '@/config/env';
-import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
+import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
 import type { 
   CreateSessionRequest, 
   CreateSessionResponse,

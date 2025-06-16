@@ -32,11 +32,8 @@ export const createTimeoutMiddleware = (config: TimeoutConfig): ApiMiddleware =>
     });
 
     try {
-      // Pass AbortSignal to the request context if supported
-      const enhancedCtx = {
-        ...ctx,
-        signal: controller.signal
-      };
+      // Note: AbortSignal could be passed to context if needed in future
+      // const enhancedCtx = { ...ctx, signal: controller.signal };
 
       const result = await Promise.race([next(), timeoutPromise]);
       

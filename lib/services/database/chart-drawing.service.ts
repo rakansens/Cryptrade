@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db/prisma';
 import type { ChartDrawing as PrismaChartDrawing, PatternAnalysis, DrawingType } from '@prisma/client';
 import { logger } from '@/lib/utils/logger';
 import { withDatabase } from '@/lib/utils/db-connection';
-import { ChartDrawing, PatternData, DrawingPoint, DrawingStyle, PatternVisualization, PatternMetrics } from '@/lib/validation/chart-drawing.schema';
+import { ChartDrawing, PatternData, DrawingPoint, DrawingStyle } from '@/lib/validation/chart-drawing.schema';
 import { isDevelopment } from '@/config/env';
 
 // Check if we're running in the browser
@@ -187,6 +187,11 @@ export class ChartDrawingDatabaseService {
     }
     
     try {
+      // Validate required fields
+      if (!pattern.symbol || !pattern.interval || pattern.startTime === undefined || pattern.endTime === undefined || pattern.confidence === undefined || !pattern.tradingImplication) {
+        throw new Error('Missing required pattern fields');
+      }
+
       const data: any = {
         type: pattern.type,
         symbol: pattern.symbol,
@@ -288,7 +293,7 @@ export class ChartDrawingDatabaseService {
       id: dbDrawing.id,
       type: dbDrawing.type,
       points: dbDrawing.points as DrawingPoint[],
-      style: dbDrawing.style as Partial<DrawingStyle> | undefined,
+      style: dbDrawing.style as DrawingStyle,
       price: dbDrawing.price?.toNumber(),
       time: dbDrawing.time ? Number(dbDrawing.time) : undefined,
       levels: dbDrawing.levels as number[] | undefined,
@@ -310,8 +315,8 @@ export class ChartDrawingDatabaseService {
       startTime: Number(dbPattern.startTime),
       endTime: Number(dbPattern.endTime),
       confidence: dbPattern.confidence.toNumber(),
-      visualization: dbPattern.visualization as PatternVisualization,
-      metrics: dbPattern.metrics as PatternMetrics | undefined,
+      visualization: dbPattern.visualization,
+      metrics: dbPattern.metrics as Record<string, any> | undefined,
       description: dbPattern.description || undefined,
       tradingImplication: dbPattern.tradingImplication,
     };

@@ -3,29 +3,27 @@
  */
 
 export class MockPriceLine {
-  private options: any;
+  private _options: any;
   
   constructor(options: any) {
-    this.options = options;
+    this._options = options;
   }
   
   applyOptions(options: any) {
-    this.options = { ...this.options, ...options };
+    this._options = { ...this._options, ...options };
   }
   
   options() {
-    return this.options;
+    return this._options;
   }
 }
 
 export class MockSeries {
-  private seriesType: string;
   private data: any[] = [];
-  private markers: any[] = [];
   private priceLines: Map<string, MockPriceLine> = new Map();
   
-  constructor(type: string) {
-    this.seriesType = type;
+  constructor(_type: string) {
+    // Type is not used in mock
   }
   
   setData(data: any[]) {
@@ -41,8 +39,8 @@ export class MockSeries {
     }
   }
   
-  setMarkers(markers: any[]) {
-    this.markers = markers;
+  setMarkers(_markers: any[]) {
+    // Markers not implemented in mock
   }
   
   createPriceLine(options: any) {
@@ -74,7 +72,7 @@ export class MockSeries {
 
 export class MockChartApi {
   private series: Map<string, MockSeries> = new Map();
-  private timeScale = {
+  private _timeScale = {
     scrollPosition: jest.fn().mockReturnValue(0),
     scrollToPosition: jest.fn(),
     getVisibleRange: jest.fn().mockReturnValue({
@@ -90,7 +88,7 @@ export class MockChartApi {
     unsubscribeVisibleTimeRangeChange: jest.fn()
   };
   
-  addCandlestickSeries(options?: any) {
+  addCandlestickSeries(_options?: any) {
     const series = new MockSeries('candlestick');
     this.series.set('candlestick', series);
     return series;
@@ -122,7 +120,7 @@ export class MockChartApi {
     return handler;
   }
   
-  unsubscribeCrosshairMove(handler: any) {
+  unsubscribeCrosshairMove(_handler: any) {
     // Mock implementation
   }
   
@@ -130,19 +128,19 @@ export class MockChartApi {
     return handler;
   }
   
-  unsubscribeClick(handler: any) {
+  unsubscribeClick(_handler: any) {
     // Mock implementation
   }
   
   timeScale() {
-    return this.timeScale;
+    return this._timeScale;
   }
   
-  applyOptions(options: any) {
+  applyOptions(_options: any) {
     // Mock implementation
   }
   
-  resize(width: number, height: number) {
+  resize(_width: number, _height: number) {
     // Mock implementation
   }
   
@@ -151,7 +149,7 @@ export class MockChartApi {
   }
 }
 
-export const createChart = jest.fn((container: HTMLElement, options?: any) => {
+export const createChart = jest.fn((_container: HTMLElement, _options?: any) => {
   return new MockChartApi();
 });
 

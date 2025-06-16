@@ -85,7 +85,7 @@ export function renderPatternLines(
     
     // フォールバック: 既存のライン描画を保持
     const existingLines = Array.from(globalAllSeries.entries())
-      .filter(([key, value]) => value.patternId === id && value.type === 'line')
+      .filter(([, value]) => value.patternId === id && value.type === 'line')
       .map(([_, value]) => value.series);
     
     if (existingLines.length > 0) {

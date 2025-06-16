@@ -9,7 +9,10 @@ export const ChartDrawingSchema = z.object({
   style: DrawingStyleSchema,
   visible: z.boolean(),
   interactive: z.boolean(),
-  metadata: z.record(z.string(), z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional(),
+  price: z.number().optional(),
+  time: z.number().optional(),
+  levels: z.array(z.number()).optional()
 });
 
 // Re-import from types/pattern.ts to avoid duplication
@@ -75,7 +78,13 @@ export const PatternMetricsSchema = z.object({
 
 // Pattern Data Schema
 export const PatternDataSchema = z.object({
+  id: z.string().optional(),
   type: z.string().min(1),
+  symbol: z.string().optional(),
+  interval: z.string().optional(),
+  startTime: z.number().optional(),
+  endTime: z.number().optional(),
+  description: z.string().optional(),
   visualization: z.any(),
   metrics: z.record(z.string(), z.any()).optional(),
   tradingImplication: z.string().optional(),

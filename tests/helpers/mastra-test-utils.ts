@@ -1,4 +1,4 @@
-import { logger } from '@/lib/utils/logger';
+import { logger } from '../../lib/utils/logger';
 import type { ToolExecutionContext } from '@mastra/core';
 import type { z } from 'zod';
 

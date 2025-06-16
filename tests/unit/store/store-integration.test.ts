@@ -8,6 +8,7 @@ import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
 import { useProposalApprovalStore } from '@/store/proposal-approval.store';
 import type { ChartDrawing } from '@/types/drawing';
 import type { PatternData } from '@/store/chart/types';
+import type { DrawingProposalGroup } from '@/types/proposals';
 
 // Import the base store for direct access
 // @ts-ignore - importing private export for testing
@@ -219,20 +220,13 @@ describe('Store Integration Tests', () => {
       });
 
       // Add AI response with proposal
-      const proposalGroup = {
+      const proposalGroup: DrawingProposalGroup = {
         id: 'proposal-group-1',
-        drawings: [
-          {
-            type: 'trendline',
-            points: [{ time: 1000, price: 45000 }, { time: 2000, price: 48000 }],
-            color: '#00ff00',
-            lineWidth: 2,
-            label: 'Bullish Trendline',
-          },
-        ],
-        analysis: 'Bullish trend identified',
+        title: 'Bullish Trading Opportunity',
+        description: 'Bullish trend identified in BTCUSDT',
         proposals: [],
-        timestamp: Date.now()
+        groupType: 'analysis',
+        createdAt: Date.now()
       };
 
       act(() => {
@@ -361,10 +355,13 @@ describe('Store Integration Tests', () => {
       });
 
       // 6. AI completes with proposal
-      const proposalData = {
+      const proposalData: DrawingProposalGroup & { drawings: ChartDrawing[] } = {
         id: 'proposal-sr-1',
+        title: 'Support and Resistance Levels',
+        description: 'Key support at $2,500 and resistance at $2,800',
         proposals: [],
-        timestamp: Date.now(),
+        groupType: 'levels',
+        createdAt: Date.now(),
         drawings: [
           {
             id: 'drawing-support',

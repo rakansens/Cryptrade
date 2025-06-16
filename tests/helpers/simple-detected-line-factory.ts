@@ -1,4 +1,4 @@
-import type { DetectedLine } from '@/lib/analysis/types';
+import type { DetectedLine } from '../../lib/analysis/types';
 
 /**
  * Factory for creating simple test DetectedLine objects (analysis/types version)

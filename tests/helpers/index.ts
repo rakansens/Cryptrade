@@ -30,6 +30,8 @@ import {
   simulateWebSocketEvent,
 } from './msw-server';
 
+// Type imports are handled in msw-server
+
 // Re-export everything
 export {
   // Mock helpers
@@ -56,7 +58,10 @@ export {
 /**
  * All-in-one test setup for most common use cases
  */
-export const completeTestSetup = () => {
+export const completeTestSetup = (): {
+  server: any;
+  mockLogger: typeof mockLogger;
+} => {
   // Setup MSW server
   setupMswServer();
   
@@ -75,7 +80,10 @@ export const completeTestSetup = () => {
 /**
  * API test setup (for testing API routes and external calls)
  */
-export const apiTestSetup = (customHandlers: any[] = []) => {
+export const apiTestSetup = (customHandlers: any[] = []): {
+  server: any;
+  mockLogger: typeof mockLogger;
+} => {
   const testServer = setupMswServer(customHandlers);
   asyncTestSetup();
   setupLoggerMock();
@@ -89,7 +97,10 @@ export const apiTestSetup = (customHandlers: any[] = []) => {
 /**
  * Component test setup (for React components)
  */
-export const componentTestSetup = () => {
+export const componentTestSetup = (): {
+  server: any;
+  mockLogger: typeof mockLogger;
+} => {
   setupMswServer();
   reactTestSetup();
   setupLoggerMock();
@@ -103,7 +114,12 @@ export const componentTestSetup = () => {
 /**
  * Integration test setup (for complex multi-system tests)
  */
-export const integrationTestSetup = (customHandlers: any[] = []) => {
+export const integrationTestSetup = (customHandlers: any[] = []): {
+  server: any;
+  mockWs: any;
+  mockLogger: typeof mockLogger;
+  simulateWsEvent: (event: string, data?: any) => void;
+} => {
   const testServer = setupMswServer(customHandlers);
   const mockWs = createWebSocketMock();
   
@@ -124,18 +140,24 @@ export const integrationTestSetup = (customHandlers: any[] = []) => {
 /**
  * Performance test setup (with timing utilities)
  */
-export const performanceTestSetup = () => {
+export const performanceTestSetup = (): {
+  server: any;
+  mockLogger: typeof mockLogger;
+  startTimer: (label: string) => void;
+  endTimer: (label: string) => number;
+  expectTimingLessThan: (label: string, maxMs: number) => number;
+} => {
   setupMswServer();
   setupLoggerMock();
   
   // Performance measurement helpers
   const performanceMarks: Map<string, number> = new Map();
   
-  const startTimer = (label: string) => {
+  const startTimer = (label: string): void => {
     performanceMarks.set(label, Date.now());
   };
   
-  const endTimer = (label: string) => {
+  const endTimer = (label: string): number => {
     const start = performanceMarks.get(label);
     if (!start) throw new Error(`Timer '${label}' not found`);
     const duration = Date.now() - start;
@@ -143,7 +165,7 @@ export const performanceTestSetup = () => {
     return duration;
   };
   
-  const expectTimingLessThan = (label: string, maxMs: number) => {
+  const expectTimingLessThan = (label: string, maxMs: number): number => {
     const duration = endTimer(label);
     expect(duration).toBeLessThan(maxMs);
     return duration;

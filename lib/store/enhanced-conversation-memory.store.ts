@@ -247,7 +247,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               // First ensure session exists in DB
               // Get user ID from a safe source (not env in browser)
               // In a real app, this would come from authentication context
-              const userId = 'system';
+              const userId = null; // Allow anonymous sessions
               
               if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && userId === 'system') {
                 logger.warn('[EnhancedConversationMemory] Using system user ID in production. Consider implementing proper user authentication.');

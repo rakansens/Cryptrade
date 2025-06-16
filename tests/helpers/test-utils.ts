@@ -1,9 +1,9 @@
-import type { PriceUpdate, BinanceTradeMessage } from '@/types/market';
+import type { PriceUpdate, BinanceTradeMessage } from '../../types/market';
 
 /**
  * Create a mock fetch response for testing
  */
-export function createMockFetchResponse(data: any, options?: { status?: number; ok?: boolean }) {
+export function createMockFetchResponse(data: any, options?: { status?: number; ok?: boolean }): Promise<any> {
   return Promise.resolve({
     ok: options?.ok ?? true,
     status: options?.status ?? 200,

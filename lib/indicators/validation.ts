@@ -106,7 +106,9 @@ export function validatePriceData(
   // 単調性チェック（時間が順序通りか）
   if (options.checkMonotonic) {
     for (let i = 1; i < data.length; i++) {
-      if (data[i].time <= data[i - 1].time) {
+      const current = data[i];
+      const previous = data[i - 1];
+      if (current && previous && current.time <= previous.time) {
         return {
           valid: false,
           error: `Time series is not monotonically increasing at index ${i}`
@@ -126,10 +128,9 @@ export function validatePriceData(
     }
   }
 
-  return {
-    valid: true,
-    warnings: warnings.length > 0 ? warnings : undefined
-  };
+  return warnings.length > 0 
+    ? { valid: true as const, warnings }
+    : { valid: true as const };
 }
 
 /**
@@ -183,10 +184,9 @@ export function validateNumberArray(
     }
   }
 
-  return {
-    valid: true,
-    warnings: warnings.length > 0 ? warnings : undefined
-  };
+  return warnings.length > 0 
+    ? { valid: true as const, warnings }
+    : { valid: true as const };
 }
 
 /**

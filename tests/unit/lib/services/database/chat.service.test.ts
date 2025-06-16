@@ -242,7 +242,7 @@ describe('ChatDatabaseService', () => {
 
     it('should return empty array in development when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      process.env['NODE_ENV'] = 'development';
 
       chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
       (withDatabase as jest.Mock).mockImplementation(async (mainFn, fallbackFn) => fallbackFn());
@@ -252,7 +252,7 @@ describe('ChatDatabaseService', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Returning empty array in development mode');
 
-      process.env.NODE_ENV = originalEnv;
+      process.env['NODE_ENV'] = originalEnv;
     });
 
     it('should apply rate limiting', async () => {
@@ -268,11 +268,13 @@ describe('ChatDatabaseService', () => {
   describe('getSession', () => {
     const mockSession: ConversationSession = {
       id: 'session-1',
-      userId: 'user-1',
-      summary: 'Test Session',
       createdAt: new Date(),
       updatedAt: new Date(),
+      userId: 'user-1',
+      startedAt: new Date(),
       lastActiveAt: new Date(),
+      summary: 'Test Session',
+      metadata: null,
     };
 
     it('should get session successfully', async () => {
@@ -300,18 +302,22 @@ describe('ChatDatabaseService', () => {
     const mockMessages: ConversationMessage[] = [
       {
         id: 'msg-1',
-        sessionId: 'session-1',
-        role: 'user',
-        content: 'Hello',
+        createdAt: new Date(),
         timestamp: new Date(),
+        sessionId: 'session-1',
+        role: 'user' as const,
+        content: 'Hello',
+        agentId: null,
         metadata: { type: 'text' },
       },
       {
         id: 'msg-2',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: 'Hi there!',
+        createdAt: new Date(),
         timestamp: new Date(Date.now() + 1000),
+        sessionId: 'session-1',
+        role: 'assistant' as const,
+        content: 'Hi there!',
+        agentId: null,
         metadata: { type: 'text' },
       },
     ];
@@ -364,20 +370,24 @@ describe('ChatDatabaseService', () => {
   describe('addMessage', () => {
     const mockMessage: ConversationMessage = {
       id: 'msg-1',
-      sessionId: 'session-1',
-      role: 'user',
-      content: 'Test message',
+      createdAt: new Date(),
       timestamp: new Date(),
+      sessionId: 'session-1',
+      role: 'user' as const,
+      content: 'Test message',
+      agentId: null,
       metadata: { type: 'text' },
     };
 
     const mockSession: ConversationSession = {
       id: 'session-1',
-      userId: 'user-1',
-      summary: 'Test Session',
       createdAt: new Date(),
       updatedAt: new Date(),
+      userId: 'user-1',
+      startedAt: new Date(),
       lastActiveAt: new Date(),
+      summary: 'Test Session',
+      metadata: null,
     };
 
     it('should add message successfully', async () => {
@@ -568,10 +578,12 @@ describe('ChatDatabaseService', () => {
     it('should convert database message to chat message format', () => {
       const dbMessage: ConversationMessage = {
         id: 'msg-1',
-        sessionId: 'session-1',
-        role: 'user',
-        content: 'Test message',
+        createdAt: new Date(),
         timestamp: new Date('2024-01-01T00:00:00Z'),
+        sessionId: 'session-1',
+        role: 'user' as const,
+        content: 'Test message',
+        agentId: null,
         metadata: {
           type: 'text',
           proposalGroup: {
@@ -599,10 +611,12 @@ describe('ChatDatabaseService', () => {
     it('should handle null metadata', () => {
       const dbMessage: ConversationMessage = {
         id: 'msg-1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: 'Response',
+        createdAt: new Date(),
         timestamp: new Date(),
+        sessionId: 'session-1',
+        role: 'assistant' as const,
+        content: 'Response',
+        agentId: null,
         metadata: null,
       };
 
@@ -617,11 +631,13 @@ describe('ChatDatabaseService', () => {
     it('should convert database session to chat session format', () => {
       const dbSession: ConversationSession = {
         id: 'session-1',
-        userId: 'user-1',
-        summary: 'Test Session',
         createdAt: new Date('2024-01-01T00:00:00Z'),
         updatedAt: new Date('2024-01-01T01:00:00Z'),
+        userId: 'user-1',
+        startedAt: new Date(),
         lastActiveAt: new Date(),
+        summary: 'Test Session',
+        metadata: null,
       };
 
       const result = ChatDatabaseService.convertToChatSession(dbSession);
@@ -637,11 +653,13 @@ describe('ChatDatabaseService', () => {
     it('should use default title when summary is null', () => {
       const dbSession: ConversationSession = {
         id: 'session-1',
-        userId: 'user-1',
-        summary: null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: 'user-1',
+        startedAt: new Date(),
         lastActiveAt: new Date(),
+        summary: null,
+        metadata: null,
       };
 
       const result = ChatDatabaseService.convertToChatSession(dbSession);

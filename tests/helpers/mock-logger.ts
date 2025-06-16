@@ -16,7 +16,7 @@ export const mockLogger = {
 /**
  * Mock the logger module for tests
  */
-export const setupLoggerMock = () => {
+export const setupLoggerMock = (): typeof mockLogger => {
   jest.mock('@/lib/utils/logger', () => ({
     logger: mockLogger,
   }));
@@ -38,7 +38,12 @@ export const clearLoggerMocks = () => {
 /**
  * Enhanced logger mock with additional functionality
  */
-export const createEnhancedLoggerMock = () => {
+export const createEnhancedLoggerMock = (): typeof mockLogger & {
+  logs: Array<{ level: string; message: string; data?: any }>;
+  capture: (level: string, message: string, data?: any) => void;
+  clearCapture: () => void;
+  getLogsByLevel: (level: string) => Array<{ level: string; message: string; data?: any }>;
+} => {
   const enhancedMock = {
     ...mockLogger,
     logs: [] as Array<{ level: string; message: string; data?: any }>,

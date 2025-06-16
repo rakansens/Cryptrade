@@ -11,7 +11,7 @@ import { apiCache } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/utils/logger';
 import type { CreateSessionResponse, AddMessageResponse } from '@/types/api.types';
-import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
+import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
 
 describe('ChatAPI', () => {
   beforeEach(() => {
@@ -81,18 +81,26 @@ describe('ChatAPI', () => {
     it('should handle proposal group data', () => {
       const proposalGroup: ProposalGroup = {
         id: 'group-1',
+        title: 'Test Proposal Group',
+        description: 'Test Description',
         proposals: [
           {
             id: 'proposal-1',
-            type: 'buy',
-            price: 50000,
-            stopLoss: 49000,
-            takeProfit: 52000,
+            type: 'trendline' as any,
+            analysisType: 'trendline' as any,
+            coordinates: {
+              start: { x: 0, y: 50000 },
+              end: { x: 100, y: 52000 },
+            },
             confidence: 0.8,
-            reason: 'Test reasoning',
+            reasoning: 'Test reasoning',
+            priority: 'high' as const,
+            status: 'pending' as any,
+            createdAt: Date.now(),
           },
         ],
-        timestamp: Date.now(),
+        groupType: 'analysis' as const,
+        createdAt: Date.now(),
       };
 
       const dbMessage: AddMessageResponse['message'] = {
@@ -112,20 +120,48 @@ describe('ChatAPI', () => {
     it('should handle entry proposal group data', () => {
       const entryProposalGroup: EntryProposalGroup = {
         id: 'entry-group-1',
-        entries: [
+        title: 'Entry Proposal',
+        description: 'Test entry proposal',
+        proposals: [
           {
             id: 'entry-1',
-            entryType: 'market',
+            type: 'entry',
             direction: 'long',
             entryPrice: 50000,
-            stopLoss: 49000,
-            takeProfit: 51000,
-            riskRewardRatio: 2.0,
-            positionSize: 0.1,
-            reasoning: 'Entry reasoning',
+            strategy: 'dayTrading' as any,
+            timeframe: '1h',
+            symbol: 'BTCUSDT',
+            confidence: 0.8,
+            priority: 'high',
+            riskParameters: {
+              stopLoss: 49000,
+              stopLossPercent: 2,
+              takeProfitTargets: [{ price: 51000, percentage: 2 }],
+              riskRewardRatio: 2.0,
+              positionSizePercent: 1,
+              maxRiskPercent: 2,
+            },
+            conditions: {
+              trigger: 'market',
+            },
+            marketContext: {
+              trend: 'uptrend',
+              volatility: 'medium',
+              momentum: 'strong',
+              volume: 'increasing',
+              keyLevels: { support: [49000], resistance: [51000] },
+            },
+            reasoning: {
+              primary: 'Entry reasoning',
+              technicalFactors: [],
+              risks: [],
+            },
+            status: 'pending' as any,
+            createdAt: Date.now(),
           },
         ],
-        timestamp: Date.now(),
+        groupType: 'entry',
+        createdAt: Date.now(),
       };
 
       const dbMessage: AddMessageResponse['message'] = {
@@ -251,7 +287,7 @@ describe('ChatAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('chat_sessions_user-1');
+      // createKey will generate the cache key
       mockApiCache.get.mockReturnValue(cachedSessions);
 
       const result = await ChatAPI.getUserSessions('user-1');
@@ -296,7 +332,10 @@ describe('ChatAPI', () => {
 
       await ChatAPI.getUserSessions();
 
-      expect(createKey).toHaveBeenCalledWith('chat_sessions', { userId: 'default' });
+      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
+        method: 'GET',
+        headers: { 'x-user-id': 'default' },
+      });
       expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'GET',
         headers: {},
@@ -399,18 +438,26 @@ describe('ChatAPI', () => {
     it('should add a proposal message with proposal group', async () => {
       const proposalGroup: ProposalGroup = {
         id: 'group-1',
+        title: 'Test Proposal Group',
+        description: 'Test Description',
         proposals: [
           {
             id: 'proposal-1',
-            type: 'buy',
-            price: 50000,
-            stopLoss: 49000,
-            takeProfit: 51000,
+            type: 'trendline' as any,
+            analysisType: 'trendline' as any,
+            coordinates: {
+              start: { x: 0, y: 50000 },
+              end: { x: 100, y: 51000 },
+            },
             confidence: 0.8,
-            reason: 'Test',
+            reasoning: 'Test',
+            priority: 'high' as const,
+            status: 'pending' as any,
+            createdAt: Date.now(),
           },
         ],
-        timestamp: Date.now(),
+        groupType: 'analysis' as const,
+        createdAt: Date.now(),
       };
 
       const mockResponse: AddMessageResponse = {
@@ -504,7 +551,7 @@ describe('ChatAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('chat_messages_session-1');
+      // createKey will generate the cache key
       mockApiCache.get.mockReturnValue(cachedMessages);
 
       const result = await ChatAPI.getMessages('session-1');

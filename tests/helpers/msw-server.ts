@@ -86,7 +86,7 @@ export const defaultHandlers = [
 /**
  * Create MSW server with default handlers
  */
-export const createMockServer = (additionalHandlers: any[] = []) => {
+export const createMockServer = (additionalHandlers: any[] = []): ReturnType<typeof setupServer> => {
   return setupServer(...defaultHandlers, ...additionalHandlers);
 };
 
@@ -98,7 +98,7 @@ export const server = createMockServer();
 /**
  * Setup MSW server for tests
  */
-export const setupMswServer = (additionalHandlers: any[] = []) => {
+export const setupMswServer = (additionalHandlers: any[] = []): ReturnType<typeof setupServer> => {
   const testServer = additionalHandlers.length > 0 
     ? createMockServer(additionalHandlers)
     : server;
@@ -125,7 +125,7 @@ export const createTestHandlers = {
   /**
    * Create handlers that simulate network errors
    */
-  networkError: (endpoints: string[]) => {
+  networkError: (endpoints: string[]): any[] => {
     return endpoints.map(endpoint => 
       http.get(endpoint, () => {
         throw new Error('Network error');
@@ -136,7 +136,7 @@ export const createTestHandlers = {
   /**
    * Create handlers that simulate server errors
    */
-  serverError: (endpoints: string[], status = 500) => {
+  serverError: (endpoints: string[], status = 500): any[] => {
     return endpoints.map(endpoint =>
       http.get(endpoint, () => {
         return new HttpResponse(null, { status });
@@ -147,7 +147,7 @@ export const createTestHandlers = {
   /**
    * Create handlers with custom responses
    */
-  customResponse: (endpoint: string, response: DefaultBodyType, status = 200) => {
+  customResponse: (endpoint: string, response: DefaultBodyType, status = 200): any => {
     return http.get(endpoint, () => {
       return HttpResponse.json(response, { status });
     });
@@ -156,7 +156,7 @@ export const createTestHandlers = {
   /**
    * Create handlers for rate limiting simulation
    */
-  rateLimited: (endpoints: string[]) => {
+  rateLimited: (endpoints: string[]): any[] => {
     return endpoints.map(endpoint =>
       http.get(endpoint, () => {
         return new HttpResponse(null, { 
@@ -171,7 +171,7 @@ export const createTestHandlers = {
 /**
  * Helper to create WebSocket mock
  */
-export const createWebSocketMock = () => {
+export const createWebSocketMock = (): any => {
   const mockWs = {
     send: jest.fn(),
     close: jest.fn(),
@@ -203,7 +203,7 @@ export const createWebSocketMock = () => {
 /**
  * Helper to simulate WebSocket events
  */
-export const simulateWebSocketEvent = (mockWs: any, event: string, data?: any) => {
+export const simulateWebSocketEvent = (mockWs: any, event: string, data?: any): void => {
   const handler = mockWs[`on${event}`];
   if (handler && typeof handler === 'function') {
     handler(data);

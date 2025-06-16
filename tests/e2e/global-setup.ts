@@ -17,7 +17,7 @@ async function globalSetup(config: FullConfig) {
   }
 
   // Setup test database (if needed)
-  if (process.env.DATABASE_URL?.includes('test')) {
+  if (process.env['DATABASE_URL']?.includes('test')) {
     console.log('📦 Setting up test database...');
     // Run database migrations for test environment
     // This would typically run: npx prisma migrate deploy
@@ -30,7 +30,7 @@ async function globalSetup(config: FullConfig) {
   
   try {
     // Visit the base URL to ensure the server is ready
-    const baseURL = config.projects[0].use?.baseURL || 'http://localhost:3001';
+    const baseURL = config.projects[0]?.use?.baseURL || 'http://localhost:3001';
     console.log(`🌐 Checking test server at ${baseURL}...`);
     
     await page.goto(baseURL, { 
@@ -47,7 +47,7 @@ async function globalSetup(config: FullConfig) {
   }
 
   // Store test start time for reporting
-  process.env.TEST_START_TIME = new Date().toISOString();
+  process.env['TEST_START_TIME'] = new Date().toISOString();
   
   console.log('✨ E2E test setup complete!');
   console.log(`📊 Test results will be saved to: ${resultsDir}`);

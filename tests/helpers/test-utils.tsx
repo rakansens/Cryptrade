@@ -5,7 +5,8 @@
  */
 
 import { render, RenderOptions } from '@testing-library/react';
-import React, { ReactElement } from 'react';
+import * as React from 'react';
+import { ReactElement } from 'react';
 import { config } from 'dotenv';
 
 // Load test environment variables
@@ -38,7 +39,11 @@ export async function flushPromises(): Promise<void> {
 /**
  * Creates a deferred promise for testing async flows
  */
-export function createDeferredPromise<T>() {
+export function createDeferredPromise<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (error: any) => void;
+} {
   let resolve: (value: T) => void;
   let reject: (error: any) => void;
   
@@ -57,7 +62,7 @@ export function createDeferredPromise<T>() {
 /**
  * Mocks the global fetch function
  */
-export function mockFetch(responses: Array<{ url: string | RegExp; response: any }>) {
+export function mockFetch(responses: Array<{ url: string | RegExp; response: any }>): jest.Mock {
   const fetchMock = jest.fn();
   
   fetchMock.mockImplementation(async (url: string, _options?: RequestInit) => {
@@ -266,7 +271,7 @@ export function createTestSessionId(prefix: string = 'test'): string {
 /**
  * Validates that an object matches a schema
  */
-export function validateSchema(object: any, schema: Record<string, any>) {
+export function validateSchema(object: any, schema: Record<string, any>): string[] {
   const errors: string[] = [];
   
   for (const [key, validator] of Object.entries(schema)) {

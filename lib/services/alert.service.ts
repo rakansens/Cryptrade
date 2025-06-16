@@ -1,57 +1,33 @@
-import { prisma } from '@/lib/db/prisma';
-import { broadcastEvent } from '@/app/api/events/route';
+// import { prisma } from '@/lib/db/prisma';
+// import { broadcastEvent } from '@/app/api/events/route';
 import type { AlertConditions, AlertMetadata } from '@/types/database.types';
 
+// Alert and AlertTrigger models are not defined in the Prisma schema
+// This service is temporarily disabled until the schema is updated
+
 export class AlertService {
-  static async createAlert(data: {
+  static async createAlert(_data: {
     userId: string;
     symbol: string;
     conditions: AlertConditions;
     metadata?: AlertMetadata;
   }) {
-    return prisma.alert.create({
-      data: {
-        userId: data.userId,
-        symbol: data.symbol,
-        conditions: data.conditions as any,
-        metadata: (data.metadata ?? { triggerCount: 0 }) as any,
-      },
-    });
+    // TODO: Implement when alert model is added to Prisma schema
+    throw new Error('Alert service is not implemented - missing Prisma models');
   }
 
-  static async getUserAlerts(userId: string) {
-    return prisma.alert.findMany({ where: { userId } });
+  static async getUserAlerts(_userId: string) {
+    // TODO: Implement when alert model is added to Prisma schema
+    return [];
   }
 
-  static async deleteAlert(id: string) {
-    return prisma.alert.delete({ where: { id } });
+  static async deleteAlert(_id: string) {
+    // TODO: Implement when alert model is added to Prisma schema
+    throw new Error('Alert service is not implemented - missing Prisma models');
   }
 
-  static async triggerAlert(alertId: string, price: number, description?: string) {
-    const alert = await prisma.alert.update({
-      where: { id: alertId },
-      data: {
-        metadata: {
-          ...(await prisma.alert
-            .findUnique({ where: { id: alertId }, select: { metadata: true } }))
-            ?.metadata,
-          triggerCount: {
-            increment: 1,
-          },
-          lastTriggered: new Date().toISOString(),
-        } as any,
-      },
-    });
-
-    const trigger = await prisma.alertTrigger.create({
-      data: { alertId, price, description },
-    });
-
-    broadcastEvent({
-      type: 'alertTriggered',
-      data: { alertId, userId: alert.userId, symbol: alert.symbol, price, description },
-    });
-
-    return trigger;
+  static async triggerAlert(_alertId: string, _price: number, _description?: string) {
+    // TODO: Implement when alert model is added to Prisma schema
+    throw new Error('Alert service is not implemented - missing Prisma models');
   }
 }

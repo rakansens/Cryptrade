@@ -298,13 +298,16 @@ describe('Chat Store', () => {
         });
       });
 
-      const proposalData = {
+      const proposalData: Partial<ChatMessage> = {
         content: 'Updated with proposal',
         type: 'proposal' as const,
         proposalGroup: { 
-          id: 'proposal-1', 
+          id: 'proposal-1',
+          title: 'Test Proposal',
+          description: 'Test Description',
           proposals: [],
-          timestamp: Date.now()
+          groupType: 'analysis' as const,
+          createdAt: Date.now()
         },
       };
 

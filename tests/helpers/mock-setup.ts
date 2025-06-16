@@ -8,7 +8,7 @@ import { clearLoggerMocks } from './mock-logger';
 /**
  * Standard setup for most test cases
  */
-export const standardTestSetup = () => {
+export const standardTestSetup = (): void => {
   beforeEach(() => {
     // Clear all mocks
     jest.clearAllMocks();
@@ -39,7 +39,7 @@ export const standardTestSetup = () => {
 /**
  * Setup for async/promise-based tests
  */
-export const asyncTestSetup = () => {
+export const asyncTestSetup = (): void => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearLoggerMocks();
@@ -60,7 +60,7 @@ export const asyncTestSetup = () => {
 /**
  * Setup for WebSocket-related tests
  */
-export const websocketTestSetup = () => {
+export const websocketTestSetup = (): (() => any) => {
   let mockWsSubject: any;
 
   beforeEach(() => {
@@ -96,7 +96,7 @@ export const websocketTestSetup = () => {
 /**
  * Setup for React component tests
  */
-export const reactTestSetup = () => {
+export const reactTestSetup = (): void => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearLoggerMocks();
@@ -153,7 +153,7 @@ export const reactTestSetup = () => {
 /**
  * Setup for store/Zustand tests
  */
-export const storeTestSetup = () => {
+export const storeTestSetup = (): void => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearLoggerMocks();

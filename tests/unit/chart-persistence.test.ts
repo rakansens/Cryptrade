@@ -53,12 +53,8 @@ describe('ChartPersistenceManager', () => {
   };
 
   const mockPattern: PatternData = {
-    id: 'pattern-1',
     type: 'headAndShoulders',
-    symbol: 'BTCUSDT',
-    interval: '1h',
-    startTime: 1234567890,
-    endTime: 1234567900,
+    confidence: 0.85,
     visualization: {
       lines: [{
         id: 'line-1',
@@ -69,7 +65,6 @@ describe('ChartPersistenceManager', () => {
       }],
     },
     tradingImplication: 'bearish',
-    confidence: 0.85,
   };
 
   const mockTimeframeState: TimeframeState = {

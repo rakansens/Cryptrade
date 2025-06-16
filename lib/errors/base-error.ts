@@ -83,7 +83,7 @@ export class MastraBaseError<
    * Log the error with appropriate severity
    */
   log(): void {
-    const errorDetails: Record<string, unknown> = this.toJSON();
+    const errorDetails = this.toJSON() as unknown as Record<string, unknown>;
     
     switch (this.severity) {
       case 'WARNING':

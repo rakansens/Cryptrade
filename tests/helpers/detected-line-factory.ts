@@ -1,4 +1,4 @@
-import type { DetectedLine } from '@/lib/analysis/multi-timeframe-line-detector';
+import type { DetectedLine } from '../../lib/analysis/multi-timeframe-line-detector';
 
 /**
  * Factory for creating test DetectedLine objects

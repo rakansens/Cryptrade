@@ -7,11 +7,11 @@ import { FullConfig } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-async function globalTeardown(config: FullConfig) {
+async function globalTeardown(_config: FullConfig) {
   console.log('🧹 Starting E2E test cleanup...');
 
   // Calculate test duration
-  const startTime = process.env.TEST_START_TIME;
+  const startTime = process.env['TEST_START_TIME'];
   if (startTime) {
     const duration = Date.now() - new Date(startTime).getTime();
     const seconds = Math.floor(duration / 1000);
@@ -19,7 +19,7 @@ async function globalTeardown(config: FullConfig) {
   }
 
   // Clean up test database (if needed)
-  if (process.env.DATABASE_URL?.includes('test')) {
+  if (process.env['DATABASE_URL']?.includes('test')) {
     console.log('🗑️  Cleaning up test database...');
     // This would typically clean up test data
     // Be careful not to drop the database if you want to inspect it after tests
@@ -32,13 +32,13 @@ async function globalTeardown(config: FullConfig) {
   try {
     const summary = {
       timestamp: new Date().toISOString(),
-      duration: process.env.TEST_START_TIME 
-        ? Date.now() - new Date(process.env.TEST_START_TIME).getTime() 
+      duration: process.env['TEST_START_TIME'] 
+        ? Date.now() - new Date(process.env['TEST_START_TIME']).getTime() 
         : 0,
       environment: {
         node: process.version,
         platform: process.platform,
-        ci: !!process.env.CI
+        ci: !!process.env['CI']
       }
     };
     
@@ -49,7 +49,7 @@ async function globalTeardown(config: FullConfig) {
   }
 
   // Clean up temporary files (optional)
-  const tempFiles = [
+  const tempFiles: string[] = [
     // Add any temporary files created during tests
   ];
   

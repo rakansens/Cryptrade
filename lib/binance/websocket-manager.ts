@@ -132,7 +132,7 @@ export class BinanceWebSocketManager {
       // Clear heartbeat first
       if (this.heartbeatInterval) {
         clearInterval(this.heartbeatInterval);
-        this.heartbeatInterval = undefined;
+        delete this.heartbeatInterval;
       }
       
       // Clear all reconnect timeouts
@@ -361,7 +361,7 @@ export class BinanceWebSocketManager {
       if (this.isDestroyed) {
         if (this.heartbeatInterval) {
           clearInterval(this.heartbeatInterval);
-          this.heartbeatInterval = undefined;
+          delete this.heartbeatInterval;
         }
         return;
       }

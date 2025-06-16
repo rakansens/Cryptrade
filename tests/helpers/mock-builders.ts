@@ -187,7 +187,7 @@ export class MockLoggerBuilder {
     return this;
   }
 
-  build() {
+  build(): Record<string, jest.Mock> {
     return this.logger;
   }
 }
@@ -228,7 +228,7 @@ export class MockChartBuilder {
     return this;
   }
 
-  build() {
+  build(): any {
     return this.chart;
   }
 }

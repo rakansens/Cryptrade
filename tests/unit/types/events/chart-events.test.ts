@@ -104,7 +104,7 @@ describe('Chart Events Validation', () => {
       if (result.success) {
         expect(result.data.pattern.type).toBe('head_and_shoulders');
         expect(result.data.pattern.visualization.keyPoints).toHaveLength(2);
-        expect(result.data.pattern.metrics?.targetLevel).toBe(120);
+        expect(result.data.pattern.metrics?.target_level).toBe(120);
       }
     });
 

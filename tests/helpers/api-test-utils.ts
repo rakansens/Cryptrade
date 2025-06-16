@@ -3,9 +3,9 @@
  */
 
 import { NextRequest } from 'next/server';
-import { DrawingProposalGroup, DrawingProposal } from '@/types/proposals';
-import { ProposalStatus, ProposalType } from '@/types/enums';
-import { BinanceKline, BinanceTicker24hr } from '@/types/market';
+import { DrawingProposalGroup, DrawingProposal } from '../../types/proposals';
+import { ProposalStatus, ProposalType } from '../../types/enums';
+import { BinanceKline, BinanceTicker24hr } from '../../types/market';
 
 // Mock data generators
 export const mockData = {
@@ -142,7 +142,12 @@ export const mockData = {
   },
 
   // Analysis progress mocks
-  createAnalysisProgressEvent(type: string, data: unknown) {
+  createAnalysisProgressEvent(type: string, data: unknown): {
+    type: string;
+    sessionId: string;
+    timestamp: number;
+    data: unknown;
+  } {
     return {
       type,
       sessionId: `session_${Date.now()}`,
@@ -154,7 +159,7 @@ export const mockData = {
 
 // Request builders
 export const requestBuilders = {
-  createGetRequest(url: string, headers?: Record<string, string>) {
+  createGetRequest(url: string, headers?: Record<string, string>): NextRequest {
     return new NextRequest(url, {
       method: 'GET',
       headers: {
@@ -164,7 +169,7 @@ export const requestBuilders = {
     });
   },
 
-  createPostRequest(url: string, body: unknown, headers?: Record<string, string>) {
+  createPostRequest(url: string, body: unknown, headers?: Record<string, string>): NextRequest {
     return new NextRequest(url, {
       method: 'POST',
       headers: {
@@ -178,7 +183,7 @@ export const requestBuilders = {
 
 // Response helpers
 export const responseHelpers = {
-  async parseJsonResponse(response: Response) {
+  async parseJsonResponse(response: Response): Promise<any> {
     const text = await response.text();
     try {
       return JSON.parse(text);
@@ -241,7 +246,12 @@ export const responseHelpers = {
 };
 
 // Mock fetch helper
-export function createMockFetch() {
+export function createMockFetch(): {
+  mockFetch: jest.Mock;
+  mockSuccessResponse: (data: unknown, options?: { status?: number; headers?: Record<string, string> }) => void;
+  mockErrorResponse: (status: number, statusText: string, data?: unknown) => void;
+  mockNetworkError: (error: Error) => void;
+} {
   const mockFetch = jest.fn();
   
   return {
