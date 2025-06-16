@@ -57,16 +57,9 @@ function getEnvVar(key: string): string | undefined {
   } else {
     // Server environment - can access all environment variables
     try {
-      // Try to use the centralized env config
-      const { env } = require('@/config/env');
-      return env?.[key];
+      return process?.env?.[key];
     } catch {
-      // Fallback to process.env if env config fails
-      try {
-        return process?.env?.[key];
-      } catch {
-        return undefined;
-      }
+      return undefined;
     }
   }
 }

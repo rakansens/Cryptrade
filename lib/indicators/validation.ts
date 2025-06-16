@@ -204,9 +204,9 @@ export function handleIndicatorError(
     stack: error instanceof Error ? error.stack : undefined
   });
 
-  // 開発環境ではフォールバック値を返す
-  if (process.env.NODE_ENV === 'development' && fallbackValue !== undefined) {
-    logger.warn(`[${indicatorName}] Returning fallback value in development`, {
+  // フォールバック値が設定されている場合は返す
+  if (fallbackValue !== undefined) {
+    logger.warn(`[${indicatorName}] Returning fallback value`, {
       fallback: fallbackValue
     });
     return fallbackValue;

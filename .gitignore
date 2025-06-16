@@ -68,6 +68,8 @@ logs/temp-check.log
 logs/tsc-output.txt
 logs/type-check-*.log
 logs/typecheck-output.txt
+
+# test results and artifacts
 *.xml
 analysis.json
 mutation-report.html
@@ -78,3 +80,9 @@ e2e-test-results/
 *.log
 rerun-results.xml
 unit-test-results.xml
+test-results.json
+integration-test-results.json
+test-server.log
+
+# Jest cache
+.jest-cache/
