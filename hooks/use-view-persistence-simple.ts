@@ -3,11 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@/store/chat.store';
 
+interface UseViewPersistenceReturn {
+  currentView: 'home' | 'chat';
+  showHome: boolean;
+  showChat: boolean;
+  isClient: boolean;
+  setView: (view: 'home' | 'chat') => void;
+  goToChat: () => void;
+  goToHome: () => void;
+}
+
 /**
  * Simplified hook to persist view state across page reloads
  * Uses only localStorage to avoid SSR issues
  */
-export function useViewPersistence() {
+export function useViewPersistence(): UseViewPersistenceReturn {
   const { sessions, currentSessionId } = useChat();
   
   // Always start with 'home' during SSR to avoid hydration mismatch

@@ -12,7 +12,14 @@ interface PriceUpdate {
   timestamp: number;
 }
 
-export function useLineTracking() {
+interface UseLineTrackingReturn {
+  activeRecords: AnalysisRecord[];
+  recordTouch: (recordId: string, result: 'bounce' | 'break' | 'test') => void;
+  completeRecord: (recordId: string, result: 'success' | 'partial' | 'failure') => void;
+  processPriceUpdate: (update: PriceUpdate) => void;
+}
+
+export function useLineTracking(): UseLineTrackingReturn {
   // Get all records and filter in useMemo to avoid infinite loops
   const allRecords = useAnalysisHistory(state => state.records);
   
@@ -154,7 +161,7 @@ export function useLineTracking() {
 }
 
 // Hook for WebSocket price streams with Binance integration
-export function usePriceStream(symbols: string[]) {
+export function usePriceStream(symbols: string[]): void {
   const { processPriceUpdate } = useLineTracking();
   
   useEffect(() => {

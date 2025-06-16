@@ -2,6 +2,7 @@
 
 import type { IChartApi, ISeriesApi, SeriesMarker, Time, SeriesType } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
+import type { PatternMetrics } from '@/types/pattern.types';
 import { logger } from '@/lib/utils/logger';
 import { renderKeyPointMarkers } from '@/lib/chart/renderers/keyPointMarkerRenderer';
 import { renderPatternLines } from '@/lib/chart/renderers/patternLineRenderer';
@@ -71,11 +72,7 @@ export class PatternRenderer {
     id: string,
     visualization: PatternVisualization,
     patternType: string,
-    metrics?: {
-      target_level?: number;
-      stop_loss?: number;
-      breakout_level?: number;
-    }
+    metrics?: PatternMetrics
   ): void {
     try {
       // Validate visualization object

@@ -8,7 +8,14 @@ import { useCallback } from 'react';
 
 export type CursorType = 'default' | 'crosshair' | 'pointer' | 'grab' | 'grabbing' | 'move' | 'not-allowed';
 
-export function useCursor() {
+interface UseCursorReturn {
+  setCursor: (cursorType: CursorType) => void;
+  resetCursor: () => void;
+  setDrawingCursor: () => void;
+  setPointerCursor: () => void;
+}
+
+export function useCursor(): UseCursorReturn {
   const setCursor = useCallback((cursorType: CursorType) => {
     if (typeof window !== 'undefined') {
       document.body.style.cursor = cursorType;

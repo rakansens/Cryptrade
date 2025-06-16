@@ -53,7 +53,12 @@ const compose = (...middlewares: AIMiddleware[]) => {
 };
 
 
-export function useAIChat() {
+interface UseAIChatReturn {
+  send: (text: string) => Promise<void>;
+  isReady: boolean;
+}
+
+export function useAIChat(): UseAIChatReturn {
   const isClient = useIsClient();
   const { 
     currentSessionId,

@@ -22,6 +22,13 @@ export interface UseSSEStreamOptions {
   autoConnect?: boolean;
 }
 
+interface UseSSEStreamReturn {
+  connect: () => void;
+  disconnect: () => void;
+  isStreaming: boolean;
+  error: Error | null;
+}
+
 export function useSSEStream({
   url,
   eventTypes = [],
@@ -29,12 +36,32 @@ export function useSSEStream({
   onEvent,
   onError,
   autoConnect = true,
-}: UseSSEStreamOptions) {
+}: UseSSEStreamOptions): UseSSEStreamReturn {
   const eventSourceRef = useRef<EventSource | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [lastError, setLastError] = useState<Error | null>(null);
   const isMountedRef = useRef(true);
   const eventListenersRef = useRef<Array<{ type: string; handler: (ev: Event) => void }>>([]);
+
+  const disconnect = useCallback(() => {
+    if (eventSourceRef.current) {
+      // Remove all event listeners
+      eventListenersRef.current.forEach(({ type, handler }) => {
+        eventSourceRef.current?.removeEventListener(type, handler);
+      });
+      eventListenersRef.current = [];
+      
+      // Clear built-in event handlers
+      eventSourceRef.current.onopen = null;
+      eventSourceRef.current.onerror = null;
+      eventSourceRef.current.onmessage = null;
+      
+      // Close the connection
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setIsStreaming(false);
+  }, []);
 
   const connect = useCallback(() => {
     // Cleanup existing connection
@@ -78,27 +105,7 @@ export function useSSEStream({
       es.addEventListener(t, handler);
       eventListenersRef.current.push({ type: t, handler });
     });
-  }, [url, JSON.stringify(eventTypes)]);
-
-  const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      // Remove all event listeners
-      eventListenersRef.current.forEach(({ type, handler }) => {
-        eventSourceRef.current?.removeEventListener(type, handler);
-      });
-      eventListenersRef.current = [];
-      
-      // Clear built-in event handlers
-      eventSourceRef.current.onopen = null;
-      eventSourceRef.current.onerror = null;
-      eventSourceRef.current.onmessage = null;
-      
-      // Close the connection
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsStreaming(false);
-  }, []);
+  }, [url, JSON.stringify(eventTypes), disconnect]);
 
   useEffect(() => {
     isMountedRef.current = true;

@@ -15,7 +15,8 @@ import {
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
 import type { PatternData } from '@/store/chart/types';
-import type { PatternMetrics, PatternVisualization } from '@/types/store.types';
+import type { PatternVisualization } from '@/types/store.types';
+import type { PatternMetrics } from '@/types/pattern.types';
 
 /**
  * Pattern Event Handlers Hook
@@ -109,24 +110,20 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         
         // Add metrics with required fields
         if (pattern.metrics) {
-          // Cast to any to handle type mismatch between different PatternMetrics definitions
-          const anyMetrics = pattern.metrics as any;
-          
-          // Ensure required fields are present
           const metrics: PatternMetrics = {
-            height: anyMetrics.height ?? 0, // Default value since it's required
-            width: anyMetrics.width ?? 0,  // Default value since it's required
-            ...(anyMetrics.angle !== undefined && { angle: anyMetrics.angle }),
-            ...(anyMetrics.retracement !== undefined && { retracement: anyMetrics.retracement }),
-            ...(anyMetrics.volume !== undefined && { volume: anyMetrics.volume }),
-            ...(anyMetrics.priceChange !== undefined && { priceChange: anyMetrics.priceChange }),
-            ...(anyMetrics.duration !== undefined && { duration: anyMetrics.duration }),
-            ...(anyMetrics.confidence !== undefined && { confidence: anyMetrics.confidence }),
-            ...(anyMetrics.stopLoss !== undefined && { stopLoss: anyMetrics.stopLoss }),
-            ...(anyMetrics.entryPrice !== undefined && { entryPrice: anyMetrics.entryPrice }),
-            ...(anyMetrics.targetPrice !== undefined && { targetPrice: anyMetrics.targetPrice }),
-            ...(anyMetrics.riskReward !== undefined && { riskReward: anyMetrics.riskReward }),
-            ...(anyMetrics.breakoutLevel !== undefined && { breakoutLevel: anyMetrics.breakoutLevel })
+            height: pattern.metrics.height ?? 0, // Default value since it's required
+            width: pattern.metrics.width ?? 0,  // Default value since it's required
+            ...(pattern.metrics.angle !== undefined && { angle: pattern.metrics.angle }),
+            ...(pattern.metrics.retracement !== undefined && { retracement: pattern.metrics.retracement }),
+            ...(pattern.metrics.volume !== undefined && { volume: pattern.metrics.volume }),
+            ...(pattern.metrics.priceChange !== undefined && { priceChange: pattern.metrics.priceChange }),
+            ...(pattern.metrics.duration !== undefined && { duration: pattern.metrics.duration }),
+            ...(pattern.metrics.confidence !== undefined && { confidence: pattern.metrics.confidence }),
+            ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss }),
+            ...(pattern.metrics.entryPrice !== undefined && { entryPrice: pattern.metrics.entryPrice }),
+            ...(pattern.metrics.targetPrice !== undefined && { targetPrice: pattern.metrics.targetPrice }),
+            ...(pattern.metrics.riskReward !== undefined && { riskReward: pattern.metrics.riskReward }),
+            ...(pattern.metrics.breakoutLevel !== undefined && { breakoutLevel: pattern.metrics.breakoutLevel })
           };
           fullPatternData.metrics = metrics;
         }
@@ -174,16 +171,18 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         }
         
         // Render the pattern
-        currentPatternRenderer.renderPattern(
-          id, 
-          patternVisualization as any, 
-          pattern.type,
-          pattern.metrics ? {
-            ...(pattern.metrics.targetPrice !== undefined && { target_level: pattern.metrics.targetPrice }),
-            ...(pattern.metrics.stopLoss !== undefined && { stop_loss: pattern.metrics.stopLoss }),
-            ...((pattern.metrics as any).breakoutLevel !== undefined && { breakout_level: (pattern.metrics as any).breakoutLevel })
-          } : undefined
-        );
+          currentPatternRenderer.renderPattern(
+            id,
+            patternVisualization as any,
+            pattern.type,
+            pattern.metrics ? {
+              ...(pattern.metrics.targetLevel !== undefined || pattern.metrics.targetPrice !== undefined
+                ? { targetLevel: pattern.metrics.targetLevel ?? pattern.metrics.targetPrice }
+                : {}),
+              ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss }),
+              ...(pattern.metrics.breakoutLevel !== undefined && { breakoutLevel: pattern.metrics.breakoutLevel })
+            } : undefined
+          );
         
         showAgentSuccess({
           eventType: 'chart:addPattern',
@@ -406,9 +405,9 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
             patternVisualization as any,
             pattern.type,
             pattern.metrics ? {
-              target_level: (pattern.metrics as any).targetPrice || (pattern.metrics as any).target_level,
-              stop_loss: (pattern.metrics as any).stopLoss || (pattern.metrics as any).stop_loss,
-              breakout_level: (pattern.metrics as any).breakoutLevel || (pattern.metrics as any).breakout_level
+              targetLevel: pattern.metrics.targetLevel ?? pattern.metrics.targetPrice,
+              stopLoss: pattern.metrics.stopLoss,
+              breakoutLevel: pattern.metrics.breakoutLevel
             } : undefined
           );
         }

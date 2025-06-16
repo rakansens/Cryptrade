@@ -43,12 +43,24 @@ export interface PatternLabel {
 }
 
 export interface PatternMetrics {
-  confidence: number;
-  strength: number;
+  height?: number;
+  width?: number;
+  angle?: number;
+  retracement?: number;
   volume?: number;
   priceChange?: number;
   duration?: number;
+  confidence?: number;
+  strength?: number;
   breakoutProbability?: number;
+  stopLoss?: number;
+  entryPrice?: number;
+  targetPrice?: number;
+  riskReward?: number;
+  breakoutLevel?: number;
+  targetLevel?: number;
+  supportLevel?: number;
+  resistanceLevel?: number;
 }
 
 export interface PatternState {
@@ -123,11 +135,8 @@ export function isPatternVisualization(value: unknown): value is PatternRenderVi
 export function isPatternMetrics(value: unknown): value is PatternMetrics {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
-  
-  return (
-    typeof obj['confidence'] === 'number' &&
-    typeof obj['strength'] === 'number'
-  );
+
+  return Object.values(obj).some(v => typeof v === 'number');
 }
 
 export function isPatternRenderer(value: unknown): value is PatternRenderer {

@@ -61,7 +61,11 @@ export class PatternRendererAdapter implements IPatternRenderer {
       const coreVisualization: PatternVisualization = this.convertVisualization(visualization);
       
       // Convert PatternMetrics to core format if needed
-      const coreMetrics = metrics ? {} as { target_level?: number; stop_loss?: number; breakout_level?: number; } : undefined;
+      const coreMetrics = metrics ? {
+        targetLevel: metrics.targetLevel,
+        stopLoss: metrics.stopLoss,
+        breakoutLevel: metrics.breakoutLevel,
+      } : undefined;
       
       // 新しいCoreを使用（非同期だが、既存APIとの互換性のためawaitしない）
       this.core.renderPattern(id, coreVisualization, patternType, coreMetrics)
@@ -77,7 +81,11 @@ export class PatternRendererAdapter implements IPatternRenderer {
             logger.info('[PatternRendererAdapter] Falling back to legacy renderer');
             try {
               const legacyVisualization = this.convertVisualization(visualization);
-              const legacyMetrics = metrics ? {} as { target_level?: number; stop_loss?: number; breakout_level?: number; } : undefined;
+              const legacyMetrics = metrics ? {
+                targetLevel: metrics.targetLevel,
+                stopLoss: metrics.stopLoss,
+                breakoutLevel: metrics.breakoutLevel,
+              } : undefined;
               this.legacy.renderPattern(id, legacyVisualization, patternType, legacyMetrics);
             } catch (legacyError) {
               logger.error('[PatternRendererAdapter] Legacy fallback also failed', {
@@ -91,7 +99,11 @@ export class PatternRendererAdapter implements IPatternRenderer {
       // レガシーレンダラーを使用
       if (this.legacy) {
         const legacyVisualization = this.convertVisualization(visualization);
-        const legacyMetrics = metrics ? {} as { target_level?: number; stop_loss?: number; breakout_level?: number; } : undefined;
+        const legacyMetrics = metrics ? {
+          targetLevel: metrics.targetLevel,
+          stopLoss: metrics.stopLoss,
+          breakoutLevel: metrics.breakoutLevel,
+        } : undefined;
         this.legacy.renderPattern(id, legacyVisualization, patternType, legacyMetrics);
       } else {
         logger.error('[PatternRendererAdapter] No legacy renderer available');

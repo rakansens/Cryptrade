@@ -12,11 +12,18 @@ interface UseCandlestickDataOptions {
   limit?: number;
 }
 
+interface UseCandlestickDataReturn {
+  priceData: ProcessedKline[];
+  isLoading: boolean;
+  error: null;
+  refresh: () => Promise<void>;
+}
+
 export function useCandlestickData({ 
   symbol, 
   interval, 
   limit = 1000 
-}: UseCandlestickDataOptions) {
+}: UseCandlestickDataOptions): UseCandlestickDataReturn {
   const isClient = useIsClient();
   const { setPriceData, addKline, updateLastKline, setSymbolLoading, setConnectionError } = useMarketActions();
   const priceData = usePriceData(symbol);
@@ -89,7 +96,7 @@ export function useCandlestickData({
           logger.error('[CandlestickData] Error processing kline data', { symbol }, error);
           setConnectionError(`Failed to process kline data for ${symbol}`);
         }
-      }) as any
+      }) as (data: unknown) => void
     );
 
     unsubscribeRef.current = unsubscribe;

@@ -60,22 +60,6 @@ export interface PatternLabel {
   };
 }
 
-export interface PatternMetrics {
-  height: number;
-  width: number;
-  angle?: number;
-  retracement?: number;
-  volume?: number;
-  priceChange?: number;
-  duration?: number;
-  confidence?: number;
-  stopLoss?: number;
-  entryPrice?: number;
-  targetPrice?: number;
-  riskReward?: number;
-  breakoutLevel?: number;
-}
-
 // ===== Proposal Types =====
 
 // TradingProposal remains defined locally as there is no equivalent in

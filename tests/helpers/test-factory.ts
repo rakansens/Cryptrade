@@ -177,9 +177,9 @@ export function createMockPatternEvent(
         ],
       },
       metrics: {
-        target_level: 46000,
-        stop_loss: 43000,
-        breakout_level: 45500,
+        targetLevel: 46000,
+        stopLoss: 43000,
+        breakoutLevel: 45500,
       },
     },
     ...overrides,

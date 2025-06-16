@@ -3,11 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
+interface UseViewPersistenceReturn {
+  currentView: 'home' | 'chat';
+  showHome: boolean;
+  showChat: boolean;
+  setView: (view: 'home' | 'chat') => void;
+  goToChat: () => void;
+  goToHome: () => void;
+}
+
 /**
  * Hook to persist view state across page reloads
  * Uses both URL parameters and localStorage for robustness
  */
-export function useViewPersistence() {
+export function useViewPersistence(): UseViewPersistenceReturn {
   // Always call hooks at the top level (React Hooks rules)
   const searchParams = useSearchParams();
   const router = useRouter();

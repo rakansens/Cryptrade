@@ -124,9 +124,9 @@ describe('PatternRenderer', () => {
       renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       renderer.renderPattern('pattern-1', mockVisualization, 'head-and-shoulders', {
-        target_level: 48000,
-        stop_loss: 42000,
-        breakout_level: 46500
+        targetLevel: 48000,
+        stopLoss: 42000,
+        breakoutLevel: 46500
       })
       
       expect(logger.info).toHaveBeenCalledWith(
@@ -227,9 +227,9 @@ describe('PatternRenderer', () => {
       renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       const metrics = {
-        target_level: 48000,
-        stop_loss: 42000,
-        breakout_level: 46500
+        targetLevel: 48000,
+        stopLoss: 42000,
+        breakoutLevel: 46500
       }
       
       renderer.renderPattern('pattern-1', mockVisualization, 'test', metrics)
@@ -243,7 +243,7 @@ describe('PatternRenderer', () => {
       
       // Render with metrics
       renderer.renderPattern('pattern-1', mockVisualization, 'test', {
-        target_level: 48000
+        targetLevel: 48000
       })
       
       // Remove pattern

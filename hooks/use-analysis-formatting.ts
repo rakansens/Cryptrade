@@ -2,9 +2,16 @@
 
 import { useMemo } from 'react'
 
-export function useAnalysisFormatting() {
+interface AnalysisFormatting {
+  formatDate: (timestamp: number) => string;
+  formatDuration: (milliseconds: number) => string;
+  formatPercentage: (value: number) => string;
+  formatPrice: (price: number) => string;
+}
+
+export function useAnalysisFormatting(): AnalysisFormatting {
   return useMemo(() => ({
-    formatDate: (timestamp: number) => {
+    formatDate: (timestamp: number): string => {
       const date = new Date(timestamp)
       const now = new Date()
       const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
@@ -25,7 +32,7 @@ export function useAnalysisFormatting() {
       }
     },
 
-    formatDuration: (milliseconds: number) => {
+    formatDuration: (milliseconds: number): string => {
       const hours = Math.floor(milliseconds / (1000 * 60 * 60))
       const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60))
       
@@ -38,11 +45,11 @@ export function useAnalysisFormatting() {
       }
     },
 
-    formatPercentage: (value: number) => {
+    formatPercentage: (value: number): string => {
       return `${Math.round(value * 100)}%`
     },
 
-    formatPrice: (price: number) => {
+    formatPrice: (price: number): string => {
       return `$${price.toLocaleString('ja-JP', { maximumFractionDigits: 2 })}`
     }
   }), [])

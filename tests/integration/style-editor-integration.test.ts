@@ -41,7 +41,7 @@ jest.mock('@/store/chart.store', () => ({
         ['pattern-123', {
           type: 'head_and_shoulders',
           visualization: { keyPoints: [] },
-          metrics: { target_level: 50000, stop_loss: 45000 }
+          metrics: { targetLevel: 50000, stopLoss: 45000 }
         }]
       ]),
       drawings: [
@@ -248,7 +248,7 @@ describe('Style Editor Integration Tests', () => {
         'pattern-123',
         expect.objectContaining({ keyPoints: [] }),
         'head_and_shoulders',
-        expect.objectContaining({ target_level: 50000, stop_loss: 45000 })
+        expect.objectContaining({ targetLevel: 50000, stopLoss: 45000 })
       )
       
       expect(showToast).toHaveBeenCalledWith('パターンスタイルを更新しました', 'success')

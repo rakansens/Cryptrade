@@ -137,9 +137,9 @@ test.describe('Style Editor E2E Tests', () => {
               markers: []
             },
             metrics: {
-              target_level: 42000,
-              stop_loss: 47000,
-              breakout_level: 44000
+              targetLevel: 42000,
+              stopLoss: 47000,
+              breakoutLevel: 44000
             }
           }
         }

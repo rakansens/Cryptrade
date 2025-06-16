@@ -7,6 +7,7 @@
 
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
+import type { PatternMetrics } from '@/types/pattern.types';
 import { SeriesRegistry, GlobalStateManager } from './SeriesRegistry';
 import { PluginRegistry } from './plugins/PluginRegistry';
 import { PluginUtilitiesImpl } from './plugins/utils';
@@ -79,11 +80,7 @@ export class PatternRendererCore {
     id: string,
     visualization: PatternVisualization,
     patternType: string,
-    metrics?: {
-      target_level?: number;
-      stop_loss?: number;
-      breakout_level?: number;
-    }
+    metrics?: PatternMetrics
   ): Promise<RenderResult> {
     try {
       // 入力データの検証

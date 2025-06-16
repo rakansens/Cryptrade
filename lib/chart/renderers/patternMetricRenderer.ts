@@ -4,6 +4,7 @@
 import type { IChartApi, ISeriesApi, SeriesType, Time, LineWidth } from 'lightweight-charts';
 import { logger } from '@/lib/utils/logger';
 import type { PatternVisualization } from '@/types/pattern';
+import type { PatternMetrics } from '@/types/pattern.types';
 
 export interface PatternMetricRendererDeps {
   chart: IChartApi;
@@ -14,11 +15,6 @@ export interface PatternMetricRendererDeps {
   instanceId: number;
 }
 
-export interface PatternMetrics {
-  target_level?: number;
-  stop_loss?: number;
-  breakout_level?: number;
-}
 
 export function renderMetricLines(
   id: string,
@@ -111,9 +107,9 @@ export function renderMetricLines(
     });
   };
 
-  if (metrics.target_level) makeSeries('target', metrics.target_level, '#4CAF50', 'dashed');
-  if (metrics.stop_loss) makeSeries('stoploss', metrics.stop_loss, '#F44336', 'dashed');
-  if (metrics.breakout_level) makeSeries('breakout', metrics.breakout_level, '#FF9800', 'dotted');
+  if (metrics.targetLevel) makeSeries('target', metrics.targetLevel, '#4CAF50', 'dashed');
+  if (metrics.stopLoss) makeSeries('stoploss', metrics.stopLoss, '#F44336', 'dashed');
+  if (metrics.breakoutLevel) makeSeries('breakout', metrics.breakoutLevel, '#FF9800', 'dotted');
 
   if (metricSeries.length) {
     metricLinesStore.set(id, metricSeries);

@@ -6,6 +6,7 @@
 
 import type { ISeriesApi, Time, SeriesType } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
+import type { PatternMetrics } from '@/types/pattern.types';
 import type { 
   IMetricRendererPlugin, 
   PluginContext, 
@@ -21,13 +22,6 @@ interface MetricLineData {
   value: number;
 }
 
-interface PatternMetrics {
-  target_level?: number;
-  stop_loss?: number;
-  breakout_level?: number;
-  support_level?: number;
-  resistance_level?: number;
-}
 
 export class MetricRenderer implements IMetricRendererPlugin {
   readonly name = 'MetricRenderer';
@@ -270,14 +264,14 @@ export class MetricRenderer implements IMetricRendererPlugin {
     // extraパラメータからメトリックを取得（既存のAPIとの互換性）
     if (extra && typeof extra === 'object') {
       const extraObj = extra as any;
-      if (typeof extraObj.target_level === 'number') {
-        metrics.target_level = extraObj.target_level;
+      if (typeof extraObj.targetLevel === 'number') {
+        metrics.targetLevel = extraObj.targetLevel;
       }
-      if (typeof extraObj.stop_loss === 'number') {
-        metrics.stop_loss = extraObj.stop_loss;
+      if (typeof extraObj.stopLoss === 'number') {
+        metrics.stopLoss = extraObj.stopLoss;
       }
-      if (typeof extraObj.breakout_level === 'number') {
-        metrics.breakout_level = extraObj.breakout_level;
+      if (typeof extraObj.breakoutLevel === 'number') {
+        metrics.breakoutLevel = extraObj.breakoutLevel;
       }
     }
     
@@ -360,80 +354,80 @@ export class MetricRenderer implements IMetricRendererPlugin {
     const createdSeries: ISeriesApi<SeriesType>[] = [];
     
     // Target Level
-    if (metrics.target_level) {
+    if (metrics.targetLevel) {
       const series = this.createHorizontalLine(
         patternId,
         'target',
-        metrics.target_level,
+        metrics.targetLevel,
         timeRange,
         {
           color: this.metricStyle.colors?.target || '#4CAF50',
           lineStyle: this.metricStyle.lineStyles?.target || 'dashed',
-          title: `目標: ${NumberUtils.formatPrice(metrics.target_level)}`,
+          title: `目標: ${NumberUtils.formatPrice(metrics.targetLevel)}`,
         }
       );
       if (series) createdSeries.push(series);
     }
     
     // Stop Loss
-    if (metrics.stop_loss) {
+    if (metrics.stopLoss) {
       const series = this.createHorizontalLine(
         patternId,
         'stopLoss',
-        metrics.stop_loss,
+        metrics.stopLoss,
         timeRange,
         {
           color: this.metricStyle.colors?.stopLoss || '#F44336',
           lineStyle: this.metricStyle.lineStyles?.stopLoss || 'dashed',
-          title: `SL: ${NumberUtils.formatPrice(metrics.stop_loss)}`,
+          title: `SL: ${NumberUtils.formatPrice(metrics.stopLoss)}`,
         }
       );
       if (series) createdSeries.push(series);
     }
     
     // Breakout Level
-    if (metrics.breakout_level) {
+    if (metrics.breakoutLevel) {
       const series = this.createHorizontalLine(
         patternId,
         'breakout',
-        metrics.breakout_level,
+        metrics.breakoutLevel,
         timeRange,
         {
           color: this.metricStyle.colors?.breakout || '#FF9800',
           lineStyle: this.metricStyle.lineStyles?.breakout || 'dotted',
-          title: `BO: ${NumberUtils.formatPrice(metrics.breakout_level)}`,
+          title: `BO: ${NumberUtils.formatPrice(metrics.breakoutLevel)}`,
         }
       );
       if (series) createdSeries.push(series);
     }
     
     // Support Level
-    if (metrics.support_level) {
+    if (metrics.supportLevel) {
       const series = this.createHorizontalLine(
         patternId,
         'support',
-        metrics.support_level,
+        metrics.supportLevel,
         timeRange,
         {
           color: '#00BCD4',
           lineStyle: 'solid',
-          title: `サポート: ${NumberUtils.formatPrice(metrics.support_level)}`,
+          title: `サポート: ${NumberUtils.formatPrice(metrics.supportLevel)}`,
         }
       );
       if (series) createdSeries.push(series);
     }
     
     // Resistance Level
-    if (metrics.resistance_level) {
+    if (metrics.resistanceLevel) {
       const series = this.createHorizontalLine(
         patternId,
         'resistance',
-        metrics.resistance_level,
+        metrics.resistanceLevel,
         timeRange,
         {
           color: '#E91E63',
           lineStyle: 'solid',
-          title: `レジスタンス: ${NumberUtils.formatPrice(metrics.resistance_level)}`,
+          title: `レジスタンス: ${NumberUtils.formatPrice(metrics.resistanceLevel)}`,
         }
       );
       if (series) createdSeries.push(series);

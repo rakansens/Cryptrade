@@ -14,10 +14,17 @@ import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/no
 import { logger } from '@/lib/utils/logger';
 import type { AnalysisRecord } from '@/types/analysis-history';
 
+interface UseApproveProposalReturn {
+  approveProposal: (message: ProposalMessage, proposalId: string) => Promise<void | null>;
+  approveAllProposals: (message: ProposalMessage) => Promise<void>;
+  approveLoading: boolean;
+  approveError: string | null;
+}
+
 /**
  * Hook for handling proposal approval logic
  */
-export function useApproveProposal() {
+export function useApproveProposal(): UseApproveProposalReturn {
   const { addRecord: addAnalysisRecord } = useAnalysisActions();
   const { currentSessionId } = useChat();
   const addApprovedDrawing = useAddApprovedDrawing();

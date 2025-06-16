@@ -7,7 +7,8 @@
 
 import type { IndicatorOptions } from '@/types/market';
 import type { IndicatorSettings, Timeframe, SymbolValue } from '@/constants/chart';
-import type { PatternVisualization, PatternMetrics, IndicatorValue } from '@/types/store.types';
+import type { PatternVisualization, IndicatorValue } from '@/types/store.types';
+import type { PatternMetrics } from '@/types/pattern.types';
 
 // ========================================
 // Drawing Types
