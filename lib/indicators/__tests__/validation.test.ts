@@ -1,3 +1,11 @@
+// Mock logger before imports
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   validatePriceData,
@@ -7,14 +15,6 @@ import {
   type ValidationResult,
   type DataValidationOptions,
 } from '../validation';
-
-// Mock logger
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
 
 describe('Indicator Validation', () => {
   const mockPriceData = [

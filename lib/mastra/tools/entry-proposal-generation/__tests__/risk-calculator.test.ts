@@ -1,8 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { calculateRiskManagement } from '../calculators/risk-calculator';
-import type { PriceData as CandlestickData } from '@/types/market';
-
-// Mock logger
+// Mock logger before imports
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -11,6 +7,10 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
+
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { calculateRiskManagement } from '../calculators/risk-calculator';
+import type { PriceData as CandlestickData } from '@/types/market';
 
 describe('calculateRiskManagement', () => {
   const mockMarketData: CandlestickData[] = Array.from({ length: 100 }, (_, i) => ({

@@ -1,14 +1,14 @@
+// Mock dependencies before imports
+jest.mock('../../network/agent-network');
+jest.mock('@/lib/utils/logger');
+jest.mock('../../utils/fallback-handler');
+jest.mock('@/lib/server/uiEventBus');
+
 import { agentSelectionTool } from '../agent-selection.tool';
 import { agentNetwork } from '../../network/agent-network';
 import { logger } from '@/lib/utils/logger';
 import { FallbackHandler } from '../../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
-
-// Mock dependencies
-jest.mock('../../network/agent-network');
-jest.mock('@/lib/utils/logger');
-jest.mock('../../utils/fallback-handler');
-jest.mock('@/lib/server/uiEventBus');
 
 // Mock window for browser environment tests
 const mockDispatchEvent = jest.fn();

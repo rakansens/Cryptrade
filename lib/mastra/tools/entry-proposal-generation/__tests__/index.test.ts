@@ -1,10 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { EntryProposalGenerationTool } from '../index';
-import type { EntryProposalGenerationInput } from '../index';
-import type { PriceData as CandlestickData } from '@/types/market';
-import type { EntryProposal, MarketContext } from '@/types/trading';
-
-// Mock dependencies
+// Mock dependencies before imports
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -28,6 +22,12 @@ jest.mock('@/lib/utils/ui-event-dispatcher', () => ({
 jest.mock('../calculators/entry-calculator', () => ({
   calculateEntryPoints: jest.fn(),
 }));
+
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { EntryProposalGenerationTool } from '../index';
+import type { EntryProposalGenerationInput } from '../index';
+import type { PriceData as CandlestickData } from '@/types/market';
+import type { EntryProposal, MarketContext } from '@/types/trading';
 
 jest.mock('../calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn(),

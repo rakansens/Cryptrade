@@ -1,12 +1,3 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { UnifiedSQLiteStorage } from '../sqlite';
-import type {
-  UnifiedLogEntry,
-  UnifiedLoggerConfig,
-  LogFilter,
-  LogLevel,
-} from '../../unified-logger';
-
 // Mock better-sqlite3
 jest.mock('better-sqlite3', () => {
   return jest.fn().mockImplementation(() => ({
@@ -31,6 +22,15 @@ jest.mock('fs', () => ({
 jest.mock('path', () => ({
   dirname: jest.fn().mockReturnValue('./logs'),
 }));
+
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { UnifiedSQLiteStorage } from '../sqlite';
+import type {
+  UnifiedLogEntry,
+  UnifiedLoggerConfig,
+  LogFilter,
+  LogLevel,
+} from '../../unified-logger';
 
 describe('UnifiedSQLiteStorage', () => {
   let storage: UnifiedSQLiteStorage;

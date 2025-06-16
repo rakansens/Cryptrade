@@ -1,8 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { UnifiedPostgreSQLStorage } from '../postgres';
-import type { LogEntry, LogQuery, LogLevel } from '../types';
-
-// Mock logger
+// Mock logger before imports
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -11,6 +7,10 @@ jest.mock('@/lib/utils/logger', () => ({
     debug: jest.fn(),
   },
 }));
+
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { UnifiedPostgreSQLStorage } from '../postgres';
+import type { LogEntry, LogQuery, LogLevel } from '../types';
 
 describe('UnifiedPostgreSQLStorage', () => {
   let storage: UnifiedPostgreSQLStorage;
