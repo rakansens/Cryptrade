@@ -43,11 +43,13 @@ export default function MacdChart({ height }: MacdChartProps) {
     getMACDColor,
   })
 
+  // Extract data sufficiency check
+  const minDataRequired = 35;
+  const hasEnoughData = priceData.length >= minDataRequired;
+  
   // Initialize chart when symbol changes AND when we have sufficient data
   useEffect(() => {
-    // Only initialize if we have enough data for MACD calculation (need at least 35 candles for MACD(12,26,9))
-    const minDataRequired = 35;
-    if (priceData.length < minDataRequired) {
+    if (!hasEnoughData) {
       return;
     }
 
@@ -94,11 +96,10 @@ export default function MacdChart({ height }: MacdChartProps) {
       cleanupResize()
       cleanupChart()
     }
-  }, [symbol, priceData.length]) // Re-initialize when symbol changes OR when we get sufficient data
+  }, [symbol, hasEnoughData, chartInstance, initializeChart, addLineSeries, addHistogramSeries, setupResizeObserver, cleanupChart]) // Re-initialize when symbol changes OR when we get sufficient data
 
   // Loading state
-  const minDataRequired = 35;
-  const isLoading = priceData.length < minDataRequired;
+  const isLoading = !hasEnoughData;
   
   
   if (isLoading) {

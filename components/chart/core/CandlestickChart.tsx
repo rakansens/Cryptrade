@@ -113,7 +113,7 @@ function CandlestickChart({ height }, ref) {
         setChartReady(false);
       }
     };
-  }, [patternRenderer, setChartReady]);
+  }, [patternRenderer, setChartReady, isChartInitialized]);
 
   // Expose fitContent function to parent via ref
   useImperativeHandle(ref, () => ({
@@ -127,7 +127,8 @@ function CandlestickChart({ height }, ref) {
     hasInitialDataLoaded.current = false // Reset for new symbol
     prevIndicators.current = { ma: false, rsi: false, macd: false, boll: false } // Reset to handle initial state
     return cleanup
-  }, [symbol, initializeChart]) // Only reinitialize on symbol change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]) // Only reinitialize on symbol change - initializeChart is stable
 
   // Track when initial data has been loaded
   useEffect(() => {
@@ -160,6 +161,7 @@ function CandlestickChart({ height }, ref) {
     }
 
     prevIndicators.current = current
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typedIndicators.ma, typedIndicators.boll, addIndicatorSeries, updateIndicatorData])
 
   if (isLoading && priceData.length === 0) {

@@ -59,7 +59,7 @@ export class ApiClient {
           'Content-Type': 'application/json',
           ...init.headers,
         },
-        signal: signal || init.signal
+        signal: signal || init.signal || null
       },
       attempt: 0,
     };

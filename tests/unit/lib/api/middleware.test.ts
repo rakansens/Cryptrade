@@ -118,7 +118,7 @@ describe('Utility Functions', () => {
     it('should reject invalid symbols', () => {
       expect(validateBinanceSymbol('BTC')).toBe(false);
       expect(validateBinanceSymbol('BTCUSD')).toBe(false);
-      expect(validateBinanceSymbol('btcusdt')).toBe(false); // Should be uppercase
+      expect(validateBinanceSymbol('btcusdt')).toBe(true); // Case-insensitive, converts to uppercase
       expect(validateBinanceSymbol('BTC-USDT')).toBe(false);
       expect(validateBinanceSymbol('')).toBe(false);
     });

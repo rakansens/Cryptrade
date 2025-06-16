@@ -22,10 +22,14 @@ export function useViewPersistence() {
     }
     
     // Priority 2: Check localStorage
-    if (typeof window !== 'undefined') {
-      const savedView = localStorage.getItem('cryptrade_current_view');
-      if (savedView === 'chat' || savedView === 'home') {
-        return savedView;
+    if (typeof window !== 'undefined' && localStorage) {
+      try {
+        const savedView = localStorage.getItem('cryptrade_current_view');
+        if (savedView === 'chat' || savedView === 'home') {
+          return savedView;
+        }
+      } catch (error) {
+        // Ignore localStorage errors
       }
     }
     
@@ -38,12 +42,16 @@ export function useViewPersistence() {
     setCurrentView(newView);
     
     // Update localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cryptrade_current_view', newView);
+    if (typeof window !== 'undefined' && localStorage) {
+      try {
+        localStorage.setItem('cryptrade_current_view', newView);
+      } catch (error) {
+        // Ignore localStorage errors
+      }
     }
     
     // Update URL without page reload
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && router && router.push && searchParams) {
       try {
         const params = new URLSearchParams(searchParams.toString());
         params.set('view', newView);
@@ -61,8 +69,12 @@ export function useViewPersistence() {
       if (urlView === 'chat' || urlView === 'home') {
         if (urlView !== currentView) {
           setCurrentView(urlView);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('cryptrade_current_view', urlView);
+          if (typeof window !== 'undefined' && localStorage) {
+            try {
+              localStorage.setItem('cryptrade_current_view', urlView);
+            } catch (error) {
+              // Ignore localStorage errors
+            }
           }
         }
       }

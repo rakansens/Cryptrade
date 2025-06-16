@@ -154,8 +154,9 @@ export function useDrawingRestore({ drawingManager, isChartReady, timeframe }: U
 
   // Clean up when component unmounts
   useEffect(() => {
+    const restoredDrawings = restoredDrawingsRef.current;
     return () => {
-      restoredDrawingsRef.current.clear();
+      restoredDrawings.clear();
     };
   }, []);
 }

@@ -166,13 +166,15 @@ export function usePriceStream(symbols: string[]) {
         const { binanceWS } = await import('@/lib/binance/websocket-manager');
         
         // Subscribe to all symbols
-        const unsubscribeFunctions = symbols.map(symbol => {
-          logger.info('[PriceStream] Subscribing to real-time data', { symbol });
-          
-          return binanceWS.subscribe(symbol, (update) => {
-            processPriceUpdate(update);
-          });
-        });
+        const unsubscribeFunctions = await Promise.all(
+          symbols.map(async (symbol) => {
+            logger.info('[PriceStream] Subscribing to real-time data', { symbol });
+            
+            return await binanceWS.subscribe(symbol, (update) => {
+              processPriceUpdate(update);
+            });
+          })
+        );
         
         // Return cleanup function
         return () => {

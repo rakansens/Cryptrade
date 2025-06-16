@@ -99,7 +99,7 @@ export function useChartInstance({
     registerChart(chart);
     
     return chart;
-  }, [height, theme]);
+  }, [height, theme, registerChart]); // registerChart is stable from useChartSync
 
   const createCandlestickSeries = useCallback(() => {
     const chart = chartInstanceRef.current;
@@ -307,7 +307,7 @@ export function useChartInstance({
         },
       };
     };
-  }, [createChartInstance, createCandlestickSeries, handleResize]);
+  }, [createChartInstance, createCandlestickSeries, handleResize, unregisterChart]); // unregisterChart is stable from useChartSync
 
   const fitContent = useCallback(() => {
     const chart = chartInstanceRef.current;

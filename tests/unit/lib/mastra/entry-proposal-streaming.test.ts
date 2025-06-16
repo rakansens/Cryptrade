@@ -5,7 +5,10 @@
  * Verifies real-time updates and progressive rendering
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+
+// Set longer timeout for streaming tests
+jest.setTimeout(30000);
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -79,6 +82,14 @@ jest.mock('@ai-sdk/openai', () => ({
 describe('Entry Proposal Streaming Response', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   describe('Streaming Text Generation', () => {

@@ -92,8 +92,9 @@ export function usePatternRestore({ patternRenderer, isChartReady, timeframe }: 
 
   // Clean up when component unmounts
   useEffect(() => {
+    const restoredPatterns = restoredPatternsRef.current;
     return () => {
-      restoredPatternsRef.current.clear();
+      restoredPatterns.clear();
     };
   }, []);
 }

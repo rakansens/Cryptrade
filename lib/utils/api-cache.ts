@@ -201,3 +201,6 @@ export class ApiCache {
 
 // Export singleton instance
 export const apiCache = ApiCache.getInstance();
+
+// Export createKey function for convenience
+export const createKey = ApiCache.createKey;

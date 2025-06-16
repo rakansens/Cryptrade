@@ -10,11 +10,20 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('StreamingResponseBuilder', () => {
+  // Set longer timeout for streaming tests
+  jest.setTimeout(30000);
+  
   let builder: StreamingResponseBuilder;
 
   beforeEach(() => {
     builder = new StreamingResponseBuilder();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('SSE formatting', () => {

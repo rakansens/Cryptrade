@@ -23,8 +23,8 @@ global.setInterval = (fn, delay, ...args) => {
   return originalSetInterval(fn, reducedDelay, ...args);
 };
 
-// Load environment variables from .env.local for tests
-require('dotenv').config({ path: '.env.local' });
+// Load environment variables from .env.test for tests
+require('dotenv').config({ path: '.env.test' });
 
 // Mock Next.js environment variables if needed
 process.env.NODE_ENV = 'test';

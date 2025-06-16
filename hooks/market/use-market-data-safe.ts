@@ -118,20 +118,19 @@ export function useMarketDataSafe({
           // Queue state update to prevent race conditions
           stateQueueRef.current.enqueue(async (currentState) => {
             const newCandle: ProcessedKline = {
-              timestamp: update.timestamp,
+              time: update.timestamp,
               open: update.price,
               high: update.price,
               low: update.price,
               close: update.price,
-              volume: update.volume,
-              processed: true
+              volume: update.volume
             };
             
             // Update or append candle
             const updatedData = [...currentState.data];
             const lastCandle = updatedData[updatedData.length - 1];
             
-            if (lastCandle && isSameCandle(lastCandle.timestamp, newCandle.timestamp, interval)) {
+            if (lastCandle && isSameCandle(lastCandle.time, newCandle.time, interval)) {
               // Update existing candle
               updatedData[updatedData.length - 1] = {
                 ...lastCandle,

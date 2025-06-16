@@ -107,8 +107,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.22",
-    "@mastra/core": "^0.10.1",
-    "@mastra/openai": "^1.0.1-alpha.48",
+    "@mastra/core": "^0.10.5",
+    "@mastra/openai": "^1.0.1-alpha.50",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.1",
@@ -193,6 +193,10 @@
     "typedoc": "^0.28.5",
     "typescript": "5.2.2",
     "wait-on": "^8.0.3"
+  },
+  "overrides": {
+    "nanoid": "^5.0.0",
+    "xml2js": "^0.6.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

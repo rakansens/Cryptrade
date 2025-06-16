@@ -280,7 +280,7 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
       const originalOnClose = ws.onclose;
       ws.onclose = (event) => {
         cleanupStateInterval();
-        originalOnClose?.(event);
+        originalOnClose?.call(ws, event);
       };
 
     } catch (error) {

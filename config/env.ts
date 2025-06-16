@@ -36,7 +36,7 @@ const EnvSchema = z.object({
   
   // API Authentication
   API_AUTH_SECRET: z.string().min(32, 'API auth secret must be at least 32 characters').optional(),
-  API_AUTH_ENABLED: z.enum(['true', 'false']).optional().transform(val => val === 'true').default(false),
+  API_AUTH_ENABLED: z.enum(['true', 'false']).optional().default('false').transform(val => val === 'true'),
   
   // Database and storage
   DATABASE_URL: z.string().optional(),

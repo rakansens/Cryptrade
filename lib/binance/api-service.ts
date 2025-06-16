@@ -194,3 +194,8 @@ export class BinanceAPIService extends BaseService {
 // After:  import { BinanceAPIService } from '@/lib/binance/api-service';
 //         const binanceAPI = new BinanceAPIService();
 export const binanceAPI = new BinanceAPIService();
+
+// Export standalone functions for convenience
+export const fetchKlines = binanceAPI.fetchKlines.bind(binanceAPI);
+export const fetchTicker24hr = binanceAPI.fetchTicker24hr.bind(binanceAPI);
+export const isValidSymbol = binanceAPI.isValidSymbol.bind(binanceAPI);

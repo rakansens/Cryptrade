@@ -24,6 +24,14 @@ describe('WSManager Coverage Tests', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   describe('Configuration Options', () => {
@@ -92,13 +100,12 @@ describe('WSManager Coverage Tests', () => {
       });
 
       // Simulate immediate failure
-      setImmediate(() => {
-        const ws = MockWebSocket.getAllInstances()[0];
-        if (ws) {
-          ws.simulateError(new Error('Connection refused'));
-          ws.close(1006);
-        }
-      });
+      jest.advanceTimersByTime(10);
+      const ws = MockWebSocket.getAllInstances()[0];
+      if (ws) {
+        ws.simulateError(new Error('Connection refused'));
+        ws.close(1006);
+      }
     });
 
     it('should handle malformed JSON messages', (done) => {
@@ -120,20 +127,19 @@ describe('WSManager Coverage Tests', () => {
         error: done.fail
       });
 
-      setImmediate(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
-        if (ws) {
-          // Send valid JSON
-          ws.simulateMessage({ valid: 'json' } as any);
-          
-          // Try to send invalid JSON (should be handled gracefully)
-          try {
-            ws['trigger']('message', { data: 'invalid json {' } as MessageEvent);
-          } catch (e) {
-            // Expected
-          }
+      jest.advanceTimersByTime(10);
+      const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
+      if (ws) {
+        // Send valid JSON
+        ws.simulateMessage({ valid: 'json' } as any);
+        
+        // Try to send invalid JSON (should be handled gracefully)
+        try {
+          ws['trigger']('message', { data: 'invalid json {' } as MessageEvent);
+        } catch (e) {
+          // Expected
         }
-      });
+      }
     });
   });
 
@@ -226,14 +232,13 @@ describe('WSManager Coverage Tests', () => {
         error: done.fail
       });
 
-      setImmediate(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://test.com/btcusdt@aggTrade');
-        if (ws) {
-          ws.simulateMessage(BinanceMessageGenerator.tradeMessage());
-          ws.simulateMessage(BinanceMessageGenerator.klineMessage());
-          ws.simulateMessage(BinanceMessageGenerator.depthMessage());
-        }
-      });
+      jest.advanceTimersByTime(10);
+      const ws = MockWebSocket.getInstanceByUrl('wss://test.com/btcusdt@aggTrade');
+      if (ws) {
+        ws.simulateMessage(BinanceMessageGenerator.tradeMessage());
+        ws.simulateMessage(BinanceMessageGenerator.klineMessage());
+        ws.simulateMessage(BinanceMessageGenerator.depthMessage());
+      }
     });
   });
 
@@ -270,20 +275,18 @@ describe('WSManager Coverage Tests', () => {
       });
 
       // Simulate connection failure to trigger reconnection
-      setImmediate(() => {
-        const ws = MockWebSocket.getAllInstances()[0];
-        if (ws) {
-          ws.simulateError(new Error('Connection lost'));
-          ws.close(1006);
-        }
+      jest.advanceTimersByTime(10);
+      const ws = MockWebSocket.getAllInstances()[0];
+      if (ws) {
+        ws.simulateError(new Error('Connection lost'));
+        ws.close(1006);
+      }
 
-        // Destroy during reconnection attempt
-        setTimeout(() => {
-          manager.destroy();
-          // Should not throw any errors
-          done();
-        }, 20);
-      });
+      // Destroy during reconnection attempt
+      jest.advanceTimersByTime(20);
+      manager.destroy();
+      // Should not throw any errors
+      done();
     });
   });
 
@@ -310,15 +313,14 @@ describe('WSManager Coverage Tests', () => {
         error: done.fail
       });
 
-      setImmediate(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://test.com/perf@test');
-        if (ws) {
-          // Send all messages at once
-          for (let i = 0; i < targetCount; i++) {
-            ws.simulateMessage({ id: i, data: 'test' } as any);
-          }
+      jest.advanceTimersByTime(10);
+      const ws = MockWebSocket.getInstanceByUrl('wss://test.com/perf@test');
+      if (ws) {
+        // Send all messages at once
+        for (let i = 0; i < targetCount; i++) {
+          ws.simulateMessage({ id: i, data: 'test' } as any);
         }
-      });
+      }
     }, 10000);
   });
 });

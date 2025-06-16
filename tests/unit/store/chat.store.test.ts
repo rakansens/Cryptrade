@@ -64,7 +64,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -86,7 +86,7 @@ describe('Chat Store', () => {
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(async () => {
+      await act(async () => {
         sessionId1 = await result.current.createSession();
         sessionId2 = await result.current.createSession();
       });
@@ -106,7 +106,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -127,7 +127,7 @@ describe('Chat Store', () => {
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(async () => {
+      await act(async () => {
         sessionId1 = await result.current.createSession();
         sessionId2 = await result.current.createSession();
       });
@@ -172,7 +172,7 @@ describe('Chat Store', () => {
       let sessionId1: string = '';
       let sessionId3: string = '';
 
-      act(async () => {
+      await act(async () => {
         sessionId1 = await result.current.createSession();
         await result.current.createSession(); // Create intermediate session
         sessionId3 = await result.current.createSession();
@@ -194,7 +194,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -219,7 +219,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -238,7 +238,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -264,7 +264,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -287,7 +287,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -327,7 +327,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -350,7 +350,7 @@ describe('Chat Store', () => {
       let sessionId1: string = '';
       let sessionId2: string = '';
 
-      act(async () => {
+      await act(async () => {
         sessionId1 = await result.current.createSession();
         sessionId2 = await result.current.createSession();
       });
@@ -499,7 +499,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
         result.current.setError('Previous error');
       });
@@ -547,7 +547,7 @@ describe('Chat Store', () => {
 
       // Create session and send message
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
         result.current.setOpen(true);
         result.current.setInputValue('Hello AI!');
@@ -606,7 +606,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChat());
 
       // Set up some state
-      act(async () => {
+      await act(async () => {
         const sessionId = await result.current.createSession();
         result.current.addMessage(sessionId, { content: 'Test', role: 'user' }).catch(() => {});
         result.current.setOpen(true);
@@ -653,7 +653,7 @@ describe('Chat Store', () => {
       const { result } = renderHook(() => useChatActions());
 
       let sessionId: string = '';
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
       });
 
@@ -672,7 +672,7 @@ describe('Chat Store', () => {
       let sessionId: string = '';
       const longMessage = 'This is a very long message that exceeds the 30 character limit for session titles and should be truncated';
 
-      act(async () => {
+      await act(async () => {
         sessionId = await result.current.createSession();
         result.current.addMessage(sessionId, {
           content: longMessage,

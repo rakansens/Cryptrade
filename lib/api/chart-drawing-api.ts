@@ -3,7 +3,7 @@
  */
 
 import { logger } from '@/lib/utils/logger';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { env } from '@/config/env';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
@@ -41,7 +41,7 @@ export class ChartDrawingAPI {
    * Load drawings from database with retry and caching
    */
   static async loadDrawings(sessionId: string): Promise<ChartDrawing[]> {
-    const cacheKey = apiCache.createKey('chart_drawings', { sessionId });
+    const cacheKey = createKey('chart_drawings', { sessionId });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<ChartDrawing[]>(cacheKey, { 
@@ -126,7 +126,7 @@ export class ChartDrawingAPI {
    * Load patterns from database with retry and caching
    */
   static async loadPatterns(sessionId: string): Promise<PatternData[]> {
-    const cacheKey = apiCache.createKey('chart_patterns', { sessionId });
+    const cacheKey = createKey('chart_patterns', { sessionId });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<PatternData[]>(cacheKey, { 

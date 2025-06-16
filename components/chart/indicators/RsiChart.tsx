@@ -49,11 +49,13 @@ export default function RsiChart({ height }: RsiChartProps) {
   }, [priceData, isInitialized, hasData, updateChartData])
 
 
+  // Extract data sufficiency check
+  const minDataRequired = 15;
+  const hasEnoughData = priceData.length >= minDataRequired;
+  
   // Initialize chart when symbol changes AND when we have sufficient data
   useEffect(() => {
-    // Only initialize if we have enough data for RSI calculation (need at least 15 candles for RSI(14))
-    const minDataRequired = 15;
-    if (priceData.length < minDataRequired) {
+    if (!hasEnoughData) {
       return;
     }
 
@@ -102,11 +104,10 @@ export default function RsiChart({ height }: RsiChartProps) {
       cleanupResize()
       cleanupChart()
     }
-  }, [symbol, priceData.length >= 15, initializeChart, cleanupChart, chartInstance, addLineSeries, setupResizeObserver]) // Only re-run when we cross the data threshold
+  }, [symbol, hasEnoughData, initializeChart, cleanupChart, chartInstance, addLineSeries, setupResizeObserver]) // Only re-run when we cross the data threshold
 
   // Loading state
-  const minDataRequired = 15;
-  const isLoading = priceData.length < minDataRequired;
+  const isLoading = !hasEnoughData;
   
   
   if (isLoading) {

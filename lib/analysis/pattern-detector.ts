@@ -290,11 +290,6 @@ export class PatternDetector {
       metrics: {
         formation_period: rightShoulderIdx - leftShoulderIdx + 1,
         symmetry: keyPoints[0] && keyPoints[4] ? 1 - Math.abs(keyPoints[0].value - keyPoints[4].value) / keyPoints[0].value : 0,
-        leftShoulderHeight: keyPoints[0]?.value ?? 0,
-        headHeight: keyPoints[2]?.value ?? 0,
-        rightShoulderHeight: keyPoints[4]?.value ?? 0,
-        necklineLevel: necklinePrice,
-        patternHeight: patternHeight,
         breakout_level: necklinePrice,
         target_level: targetPrice,
         stop_loss: keyPoints[2]!.value
@@ -455,10 +450,7 @@ export class PatternDetector {
         formation_period: endIdx - startIdx + 1,
         breakout_level: type === 'ascending' ? highs[highs.length - 1]!.value :
                        type === 'descending' ? lows[lows.length - 1]!.value :
-                       ((highs[highs.length - 1]?.value ?? 0) + (lows[lows.length - 1]?.value ?? 0)) / 2,
-        upperBound: highs[highs.length - 1]?.value ?? 0,
-        lowerBound: lows[lows.length - 1]?.value ?? 0,
-        trendlineSlope: type === 'ascending' ? lowTrend.slope : type === 'descending' ? highTrend.slope : (highTrend.slope + lowTrend.slope) / 2
+                       ((highs[highs.length - 1]?.value ?? 0) + (lows[lows.length - 1]?.value ?? 0)) / 2
       },
       description: `${type === 'ascending' ? '上昇' : type === 'descending' ? '下降' : '対称'}トライアングルパターン`,
       trading_implication: type === 'ascending' ? 'bullish' : 
@@ -560,12 +552,9 @@ export class PatternDetector {
       metrics: {
         formation_period: second.index - first.index + 1,
         breakout_level: necklinePrice,
-        firstPeakPrice: first.value,
-        secondPeakPrice: second.value,
-        valleyPrice: necklinePrice,
-        similarity: priceSimilarity,
         target_level: targetPrice,
-        stop_loss: type === 'top' ? Math.max(first.value, second.value) : Math.min(first.value, second.value)
+        stop_loss: type === 'top' ? Math.max(first.value, second.value) : Math.min(first.value, second.value),
+        symmetry: priceSimilarity
       },
       description: `ダブル${type === 'top' ? 'トップ' : 'ボトム'}パターン。ネックライン: $${necklinePrice.toFixed(2)}`,
       trading_implication: type === 'top' ? 'bearish' : 'bullish'

@@ -262,3 +262,27 @@ export const metrics = {
     labelNames: ['symbol']
   })
 };
+
+/**
+ * Utility function to increment a metric
+ * @param metricName - The name of the metric to increment
+ * @param labels - Optional labels for the metric
+ * @param value - The value to increment by (default: 1)
+ */
+export function incrementMetric(
+  metricName: keyof typeof metrics,
+  labels?: MetricLabels,
+  value: number = 1
+): void {
+  const metric = metrics[metricName];
+  if (!metric) {
+    logger.warn(`[Prometheus] Metric ${metricName} not found`);
+    return;
+  }
+  
+  if ('inc' in metric) {
+    (metric as Counter | Gauge).inc(labels, value);
+  } else {
+    logger.warn(`[Prometheus] Metric ${metricName} does not support increment`);
+  }
+}

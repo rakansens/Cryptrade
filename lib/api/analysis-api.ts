@@ -5,7 +5,7 @@
 
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import type { 
   AnalysisRecord, 
@@ -79,7 +79,7 @@ export class AnalysisAPI {
    * Get session analyses with retry and caching
    */
   static async getSessionAnalyses(sessionId: string): Promise<AnalysisRecord[]> {
-    const cacheKey = apiCache.createKey('analysis_session', { sessionId });
+    const cacheKey = createKey('analysis_session', { sessionId });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<AnalysisRecord[]>(cacheKey, { 
@@ -142,7 +142,7 @@ export class AnalysisAPI {
    * Get active analyses with retry and caching
    */
   static async getActiveAnalyses(symbol?: string): Promise<AnalysisRecord[]> {
-    const cacheKey = apiCache.createKey('analysis_active', { symbol: symbol || 'all' });
+    const cacheKey = createKey('analysis_active', { symbol: symbol || 'all' });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<AnalysisRecord[]>(cacheKey, { 

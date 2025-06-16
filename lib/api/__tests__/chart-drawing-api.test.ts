@@ -7,7 +7,7 @@ jest.mock('@/lib/utils/logger');
 global.fetch = jest.fn();
 
 import { ChartDrawingAPI, TimeframeState } from '../chart-drawing-api';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/utils/logger';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
@@ -26,12 +26,14 @@ describe('ChartDrawingAPI', () => {
           id: 'drawing-1',
           type: 'trendline',
           points: [
-            { x: 100, y: 200 },
-            { x: 200, y: 300 },
+            { time: 100, value: 200 },
+            { time: 200, value: 300 },
           ],
           style: {
             color: '#FF0000',
-            width: 2,
+            lineWidth: 2,
+            lineStyle: 'solid' as const,
+            showLabels: true
           },
         },
       ];
@@ -82,16 +84,16 @@ describe('ChartDrawingAPI', () => {
       const cachedDrawings: ChartDrawing[] = [
         {
           id: 'cached-drawing',
-          type: 'rectangle',
+          type: 'horizontal',
           points: [
-            { x: 0, y: 0 },
-            { x: 100, y: 100 },
+            { time: 0, value: 0 },
+            { time: 100, value: 100 },
           ],
-          style: { color: '#00FF00' },
+          style: { color: '#00FF00', lineWidth: 2, lineStyle: 'solid' as const, showLabels: true },
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('chart_drawings_session-1');
+      (createKey as jest.Mock).mockReturnValue('chart_drawings_session-1');
       mockApiCache.get.mockReturnValue(cachedDrawings);
 
       const result = await ChartDrawingAPI.loadDrawings('session-1');
@@ -107,9 +109,9 @@ describe('ChartDrawingAPI', () => {
       const drawings: ChartDrawing[] = [
         {
           id: 'drawing-1',
-          type: 'horizontalLine',
-          points: [{ x: 0, y: 50 }],
-          style: { color: '#0000FF', width: 1 },
+          type: 'horizontal',
+          points: [{ time: 0, value: 50 }],
+          style: { color: '#0000FF', lineWidth: 1, lineStyle: 'solid' as const, showLabels: true },
         },
       ];
 
@@ -162,10 +164,9 @@ describe('ChartDrawingAPI', () => {
       const staleDrawings: ChartDrawing[] = [
         {
           id: 'stale-drawing',
-          type: 'text',
-          points: [{ x: 50, y: 50 }],
-          style: { color: '#000000' },
-          text: 'Stale text',
+          type: 'horizontal',
+          points: [{ time: 50, value: 50 }],
+          style: { color: '#000000', lineWidth: 1, lineStyle: 'solid' as const, showLabels: true },
         },
       ];
 
@@ -185,7 +186,7 @@ describe('ChartDrawingAPI', () => {
 
     it('should return empty array in development mode when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -195,19 +196,19 @@ describe('ChartDrawingAPI', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChartDrawingAPI] Returning empty array in development mode');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
     });
 
     it('should throw error in production when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, "NODE_ENV", { value: 'production', writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
 
       await expect(ChartDrawingAPI.loadDrawings('session-1')).rejects.toThrow('Failed to load drawings: API Error');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
     });
   });
 
@@ -218,9 +219,9 @@ describe('ChartDrawingAPI', () => {
           id: 'pattern-1',
           type: 'triangle',
           points: [
-            { x: 0, y: 0 },
-            { x: 50, y: 100 },
-            { x: 100, y: 0 },
+            { time: 0, value: 0 },
+            { time: 50, value: 100 },
+            { time: 100, value: 0 },
           ],
           timeframe: '1h',
           symbol: 'BTCUSDT',
@@ -271,7 +272,7 @@ describe('ChartDrawingAPI', () => {
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('chart_patterns_session-1');
+      (createKey as jest.Mock).mockReturnValue('chart_patterns_session-1');
       mockApiCache.get.mockReturnValue(cachedPatterns);
 
       const result = await ChartDrawingAPI.loadPatterns('session-1');
@@ -426,7 +427,7 @@ describe('ChartDrawingAPI', () => {
 
     it('should return null in development mode on error', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true, configurable: true });
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
@@ -435,12 +436,12 @@ describe('ChartDrawingAPI', () => {
       expect(result).toBeNull();
       expect(logger.error).toHaveBeenCalled();
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
     });
 
     it('should throw error in production mode', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, "NODE_ENV", { value: 'production', writable: true, configurable: true });
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
@@ -448,7 +449,7 @@ describe('ChartDrawingAPI', () => {
         'Failed to load timeframe state: Network error'
       );
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
     });
   });
 
@@ -512,7 +513,9 @@ describe('ChartDrawingAPI', () => {
             id: 'drawing-1',
             type: 'trendline' as const,
             points: [],
-            style: {},
+            style: { color: '#000000', lineWidth: 2, lineStyle: 'solid' as const, showLabels: true },
+            visible: true,
+            interactive: true
           },
         ],
         patterns: [

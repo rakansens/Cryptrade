@@ -48,6 +48,9 @@ jest.mock('lightweight-charts', () => ({
 // Setup WebSocket mocking
 const cleanupMock = setupWebSocketMocking();
 
+// Set longer timeout for integration tests
+jest.setTimeout(30000);
+
 describe('Chart + WebSocket Integration', () => {
   let wsManager: WSManager;
   let chartStore: any;

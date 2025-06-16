@@ -4,7 +4,7 @@
 
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import type { ConversationMemory } from '@/lib/api/types';
 
@@ -59,7 +59,7 @@ export class ConversationMemoryAPI {
    * Get recent messages with retry and caching
    */
   static async getRecentMessages(sessionId: string, limit: number = 8): Promise<ConversationMessage[]> {
-    const cacheKey = apiCache.createKey('memory_messages', { sessionId, limit });
+    const cacheKey = createKey('memory_messages', { sessionId, limit });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<ConversationMessage[]>(cacheKey, { 
@@ -130,7 +130,7 @@ export class ConversationMemoryAPI {
    * Search messages with retry and caching
    */
   static async searchMessages(query: string, sessionId?: string): Promise<ConversationMessage[]> {
-    const cacheKey = apiCache.createKey('memory_search', { query, sessionId: sessionId || 'all' });
+    const cacheKey = createKey('memory_search', { query, sessionId: sessionId || 'all' });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<ConversationMessage[]>(cacheKey, { 

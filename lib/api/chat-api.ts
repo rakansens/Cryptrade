@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@/lib/utils/logger';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { env } from '@/config/env';
 import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
@@ -102,7 +102,7 @@ export class ChatAPI {
    * Get user sessions with retry and caching
    */
   static async getUserSessions(userId?: string): Promise<ChatSession[]> {
-    const cacheKey = apiCache.createKey('chat_sessions', { userId: userId || 'default' });
+    const cacheKey = createKey('chat_sessions', { userId: userId || 'default' });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<ChatSession[]>(cacheKey, { 
@@ -209,7 +209,7 @@ export class ChatAPI {
    * Get messages for a session with retry and caching
    */
   static async getMessages(sessionId: string): Promise<ChatMessage[]> {
-    const cacheKey = apiCache.createKey('chat_messages', { sessionId });
+    const cacheKey = createKey('chat_messages', { sessionId });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<ChatMessage[]>(cacheKey, { 
@@ -274,7 +274,7 @@ export class ChatAPI {
    * Get session with messages with retry and caching
    */
   static async getSessionWithMessages(sessionId: string): Promise<{ session: ChatSession; messages: ChatMessage[] } | null> {
-    const cacheKey = apiCache.createKey('chat_session_full', { sessionId });
+    const cacheKey = createKey('chat_session_full', { sessionId });
     
     // キャッシュから取得を試みる
     const cached = apiCache.get<{ session: ChatSession; messages: ChatMessage[] }>(cacheKey, { 

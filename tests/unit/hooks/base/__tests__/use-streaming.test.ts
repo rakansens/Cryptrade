@@ -20,16 +20,13 @@ jest.mock('@/lib/utils/logger', () => ({
 const MockEventSource = (global as any).EventSource;
 
 describe('useStreaming', () => {
-  // Set a longer timeout for async tests
-  jest.setTimeout(30000);
-
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
+    // Don't use fake timers for streaming tests
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
     jest.clearAllMocks();
     jest.restoreAllMocks();
   });
@@ -614,6 +611,14 @@ describe('useSSE', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   it('should create EventSource connection', async () => {

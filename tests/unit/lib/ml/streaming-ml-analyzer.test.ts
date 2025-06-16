@@ -20,6 +20,9 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('StreamingMLAnalyzer', () => {
+  // Set longer timeout for ML analysis tests
+  jest.setTimeout(30000);
+  
   let analyzer: StreamingMLAnalyzer;
   let mockFeatureExtractor: jest.Mocked<FeatureExtractor>;
   let mockPredictor: jest.Mocked<LineQualityPredictor>;
@@ -28,6 +31,7 @@ describe('StreamingMLAnalyzer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
 
     // Create mock instances
     mockFeatureExtractor = {
@@ -50,6 +54,13 @@ describe('StreamingMLAnalyzer', () => {
     mockLine = createMockLine();
 
     analyzer = new StreamingMLAnalyzer();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   describe('constructor', () => {

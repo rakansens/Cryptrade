@@ -63,53 +63,7 @@ export function StyleEditor({
   const [activeTab, setActiveTab] = useState('basic')
   const [previewColor, setPreviewColor] = useState(localStyle.color)
 
-  // Handle color change with preview
-  const handleColorChange = useCallback((color: string) => {
-    setPreviewColor(color)
-    
-    // Validate hex color
-    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
-      const newStyle = { ...localStyle, color }
-      setLocalStyle(newStyle)
-      applyStyleChange({ color })
-    }
-  }, [localStyle])
-
-  // Handle line width change
-  const handleLineWidthChange = useCallback((width: string) => {
-    const lineWidth = parseInt(width)
-    if (!isNaN(lineWidth) && lineWidth >= 1 && lineWidth <= 10) {
-      const newStyle = { ...localStyle, lineWidth }
-      setLocalStyle(newStyle)
-      applyStyleChange({ lineWidth })
-    }
-  }, [localStyle])
-
-  // Handle line style change
-  const handleLineStyleChange = useCallback((lineStyle: ExtendedLineStyle) => {
-    const newStyle = { ...localStyle, lineStyle }
-    setLocalStyle(newStyle)
-    applyStyleChange({ lineStyle })
-  }, [localStyle])
-
-  // Handle show labels change
-  const handleShowLabelsChange = useCallback((showLabels: boolean) => {
-    const newStyle = { ...localStyle, showLabels }
-    setLocalStyle(newStyle)
-    applyStyleChange({ showLabels })
-  }, [localStyle])
-
-  // Apply preset
-  const applyPreset = useCallback((presetId: string) => {
-    const preset = DEFAULT_STYLE_PRESETS.find(p => p.id === presetId)
-    if (preset) {
-      setLocalStyle(preset.style)
-      applyStyleChange(preset.style)
-      showToast(`プリセット「${preset.name}」を適用しました`, 'success')
-    }
-  }, [])
-
-  // Apply style change
+  // Apply style change - declare first as it's used by other callbacks
   const applyStyleChange = useCallback((partialStyle: Partial<EnhancedDrawingStyle>) => {
     logger.info('[StyleEditor] Applying style change', { drawingId, partialStyle, isPattern })
     
@@ -152,23 +106,7 @@ export function StyleEditor({
     }
   }, [drawingId, isPattern, onStyleChange])
 
-  // Pattern-specific style handlers
-  const handlePatternFillOpacityChange = useCallback((opacity: string) => {
-    const patternFillOpacity = parseFloat(opacity)
-    if (!isNaN(patternFillOpacity) && patternFillOpacity >= 0 && patternFillOpacity <= 1) {
-      const newPatternStyle = { ...patternStyle, patternFillOpacity }
-      setPatternStyle(newPatternStyle)
-      applyPatternStyleChange({ patternFillOpacity })
-    }
-  }, [patternStyle])
-
-  const handleMetricLabelPositionChange = useCallback((position: 'left' | 'right' | 'center') => {
-    const newPatternStyle = { ...patternStyle, metricLabelPosition: position }
-    setPatternStyle(newPatternStyle)
-    applyPatternStyleChange({ metricLabelPosition: position })
-  }, [patternStyle])
-
-  // Apply pattern style change
+  // Apply pattern style change - declare before it's used
   const applyPatternStyleChange = useCallback((partialPatternStyle: Partial<PatternStyle>) => {
     if (!isPattern) return
     
@@ -194,6 +132,68 @@ export function StyleEditor({
       showToast('パターンスタイルの更新に失敗しました', 'error')
     }
   }, [drawingId, isPattern, onPatternStyleChange])
+
+  // Handle color change with preview
+  const handleColorChange = useCallback((color: string) => {
+    setPreviewColor(color)
+    
+    // Validate hex color
+    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      const newStyle = { ...localStyle, color }
+      setLocalStyle(newStyle)
+      applyStyleChange({ color })
+    }
+  }, [localStyle, applyStyleChange])
+
+  // Handle line width change
+  const handleLineWidthChange = useCallback((width: string) => {
+    const lineWidth = parseInt(width)
+    if (!isNaN(lineWidth) && lineWidth >= 1 && lineWidth <= 10) {
+      const newStyle = { ...localStyle, lineWidth }
+      setLocalStyle(newStyle)
+      applyStyleChange({ lineWidth })
+    }
+  }, [localStyle, applyStyleChange])
+
+  // Handle line style change
+  const handleLineStyleChange = useCallback((lineStyle: ExtendedLineStyle) => {
+    const newStyle = { ...localStyle, lineStyle }
+    setLocalStyle(newStyle)
+    applyStyleChange({ lineStyle })
+  }, [localStyle, applyStyleChange])
+
+  // Handle show labels change
+  const handleShowLabelsChange = useCallback((showLabels: boolean) => {
+    const newStyle = { ...localStyle, showLabels }
+    setLocalStyle(newStyle)
+    applyStyleChange({ showLabels })
+  }, [localStyle, applyStyleChange])
+
+  // Apply preset
+  const applyPreset = useCallback((presetId: string) => {
+    const preset = DEFAULT_STYLE_PRESETS.find(p => p.id === presetId)
+    if (preset) {
+      setLocalStyle(preset.style)
+      applyStyleChange(preset.style)
+      showToast(`プリセット「${preset.name}」を適用しました`, 'success')
+    }
+  }, [applyStyleChange])
+
+  // Pattern-specific style handlers
+  const handlePatternFillOpacityChange = useCallback((opacity: string) => {
+    const patternFillOpacity = parseFloat(opacity)
+    if (!isNaN(patternFillOpacity) && patternFillOpacity >= 0 && patternFillOpacity <= 1) {
+      const newPatternStyle = { ...patternStyle, patternFillOpacity }
+      setPatternStyle(newPatternStyle)
+      applyPatternStyleChange({ patternFillOpacity })
+    }
+  }, [patternStyle, applyPatternStyleChange])
+
+  const handleMetricLabelPositionChange = useCallback((position: 'left' | 'right' | 'center') => {
+    const newPatternStyle = { ...patternStyle, metricLabelPosition: position }
+    setPatternStyle(newPatternStyle)
+    applyPatternStyleChange({ metricLabelPosition: position })
+  }, [patternStyle, applyPatternStyleChange])
 
   const editorBody = (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-h-0">

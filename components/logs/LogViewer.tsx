@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { RefreshCw, Download, Search, Eye, Clock, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,7 +48,7 @@ export function LogViewer({ className }: LogViewerProps) {
   // Fetch logs
   const [loading, setLoading] = useState(false)
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     const params = new URLSearchParams()
     
     // Add filters
@@ -75,7 +75,7 @@ export function LogViewer({ className }: LogViewerProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, pagination])
 
   // Auto refresh effect
   useEffect(() => {
@@ -93,12 +93,12 @@ export function LogViewer({ className }: LogViewerProps) {
         clearInterval(intervalRef.current)
       }
     }
-  }, [autoRefresh, filters, pagination])
+  }, [autoRefresh, fetchLogs]) // fetchLogs already depends on filters and pagination
 
   // Initial fetch
   useEffect(() => {
     fetchLogs()
-  }, [filters, pagination])
+  }, [fetchLogs]) // fetchLogs already depends on filters and pagination
 
   // Export logs
   const exportLogs = () => {

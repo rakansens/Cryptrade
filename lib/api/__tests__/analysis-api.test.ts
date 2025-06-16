@@ -8,16 +8,12 @@ jest.mock('@/lib/utils/db-conversions');
 global.fetch = jest.fn();
 
 import { AnalysisAPI } from '../analysis-api';
-import { apiCache } from '@/lib/utils/api-cache';
+import { apiCache, createKey } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
 import { logger } from '@/lib/utils/logger';
 import { convertDbAnalysisRecord } from '@/lib/utils/db-conversions';
 import type { 
-  AnalysisRecord, 
-  TouchEvent,
-  ProposalData,
-  TrackingData,
-  SentimentData
+  AnalysisRecord
 } from '@/types/analysis-history';
 
 describe('AnalysisAPI', () => {
@@ -35,18 +31,14 @@ describe('AnalysisAPI', () => {
         interval: '1h',
         type: 'support' as const,
         proposalData: {
-          proposals: [
-            {
-              symbol: 'BTCUSDT',
-              action: 'BUY',
-              timeframe: '1h',
-              entry: 50000,
-              targets: [51000],
-              stopLoss: 49000,
-              confidence: 0.8,
-              reasoning: 'Support level test',
-            },
-          ],
+          price: 50000,
+          confidence: 0.8,
+          drawingData: {
+            id: 'test-drawing',
+            type: 'horizontal' as const,
+            points: [{ time: Date.now() / 1000, value: 50000 }],
+            style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+          }
         },
       };
 
@@ -93,9 +85,11 @@ describe('AnalysisAPI', () => {
         interval: '1d',
         type: 'pattern' as const,
         sentimentData: {
-          sentiment: 'bullish' as const,
-          confidence: 0.85,
-          reasoning: 'Strong uptrend pattern',
+          overall: 'bullish' as const,
+          strength: 0.85,
+          signals: [
+            { type: 'pattern', value: 'uptrend', weight: 0.9 }
+          ]
         },
       };
 
@@ -116,10 +110,11 @@ describe('AnalysisAPI', () => {
         interval: '1h',
         type: 'trendline' as const,
         trackingData: {
-          price: 50000,
-          distance: 100,
-          touchCount: 3,
-          strength: 0.9,
+          status: 'active' as const,
+          startTime: Date.now(),
+          touches: [
+            { time: Date.now(), price: 50000, result: 'bounce' as const, strength: 0.9 }
+          ]
         },
       };
 
@@ -167,10 +162,10 @@ describe('AnalysisAPI', () => {
   describe('recordTouchEvent', () => {
     it('should record touch event successfully', async () => {
       const touchEvent = {
+        time: Date.now(),
         price: 50000,
-        timestamp: Date.now(),
-        strength: 0.95,
-        type: 'exact' as const,
+        result: 'bounce' as const,
+        strength: 0.95
       };
 
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -197,10 +192,10 @@ describe('AnalysisAPI', () => {
 
       await expect(
         AnalysisAPI.recordTouchEvent('invalid-id', {
+          time: Date.now(),
           price: 50000,
-          timestamp: Date.now(),
-          strength: 0.5,
-          type: 'near',
+          result: 'test' as const,
+          strength: 0.5
         })
       ).rejects.toThrow('Failed to record touch event: Not Found');
       expect(logger.error).toHaveBeenCalledWith('[AnalysisAPI] Failed to record touch event', {
@@ -217,16 +212,30 @@ describe('AnalysisAPI', () => {
       const cachedRecords: AnalysisRecord[] = [
         {
           id: 'record-1',
+          proposalId: 'proposal-1',
           sessionId: 'session-1',
+          timestamp: Date.now(),
           symbol: 'BTCUSDT',
           interval: '1h',
           type: 'support',
-          createdAt: Date.now(),
-          touchEvents: [],
+          proposal: {
+            confidence: 0.8,
+            drawingData: {
+              id: 'drawing-1',
+              type: 'horizontal' as const,
+              points: [{ time: Date.now() / 1000, value: 50000 }],
+              style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: {
+            status: 'active' as const,
+            startTime: Date.now(),
+            touches: []
+          }
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('analysis_session_session-1');
+      (createKey as jest.Mock).mockReturnValue('analysis_session_session-1');
       mockApiCache.get.mockReturnValue(cachedRecords);
 
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
@@ -242,12 +251,26 @@ describe('AnalysisAPI', () => {
       const records: AnalysisRecord[] = [
         {
           id: 'record-1',
+          proposalId: 'proposal-1',
           sessionId: 'session-1',
+          timestamp: Date.now(),
           symbol: 'BTCUSDT',
           interval: '1h',
           type: 'resistance',
-          createdAt: Date.now(),
-          touchEvents: [],
+          proposal: {
+            confidence: 0.8,
+            drawingData: {
+              id: 'drawing-1',
+              type: 'horizontal' as const,
+              points: [{ time: Date.now() / 1000, value: 51000 }],
+              style: { color: '#FF0000', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: {
+            status: 'active' as const,
+            startTime: Date.now(),
+            touches: []
+          }
         },
       ];
 
@@ -300,12 +323,22 @@ describe('AnalysisAPI', () => {
       const staleRecords: AnalysisRecord[] = [
         {
           id: 'stale-record',
+          proposalId: 'proposal-stale',
           sessionId: 'session-1',
           symbol: 'ETHUSDT',
           interval: '4h',
           type: 'pattern',
-          createdAt: Date.now() - 3600000,
-          touchEvents: [],
+          timestamp: Date.now() - 3600000,
+          proposal: {
+            confidence: 0.75,
+            drawingData: {
+              id: 'drawing-stale',
+              type: 'pattern' as const,
+              points: [{ time: Date.now() / 1000, value: 3000 }],
+              style: { color: '#0000FF', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
         },
       ];
 
@@ -325,7 +358,11 @@ describe('AnalysisAPI', () => {
 
     it('should return empty array in development when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        configurable: true
+      });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -335,12 +372,20 @@ describe('AnalysisAPI', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[AnalysisAPI] Returning empty array in development mode');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        writable: true,
+        configurable: true
+      });
     });
 
     it('should throw error in production when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        writable: true,
+        configurable: true
+      });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -349,7 +394,11 @@ describe('AnalysisAPI', () => {
         'Failed to get session analyses for session-1: API Error'
       );
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        writable: true,
+        configurable: true
+      });
     });
   });
 
@@ -360,19 +409,41 @@ describe('AnalysisAPI', () => {
       const records: AnalysisRecord[] = [
         {
           id: 'record-1',
+          proposalId: 'proposal-1',
+          sessionId: 'session-active',
           symbol: 'BTCUSDT',
           interval: '1h',
           type: 'support',
-          createdAt: Date.now(),
-          touchEvents: [],
+          timestamp: Date.now(),
+          proposal: {
+            confidence: 0.8,
+            drawingData: {
+              id: 'drawing-1',
+              type: 'horizontal' as const,
+              points: [{ time: Date.now() / 1000, value: 50000 }],
+              style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
         },
         {
           id: 'record-2',
+          proposalId: 'proposal-2',
+          sessionId: 'session-active',
           symbol: 'ETHUSDT',
           interval: '4h',
           type: 'resistance',
-          createdAt: Date.now(),
-          touchEvents: [],
+          timestamp: Date.now(),
+          proposal: {
+            confidence: 0.85,
+            drawingData: {
+              id: 'drawing-2',
+              type: 'horizontal' as const,
+              points: [{ time: Date.now() / 1000, value: 3000 }],
+              style: { color: '#FF0000', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
         },
       ];
 
@@ -385,7 +456,7 @@ describe('AnalysisAPI', () => {
       const result = await AnalysisAPI.getActiveAnalyses();
 
       expect(global.fetch).toHaveBeenCalledWith('/api/analysis/active');
-      expect(mockApiCache.createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'all' });
+      expect(createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'all' });
       expect(result).toEqual(records);
     });
 
@@ -393,11 +464,22 @@ describe('AnalysisAPI', () => {
       const records: AnalysisRecord[] = [
         {
           id: 'record-1',
+          proposalId: 'proposal-1',
+          sessionId: 'session-specific',
           symbol: 'BTCUSDT',
           interval: '1h',
           type: 'trendline',
-          createdAt: Date.now(),
-          touchEvents: [],
+          timestamp: Date.now(),
+          proposal: {
+            confidence: 0.75,
+            drawingData: {
+              id: 'drawing-1',
+              type: 'trendline' as const,
+              points: [{ time: Date.now() / 1000, value: 50000 }, { time: (Date.now() / 1000) + 3600, value: 51000 }],
+              style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
         },
       ];
 
@@ -410,7 +492,7 @@ describe('AnalysisAPI', () => {
       const result = await AnalysisAPI.getActiveAnalyses('BTCUSDT');
 
       expect(global.fetch).toHaveBeenCalledWith('/api/analysis/active?symbol=BTCUSDT');
-      expect(mockApiCache.createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'BTCUSDT' });
+      expect(createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'BTCUSDT' });
       expect(result).toEqual(records);
     });
 
@@ -430,15 +512,26 @@ describe('AnalysisAPI', () => {
       const cachedRecords: AnalysisRecord[] = [
         {
           id: 'cached-record',
+          proposalId: 'proposal-cached',
+          sessionId: 'session-cached',
           symbol: 'BTCUSDT',
           interval: '15m',
           type: 'fibonacci',
-          createdAt: Date.now(),
-          touchEvents: [],
+          timestamp: Date.now(),
+          proposal: {
+            confidence: 0.7,
+            drawingData: {
+              id: 'drawing-cached',
+              type: 'fibonacci' as const,
+              points: [{ time: Date.now() / 1000, value: 49000 }, { time: (Date.now() / 1000) + 7200, value: 52000 }],
+              style: { color: '#FFA500', lineWidth: 1, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('analysis_active_BTCUSDT');
+      (createKey as jest.Mock).mockReturnValue('analysis_active_BTCUSDT');
       mockApiCache.get.mockReturnValue(cachedRecords);
 
       const result = await AnalysisAPI.getActiveAnalyses('BTCUSDT');
@@ -477,11 +570,22 @@ describe('AnalysisAPI', () => {
       const staleRecords: AnalysisRecord[] = [
         {
           id: 'stale-active',
+          proposalId: 'proposal-stale-active',
+          sessionId: 'session-stale',
           symbol: 'BTCUSDT',
           interval: '1d',
-          type: 'volume',
-          createdAt: Date.now() - 7200000,
-          touchEvents: [],
+          type: 'pattern',
+          timestamp: Date.now() - 7200000,
+          proposal: {
+            confidence: 0.65,
+            drawingData: {
+              id: 'drawing-stale-active',
+              type: 'pattern' as const,
+              points: [{ time: (Date.now() / 1000) - 7200, value: 48000 }],
+              style: { color: '#800080', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+            }
+          },
+          tracking: { status: "active" as const, startTime: Date.now() - 7200000, touches: [] },
         },
       ];
 
@@ -510,17 +614,27 @@ describe('AnalysisAPI', () => {
         interval: '1h',
         type: 'support',
         createdAt: new Date(),
-        touchEvents: [],
+        tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
       };
 
       const expectedRecord: AnalysisRecord = {
         id: 'db-record-1',
+        proposalId: 'proposal-db-1',
         sessionId: 'session-1',
         symbol: 'BTCUSDT',
         interval: '1h',
         type: 'support',
-        createdAt: Date.now(),
-        touchEvents: [],
+        timestamp: Date.now(),
+        proposal: {
+          confidence: 0.8,
+          drawingData: {
+            id: 'drawing-db-1',
+            type: 'horizontal' as const,
+            points: [{ time: Date.now() / 1000, value: 50000 }],
+            style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+          }
+        },
+        tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
       };
 
       (convertDbAnalysisRecord as jest.Mock).mockReturnValue(expectedRecord);
@@ -537,39 +651,36 @@ describe('AnalysisAPI', () => {
         symbol: 'ETHUSDT',
         interval: '4h',
         type: 'pattern',
-        proposalData: {
-          proposals: [
-            {
-              symbol: 'ETHUSDT',
-              action: 'SELL',
-              timeframe: '4h',
-              entry: 3000,
-              targets: [2900, 2800],
-              stopLoss: 3100,
-              confidence: 0.7,
-              reasoning: 'Bearish pattern',
-            },
-          ],
+        proposal: {
+          confidence: 0.7,
+          drawingData: {
+            id: 'drawing-db-2',
+            type: 'pattern' as const,
+            points: [{ time: Date.now() / 1000, value: 3000 }],
+            style: { color: '#FF0000', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
+          }
         },
         createdAt: new Date(),
       };
 
       const expectedRecord: AnalysisRecord = {
         id: 'db-record-2',
+        proposalId: 'proposal-db-2',
+        sessionId: 'session-db',
         symbol: 'ETHUSDT',
         interval: '4h',
         type: 'pattern',
-        proposalData: dbRecord.proposalData,
-        createdAt: Date.now(),
-        touchEvents: [],
+        proposal: dbRecord.proposal,
+        timestamp: Date.now(),
+        tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
       };
 
       (convertDbAnalysisRecord as jest.Mock).mockReturnValue(expectedRecord);
 
       const result = AnalysisAPI.convertToAnalysisRecord(dbRecord);
 
-      expect(result.proposalData).toBeDefined();
-      expect(result.proposalData?.proposals).toHaveLength(1);
+      expect(result.proposal).toBeDefined();
+      expect(result.proposal?.confidence).toBe(0.7);
     });
   });
 });

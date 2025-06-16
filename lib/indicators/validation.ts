@@ -230,3 +230,34 @@ export async function safeCalculateIndicator<T>(
     return handleIndicatorError(indicatorName, error, fallbackValue);
   }
 }
+
+/**
+ * Alias for validateNumberArray for backward compatibility
+ */
+export const validateNumericArray = validateNumberArray;
+
+/**
+ * General indicator input validation
+ */
+export function validateIndicatorInput(
+  data: any,
+  indicatorName: string,
+  options: DataValidationOptions
+): ValidationResult {
+  // If it's a price data array with time and close
+  if (Array.isArray(data) && data.length > 0 && 
+      data[0] && typeof data[0] === 'object' && 
+      'time' in data[0] && 'close' in data[0]) {
+    return validatePriceData(data as { time: number; close: number }[], options);
+  }
+  
+  // If it's a simple number array
+  if (Array.isArray(data) && data.every(item => typeof item === 'number' || item === null || item === undefined)) {
+    return validateNumberArray(data.filter(item => item !== null && item !== undefined) as number[], options);
+  }
+  
+  return {
+    valid: false,
+    error: `Invalid input data format for ${indicatorName} indicator`
+  };
+}
