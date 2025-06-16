@@ -36,12 +36,6 @@ function createPrismaClient() {
   }
 
   const client = new PrismaClient({
-    datasources: {
-      db: {
-        url: env.DATABASE_URL,
-        ...(env.DIRECT_DATABASE_URL && { directUrl: env.DIRECT_DATABASE_URL }),
-      },
-    },
     log: [
       {
         emit: 'event',
