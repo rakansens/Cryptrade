@@ -429,6 +429,32 @@ afterEach(() => {
 });
 ```
 
+## Event Specification
+
+The chart module listens for custom events such as `chart:updatePatternStyle` to
+apply visual changes. The event now accepts a `lineStyles` array allowing color
+or width adjustments for specific lines.
+
+```ts
+window.dispatchEvent(
+  new CustomEvent('chart:updatePatternStyle', {
+    detail: {
+      patternId: 'pattern-1',
+      lineStyles: [
+        {
+          lineId: 'line-a',
+          style: { color: '#f43f5e', lineWidth: 3 }
+        }
+      ],
+      immediate: true,
+    },
+  })
+);
+```
+
+The handler fetches the target line from the active `PatternRenderer` and
+re-renders it with the new style.
+
 ## Version History
 
 - **v1.0.0** - Initial WSManager implementation

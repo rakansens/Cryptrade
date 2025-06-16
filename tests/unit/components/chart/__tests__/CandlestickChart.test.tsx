@@ -37,7 +37,7 @@ describe('CandlestickChart', () => {
     { time: 1704070800, open: 45200, high: 45700, low: 45000, close: 45500, volume: 120 }
   ]
 
-  const mockChartInstance = {
+  const mockChartInstance: any = {
     chartContainerRef: { current: null },
     initializeChart: jest.fn(() => jest.fn()),
     addIndicatorSeries: jest.fn(),
@@ -45,7 +45,8 @@ describe('CandlestickChart', () => {
     fitContent: jest.fn(),
     drawingManager: {},
     patternRenderer: {},
-    getPatternRenderer: jest.fn()
+    getPatternRenderer: jest.fn(),
+    chartInstance: null
   }
 
   const defaultMocks = {
@@ -328,8 +329,40 @@ describe('CandlestickChart', () => {
         bollingerSettings: mockChartData.settings.boll,
         getSeries: mockChartInstance.getSeries,
         fitContent: mockChartInstance.fitContent,
-        autoFit: false
+      autoFit: false
       })
+    })
+  })
+
+  describe('Zoom Handlers', () => {
+    it('zooms in by adjusting visible range', () => {
+      const timeScaleMock = {
+        getVisibleRange: jest.fn(() => ({ from: 0, to: 100 })),
+        setVisibleRange: jest.fn()
+      }
+      mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
+
+      render(<CandlestickChart />)
+
+      const handlers = (useAgentEventHandlers as jest.Mock).mock.calls[0][0]
+      handlers.zoomIn?.(2)
+
+      expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 25, to: 75 })
+    })
+
+    it('zooms out by adjusting visible range', () => {
+      const timeScaleMock = {
+        getVisibleRange: jest.fn(() => ({ from: 25, to: 75 })),
+        setVisibleRange: jest.fn()
+      }
+      mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
+
+      render(<CandlestickChart />)
+
+      const handlers = (useAgentEventHandlers as jest.Mock).mock.calls[0][0]
+      handlers.zoomOut?.(0.5)
+
+      expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 0, to: 100 })
     })
   })
 })

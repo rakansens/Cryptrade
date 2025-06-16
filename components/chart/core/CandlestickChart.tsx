@@ -36,16 +36,17 @@ function CandlestickChart({ height }, ref) {
   })
 
   // Chart instance management
-  const { 
-    chartContainerRef, 
-    initializeChart, 
+  const {
+    chartContainerRef,
+    chartInstance,
+    initializeChart,
     addIndicatorSeries,
-    getSeries, 
+    getSeries,
     fitContent,
     drawingManager,
     patternRenderer,
     getPatternRenderer
-  } = useChartInstance({ 
+  } = useChartInstance({
     ...(height !== undefined && { height })
   })
 
@@ -61,14 +62,26 @@ function CandlestickChart({ height }, ref) {
 
   // Chart manipulation handlers for agent events
   const handleZoomIn = useCallback((factor: number = 1.2) => {
-    // TODO: Implement zoom in functionality
-    console.log('Zoom in with factor:', factor);
-  }, []);
+    if (!chartInstance) return;
+    const timeScale = chartInstance.timeScale();
+    const range = timeScale.getVisibleRange();
+    if (!range || factor <= 0) return;
+    const currentRange = range.to - range.from;
+    const center = range.from + currentRange / 2;
+    const newRangeHalf = currentRange / factor / 2;
+    timeScale.setVisibleRange({ from: center - newRangeHalf, to: center + newRangeHalf });
+  }, [chartInstance]);
 
   const handleZoomOut = useCallback((factor: number = 0.8) => {
-    // TODO: Implement zoom out functionality  
-    console.log('Zoom out with factor:', factor);
-  }, []);
+    if (!chartInstance) return;
+    const timeScale = chartInstance.timeScale();
+    const range = timeScale.getVisibleRange();
+    if (!range || factor <= 0) return;
+    const currentRange = range.to - range.from;
+    const center = range.from + currentRange / 2;
+    const newRangeHalf = currentRange / factor / 2;
+    timeScale.setVisibleRange({ from: center - newRangeHalf, to: center + newRangeHalf });
+  }, [chartInstance]);
 
   const handleResetView = useCallback(() => {
     fitContent();

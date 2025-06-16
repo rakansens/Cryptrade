@@ -87,9 +87,9 @@ export const useChartStore = <T>(selector: (state: ChartStore) => T): T => {
     clearPatterns: patternState.clearPatterns,
     getPattern: patternState.getPattern,
     
-    // Undo/Redo specific actions (for type compatibility)
-    pushToUndoStack: () => {}, // Not exposed in original implementation
-    clearRedoStack: () => {}, // Not exposed in original implementation
+    // Undo/Redo specific actions
+    pushToUndoStack: drawingState.pushToUndoStack,
+    clearRedoStack: drawingState.clearRedoStack,
   };
 
   return selector(combinedState);

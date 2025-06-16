@@ -5,6 +5,7 @@ import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
 import { isDevelopment } from '@/config/env';
+import { embeddingService } from '@/lib/services/semantic-embedding.service';
 /**
  * Conversation Memory Store with Database Integration
  * 
@@ -136,11 +137,14 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
             }
           }
           
-          logger.info('[ConversationMemory] Message added', { 
+          logger.info('[ConversationMemory] Message added', {
             sessionId: message.sessionId,
             role: message.role,
             hasMetadata: !!message.metadata,
           });
+
+          // Generate embedding asynchronously
+          await generateMessageEmbedding(fullMessage);
         },
 
         getRecentMessages: (sessionId, limit = 8) => {
@@ -391,9 +395,10 @@ export function calculateSimilarity(embedding1: number[], embedding2: number[]):
 
 // Export semantic search function
 export async function semanticSearch(
-  query: string, 
+  query: string,
   sessionId?: string,
-  threshold = 0.7
+  threshold = 0.7,
+  topK = 10
 ): Promise<ConversationMessage[]> {
   try {
     const state = useConversationMemory.getState();
@@ -419,12 +424,35 @@ export async function semanticSearch(
       throw new Error('No messages available for semantic search');
     }
     
-    logger.info('[ConversationMemory] Semantic search fallback to text search', {
-      query,
-      threshold,
-    });
-    
-    return state.searchMessages(query, sessionId);
+    const { embedding: queryEmbedding } = await embeddingService.generateEmbedding(query);
+
+    const scored: Array<{ msg: ConversationMessage; sim: number }> = [];
+    for (const msg of allMessages) {
+      if (msg.role === 'system') continue;
+
+      if (!msg.metadata?.embedding) {
+        try {
+          const { embedding } = await embeddingService.generateEmbedding(msg.content);
+          useConversationMemory.setState(s => {
+            const m = s.sessions[msg.sessionId]?.messages.find(m => m.id === msg.id);
+            if (m) {
+              m.metadata = { ...(m.metadata || {}), embedding };
+            }
+          });
+          msg.metadata = { ...(msg.metadata || {}), embedding };
+        } catch (_) {
+          continue;
+        }
+      }
+
+      const sim = calculateSimilarity(queryEmbedding, msg.metadata!.embedding!);
+      if (sim >= threshold) {
+        scored.push({ msg, sim });
+      }
+    }
+
+    scored.sort((a, b) => b.sim - a.sim);
+    return scored.slice(0, topK).map(r => r.msg);
     
   } catch (error) {
     logger.error('[ConversationMemory] Semantic search failed, falling back to text search', {
@@ -441,10 +469,18 @@ export async function generateMessageEmbedding(message: ConversationMessage): Pr
   try {
     // Only generate embeddings for user and assistant messages
     if (message.role === 'system') return;
-    
-    logger.debug('[ConversationMemory] Embedding generation placeholder', {
+    const { embedding } = await embeddingService.generateEmbedding(message.content);
+
+    useConversationMemory.setState(state => {
+      const msg = state.sessions[message.sessionId]?.messages.find(m => m.id === message.id);
+      if (msg) {
+        msg.metadata = { ...(msg.metadata || {}), embedding };
+      }
+    });
+
+    logger.info('[ConversationMemory] Embedding generated', {
       messageId: message.id,
-      role: message.role,
+      dimensions: embedding.length,
     });
   } catch (error) {
     logger.error('[ConversationMemory] Failed to generate embedding for message', {

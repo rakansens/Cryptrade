@@ -364,13 +364,32 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
         }
         
         // Apply line style updates
-        if (lineStyles) {
+        if (lineStyles && pattern.visualization?.lines) {
           logger.info('[Pattern Event] Applying line style updates', { lineStyles });
-          // TODO: Implement line-specific style updates
+          lineStyles.forEach(({ lineId, style }) => {
+            const targetLine = (pattern.visualization as any).lines.find((ln: any) => ln.id === lineId);
+            if (targetLine) {
+              targetLine.style = {
+                ...(targetLine.style || {}),
+                ...(style.color !== undefined && { color: style.color }),
+                ...(style.lineWidth !== undefined && { lineWidth: style.lineWidth }),
+                ...(style.lineStyle !== undefined && { lineStyle: style.lineStyle }),
+              };
+            } else {
+              logger.warn('[Pattern Event] Line not found for style update', { patternId, lineId });
+            }
+          });
+
+          // Persist updated lines back to store
+          usePatternStore.setState(state => {
+            const newPatterns = new Map(state.patterns);
+            newPatterns.set(patternId, { ...pattern });
+            return { patterns: newPatterns } as any;
+          });
         }
         
-        // Force redraw if immediate or base style was updated
-        if (immediate || patternStyle?.baseStyle) {
+        // Force redraw if immediate or any style was updated
+        if (immediate || patternStyle?.baseStyle || lineStyles) {
           // Re-render the pattern with new styles
           // Transform visualization if needed
           let patternVisualization = pattern.visualization;

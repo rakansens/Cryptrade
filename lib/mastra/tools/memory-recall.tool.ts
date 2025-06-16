@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
-import { useConversationMemory } from '@/lib/store/conversation-memory.store';
+import { useConversationMemory, semanticSearch } from '@/lib/store/conversation-memory.store';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -89,21 +89,37 @@ export const memoryRecallTool = createTool({
               error: 'Search query is required for search operation',
             };
           }
-          
-          const messages = memoryStore.searchMessages(input.query, input.sessionId);
-          
-          return {
-            success: true,
-            messages: messages.slice(0, input.limit).map(msg => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp.toISOString(),
-              agentId: msg.agentId,
-              metadata: msg.metadata,
-            })),
-            summary: `Found ${messages.length} messages matching "${input.query}"`,
-          };
+
+          try {
+            const results = await semanticSearch(input.query, input.sessionId, 0.7, input.limit);
+            return {
+              success: true,
+              messages: results.map(msg => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp.toISOString(),
+                agentId: msg.agentId,
+                metadata: msg.metadata,
+              })),
+              summary: `Found ${results.length} messages matching "${input.query}"`,
+            };
+          } catch (err) {
+            logger.error('[MemoryRecallTool] Semantic search failed', { error: String(err) });
+            const messages = memoryStore.searchMessages(input.query, input.sessionId);
+            return {
+              success: true,
+              messages: messages.slice(0, input.limit).map(msg => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp.toISOString(),
+                agentId: msg.agentId,
+                metadata: msg.metadata,
+              })),
+              summary: `Found ${messages.length} messages matching "${input.query}"`,
+            };
+          }
         }
 
         case 'getContext': {

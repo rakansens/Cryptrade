@@ -40,6 +40,7 @@ const EnvSchema = z.object({
   
   // Database and storage
   DATABASE_URL: z.string().optional(),
+  DIRECT_DATABASE_URL: z.string().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   KV_REST_API_URL: z.string().url().optional(),

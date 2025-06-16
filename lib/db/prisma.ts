@@ -31,7 +31,17 @@ const globalForPrisma = globalThis as unknown as {
 
 // Create Prisma client with enhanced configuration
 function createPrismaClient() {
+  if (!env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not configured');
+  }
+
   const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: env.DATABASE_URL,
+        ...(env.DIRECT_DATABASE_URL && { directUrl: env.DIRECT_DATABASE_URL }),
+      },
+    },
     log: [
       {
         emit: 'event',

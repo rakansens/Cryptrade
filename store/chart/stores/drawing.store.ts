@@ -65,11 +65,11 @@ const initialState: DrawingState & UndoRedoState = {
   redoStack: [],
 };
 
-interface DrawingStoreState extends DrawingState, UndoRedoState, DrawingActions {
-  // Undo/Redo actions are included here since they're tightly coupled with drawings
-  undo: () => void;
-  redo: () => void;
-}
+interface DrawingStoreState
+  extends DrawingState,
+    UndoRedoState,
+    DrawingActions,
+    UndoRedoActions {}
 
 export const useDrawingStore = create<DrawingStoreState>()(
   devtools(
@@ -275,6 +275,17 @@ export const useDrawingStore = create<DrawingStoreState>()(
       setIsDrawing: (isDrawing) => {
         debug('setIsDrawing');
         set({ isDrawing });
+      },
+
+      // Explicit stack operations
+      pushToUndoStack: (drawings) => {
+        debug('pushToUndoStack');
+        set((state) => ({ undoStack: [...state.undoStack, drawings] }));
+      },
+
+      clearRedoStack: () => {
+        debug('clearRedoStack');
+        set({ redoStack: [] });
       },
 
       // Undo/Redo actions

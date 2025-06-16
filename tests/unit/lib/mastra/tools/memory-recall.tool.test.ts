@@ -4,7 +4,7 @@ import {
   formatConversationContext,
   extractMetadataFromQuery 
 } from '@/lib/mastra/tools/memory-recall.tool';
-import { useConversationMemory } from '@/lib/store/conversation-memory.store';
+import { useConversationMemory, semanticSearch } from '@/lib/store/conversation-memory.store';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
@@ -21,6 +21,7 @@ jest.mock('@/lib/store/conversation-memory.store', () => ({
   useConversationMemory: {
     getState: jest.fn(),
   },
+  semanticSearch: jest.fn(),
 }));
 
 // Type for mocked memory store
@@ -37,6 +38,8 @@ describe('memoryRecallTool', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    (semanticSearch as jest.Mock).mockReset();
     
     // Setup mock memory store
     mockMemoryStore = {
@@ -52,6 +55,7 @@ describe('memoryRecallTool', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    (semanticSearch as jest.Mock).mockReset();
   });
 
   describe('execute - getRecent operation', () => {
@@ -179,7 +183,7 @@ describe('memoryRecallTool', () => {
         },
       ];
 
-      mockMemoryStore.searchMessages.mockReturnValue(mockSearchResults);
+      (semanticSearch as jest.Mock).mockResolvedValue(mockSearchResults);
 
       const result = await memoryRecallTool.execute!({
         context: {
@@ -206,7 +210,7 @@ describe('memoryRecallTool', () => {
         summary: 'Found 2 messages matching "ETH chart"',
       });
 
-      expect(mockMemoryStore.searchMessages).toHaveBeenCalledWith('ETH chart', 'session-123');
+      expect(semanticSearch).toHaveBeenCalledWith('ETH chart', 'session-123', 0.7, 10);
     });
 
     it('should return error when query is missing', async () => {
@@ -224,7 +228,7 @@ describe('memoryRecallTool', () => {
         error: 'Search query is required for search operation',
       });
 
-      expect(mockMemoryStore.searchMessages).not.toHaveBeenCalled();
+      expect(semanticSearch).not.toHaveBeenCalled();
     });
 
     it('should respect limit in search results', async () => {
@@ -236,7 +240,7 @@ describe('memoryRecallTool', () => {
         agentId: 'user-123',
       }));
 
-      mockMemoryStore.searchMessages.mockReturnValue(manyResults);
+      (semanticSearch as jest.Mock).mockResolvedValue(manyResults.slice(0, 10));
 
       const result = await memoryRecallTool.execute!({
         context: {
@@ -249,6 +253,30 @@ describe('memoryRecallTool', () => {
       });
 
       expect(result.messages).toHaveLength(5);
+      expect(semanticSearch).toHaveBeenCalledWith('test', 'session-123', 0.7, 5);
+    });
+
+    it('should fallback to text search on semantic error', async () => {
+      (semanticSearch as jest.Mock).mockRejectedValue(new Error('fail'));
+      const fallbackResults = [
+        { id: '1', role: 'user' as const, content: 'fallback1', timestamp: new Date(), agentId: 'a' },
+        { id: '2', role: 'assistant' as const, content: 'fallback2', timestamp: new Date(), agentId: 'b' },
+      ];
+      mockMemoryStore.searchMessages.mockReturnValue(fallbackResults);
+
+      const result = await memoryRecallTool.execute!({
+        context: {
+          sessionId: 'session-123',
+          operation: 'search',
+          query: 'backup',
+          limit: 5,
+        },
+        runtimeContext: {} as any
+      });
+
+      expect(result.messages).toHaveLength(2);
+      expect(semanticSearch).toHaveBeenCalledWith('backup', 'session-123', 0.7, 5);
+      expect(mockMemoryStore.searchMessages).toHaveBeenCalledWith('backup', 'session-123');
     });
   });
 

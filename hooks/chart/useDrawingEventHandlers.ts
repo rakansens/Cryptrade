@@ -45,6 +45,8 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
 
   const undo = useChartStore((state) => state.undo);
   const redo = useChartStore((state) => state.redo);
+  const pushToUndoStack = useChartStore((state) => state.pushToUndoStack);
+  const clearRedoStack = useChartStore((state) => state.clearRedoStack);
   const getState = () => useDrawingStore.getState();
 
   const { setDrawingCursor, resetCursor } = useCursor();
@@ -396,17 +398,24 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
     // Undo Last Drawing Handler
     const handleUndoLastDrawing = () => {
       logger.info('[Drawing Event] Handling undo last drawing');
-      
+
       try {
         const drawings = getState().drawings;
         if (drawings.length > 0) {
-          const lastDrawing = drawings[drawings.length - 1];
-          deleteDrawing(lastDrawing!.id);
-          
-          showAgentSuccess({
-            eventType: 'chart:undoLastDrawing',
-            operation: 'Undo last drawing',
-          }, 'Last drawing removed');
+          const newDrawings = drawings.slice(0, -1);
+
+          pushToUndoStack(drawings);
+          clearRedoStack();
+
+          useDrawingStore.setState({ drawings: newDrawings });
+
+          showAgentSuccess(
+            {
+              eventType: 'chart:undoLastDrawing',
+              operation: 'Undo last drawing',
+            },
+            'Last drawing removed'
+          );
         } else {
           logger.warn('[Drawing Event] No drawings to undo');
         }
@@ -425,13 +434,21 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
       try {
         const { undoStack } = getState();
         if (undoStack.length > 0) {
-          // Revert the last undo (usually a deletion)
-          undo();
+          const previousDrawings = undoStack[undoStack.length - 1];
+          const newUndoStack = undoStack.slice(0, -1);
 
-          showAgentSuccess({
-            eventType: 'chart:redoLastDrawing',
-            operation: 'Redo last drawing',
-          }, 'Last drawing restored');
+          useDrawingStore.setState({
+            drawings: previousDrawings,
+            undoStack: newUndoStack,
+          });
+
+          showAgentSuccess(
+            {
+              eventType: 'chart:redoLastDrawing',
+              operation: 'Redo last drawing',
+            },
+            'Last drawing restored'
+          );
         } else {
           logger.warn('[Drawing Event] No drawing actions to redo');
         }

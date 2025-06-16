@@ -206,6 +206,28 @@ export class AnalysisAPI {
   }
 
   /**
+   * Update an existing analysis record
+   */
+  static async updateAnalysis(recordId: string, updates: Partial<AnalysisRecord>): Promise<void> {
+    try {
+      const response = await fetch(`/api/analysis/records/${recordId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update analysis: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.error('[AnalysisAPI] Failed to update analysis', { error, recordId });
+      throw error;
+    }
+  }
+
+  /**
    * Convert DB record to client format
    */
   static convertToAnalysisRecord(dbRecord: unknown): AnalysisRecord {
