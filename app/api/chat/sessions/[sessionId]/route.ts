@@ -1,7 +1,5 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
-import { ChatAPI } from '@/lib/api/chat-api';
 import { logger } from '@/lib/utils/logger';
 
 export async function GET(
@@ -23,8 +21,21 @@ export async function GET(
       }
       
       return NextResponse.json({
-        session: ChatAPI.convertToChatSession(sessionData),
-        messages: sessionData.messages.map(msg => ChatAPI.convertToChatMessage(msg)),
+        session: {
+          id: sessionData.id,
+          title: sessionData.summary || 'Untitled Session',
+          createdAt: sessionData.createdAt.getTime(),
+          updatedAt: sessionData.updatedAt.getTime(),
+        },
+        messages: sessionData.messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role as 'user' | 'assistant',
+          timestamp: msg.timestamp.getTime(),
+          type: 'text' as const,
+          agentId: msg.agentId,
+          metadata: msg.metadata,
+        })),
       });
     }
     
@@ -38,7 +49,12 @@ export async function GET(
     }
     
     return NextResponse.json({
-      session: ChatAPI.convertToChatSession(session),
+      session: {
+        id: session.id,
+        title: session.summary || 'Untitled Session',
+        createdAt: session.createdAt.getTime(),
+        updatedAt: session.updatedAt.getTime(),
+      },
     });
   } catch (error) {
     logger.error('[API] Failed to get session', { error });
@@ -51,9 +67,9 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  routeContext: { params: Promise<{ sessionId: string }> }
 ) {
-  const { sessionId } = await params;
+  const { sessionId } = await routeContext.params;
 
   try {
     const { title } = await request.json();
@@ -70,10 +86,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  _request: NextRequest,
+  routeContext: { params: Promise<{ sessionId: string }> }
 ) {
-  const { sessionId } = await params;
+  const { sessionId } = await routeContext.params;
 
   try {
     await ChatDatabaseService.deleteSession(sessionId);

@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useUIEventPublisher } from '@/store/ui-event.store';
-import { type ProposalMessage, type EnhancedProposalActionEvent } from '@/types/proposals';
+import { type ProposalMessage } from '@/types/proposals';
 import { showProposalRejectionSuccess } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
 
@@ -40,17 +40,16 @@ export function useRejectProposal() {
     }
     
     // Publish rejection event
-    const rejectionEvent: EnhancedProposalActionEvent = {
-      type: 'ui:proposal-action',
-      timestamp: Date.now(),
-      payload: {
+    const rejectionEvent = new CustomEvent('ui:proposal-action', {
+      detail: {
         action: 'reject',
         proposalId: proposalId,
         proposalGroupId: message.proposalGroup.id,
         ...(symbol && { symbol }),
         ...(proposalData && 'interval' in proposalData && { interval: (proposalData as { interval?: string }).interval }),
+        timestamp: Date.now()
       }
-    };
+    });
     
     publish(rejectionEvent);
     

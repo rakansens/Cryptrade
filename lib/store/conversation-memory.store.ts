@@ -355,24 +355,21 @@ const persistConfig: PersistOptions<ConversationMemoryStore> = {
     }
     return persistedState as ConversationMemoryStore;
   },
-  partialize: (state) => {
-    // Only persist the data, not the functions
-    return {
-      sessions: state.sessions,
-      currentSessionId: state.currentSessionId,
-      isDbEnabled: state.isDbEnabled,
-    } as Pick<ConversationMemoryState, 'sessions' | 'currentSessionId' | 'isDbEnabled'>;
-  },
+  partialize: (state) => ({
+    sessions: state.sessions,
+    currentSessionId: state.currentSessionId,
+    isDbEnabled: state.isDbEnabled,
+  }) as any,
 };
 
-// Create store with explicit typing to avoid deep instantiation
+// Create store with type assertions to avoid deep instantiation
 export const useConversationMemory = create<ConversationMemoryStore>()(
   devtools(
-    persist<ConversationMemoryStore>(
-      immer<ConversationMemoryStore>(storeImplementation),
-      persistConfig
-    )
-  )
+    persist(
+      immer(storeImplementation) as any,
+      persistConfig as any
+    ) as any
+  ) as any
 );
 
 // Helper functions for semantic search (future implementation)
@@ -436,20 +433,26 @@ export async function semanticSearch(
       if (!msg.metadata?.embedding) {
         try {
           const { embedding } = await embeddingService.generateEmbedding(msg.content);
-          useConversationMemory.setState((state) => ({
-            ...state,
-            sessions: {
-              ...state.sessions,
-              [msg.sessionId]: state.sessions[msg.sessionId] ? {
-                ...state.sessions[msg.sessionId],
-                messages: state.sessions[msg.sessionId].messages.map(m => 
-                  m.id === msg.id 
-                    ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
-                    : m
-                )
-              } : { id: msg.sessionId, startedAt: new Date(), lastActiveAt: new Date(), messages: [] }
+          const state = useConversationMemory.getState();
+          const session = state.sessions[msg.sessionId];
+          if (session) {
+            const messageIndex = session.messages.findIndex(m => m.id === msg.id);
+            if (messageIndex !== -1) {
+              useConversationMemory.setState({
+                sessions: {
+                  ...state.sessions,
+                  [msg.sessionId]: {
+                    ...session,
+                    messages: session.messages.map((m, idx) => 
+                      idx === messageIndex 
+                        ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
+                        : m
+                    )
+                  }
+                }
+              });
             }
-          }));
+          }
           msg.metadata = { ...(msg.metadata || {}), embedding };
         } catch (_) {
           continue;
@@ -482,20 +485,26 @@ export async function generateMessageEmbedding(message: ConversationMessage): Pr
     if (message.role === 'system') return;
     const { embedding } = await embeddingService.generateEmbedding(message.content);
 
-    useConversationMemory.setState((state) => ({
-      ...state,
-      sessions: {
-        ...state.sessions,
-        [message.sessionId]: state.sessions[message.sessionId] ? {
-          ...state.sessions[message.sessionId],
-          messages: state.sessions[message.sessionId].messages.map(m => 
-            m.id === message.id 
-              ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
-              : m
-          )
-        } : state.sessions[message.sessionId]
+    const state = useConversationMemory.getState();
+    const session = state.sessions[message.sessionId];
+    if (session) {
+      const messageIndex = session.messages.findIndex(m => m.id === message.id);
+      if (messageIndex !== -1) {
+        useConversationMemory.setState({
+          sessions: {
+            ...state.sessions,
+            [message.sessionId]: {
+              ...session,
+              messages: session.messages.map((m, idx) => 
+                idx === messageIndex 
+                  ? { ...m, metadata: { ...(m.metadata || {}), embedding } }
+                  : m
+              )
+            }
+          }
+        });
       }
-    }));
+    }
 
     logger.info('[ConversationMemory] Embedding generated', {
       messageId: message.id,

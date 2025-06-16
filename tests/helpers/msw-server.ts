@@ -3,6 +3,7 @@
  * Provides consistent API mocking across all tests
  */
 
+import { jest } from '@jest/globals';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse, type DefaultBodyType } from 'msw';
 

@@ -4,6 +4,7 @@
  * Builder pattern implementations for creating complex test mocks
  */
 
+import { jest } from '@jest/globals';
 import type { Agent } from '@mastra/core';
 import type { WebSocket } from 'ws';
 import { EventEmitter } from 'events';
@@ -36,7 +37,7 @@ export class MockAgentBuilder {
     return this;
   }
 
-  withExecute(executeFn: jest.Mock): MockAgentBuilder {
+  withExecute(executeFn: jest.Mock<any>): MockAgentBuilder {
     this.executeFn = executeFn;
     return this;
   }
@@ -44,7 +45,7 @@ export class MockAgentBuilder {
   build(): Agent {
     const mockAgent = {
       ...this.agent,
-      execute: this.executeFn || jest.fn().mockResolvedValue({
+      execute: this.executeFn || jest.fn<any>().mockResolvedValue({
         text: 'Mock response',
         toolCalls: [],
       }),
@@ -97,7 +98,7 @@ export class MockWebSocketBuilder extends EventEmitter {
   }
 
   withAutoRespond(responses: Record<string, any>): MockWebSocketBuilder {
-    this.ws.send = jest.fn((data) => {
+    this.ws.send = jest.fn((data: any) => {
       const message = JSON.parse(data.toString());
       const response = responses[message.type];
       if (response) {

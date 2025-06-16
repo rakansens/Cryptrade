@@ -4,13 +4,13 @@
 import { renderHook, act } from '@testing-library/react';
 import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
 import { useDrawingStore } from '@/store/chart';
-import type { ChartDrawing, Time } from '@/types/chart.types';
+import type { ChartDrawing } from '@/types/drawing';
 
 describe('useDrawingEventHandlers - undo/redo last drawing', () => {
   const createDrawing = (id: string): ChartDrawing => ({
     id,
     type: 'horizontal',
-    points: [{ time: 1 as Time, value: 1 }],
+    points: [{ time: 1, value: 1 }],
     style: { color: '#fff', lineWidth: 1, lineStyle: 'solid', showLabels: false },
     visible: true,
     interactive: true,

@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
-import { fastWait, mockMetricsCollector } from '@/tests/utils/test-helpers';
+import { mockMetricsCollector } from '@/tests/utils/test-helpers';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -33,13 +33,8 @@ describe('DrawingOperationQueue with Retry', () => {
       drawing_retry_total: { value: 0 },
     });
     queue = new DrawingOperationQueue({ 
-      enableRetry: true,
-      retryConfig: {
-        maxAttempts: 2,
-        initialDelay: 10,
-        maxDelay: 50,
-        backoffMultiplier: 1.5,
-      }
+      maxConcurrency: 1,
+      enableRetry: true
     });
   });
   

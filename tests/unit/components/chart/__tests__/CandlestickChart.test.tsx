@@ -348,32 +348,32 @@ describe('CandlestickChart', () => {
   describe('Zoom Handlers', () => {
     it('zooms in by adjusting visible range', () => {
       const timeScaleMock = {
-        getVisibleRange: jest.fn(() => ({ from: 0, to: 100 })),
-        setVisibleRange: jest.fn()
+        getVisibleLogicalRange: jest.fn(() => ({ from: 0, to: 100 })),
+        setVisibleLogicalRange: jest.fn()
       }
       mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
 
       render(<CandlestickChart />)
 
-      const handlers = mockedUseAgentEventHandlers.mock.calls[0][0]
+      const handlers = mockedUseAgentEventHandlers.mock.calls[0]?.[0]
       handlers?.zoomIn?.(2)
 
-      expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 25, to: 75 })
+      expect(timeScaleMock.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 25, to: 75 })
     })
 
     it('zooms out by adjusting visible range', () => {
       const timeScaleMock = {
-        getVisibleRange: jest.fn(() => ({ from: 25, to: 75 })),
-        setVisibleRange: jest.fn()
+        getVisibleLogicalRange: jest.fn(() => ({ from: 25, to: 75 })),
+        setVisibleLogicalRange: jest.fn()
       }
       mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
 
       render(<CandlestickChart />)
 
-      const handlers = mockedUseAgentEventHandlers.mock.calls[0][0]
+      const handlers = mockedUseAgentEventHandlers.mock.calls[0]?.[0]
       handlers?.zoomOut?.(0.5)
 
-      expect(timeScaleMock.setVisibleRange).toHaveBeenCalledWith({ from: 0, to: 100 })
+      expect(timeScaleMock.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 0, to: 100 })
     })
   })
 })

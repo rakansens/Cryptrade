@@ -120,14 +120,14 @@ async function testQuery(query: string, expectedType: 'entry' | 'regular' | 'oth
           log(`    方向: ${(proposal as any).direction === 'long' ? '🔺 ロング' : '🔻 ショート'}`, colors.cyan);
           log(`    エントリー価格: $${(proposal as any).entryPrice?.toLocaleString() || 'N/A'}`, colors.cyan);
           
-          if (proposal.entryZone) {
+          if ('entryZone' in proposal && proposal.entryZone) {
             log(`    エントリーゾーン: $${(proposal.entryZone as any).min?.toLocaleString() || 'N/A'} - $${(proposal.entryZone as any).max?.toLocaleString() || 'N/A'}`, colors.cyan);
           }
           
-          if (proposal.riskParameters) {
-            log(`    ストップロス: $${proposal.riskParameters.stopLoss?.toLocaleString() || 'N/A'}`, colors.red);
+          if ('riskParameters' in proposal && proposal.riskParameters) {
+            log(`    ストップロス: $${(proposal.riskParameters as any).stopLoss?.toLocaleString() || 'N/A'}`, colors.red);
             log(`    テイクプロフィット: ${(proposal.riskParameters as any).takeProfitTargets?.map((tp: any) => `$${tp.price?.toLocaleString() || tp}`).join(', ') || 'N/A'}`, colors.green);
-            log(`    リスクリワード比: ${proposal.riskParameters.riskRewardRatio || 'N/A'}`, colors.cyan);
+            log(`    リスクリワード比: ${(proposal.riskParameters as any).riskRewardRatio || 'N/A'}`, colors.cyan);
             log(`    ポジションサイズ: ${(proposal.riskParameters as any).positionSizePercent || 'N/A'}%`, colors.cyan);
           }
           

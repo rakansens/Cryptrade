@@ -8,7 +8,6 @@ import {
   Mutex,
   Semaphore,
   createDebouncedAsync,
-  makeCancellable,
   withTimeout,
   AsyncBatcher,
   StateUpdateQueue
@@ -187,7 +186,7 @@ describe('Concurrent Utilities', () => {
         return `processed: ${value}`;
       });
       
-      const { execute, cancel } = createDebouncedAsync(asyncFn, 100);
+      const { execute } = createDebouncedAsync(asyncFn, 100);
       
       // Make multiple calls
       const promise1 = execute('first');

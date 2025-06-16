@@ -8,7 +8,7 @@ import { useUIEventPublisher } from '@/store/ui-event.store';
 import { useAsyncState } from '@/hooks/base/use-async-state';
 import { validateDrawingData } from '@/schema/drawing';
 import { type ProposalMessage } from '@/types/proposals';
-import type { ExtendedProposal, EnhancedProposalActionEvent } from '@/types/proposals';
+import type { ExtendedProposal } from '@/types/proposals';
 import { createChartEvent } from '@/types/events/chart-events';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
@@ -202,18 +202,17 @@ export function useApproveProposal(): UseApproveProposalReturn {
     }
 
     // Publish approval event  
-    const approvalEvent: EnhancedProposalActionEvent = {
-      type: 'ui:proposal-action',
-      timestamp: Date.now(),
-      payload: {
+    const approvalEvent = new CustomEvent('ui:proposal-action', {
+      detail: {
         action: 'approve',
         proposalId: proposalId,
         proposalGroupId: message.proposalGroup.id,
         drawingId: drawingId,
         symbol: proposal.symbol,
-        interval: proposal.interval
+        interval: proposal.interval,
+        timestamp: Date.now()
       }
-    };
+    });
     
     publish(approvalEvent);
 

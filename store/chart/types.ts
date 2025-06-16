@@ -14,7 +14,9 @@ import type { PatternMetrics } from '@/types/pattern.types';
 // Drawing Types
 // ========================================
 
-export type { DrawingPoint, DrawingStyle, ChartDrawing, DrawingMode } from '@/types/chart.types';
+// Import from drawing.ts since it has the Zod schema
+import type { DrawingPoint, DrawingStyle, ChartDrawing, DrawingMode } from '@/types/drawing';
+export type { DrawingPoint, DrawingStyle, ChartDrawing, DrawingMode };
 
 // ========================================
 // Pattern Types
@@ -78,14 +80,14 @@ export interface IndicatorActions {
 // ========================================
 
 export interface DrawingState {
-  drawingMode: DrawingMode;
+  drawingMode: DrawingMode | null;
   drawings: ChartDrawing[];
   selectedDrawingId: string | null;
   isDrawing: boolean;
 }
 
 export interface DrawingActions {
-  setDrawingMode: (mode: DrawingMode) => void;
+  setDrawingMode: (mode: DrawingMode | null) => void;
   addDrawing: (drawing: ChartDrawing) => void;
   addDrawingAsync: (drawing: ChartDrawing) => Promise<ChartDrawing>;
   updateDrawing: (id: string, updates: Partial<ChartDrawing>) => void;

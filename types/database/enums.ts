@@ -7,7 +7,6 @@
 
 // AnalysisType moved to '../enums' for reuse across modules
 export { AnalysisType } from '../enums';
-export type { AnalysisType } from '../enums';
 
 // TouchResult - Maps to Prisma enum
 export const TouchResult = {

@@ -108,22 +108,14 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
           fullPatternData.confidence = pattern.confidence;
         }
         
-        // Add metrics with required fields
+        // Add metrics from pattern data
         if (pattern.metrics) {
           const metrics: PatternMetrics = {
-            height: pattern.metrics.height ?? 0, // Default value since it's required
-            width: pattern.metrics.width ?? 0,  // Default value since it's required
-            ...(pattern.metrics.angle !== undefined && { angle: pattern.metrics.angle }),
-            ...(pattern.metrics.retracement !== undefined && { retracement: pattern.metrics.retracement }),
-            ...(pattern.metrics.volume !== undefined && { volume: pattern.metrics.volume }),
-            ...(pattern.metrics.priceChange !== undefined && { priceChange: pattern.metrics.priceChange }),
-            ...(pattern.metrics.duration !== undefined && { duration: pattern.metrics.duration }),
             ...(pattern.metrics.confidence !== undefined && { confidence: pattern.metrics.confidence }),
             ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss }),
             ...(pattern.metrics.entryPrice !== undefined && { entryPrice: pattern.metrics.entryPrice }),
             ...(pattern.metrics.targetPrice !== undefined && { targetPrice: pattern.metrics.targetPrice }),
-            ...(pattern.metrics.riskReward !== undefined && { riskReward: pattern.metrics.riskReward }),
-            ...(pattern.metrics.breakoutLevel !== undefined && { breakoutLevel: pattern.metrics.breakoutLevel })
+            ...(pattern.metrics.riskReward !== undefined && { riskReward: pattern.metrics.riskReward })
           };
           fullPatternData.metrics = metrics;
         }
@@ -176,11 +168,10 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
             patternVisualization as any,
             pattern.type,
             pattern.metrics ? {
-              ...(pattern.metrics.targetLevel !== undefined || pattern.metrics.targetPrice !== undefined
-                ? { targetLevel: pattern.metrics.targetLevel ?? pattern.metrics.targetPrice }
+              ...(pattern.metrics.targetPrice !== undefined
+                ? { targetLevel: pattern.metrics.targetPrice }
                 : {}),
-              ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss }),
-              ...(pattern.metrics.breakoutLevel !== undefined && { breakoutLevel: pattern.metrics.breakoutLevel })
+              ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss })
             } : undefined
           );
         
@@ -424,9 +415,8 @@ export function usePatternEventHandlers(handlers: ChartEventHandlers) {
             patternVisualization as any,
             pattern.type,
             pattern.metrics ? {
-              targetLevel: pattern.metrics.targetLevel ?? pattern.metrics.targetPrice,
-              stopLoss: pattern.metrics.stopLoss,
-              breakoutLevel: pattern.metrics.breakoutLevel
+              ...(pattern.metrics.targetPrice !== undefined && { targetLevel: pattern.metrics.targetPrice }),
+              ...(pattern.metrics.stopLoss !== undefined && { stopLoss: pattern.metrics.stopLoss })
             } : undefined
           );
         }

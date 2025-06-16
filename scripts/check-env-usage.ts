@@ -66,7 +66,7 @@ function findEnvUsages(dir: string, usages: EnvUsage[] = []): EnvUsage[] {
             file: relative(process.cwd(), filePath),
             line: index + 1,
             text: line.trim(),
-            variable,
+            variable: variable || '',
           });
         }
       });
@@ -106,8 +106,9 @@ function main() {
   
   // Group by file
   const byFile = usages.reduce((acc, usage) => {
-    if (!acc[usage.file]) acc[usage.file] = [];
-    acc[usage.file].push(usage);
+    const file = usage.file;
+    if (!acc[file]) acc[file] = [];
+    acc[file].push(usage);
     return acc;
   }, {} as Record<string, EnvUsage[]>);
   

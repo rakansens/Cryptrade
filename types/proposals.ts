@@ -6,6 +6,8 @@
  * proposal types in the application.
  */
 
+import { ProposalStatus, ProposalType } from './enums';
+
 // ====================================
 // Base Types and Enums
 // ====================================

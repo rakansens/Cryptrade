@@ -130,7 +130,18 @@ export const chatRateLimiters = {
 
 // Export enforcement function
 export async function enforceRateLimit(limiter: RateLimiter, key: string, operation?: string): Promise<void> {
-  const op = operation || 'default';
+  // Map limiter to operation names for the chatRateLimiters object
+  let op: string;
+  if (limiter === chatRateLimiters.sessionCreation) {
+    op = 'createSession';
+  } else if (limiter === chatRateLimiters.messageCreation) {
+    op = 'addMessage';
+  } else if (limiter === chatRateLimiters.bulkOperations) {
+    op = 'bulkOperations';
+  } else {
+    op = operation || 'default';
+  }
+  
   const allowed = await limiter.checkLimit(op, key);
   
   if (!allowed) {

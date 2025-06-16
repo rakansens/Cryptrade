@@ -7,7 +7,7 @@
  */
 
 import { loadEnv } from '@/config/env';
-import { readFileSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 function checkEnvFiles(): void {

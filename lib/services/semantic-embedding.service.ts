@@ -31,17 +31,24 @@ export class SemanticEmbeddingService extends BaseService {
     super('https://api.openai.com/v1'); // OpenAI API base URL
   }
 
-  // Override the post method to add OpenAI specific headers
-  protected override async post<T>(url: string, data?: unknown) {
-    
-    // We need to add the Authorization header for OpenAI
+  // Override the execute method to add OpenAI specific headers
+  protected async execute<T>(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<{ data: T; status: number; statusText: string; headers: Headers }> {
+    // Add OpenAI Authorization header
     const apiKey = env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY environment variable is not set');
     }
 
-    // Use a different approach since we can't directly access the client config
-    return await super.post<T>(url, data);
+    const enhancedInit: RequestInit = {
+      ...init,
+      headers: {
+        ...init.headers,
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    };
+
+    return this.client.execute<T>(url, enhancedInit, signal);
   }
   
   static getInstance(): SemanticEmbeddingService {

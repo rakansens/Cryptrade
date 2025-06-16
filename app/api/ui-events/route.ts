@@ -4,6 +4,13 @@ import { logger } from '@/lib/utils/logger';
 import { ValidationError } from '@/lib/errors/base-error';
 import { errorHandler } from '@/lib/api/helpers/error-handler';
 import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
+import { z } from 'zod';
+
+// Request validation schema
+const uiEventSchema = z.object({
+  event: z.string().min(1),
+  data: z.record(z.unknown()),
+});
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,15 +50,18 @@ export const OPTIONS = createSSEOptionsHandler({ origin: '*', credentials: true 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { event, data } = body;
-
-    if (!event || !data) {
+    
+    // Validate request body
+    const validationResult = uiEventSchema.safeParse(body);
+    if (!validationResult.success) {
       throw new ValidationError(
-        'Missing required fields: event, data',
+        'Invalid request data',
         'body',
-        { event, data }
+        validationResult.error.flatten()
       );
     }
+    
+    const { event, data } = validationResult.data;
 
     logger.debug('[UI-Events] Emitting event', { event });
 

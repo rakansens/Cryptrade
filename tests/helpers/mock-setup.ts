@@ -3,6 +3,7 @@
  * Provides standardized beforeEach/afterEach patterns
  */
 
+import { jest, beforeEach, afterEach } from '@jest/globals';
 import { clearLoggerMocks } from './mock-logger';
 
 /**
@@ -18,10 +19,10 @@ export const standardTestSetup = (): void => {
     jest.useFakeTimers();
     
     // Mock requestAnimationFrame for React components
-    global.requestAnimationFrame = jest.fn((callback) => {
+    global.requestAnimationFrame = jest.fn((callback: FrameRequestCallback) => {
       setTimeout(callback, 16); // Simulate 60fps
       return 1;
-    });
+    }) as any;
     
     // Mock cancelAnimationFrame
     global.cancelAnimationFrame = jest.fn();
@@ -48,7 +49,7 @@ export const asyncTestSetup = (): void => {
     jest.useRealTimers();
     
     // Mock fetch for API tests
-    global.fetch = jest.fn();
+    (global as any).fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -102,14 +103,14 @@ export const reactTestSetup = (): void => {
     clearLoggerMocks();
     
     // Mock IntersectionObserver for components that use it
-    global.IntersectionObserver = jest.fn().mockImplementation(() => ({
+    (global as any).IntersectionObserver = jest.fn().mockImplementation(() => ({
       observe: jest.fn(),
       unobserve: jest.fn(),
       disconnect: jest.fn(),
     }));
     
     // Mock ResizeObserver
-    global.ResizeObserver = jest.fn().mockImplementation(() => ({
+    (global as any).ResizeObserver = jest.fn().mockImplementation(() => ({
       observe: jest.fn(),
       unobserve: jest.fn(),
       disconnect: jest.fn(),
@@ -141,7 +142,7 @@ export const reactTestSetup = (): void => {
       transform: jest.fn(),
       rect: jest.fn(),
       clip: jest.fn(),
-    });
+    }) as any;
   });
 
   afterEach(() => {

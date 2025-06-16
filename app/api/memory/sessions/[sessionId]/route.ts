@@ -3,19 +3,16 @@ import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import { z } from 'zod';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
-
 const updateSessionSchema = z.object({
   summary: z.string(),
 });
 
-export async function PATCH(request: NextRequest, { params }: Params) {
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ sessionId: string }> }
+) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
     const body = await request.json();
     const data = updateSessionSchema.parse(body);
 

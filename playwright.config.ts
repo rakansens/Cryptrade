@@ -22,21 +22,21 @@ export default defineConfig({
   
   // Parallel execution
   fullyParallel: true,
-  workers: process.env.CI ? 2 : 4, // More workers locally
+  workers: process.env['CI'] ? 2 : 4, // More workers locally
   
   // CI/CD specific settings
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  forbidOnly: !!process.env['CI'],
+  retries: process.env['CI'] ? 2 : 1,
   
   // Enhanced reporting
   reporter: [
     ['html', { 
       outputFolder: 'playwright-report',
-      open: process.env.CI ? 'never' : 'on-failure'
+      open: process.env['CI'] ? 'never' : 'on-failure'
     }],
     ['list'],
     ['json', { outputFile: 'e2e-test-results/results.json' }],
-    ...(process.env.CI ? [
+    ...(process.env['CI'] ? [
       ['github'] as const,
       ['junit', { outputFile: 'e2e-test-results/junit.xml' }] as const
     ] : [])
@@ -44,15 +44,15 @@ export default defineConfig({
   
   // Global test settings
   use: {
-    baseURL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001',
+    baseURL: process.env['NEXT_PUBLIC_BASE_URL'] || 'http://localhost:3001',
     
     // Enhanced debugging
-    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
+    trace: process.env['CI'] ? 'on-first-retry' : 'retain-on-failure',
     screenshot: {
       mode: 'only-on-failure',
       fullPage: true
     },
-    video: process.env.CI ? 'retain-on-failure' : 'on',
+    video: process.env['CI'] ? 'retain-on-failure' : 'on',
     
     // Browser context settings
     viewport: { width: 1280, height: 720 },
@@ -96,15 +96,15 @@ export default defineConfig({
 
   // Test server configuration
   webServer: {
-    command: process.env.CI 
+    command: process.env['CI'] 
       ? 'node test-server.js' 
       : 'npm run test:server',
-    port: parseInt(process.env.TEST_PORT || '3001'),
+    port: parseInt(process.env['TEST_PORT'] || '3001'),
     timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env['CI'],
     env: {
-      NODE_ENV: 'test',
-      ...process.env
+      ...process.env,
+      NODE_ENV: 'test'
     },
     stdout: 'pipe',
     stderr: 'pipe'

@@ -3,7 +3,6 @@
  */
 import type {
   ProposalGroup,
-  EntryProposal,
   EntryProposalGroup,
 } from './proposals';
 
@@ -78,6 +77,8 @@ export interface TradingProposal {
 // Import shared proposal interfaces from the consolidated definitions
 export type {
   ProposalGroup,
+  DrawingProposal,
+  DrawingProposalGroup,
   EntryProposal,
   EntryProposalGroup,
 } from './proposals';
@@ -156,8 +157,11 @@ export function isProposalGroup(value: unknown): value is ProposalGroup {
   
   return (
     typeof obj['id'] === 'string' &&
+    typeof obj['title'] === 'string' &&
+    typeof obj['description'] === 'string' &&
     Array.isArray(obj['proposals']) &&
-    typeof obj['timestamp'] === 'number'
+    typeof obj['groupType'] === 'string' &&
+    typeof obj['createdAt'] === 'number'
   );
 }
 
@@ -167,7 +171,10 @@ export function isEntryProposalGroup(value: unknown): value is EntryProposalGrou
   
   return (
     typeof obj['id'] === 'string' &&
-    Array.isArray(obj['entries']) &&
-    typeof obj['timestamp'] === 'number'
+    typeof obj['title'] === 'string' &&
+    typeof obj['description'] === 'string' &&
+    Array.isArray(obj['proposals']) &&
+    obj['groupType'] === 'entry' &&
+    typeof obj['createdAt'] === 'number'
   );
 }

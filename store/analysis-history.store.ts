@@ -231,8 +231,8 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
               );
             }
 
-            set((state) => ({
-              records: state.records.map((r) =>
+            set((state) => {
+              const updatedRecords: AnalysisRecord[] = state.records.map((r) =>
                 r.id === id
                   ? {
                       ...r,
@@ -240,10 +240,11 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
                         ...r.dbMeta,
                         synced: true,
                       },
-                    }
+                    } as AnalysisRecord
                   : r
-              ),
-            }));
+              );
+              return { ...state, records: updatedRecords };
+            });
 
             logger.info('[AnalysisHistory] Record saved to DB', { id });
           } catch (error) {

@@ -12,7 +12,7 @@ import {
   type UndoEvent,
   type RedoEvent
 } from '@/types/events/drawing-events';
-import { validateChartDrawing } from '@/types/drawing';
+import { validateChartDrawing, type DrawingStyle, type ChartDrawing } from '@/types/drawing';
 import { 
   handleAgentError, 
   showAgentSuccess, 
@@ -24,7 +24,22 @@ import { useCursor } from './useCursor';
 import type { Time } from 'lightweight-charts';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
-import type { DrawingMode, ChartDrawing } from '@/types/chart.types';
+import type { DrawingMode, ChartDrawing as ChartDrawingLW } from '@/types/chart.types';
+
+// Helper function to convert between ChartDrawing types
+function toChartDrawingLW(drawing: ChartDrawing): ChartDrawingLW {
+  return {
+    ...drawing,
+    points: drawing.points.map(p => ({
+      time: p.time as Time,
+      value: p.value
+    })),
+    style: {
+      ...drawing.style,
+      showLabels: drawing.style.showLabels ?? false
+    }
+  } as ChartDrawingLW;
+}
 
 /**
  * Drawing Event Handlers Hook
@@ -45,8 +60,6 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
 
   const undo = useChartStore((state) => state.undo);
   const redo = useChartStore((state) => state.redo);
-  const pushToUndoStack = useChartStore((state) => state.pushToUndoStack);
-  const clearRedoStack = useChartStore((state) => state.clearRedoStack);
   const getState = () => useDrawingStore.getState();
 
   const { setDrawingCursor, resetCursor } = useCursor();
@@ -137,22 +150,16 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         const validatedDrawing = validateChartDrawing(drawing);
         
         await executeDrawingOperation(async () => {
-          // Convert to store's ChartDrawing type
-          const storeDrawing: ChartDrawing = {
-            ...validatedDrawing,
-            style: validatedDrawing.style || undefined
-          } as ChartDrawing;
-          
           // Use async version if available
           if ('addDrawingAsync' in addDrawing) {
-            await (addDrawing as { addDrawingAsync: (drawing: ChartDrawing) => Promise<void> }).addDrawingAsync(storeDrawing);
+            await (addDrawing as { addDrawingAsync: (drawing: ChartDrawing) => Promise<ChartDrawing> }).addDrawingAsync(validatedDrawing);
           } else {
-            addDrawing(storeDrawing);
+            addDrawing(validatedDrawing);
           }
           
           // Add to chart if drawing manager is available
           if (handlers.drawingManager) {
-            handlers.drawingManager.addDrawing(storeDrawing);
+            handlers.drawingManager.addDrawing(toChartDrawingLW(validatedDrawing));
           }
         }, {
           eventType: 'chart:addDrawing',
@@ -219,18 +226,12 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         
         const validDrawing = validateChartDrawing(drawingData);
         
-        // Convert to store's ChartDrawing type
-        const storeDrawing: ChartDrawing = {
-          ...validDrawing,
-          style: validDrawing.style || undefined
-        } as ChartDrawing;
-        
         // Add to store
-        addDrawing(storeDrawing);
+        addDrawing(validDrawing);
         
         // Add to chart if drawing manager is available
         if (handlers.drawingManager) {
-          handlers.drawingManager.addDrawing(storeDrawing);
+          handlers.drawingManager.addDrawing(toChartDrawingLW(validDrawing));
           logger.info('[Drawing Event] Added drawing to chart manager', { drawingId: validDrawing.id });
         } else {
           logger.warn('[Drawing Event] No drawing manager available');
@@ -400,25 +401,14 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
       logger.info('[Drawing Event] Handling undo last drawing');
 
       try {
-        const drawings = getState().drawings;
-        if (drawings.length > 0) {
-          const newDrawings = drawings.slice(0, -1);
-
-          pushToUndoStack(drawings);
-          clearRedoStack();
-
-          useDrawingStore.setState({ drawings: newDrawings });
-
-          showAgentSuccess(
-            {
-              eventType: 'chart:undoLastDrawing',
-              operation: 'Undo last drawing',
-            },
-            'Last drawing removed'
-          );
-        } else {
-          logger.warn('[Drawing Event] No drawings to undo');
-        }
+        undo();
+        showAgentSuccess(
+          {
+            eventType: 'chart:undoLastDrawing',
+            operation: 'Undo last drawing',
+          },
+          'Last drawing removed'
+        );
       } catch (error) {
         handleAgentError(error, {
           eventType: 'chart:undoLastDrawing',
@@ -432,26 +422,14 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
       logger.info('[Drawing Event] Handling redo last drawing');
 
       try {
-        const { undoStack } = getState();
-        if (undoStack.length > 0) {
-          const previousDrawings = undoStack[undoStack.length - 1];
-          const newUndoStack = undoStack.slice(0, -1);
-
-          useDrawingStore.setState({
-            drawings: previousDrawings,
-            undoStack: newUndoStack,
-          });
-
-          showAgentSuccess(
-            {
-              eventType: 'chart:redoLastDrawing',
-              operation: 'Redo last drawing',
-            },
-            'Last drawing restored'
-          );
-        } else {
-          logger.warn('[Drawing Event] No drawing actions to redo');
-        }
+        redo();
+        showAgentSuccess(
+          {
+            eventType: 'chart:redoLastDrawing',
+            operation: 'Redo last drawing',
+          },
+          'Last drawing restored'
+        );
       } catch (error) {
         handleAgentError(error, {
           eventType: 'chart:redoLastDrawing',
@@ -504,7 +482,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
           color: style.color !== undefined ? style.color : currentStyle.color,
           lineWidth: style.lineWidth !== undefined ? style.lineWidth : currentStyle.lineWidth,
           lineStyle: style.lineStyle !== undefined ? style.lineStyle : currentStyle.lineStyle,
-          showLabels: style.showLabels !== undefined ? style.showLabels : currentStyle.showLabels,
+          showLabels: style.showLabels !== undefined ? style.showLabels : currentStyle.showLabels ?? false,
         };
 
         updateDrawing(drawingId, { style: validStyle });
@@ -552,10 +530,16 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         const drawings = getState().drawings.filter((d) => d.type === type);
         
         drawings.forEach((drawing) => {
-          updateDrawing(drawing.id, { style: { ...drawing.style, ...style } });
+          const mergedStyle: DrawingStyle = {
+            color: style.color ?? drawing.style.color,
+            lineWidth: style.lineWidth ?? drawing.style.lineWidth,
+            lineStyle: style.lineStyle ?? drawing.style.lineStyle,
+            showLabels: style.showLabels ?? drawing.style.showLabels ?? false,
+          };
+          updateDrawing(drawing.id, { style: mergedStyle });
           
           if (handlers.drawingManager) {
-            handlers.drawingManager.updateDrawing(drawing.id, { style });
+            handlers.drawingManager.updateDrawing(drawing.id, { style: mergedStyle });
           }
         });
         
@@ -599,8 +583,10 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         }
         
         const validStyle: DrawingStyle = {
-          ...(drawing.style || {}),
           color,
+          lineWidth: drawing.style?.lineWidth ?? 2,
+          lineStyle: drawing.style?.lineStyle ?? 'solid',
+          showLabels: drawing.style?.showLabels ?? false,
         };
         
         updateDrawing(id, { style: validStyle });
@@ -651,8 +637,10 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
         }
         
         const validStyle: DrawingStyle = {
-          ...(drawing.style || {}),
+          color: drawing.style?.color ?? '#00e676',
           lineWidth,
+          lineStyle: drawing.style?.lineStyle ?? 'solid',
+          showLabels: drawing.style?.showLabels ?? false,
         };
         
         updateDrawing(id, { style: validStyle });

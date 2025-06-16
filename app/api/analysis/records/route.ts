@@ -1,18 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { AnalysisService } from '@/lib/services/database/analysis.service';
-import { logger } from '@/lib/utils/logger';
+import { createApiSuccessResponse, handleApiError } from '@/app/api/utils/responses';
 
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     const recordId = await AnalysisService.saveAnalysis(data);
     
-    return NextResponse.json({ recordId });
+    return createApiSuccessResponse({ recordId });
   } catch (error) {
-    logger.error('[API] Failed to save analysis', { error });
-    return NextResponse.json(
-      { error: 'Failed to save analysis' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Failed to save analysis');
   }
 }

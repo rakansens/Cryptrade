@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 
-interface Params {
-  params: {
-    sessionId: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: Params) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ sessionId: string }> }
+) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await context.params;
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get('limit') || '8');
 

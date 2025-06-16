@@ -1,33 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
-import { logger } from '@/lib/utils/logger';
+import { z } from 'zod';
+import { createApiSuccessResponse, handleApiError, parseRequestBody } from '@/app/api/utils/responses';
+
+// Request validation schema
+const createSessionSchema = z.object({
+  userId: z.string().optional(),
+  title: z.string().min(1).max(255),
+});
 
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get('x-user-id') || undefined;
     const sessions = await ChatDatabaseService.getUserSessions(userId);
     
-    return NextResponse.json({ sessions });
+    return createApiSuccessResponse({ sessions });
   } catch (error) {
-    logger.error('[API] Failed to get sessions', { error });
-    return NextResponse.json(
-      { error: 'Failed to get sessions' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Failed to get sessions');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, title } = await request.json();
+    const { data, error } = await parseRequestBody(request, createSessionSchema);
+    if (error) return error;
+    
+    const { userId, title } = data;
     const session = await ChatDatabaseService.createSession(userId, title);
     
-    return NextResponse.json({ session });
+    return createApiSuccessResponse({ session });
   } catch (error) {
-    logger.error('[API] Failed to create session', { error });
-    return NextResponse.json(
-      { error: 'Failed to create session' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Failed to create session');
   }
 }

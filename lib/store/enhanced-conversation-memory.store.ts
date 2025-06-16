@@ -861,15 +861,12 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
     }
     return persistedState as EnhancedConversationMemoryStore;
   },
-  partialize: (state) => {
-    // Only persist the data, not the functions
-    return {
-      sessions: state.sessions,
-      currentSessionId: state.currentSessionId,
-      isDbEnabled: state.isDbEnabled,
-      defaultProcessors: state.defaultProcessors,
-    } as Pick<EnhancedConversationMemoryState, 'sessions' | 'currentSessionId' | 'isDbEnabled' | 'defaultProcessors'>;
-  },
+  partialize: (state) => ({
+    sessions: state.sessions,
+    currentSessionId: state.currentSessionId,
+    isDbEnabled: state.isDbEnabled,
+    defaultProcessors: state.defaultProcessors,
+  }) as any,
   storage: createJSONStorage(() => {
     if (typeof window !== 'undefined') {
       return localStorage;
@@ -884,14 +881,14 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
   })
 };
 
-// Create store with explicit typing to avoid deep instantiation
+// Create store with type assertions to avoid deep instantiation
 export const useEnhancedConversationMemory = create<EnhancedConversationMemoryStore>()(
   devtools(
-    persist<EnhancedConversationMemoryStore>(
-      immer<EnhancedConversationMemoryStore>(enhancedStoreImplementation),
-      persistConfig
-    )
-  )
+    persist(
+      immer(enhancedStoreImplementation) as any,
+      persistConfig as any
+    ) as any
+  ) as any
 );
 
 // Export convenience functions

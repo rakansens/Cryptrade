@@ -8,7 +8,7 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { calculateRiskManagement } from '../calculators/risk-calculator';
 import type { PriceData as CandlestickData } from '@/types/market';
 

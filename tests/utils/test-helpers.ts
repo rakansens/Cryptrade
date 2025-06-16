@@ -2,6 +2,8 @@
  * Test utility helpers for performance optimization
  */
 
+import { jest } from '@jest/globals';
+
 /**
  * Fast wait function that reduces delays in test environment
  * @param ms - milliseconds to wait (will be reduced in test env)
@@ -46,8 +48,8 @@ export const testRetryConfig = {
 export function createMockOperation<T>(
   result: T | Error,
   delay: number = 0
-): jest.Mock<Promise<T>> {
-  return jest.fn().mockImplementation(async () => {
+): jest.Mock<() => Promise<T>> {
+  return jest.fn<() => Promise<T>>().mockImplementation(async () => {
     if (delay > 0) {
       await fastWait(delay);
     }
@@ -95,9 +97,9 @@ export const mockLogger = {
  */
 export function setupCommonMocks() {
   // Mock console to reduce noise
-  jest.spyOn(console, 'log').mockImplementation();
-  jest.spyOn(console, 'debug').mockImplementation();
-  jest.spyOn(console, 'info').mockImplementation();
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.spyOn(console, 'debug').mockImplementation(() => {});
+  jest.spyOn(console, 'info').mockImplementation(() => {});
   
   // Return cleanup function
   return () => {

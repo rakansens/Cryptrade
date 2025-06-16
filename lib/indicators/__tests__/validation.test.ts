@@ -12,7 +12,6 @@ import {
   validateNumericArray,
   validateIndicatorInput,
   sanitizeData,
-  type ValidationResult,
   type DataValidationOptions,
 } from '../validation';
 
@@ -232,102 +231,105 @@ describe('Indicator Validation', () => {
 
   describe('validateIndicatorInput', () => {
     it('should validate RSI input', () => {
-      const result = validateIndicatorInput('RSI', {
-        data: mockPriceData,
-        period: 14,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 14 },
+        'RSI',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(true);
     });
 
     it('should reject invalid RSI period', () => {
-      const result = validateIndicatorInput('RSI', {
-        data: mockPriceData,
-        period: 0,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 0 },
+        'RSI',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(false);
       expect(result.error).toBe('RSI period must be positive');
     });
 
     it('should validate MACD input', () => {
-      const result = validateIndicatorInput('MACD', {
-        data: mockPriceData,
-        fastPeriod: 12,
-        slowPeriod: 26,
-        signalPeriod: 9,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+        'MACD',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(true);
     });
 
     it('should reject invalid MACD periods', () => {
-      const result = validateIndicatorInput('MACD', {
-        data: mockPriceData,
-        fastPeriod: 26,
-        slowPeriod: 12,
-        signalPeriod: 9,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 },
+        'MACD',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(false);
       expect(result.error).toBe('MACD fast period must be less than slow period');
     });
 
     it('should validate Bollinger Bands input', () => {
-      const result = validateIndicatorInput('BollingerBands', {
-        data: mockPriceData,
-        period: 20,
-        stdDev: 2,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 20, stdDev: 2 },
+        'BollingerBands',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(true);
     });
 
     it('should reject negative standard deviation', () => {
-      const result = validateIndicatorInput('BollingerBands', {
-        data: mockPriceData,
-        period: 20,
-        stdDev: -2,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 20, stdDev: -2 },
+        'BollingerBands',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(false);
       expect(result.error).toBe('Standard deviation must be positive');
     });
 
     it('should validate SMA input', () => {
-      const result = validateIndicatorInput('SMA', {
-        data: mockPriceData,
-        period: 10,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 10 },
+        'SMA',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(true);
     });
 
     it('should validate EMA input', () => {
-      const result = validateIndicatorInput('EMA', {
-        data: mockPriceData,
-        period: 10,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData, period: 10 },
+        'EMA',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(true);
     });
 
     it('should handle unknown indicator', () => {
-      const result = validateIndicatorInput('UnknownIndicator', {
-        data: mockPriceData,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData },
+        'UnknownIndicator',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(false);
       expect(result.error).toBe('Unknown indicator: UnknownIndicator');
     });
 
     it('should ensure sufficient data for indicator', () => {
-      const result = validateIndicatorInput('MACD', {
-        data: mockPriceData.slice(0, 2),
-        fastPeriod: 12,
-        slowPeriod: 26,
-        signalPeriod: 9,
-      });
+      const result = validateIndicatorInput(
+        { data: mockPriceData.slice(0, 2), fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+        'MACD',
+        defaultOptions
+      );
       
       expect(result.valid).toBe(false);
       expect(result.error).toContain('Insufficient data for MACD');

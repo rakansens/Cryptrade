@@ -29,21 +29,21 @@ class MockPlugin implements IRendererPlugin {
     return data.keyPoints.length >= 3;
   }
 
-  async render(id: string, data: PatternVisualization): Promise<void> {
+  async render(_id: string, _data: PatternVisualization): Promise<void> {
     if (!this.initialized) {
       throw new Error('Plugin not initialized');
     }
     // Mock rendering
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(_id: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('Plugin not initialized');
     }
     // Mock removal
   }
 
-  initialize(context: PluginContext): void {
+  initialize(_context: PluginContext): void {
     this.initialized = true;
   }
 

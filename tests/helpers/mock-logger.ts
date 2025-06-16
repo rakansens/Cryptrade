@@ -3,6 +3,8 @@
  * Provides a unified approach to mocking the logger across all tests
  */
 
+import { jest } from '@jest/globals';
+
 // Mock logger to avoid noise in tests
 export const mockLogger = {
   debug: jest.fn(),
@@ -59,16 +61,16 @@ export const createEnhancedLoggerMock = (): typeof mockLogger & {
   };
 
   // Intercept calls to capture them
-  enhancedMock.debug.mockImplementation((message: string, data?: any) => {
+  (enhancedMock.debug as any).mockImplementation((message: string, data?: any) => {
     enhancedMock.capture('debug', message, data);
   });
-  enhancedMock.info.mockImplementation((message: string, data?: any) => {
+  (enhancedMock.info as any).mockImplementation((message: string, data?: any) => {
     enhancedMock.capture('info', message, data);
   });
-  enhancedMock.warn.mockImplementation((message: string, data?: any) => {
+  (enhancedMock.warn as any).mockImplementation((message: string, data?: any) => {
     enhancedMock.capture('warn', message, data);
   });
-  enhancedMock.error.mockImplementation((message: string, data?: any) => {
+  (enhancedMock.error as any).mockImplementation((message: string, data?: any) => {
     enhancedMock.capture('error', message, data);
   });
 

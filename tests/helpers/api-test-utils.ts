@@ -2,6 +2,7 @@
  * Shared test utilities and mock data for API integration tests
  */
 
+import { jest } from '@jest/globals';
 import { NextRequest } from 'next/server';
 import { DrawingProposalGroup, DrawingProposal } from '../../types/proposals';
 import { ProposalStatus, ProposalType } from '../../types/enums';
@@ -247,12 +248,12 @@ export const responseHelpers = {
 
 // Mock fetch helper
 export function createMockFetch(): {
-  mockFetch: jest.Mock;
+  mockFetch: jest.Mock<any>;
   mockSuccessResponse: (data: unknown, options?: { status?: number; headers?: Record<string, string> }) => void;
   mockErrorResponse: (status: number, statusText: string, data?: unknown) => void;
   mockNetworkError: (error: Error) => void;
 } {
-  const mockFetch = jest.fn();
+  const mockFetch = jest.fn<any>();
   
   return {
     mockFetch,

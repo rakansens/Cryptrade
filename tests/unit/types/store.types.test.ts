@@ -17,6 +17,8 @@ import {
   createMigration,
   isValidPersistedState
 } from '@/types/store.types';
+import { ProposalType, ProposalStatus } from '@/types/enums';
+import type { MarketBias } from '@/types/proposals';
 
 describe('store.types', () => {
   describe('isPatternVisualization', () => {
@@ -140,21 +142,36 @@ describe('store.types', () => {
     it('should return true with optional fields', () => {
       const validGroup: ProposalGroup = {
         id: 'group-1',
+        title: 'Technical Analysis',
+        description: 'Bearish reversal pattern detected',
         proposals: [
           {
             id: 'proposal-1',
-            type: 'sell',
-            price: 110.50,
-            stopLoss: 112.00,
-            takeProfit: 105.00,
-            reason: 'Resistance reached',
+            type: ProposalType.TRENDLINE,
+            analysisType: 'resistance',
+            coordinates: {
+              start: { x: 100, y: 110.50 },
+              end: { x: 200, y: 112.00 }
+            },
             confidence: 0.90,
-            timestamp: Date.now()
+            reasoning: 'Resistance reached',
+            priority: 'high',
+            status: ProposalStatus.PENDING,
+            createdAt: Date.now(),
+            metadata: {}
           }
         ],
-        summary: 'Bearish reversal pattern',
-        totalConfidence: 0.90,
-        timestamp: Date.now()
+        groupType: 'analysis',
+        summary: {
+          totalProposals: 1,
+          averageConfidence: 0.90,
+          priorityBreakdown: {
+            high: 1,
+            medium: 0,
+            low: 0
+          }
+        },
+        createdAt: Date.now()
       };
 
       expect(isProposalGroup(validGroup)).toBe(true);
@@ -163,8 +180,11 @@ describe('store.types', () => {
     it('should return true for empty proposals array', () => {
       const validGroup: ProposalGroup = {
         id: 'group-1',
+        title: 'Empty Analysis',
+        description: 'No proposals found',
         proposals: [],
-        timestamp: Date.now()
+        groupType: 'analysis',
+        createdAt: Date.now()
       };
 
       expect(isProposalGroup(validGroup)).toBe(true);
@@ -189,26 +209,40 @@ describe('store.types', () => {
       expect(isProposalGroup({})).toBe(false);
       expect(isProposalGroup({ id: 'group-1' })).toBe(false);
       expect(isProposalGroup({ id: 'group-1', proposals: [] })).toBe(false);
-      expect(isProposalGroup({ proposals: [], timestamp: Date.now() })).toBe(false);
+      expect(isProposalGroup({ 
+        id: 'group-1',
+        title: 'Test',
+        description: 'Test',
+        proposals: [] 
+      })).toBe(false); // missing groupType and createdAt
     });
 
     it('should return false for wrong field types', () => {
       expect(isProposalGroup({
         id: 123, // should be string
+        title: 'Test',
+        description: 'Test',
         proposals: [],
-        timestamp: Date.now()
+        groupType: 'analysis',
+        createdAt: Date.now()
       })).toBe(false);
 
       expect(isProposalGroup({
         id: 'group-1',
+        title: 'Test',
+        description: 'Test',
         proposals: 'not-an-array', // should be array
-        timestamp: Date.now()
+        groupType: 'analysis',
+        createdAt: Date.now()
       })).toBe(false);
 
       expect(isProposalGroup({
         id: 'group-1',
+        title: 'Test',
+        description: 'Test',
         proposals: [],
-        timestamp: '2024-01-01' // should be number
+        groupType: 'analysis',
+        createdAt: '2024-01-01' // should be number
       })).toBe(false);
     });
   });
@@ -217,21 +251,51 @@ describe('store.types', () => {
     it('should return true for valid EntryProposalGroup', () => {
       const validGroup: EntryProposalGroup = {
         id: 'entry-group-1',
-        entries: [
+        title: 'Trading Opportunity',
+        description: 'Bullish market setup',
+        proposals: [
           {
             id: 'entry-1',
-            entryType: 'limit',
+            type: 'entry',
             direction: 'long',
             entryPrice: 100.00,
-            stopLoss: 95.00,
-            takeProfit: 110.00,
-            riskRewardRatio: 2.0,
-            positionSize: 0.1,
-            reasoning: 'Bullish reversal at support',
-            confidence: 0.80
+            strategy: 'swingTrading',
+            timeframe: '4h',
+            symbol: 'BTCUSDT',
+            confidence: 0.80,
+            priority: 'high',
+            riskParameters: {
+              stopLoss: 95.00,
+              stopLossPercent: 5,
+              takeProfitTargets: [{ price: 110.00, percentage: 10 }],
+              riskRewardRatio: 2.0,
+              positionSizePercent: 2,
+              maxRiskPercent: 1
+            },
+            conditions: {
+              trigger: 'limit'
+            },
+            marketContext: {
+              trend: 'uptrend',
+              volatility: 'medium',
+              momentum: 'strong',
+              volume: 'increasing',
+              keyLevels: {
+                support: [95, 90],
+                resistance: [110, 120]
+              }
+            },
+            reasoning: {
+              primary: 'Bullish reversal at support',
+              technicalFactors: [],
+              risks: []
+            },
+            status: ProposalStatus.PENDING,
+            createdAt: Date.now()
           }
         ],
-        timestamp: Date.now()
+        groupType: 'entry',
+        createdAt: Date.now()
       };
 
       expect(isEntryProposalGroup(validGroup)).toBe(true);
@@ -240,33 +304,75 @@ describe('store.types', () => {
     it('should return true with optional fields', () => {
       const validGroup: EntryProposalGroup = {
         id: 'entry-group-1',
-        entries: [
+        title: 'Short Opportunity',
+        description: 'Bearish market breakdown',
+        proposals: [
           {
             id: 'entry-1',
-            entryType: 'market',
+            type: 'entry',
             direction: 'short',
             entryPrice: 105.00,
-            stopLoss: 110.00,
-            takeProfit: 95.00,
-            riskRewardRatio: 2.0,
-            positionSize: 0.05,
-            reasoning: 'Breaking key support',
-            confidence: 0.75
+            strategy: 'dayTrading',
+            timeframe: '1h',
+            symbol: 'BTCUSDT',
+            confidence: 0.75,
+            priority: 'medium',
+            riskParameters: {
+              stopLoss: 110.00,
+              stopLossPercent: 4.76,
+              takeProfitTargets: [{ price: 95.00, percentage: 9.52 }],
+              riskRewardRatio: 2.0,
+              positionSizePercent: 1,
+              maxRiskPercent: 0.5
+            },
+            conditions: {
+              trigger: 'market'
+            },
+            marketContext: {
+              trend: 'downtrend',
+              volatility: 'high',
+              momentum: 'strong',
+              volume: 'increasing',
+              keyLevels: {
+                support: [95, 90],
+                resistance: [110, 115]
+              }
+            },
+            reasoning: {
+              primary: 'Breaking key support',
+              technicalFactors: [],
+              risks: ['High volatility']
+            },
+            status: ProposalStatus.PENDING,
+            createdAt: Date.now()
           }
         ],
-        marketContext: 'Bearish trend continuation',
-        riskAssessment: 'Moderate risk due to volatility',
-        timestamp: Date.now()
+        groupType: 'entry',
+        summary: {
+          marketBias: 'bearish',
+          averageConfidence: 0.75,
+          totalProposals: 1,
+          strategyBreakdown: {
+            dayTrading: 1
+          }
+        },
+        createdAt: Date.now(),
+        metadata: {
+          analysisDepth: 'advanced'
+        }
       };
 
       expect(isEntryProposalGroup(validGroup)).toBe(true);
     });
 
-    it('should return true for empty entries array', () => {
+    it('should return true for empty proposals array', () => {
       const validGroup: EntryProposalGroup = {
         id: 'entry-group-1',
-        entries: [],
-        timestamp: Date.now()
+        title: 'No Entries',
+        description: 'No suitable entry points found',
+        proposals: [],
+        groupType: 'entry',
+        createdAt: Date.now()
       };
 
       expect(isEntryProposalGroup(validGroup)).toBe(true);
@@ -290,27 +396,40 @@ describe('store.types', () => {
     it('should return false for missing required fields', () => {
       expect(isEntryProposalGroup({})).toBe(false);
       expect(isEntryProposalGroup({ id: 'entry-group-1' })).toBe(false);
-      expect(isEntryProposalGroup({ id: 'entry-group-1', entries: [] })).toBe(false);
-      expect(isEntryProposalGroup({ entries: [], timestamp: Date.now() })).toBe(false);
+      expect(isEntryProposalGroup({ 
+        id: 'entry-group-1', 
+        title: 'Test',
+        description: 'Test',
+        proposals: [] 
+      })).toBe(false); // missing groupType and createdAt
     });
 
     it('should return false for wrong field types', () => {
       expect(isEntryProposalGroup({
         id: 123, // should be string
-        entries: [],
-        timestamp: Date.now()
+        title: 'Test',
+        description: 'Test',
+        proposals: [],
+        groupType: 'entry',
+        createdAt: Date.now()
       })).toBe(false);
 
       expect(isEntryProposalGroup({
         id: 'entry-group-1',
-        entries: 'not-an-array', // should be array
-        timestamp: Date.now()
+        title: 'Test',
+        description: 'Test',
+        proposals: 'not-an-array', // should be array
+        groupType: 'entry',
+        createdAt: Date.now()
       })).toBe(false);
 
       expect(isEntryProposalGroup({
         id: 'entry-group-1',
-        entries: [],
-        timestamp: '2024-01-01' // should be number
+        title: 'Test',
+        description: 'Test',
+        proposals: [],
+        groupType: 'entry',
+        createdAt: '2024-01-01' // should be number
       })).toBe(false);
     });
   });

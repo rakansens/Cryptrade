@@ -8,7 +8,7 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { calculateEntryPoints } from '../calculators/entry-calculator';
 import type { PriceData as CandlestickData } from '@/types/market';
 import type { MarketContext } from '@/types/trading';
@@ -401,7 +401,7 @@ describe('calculateEntryPoints', () => {
 
   describe('Edge Cases', () => {
     it('should handle extreme price movements', async () => {
-      const volatileData = mockMarketData.map((candle, i) => ({
+      const volatileData = mockMarketData.map((candle) => ({
         ...candle,
         high: candle.high * (1 + Math.random() * 0.1),
         low: candle.low * (1 - Math.random() * 0.1),
