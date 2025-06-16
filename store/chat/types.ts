@@ -1,4 +1,4 @@
-import type { ProposalGroup, EntryProposalGroup } from '@/types/store.types';
+import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
 
 export interface ChatMessage {
   id: string;

@@ -1,6 +1,11 @@
 /**
  * Type definitions for store system
  */
+import type {
+  ProposalGroup,
+  EntryProposal,
+  EntryProposalGroup,
+} from './proposals';
 
 // ===== Common Store Types =====
 
@@ -73,6 +78,8 @@ export interface PatternMetrics {
 
 // ===== Proposal Types =====
 
+// TradingProposal remains defined locally as there is no equivalent in
+// the consolidated proposal types yet.
 export interface TradingProposal {
   id: string;
   type: 'buy' | 'sell';
@@ -84,34 +91,12 @@ export interface TradingProposal {
   timestamp: number;
 }
 
-export interface ProposalGroup {
-  id: string;
-  proposals: TradingProposal[];
-  summary?: string;
-  totalConfidence?: number;
-  timestamp: number;
-}
-
-export interface EntryProposal {
-  id: string;
-  entryType: 'market' | 'limit' | 'stop';
-  direction: 'long' | 'short';
-  entryPrice: number;
-  stopLoss: number;
-  takeProfit: number;
-  riskRewardRatio: number;
-  positionSize: number;
-  reasoning: string;
-  confidence: number;
-}
-
-export interface EntryProposalGroup {
-  id: string;
-  entries: EntryProposal[];
-  marketContext?: string;
-  riskAssessment?: string;
-  timestamp: number;
-}
+// Import shared proposal interfaces from the consolidated definitions
+export type {
+  ProposalGroup,
+  EntryProposal,
+  EntryProposalGroup,
+} from './proposals';
 
 // ===== Indicator Types =====
 
