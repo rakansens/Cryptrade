@@ -1,105 +1,31 @@
-name: Test Suite
+name: Test CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
-  # Allow manual trigger
-  workflow_dispatch:
+    branches: [main]
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_ENV: test
+  NEXT_PUBLIC_API_URL: http://localhost:3000
+  DATABASE_URL: postgresql://postgres:password@localhost:5432/cryptrade_test
 
 jobs:
-  lint:
-    name: Lint Code
+  test:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Check TypeScript
-        run: npm run typecheck
-
-      - name: Check formatting
-        run: npm run format:check
-
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
+    
     strategy:
       matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Create .env.test
-        run: |
-          cat > .env.test << EOF
-          NEXT_PUBLIC_API_URL=http://localhost:3000
-          OPENAI_API_KEY=test-key
-          DATABASE_URL=postgresql://test:test@localhost:5432/cryptrade_test
-          ENABLE_MOCK_AI=true
-          ENABLE_TEST_MODE=true
-          EOF
-
-      - name: Run unit tests (shard ${{ matrix.shard }})
-        run: npm run test:unit -- --shard=${{ matrix.shard }}/4 --coverage
-        env:
-          NODE_ENV: test
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-unit-${{ matrix.shard }}
-          path: coverage/
-
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
+        node-version: [18.x, 20.x]
+        test-suite: [unit, integration]
+        shard: [1, 2, 3]
+    
     services:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
+          POSTGRES_PASSWORD: password
           POSTGRES_DB: cryptrade_test
         options: >-
           --health-cmd pg_isready
@@ -108,155 +34,104 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
+      - name: Cache dependencies
+        uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ runner.os }}-node-${{ matrix.node-version }}-
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env.test
-        run: |
-          cat > .env.test << EOF
-          NEXT_PUBLIC_API_URL=http://localhost:3000
-          OPENAI_API_KEY=test-key
-          DATABASE_URL=postgresql://test:test@localhost:5432/cryptrade_test
-          SUPABASE_URL=http://localhost:54321
-          SUPABASE_ANON_KEY=test-anon-key
-          SUPABASE_SERVICE_KEY=test-service-key
-          ENABLE_MOCK_AI=true
-          ENABLE_TEST_MODE=true
-          EOF
+      - name: Generate Prisma client
+        run: npm run db:generate
 
-      - name: Setup database
-        run: |
-          npm run db:push
-          npm run db:seed
+      - name: Run database migrations
+        run: npm run db:push
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/cryptrade_test
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/cryptrade_test
 
-      - name: Run integration tests
-        run: npm run test:integration -- --coverage
+      - name: Run type checking
+        run: npm run type-check:ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run ${{ matrix.test-suite }} tests (shard ${{ matrix.shard }}/3)
+        run: |
+          if [ "${{ matrix.test-suite }}" = "unit" ]; then
+            npm run test:unit -- --shard=${{ matrix.shard }}/3 --coverage --coverageReporters=json
+          else
+            npm run test:integration -- --shard=${{ matrix.shard }}/3 --coverage --coverageReporters=json
+          fi
         env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://test:test@localhost:5432/cryptrade_test
+          CI: true
+          FORCE_COLOR: 1
 
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-integration
-          path: coverage/
+          name: coverage-${{ matrix.node-version }}-${{ matrix.test-suite }}-${{ matrix.shard }}
+          path: coverage/coverage-final.json
+          retention-days: 1
 
-  e2e-tests:
-    name: E2E Tests
+  coverage:
+    needs: test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        browser: [chromium, firefox, webkit]
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
-
-      - name: Create .env.local
-        run: |
-          cat > .env.local << EOF
-          NEXT_PUBLIC_API_URL=http://localhost:3000
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'test-key' }}
-          DATABASE_URL=postgresql://test:test@localhost:5432/cryptrade_test
-          ENABLE_MOCK_AI=true
-          ENABLE_TEST_MODE=true
-          EOF
-
-      - name: Build application
-        run: npm run build
-
-      - name: Run E2E tests
-        run: npm run test:e2e:${{ matrix.browser }}
-        env:
-          NODE_ENV: test
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: playwright-report-${{ matrix.browser }}
-          path: playwright-report/
-          retention-days: 30
-
-  coverage-report:
-    name: Coverage Report
-    needs: [unit-tests, integration-tests]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: coverage-reports/
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+          path: coverage-artifacts
 
       - name: Merge coverage reports
         run: |
-          npx nyc merge coverage-reports/ coverage/merged-coverage.json
-          npx nyc report --reporter=lcov --reporter=text-summary --temp-dir=coverage/ --report-dir=coverage/
+          mkdir -p coverage
+          npx nyc merge coverage-artifacts coverage/coverage-final.json
 
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Generate coverage report
+        run: |
+          npx nyc report --reporter=lcov --reporter=text-summary
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: unittests,integration
+          file: ./coverage/lcov.info
+          flags: unittests
           name: cryptrade-coverage
+          fail_ci_if_error: true
 
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
-        uses: romeovs/lcov-reporter-action@v0.3.1
+        uses: romeovs/lcov-reporter-action@v0.4.0
         with:
           lcov-file: ./coverage/lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  performance-tests:
-    name: Performance Tests
+  performance:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -264,53 +139,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: ${{ env.PNPM_VERSION }}
+          node-version: 20.x
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run performance benchmarks
-        run: npm run test:performance
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
-        with:
-          name: benchmark-results
-          path: benchmark-results/
+        run: npm run benchmark
 
       - name: Compare with baseline
-        run: npm run benchmark:compare || true
-        continue-on-error: true
+        run: npm run benchmark:compare
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          name: performance-results
+          path: performance-results.json
+          retention-days: 30
 
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+      - name: Comment PR with performance results
+        uses: actions/github-script@v7
         with:
-          sarif_file: 'trivy-results.sarif'
-
-  all-tests-pass:
-    name: All Tests Pass
-    needs: [lint, unit-tests, integration-tests, e2e-tests, security-scan]
-    runs-on: ubuntu-latest
-    steps:
-      - name: All tests passed
-        run: echo "✅ All tests passed successfully!"
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('performance-results.json', 'utf8'));
+            const comment = `## Performance Results\n\n${results.summary}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

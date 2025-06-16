@@ -81,6 +81,27 @@ export function renderPatternLines(
       id,
       error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
     });
-    return [];
+    
+    // フォールバック: 既存のライン描画を保持
+    const existingLines = Array.from(globalAllSeries.entries())
+      .filter(([key, value]) => value.patternId === id && value.type === 'line')
+      .map(([_, value]) => value.series);
+    
+    if (existingLines.length > 0) {
+      logger.warn('[PatternLineRenderer] Using existing lines as fallback', {
+        id,
+        existingCount: existingLines.length
+      });
+      return existingLines;
+    }
+    
+    // 開発環境では空配列を返す
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('[PatternLineRenderer] Returning empty array in development');
+      return [];
+    }
+    
+    // 本番環境ではエラーを投げる
+    throw new Error(`Failed to render pattern lines: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 } 

@@ -55,11 +55,25 @@ export class ChartPersistenceManager {
         const localPatterns = this.loadPatternsFromLocal();
         
         if (localDrawings.length > 0 || localPatterns.length > 0) {
-          // TODO: Implement migration API endpoint
-          logger.info('[ChartPersistence] Migration to database pending API implementation');
-          
-          // Clear localStorage after successful migration
-          this.clearLocalStorage();
+          // Migration API implementation
+          try {
+            await ChartDrawingAPI.migrateFromLocalStorage({
+              drawings: localDrawings,
+              patterns: localPatterns,
+              sessionId: config.sessionId
+            });
+            
+            logger.info('[ChartPersistence] Successfully migrated data to database', {
+              drawingsCount: localDrawings.length,
+              patternsCount: localPatterns.length
+            });
+            
+            // Clear localStorage after successful migration
+            this.clearLocalStorage();
+          } catch (migrationError) {
+            logger.error('[ChartPersistence] Migration API failed', { migrationError });
+            // Keep data in localStorage if migration fails
+          }
         }
       } catch (error) {
         logger.error('[ChartPersistence] Failed to migrate to database', { error });
@@ -127,16 +141,59 @@ export class ChartPersistenceManager {
           logger.error('[ChartPersistence] Database load failed', { dbError });
           
           if (this.config.fallbackToLocal) {
-            return this.loadDrawingsFromLocal();
+            logger.info('[ChartPersistence] Falling back to local storage');
+            try {
+              return await this.loadDrawingsFromLocal();
+            } catch (localError) {
+              logger.error('[ChartPersistence] Local fallback also failed', { localError });
+              
+              // 開発環境では空配列を返す
+              if (process.env.NODE_ENV === 'development') {
+                logger.warn('[ChartPersistence] Returning empty array in development');
+                return [];
+              }
+              
+              // 本番環境ではエラーを投げる
+              throw new Error(`Both database and local storage failed: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
+            }
           }
-          return [];
+          
+          // 開発環境では空配列を返す
+          if (process.env.NODE_ENV === 'development') {
+            logger.warn('[ChartPersistence] Returning empty array in development (no fallback)');
+            return [];
+          }
+          
+          // 本番環境ではエラーを投げる
+          throw new Error(`Failed to load drawings from database: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
         }
       } else {
         return this.loadDrawingsFromLocal();
       }
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load drawings', { error });
-      return [];
+      
+      // LocalStorageからのフォールバックを試みる
+      if (this.config.fallbackToLocal && typeof window !== 'undefined') {
+        try {
+          const localData = await this.loadDrawingsFromLocal();
+          if (localData.length > 0) {
+            logger.warn('[ChartPersistence] Using local storage data as fallback');
+            return localData;
+          }
+        } catch (fallbackError) {
+          logger.error('[ChartPersistence] Fallback to local storage failed', { fallbackError });
+        }
+      }
+      
+      // 開発環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChartPersistence] Returning empty array in development');
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load drawings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -194,14 +251,28 @@ export class ChartPersistenceManager {
           if (this.config.fallbackToLocal) {
             return this.loadPatternsFromLocal();
           }
-          return [];
+          
+          // 開発環境では空配列を返す
+          if (process.env.NODE_ENV === 'development') {
+            return [];
+          }
+          
+          // 本番環境ではエラーを投げる
+          throw new Error(`Failed to load patterns from database: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
         }
       } else {
         return this.loadPatternsFromLocal();
       }
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load patterns', { error });
-      return [];
+      
+      // 開発環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load patterns: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -211,8 +282,12 @@ export class ChartPersistenceManager {
   static async deleteDrawing(drawingId: string): Promise<void> {
     try {
       if (this.config.useDatabase) {
-        // TODO: Implement delete drawing API endpoint
-        logger.warn('[ChartPersistence] Delete drawing API not yet implemented');
+        // Delete drawing API implementation
+        await ChartDrawingAPI.deleteDrawing(
+          this.config.sessionId || 'default',
+          drawingId
+        );
+        logger.info('[ChartPersistence] Drawing deleted from database', { drawingId });
       } else {
         const drawings = await this.loadDrawings();
         const filtered = drawings.filter(d => d.id !== drawingId);
@@ -229,8 +304,12 @@ export class ChartPersistenceManager {
   static async deletePattern(patternId: string): Promise<void> {
     try {
       if (this.config.useDatabase) {
-        // TODO: Implement delete pattern API endpoint
-        logger.warn('[ChartPersistence] Delete pattern API not yet implemented');
+        // Delete pattern API implementation
+        await ChartDrawingAPI.deletePattern(
+          this.config.sessionId || 'default',
+          patternId
+        );
+        logger.info('[ChartPersistence] Pattern deleted from database', { patternId });
       } else {
         const patterns = await this.loadPatterns();
         const filtered = patterns.filter(p => p.id !== patternId);
@@ -298,7 +377,13 @@ export class ChartPersistenceManager {
   }
 
   private static loadDrawingsFromLocal(): ChartDrawing[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') {
+      // サーバーサイドでは空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      throw new Error('Cannot access localStorage in server environment');
+    }
     
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DRAWINGS);
@@ -321,7 +406,14 @@ export class ChartPersistenceManager {
       return validDrawings;
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load drawings from localStorage', { error });
-      return [];
+      
+      // 開発環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load drawings from localStorage: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -332,7 +424,13 @@ export class ChartPersistenceManager {
   }
 
   private static loadPatternsFromLocal(): PatternData[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') {
+      // サーバーサイドでは空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      throw new Error('Cannot access localStorage in server environment');
+    }
     
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.PATTERNS);
@@ -355,7 +453,14 @@ export class ChartPersistenceManager {
       return validPatterns;
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load patterns from localStorage', { error });
-      return [];
+      
+      // 開発環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load patterns from localStorage: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

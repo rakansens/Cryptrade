@@ -248,7 +248,17 @@ export class LineRenderer implements ILineRendererPlugin {
     data: PatternVisualization
   ): Promise<ISeriesApi<SeriesType>[]> {
     if (!this.context || !data.lines) {
-      return [];
+      // コンテキストまたはラインデータがない場合は空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        if (!this.context) {
+          console.warn('[LineRenderer] Context not initialized');
+        } else {
+          console.warn('[LineRenderer] No lines data provided');
+        }
+        return [];
+      }
+      
+      throw new Error(`LineRenderer cannot create series: ${!this.context ? 'context not initialized' : 'no lines data provided'}`);
     }
     
     const createdSeries: ISeriesApi<SeriesType>[] = [];
@@ -345,7 +355,13 @@ export class LineRenderer implements ILineRendererPlugin {
     }
     
     if (lineData.length < 2) {
-      return [];
+      // ラインデータが不足している場合は空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[LineRenderer] Insufficient data points for line: ${lineData.length} points, need at least 2`);
+        return [];
+      }
+      
+      throw new Error(`Insufficient data points for line: ${lineData.length} points provided, need at least 2`);
     }
     
     // 時間順にソート

@@ -11,6 +11,7 @@ import { createTool } from '@mastra/core';
 import { logger } from '@/lib/utils/logger';
 import { binanceAPI } from '@/lib/binance/api-service';
 import type { PriceData as CandlestickData } from '@/types/market';
+import { SharedDataStore } from '@/lib/mastra/utils/shared-data-store';
 
 // Types and schemas
 import { 
@@ -111,8 +112,14 @@ export const ProposalGenerationTool = createTool({
               interval,
               100
             );
-          } catch {
-            return [];
+          } catch (error) {
+            // Klineデータの取得に失敗した場合は空配列を返す
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[ProposalGenerationTool] Failed to fetch klines for ${input.symbol} ${interval}:`, error);
+              return [];
+            }
+            
+            throw new Error(`Failed to fetch klines for ${input.symbol} ${interval}: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
       );
@@ -149,17 +156,48 @@ export const ProposalGenerationTool = createTool({
 
       // 7. 各ジェネレーターで提案を生成
       const allProposals = await Promise.all(
-        selectedGenerators.map(generator => 
-          generator.generate(marketData, generatorParams)
-            .catch(error => {
-              logger.error(`[ProposalGeneration] ${generator.name} failed`, { 
+        selectedGenerators.map(async generator => {
+          try {
+            const proposals = await generator.generate(marketData, generatorParams);
+            
+            // 成功した提案をキャッシュに保存
+            if (proposals.length > 0) {
+              const cacheKey = `proposals_${generator.name}_${input.symbol}_${input.interval}`;
+              SharedDataStore.set('proposalCache', cacheKey, proposals);
+              logger.debug(`[ProposalGeneration] Cached ${proposals.length} proposals for ${generator.name}`);
+            }
+            
+            return proposals;
+          } catch (error) {
+            logger.error(`[ProposalGeneration] ${generator.name} failed`, { 
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
                 generatorName: generator.name,
                 analysisType: generator.analysisType,
               });
+              
+              // フォールバック: キャッシュされた提案を探す
+              const cacheKey = `proposals_${generator.name}_${input.symbol}_${input.interval}`;
+              const cachedProposals = SharedDataStore.get<ProposalGroup['proposals']>('proposalCache', cacheKey);
+              
+              if (cachedProposals && cachedProposals.length > 0) {
+                logger.info(`[ProposalGeneration] Using cached proposals for ${generator.name}`, {
+                  count: cachedProposals.length
+                });
+                return cachedProposals;
+              }
+              
+              // 開発環境では空配列を返す
+              if (process.env.NODE_ENV === 'development') {
+                logger.debug(`[ProposalGeneration] Returning empty array for failed generator ${generator.name}`);
+                return [];
+              }
+              
+              // 本番環境では警告のみ（エラーは投げない）
+              logger.warn(`[ProposalGeneration] No fallback proposals available for ${generator.name}`);
               return [];
-            })
+            }
+          }
         )
       );
 

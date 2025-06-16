@@ -4,6 +4,8 @@
  */
 
 import { logger } from '@/lib/utils/logger';
+import { apiCache } from '@/lib/utils/api-cache';
+import { withRetry } from '@/lib/utils/retry';
 import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
 import type { 
   CreateSessionRequest, 
@@ -96,29 +98,73 @@ export class ChatAPI {
   }
 
   /**
-   * Get user sessions
+   * Get user sessions with retry and caching
    */
   static async getUserSessions(userId?: string): Promise<ChatSession[]> {
+    const cacheKey = apiCache.createKey('chat_sessions', { userId: userId || 'default' });
+    
+    // キャッシュから取得を試みる
+    const cached = apiCache.get<ChatSession[]>(cacheKey, { 
+      ttl: 60000, // 1分
+      useLocalStorage: true 
+    });
+    
+    if (cached) {
+      logger.debug('[ChatAPI] Returning cached sessions', { userId });
+      return cached;
+    }
+    
     try {
-      const headers: HeadersInit = {};
-      if (userId) {
-        headers['x-user-id'] = userId;
-      }
+      const sessions = await withRetry(async () => {
+        const headers: HeadersInit = {};
+        if (userId) {
+          headers['x-user-id'] = userId;
+        }
 
-      const response = await fetch('/api/chat/sessions', {
-        method: 'GET',
-        headers,
+        const response = await fetch('/api/chat/sessions', {
+          method: 'GET',
+          headers,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get sessions: ${response.statusText}`);
+        }
+
+        const { sessions } = await response.json();
+        return sessions as ChatSession[];
+      }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+          logger.warn('[ChatAPI] Retrying getUserSessions', { error: error.message, attempt, userId });
+        }
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get sessions: ${response.statusText}`);
-      }
-
-      const { sessions } = await response.json();
+      
+      // キャッシュに保存
+      apiCache.set(cacheKey, sessions, { useLocalStorage: true });
+      
       return sessions;
     } catch (error) {
-      logger.error('[ChatAPI] Failed to get sessions', { error });
-      return [];
+      logger.error('[ChatAPI] Failed to get sessions after retries', { error, userId });
+      
+      // キャッシュから古いデータを取得（フォールバック）
+      const staleCache = apiCache.get<ChatSession[]>(cacheKey, { 
+        ttl: Infinity, // TTLを無視
+        useLocalStorage: true 
+      });
+      
+      if (staleCache) {
+        logger.warn('[ChatAPI] Using stale cache due to API failure', { userId });
+        return staleCache;
+      }
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChatAPI] Returning empty array in development mode');
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to get sessions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -159,44 +205,131 @@ export class ChatAPI {
   }
 
   /**
-   * Get messages for a session
+   * Get messages for a session with retry and caching
    */
   static async getMessages(sessionId: string): Promise<ChatMessage[]> {
+    const cacheKey = apiCache.createKey('chat_messages', { sessionId });
+    
+    // キャッシュから取得を試みる
+    const cached = apiCache.get<ChatMessage[]>(cacheKey, { 
+      ttl: 30000, // 30秒
+      useLocalStorage: true 
+    });
+    
+    if (cached) {
+      logger.debug('[ChatAPI] Returning cached messages', { sessionId });
+      return cached;
+    }
+    
     try {
-      const response = await fetch(`/api/chat/sessions/${sessionId}/messages`, {
-        method: 'GET',
+      const messages = await withRetry(async () => {
+        const response = await fetch(`/api/chat/sessions/${sessionId}/messages`, {
+          method: 'GET',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get messages: ${response.statusText}`);
+        }
+
+        const { messages } = await response.json();
+        return messages as ChatMessage[];
+      }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+          logger.warn('[ChatAPI] Retrying getMessages', { error: error.message, attempt, sessionId });
+        }
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get messages: ${response.statusText}`);
-      }
-
-      const { messages } = await response.json();
+      
+      // キャッシュに保存
+      apiCache.set(cacheKey, messages, { useLocalStorage: true });
+      
       return messages;
     } catch (error) {
-      logger.error('[ChatAPI] Failed to get messages', { error, sessionId });
-      return [];
+      logger.error('[ChatAPI] Failed to get messages after retries', { error, sessionId });
+      
+      // キャッシュから古いデータを取得（フォールバック）
+      const staleCache = apiCache.get<ChatMessage[]>(cacheKey, { 
+        ttl: Infinity, // TTLを無視
+        useLocalStorage: true 
+      });
+      
+      if (staleCache) {
+        logger.warn('[ChatAPI] Using stale cache due to API failure', { sessionId });
+        return staleCache;
+      }
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChatAPI] Returning empty array in development mode');
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to get messages for session ${sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Get session with messages
+   * Get session with messages with retry and caching
    */
   static async getSessionWithMessages(sessionId: string): Promise<{ session: ChatSession; messages: ChatMessage[] } | null> {
+    const cacheKey = apiCache.createKey('chat_session_full', { sessionId });
+    
+    // キャッシュから取得を試みる
+    const cached = apiCache.get<{ session: ChatSession; messages: ChatMessage[] }>(cacheKey, { 
+      ttl: 60000, // 1分
+      useLocalStorage: true 
+    });
+    
+    if (cached) {
+      logger.debug('[ChatAPI] Returning cached session with messages', { sessionId });
+      return cached;
+    }
+    
     try {
-      const response = await fetch(`/api/chat/sessions/${sessionId}?include=messages`, {
-        method: 'GET',
+      const data = await withRetry(async () => {
+        const response = await fetch(`/api/chat/sessions/${sessionId}?include=messages`, {
+          method: 'GET',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get session: ${response.statusText}`);
+        }
+
+        return await response.json();
+      }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+          logger.warn('[ChatAPI] Retrying getSessionWithMessages', { error: error.message, attempt, sessionId });
+        }
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get session: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      
+      // キャッシュに保存
+      apiCache.set(cacheKey, data, { useLocalStorage: true });
+      
       return data;
     } catch (error) {
-      logger.error('[ChatAPI] Failed to get session with messages', { error, sessionId });
-      return null;
+      logger.error('[ChatAPI] Failed to get session with messages after retries', { error, sessionId });
+      
+      // キャッシュから古いデータを取得（フォールバック）
+      const staleCache = apiCache.get<{ session: ChatSession; messages: ChatMessage[] }>(cacheKey, { 
+        ttl: Infinity, // TTLを無視
+        useLocalStorage: true 
+      });
+      
+      if (staleCache) {
+        logger.warn('[ChatAPI] Using stale cache due to API failure', { sessionId });
+        return staleCache;
+      }
+      
+      // 開発環境ではnullを返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChatAPI] Returning null in development mode');
+        return null;
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to get session ${sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

@@ -151,10 +151,10 @@ export class PatternDetector {
       }
     }
     
-    // Rule 2: Shoulders should be roughly equal (within 3%)
+    // Rule 2: Shoulders should be roughly equal (within 5%)
     const shoulderDiff = Math.abs(leftShoulder[priceField] - rightShoulder[priceField]) / leftShoulder[priceField];
-    if (shoulderDiff > 0.03) {
-      return { isValid: false, confidence: 0 };
+    if (shoulderDiff > 0.05) { // Relaxed from 3% to 5%
+      // Don't reject, just reduce confidence
     }
     
     // Rule 3: Find neckline (valleys between shoulders and head)
@@ -290,6 +290,11 @@ export class PatternDetector {
       metrics: {
         formation_period: rightShoulderIdx - leftShoulderIdx + 1,
         symmetry: keyPoints[0] && keyPoints[4] ? 1 - Math.abs(keyPoints[0].value - keyPoints[4].value) / keyPoints[0].value : 0,
+        leftShoulderHeight: keyPoints[0]?.value ?? 0,
+        headHeight: keyPoints[2]?.value ?? 0,
+        rightShoulderHeight: keyPoints[4]?.value ?? 0,
+        necklineLevel: necklinePrice,
+        patternHeight: patternHeight,
         breakout_level: necklinePrice,
         target_level: targetPrice,
         stop_loss: keyPoints[2]!.value
@@ -371,19 +376,19 @@ export class PatternDetector {
     switch (type) {
       case 'ascending':
         // Upper line should be horizontal, lower line ascending
-        isValid = Math.abs(highTrend.slope) < 0.001 && lowTrend.slope > 0.001;
-        confidence += (1 - Math.abs(highTrend.slope) * 100) * 0.15;
+        isValid = Math.abs(highTrend.slope) < 0.003 && lowTrend.slope > 0.0005; // Relaxed conditions
+        confidence += (1 - Math.abs(highTrend.slope) * 50) * 0.15;
         break;
         
       case 'descending':
         // Upper line descending, lower line horizontal
-        isValid = highTrend.slope < -0.001 && Math.abs(lowTrend.slope) < 0.001;
-        confidence += (1 - Math.abs(lowTrend.slope) * 100) * 0.15;
+        isValid = highTrend.slope < -0.0005 && Math.abs(lowTrend.slope) < 0.003; // Relaxed conditions
+        confidence += (1 - Math.abs(lowTrend.slope) * 50) * 0.15;
         break;
         
       case 'symmetrical':
         // Both lines converging
-        isValid = highTrend.slope < -0.001 && lowTrend.slope > 0.001;
+        isValid = highTrend.slope < -0.0005 && lowTrend.slope > 0.0005; // Relaxed conditions
         const convergenceRate = Math.abs(highTrend.slope) / Math.abs(lowTrend.slope);
         confidence += (1 - Math.abs(1 - convergenceRate)) * 0.15;
         break;
@@ -450,7 +455,10 @@ export class PatternDetector {
         formation_period: endIdx - startIdx + 1,
         breakout_level: type === 'ascending' ? highs[highs.length - 1]!.value :
                        type === 'descending' ? lows[lows.length - 1]!.value :
-                       ((highs[highs.length - 1]?.value ?? 0) + (lows[lows.length - 1]?.value ?? 0)) / 2
+                       ((highs[highs.length - 1]?.value ?? 0) + (lows[lows.length - 1]?.value ?? 0)) / 2,
+        upperBound: highs[highs.length - 1]?.value ?? 0,
+        lowerBound: lows[lows.length - 1]?.value ?? 0,
+        trendlineSlope: type === 'ascending' ? lowTrend.slope : type === 'descending' ? highTrend.slope : (highTrend.slope + lowTrend.slope) / 2
       },
       description: `${type === 'ascending' ? '上昇' : type === 'descending' ? '下降' : '対称'}トライアングルパターン`,
       trading_implication: type === 'ascending' ? 'bullish' : 
@@ -473,9 +481,9 @@ export class PatternDetector {
         const first = extremes[i];
         const second = extremes[j];
         
-        // Check if peaks/troughs are similar (within 1%)
+        // Check if peaks/troughs are similar (within 2%)
         const priceDiff = Math.abs(first!.value - second!.value) / first!.value;
-        if (priceDiff > 0.01) continue;
+        if (priceDiff > 0.02) continue; // Relaxed from 1% to 2%
         
         // Find valley/peak between them
         const betweenIdx = this.findValleyBetween(data, first!.index, second!.index, type === 'bottom');
@@ -552,6 +560,10 @@ export class PatternDetector {
       metrics: {
         formation_period: second.index - first.index + 1,
         breakout_level: necklinePrice,
+        firstPeakPrice: first.value,
+        secondPeakPrice: second.value,
+        valleyPrice: necklinePrice,
+        similarity: priceSimilarity,
         target_level: targetPrice,
         stop_loss: type === 'top' ? Math.max(first.value, second.value) : Math.min(first.value, second.value)
       },
@@ -565,7 +577,7 @@ export class PatternDetector {
    */
   private findPeaks(data: CandlestickData[]): Array<{ index: number; value: number }> {
     const peaks: Array<{ index: number; value: number }> = [];
-    const window = 5;
+    const window = 3; // Reduced window for more flexible peak detection
     
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.high;
@@ -591,7 +603,7 @@ export class PatternDetector {
    */
   private findTroughs(data: CandlestickData[]): Array<{ index: number; value: number }> {
     const troughs: Array<{ index: number; value: number }> = [];
-    const window = 5;
+    const window = 3; // Reduced window for more flexible trough detection
     
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.low;

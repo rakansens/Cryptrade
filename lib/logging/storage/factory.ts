@@ -59,10 +59,15 @@ export async function createUnifiedStorage(config: UnifiedLoggerConfig): Promise
       return new MemoryFallback(config);
       
     case 'postgres':
-      // TODO: PostgreSQL implementation
-      console.warn('[UnifiedStorage] PostgreSQL not implemented yet, falling back to memory');
-      const { UnifiedMemoryStorage: FallbackMemory } = await import('./memory');
-      return new FallbackMemory(config);
+      try {
+        const { UnifiedPostgreSQLStorage } = await import('./postgres');
+        return new UnifiedPostgreSQLStorage(config);
+      } catch (error) {
+        // If PostgreSQL module fails to load, fall back to memory storage
+        console.warn('[UnifiedStorage] PostgreSQL storage failed to initialize, using memory storage as fallback.', error);
+        const { UnifiedMemoryStorage: FallbackMemory } = await import('./memory');
+        return new FallbackMemory(config);
+      }
       
     default:
       // Default based on environment

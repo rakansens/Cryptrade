@@ -68,3 +68,13 @@ logs/temp-check.log
 logs/tsc-output.txt
 logs/type-check-*.log
 logs/typecheck-output.txt
+*.xml
+analysis.json
+mutation-report.html
+snapshot-results.json
+patches/
+e2e-test-results/
+.env.test
+*.log
+rerun-results.xml
+unit-test-results.xml

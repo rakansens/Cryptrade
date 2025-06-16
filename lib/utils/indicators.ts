@@ -176,71 +176,156 @@ export function computeSupportResistanceDetailed(
 /**
  * Calculate MACD indicator
  * @deprecated Use lib/indicators/macd.ts instead
- * @notImplemented This is a placeholder - use the proper implementation
+ * This function now delegates to the proper implementation
  */
 export function calculateMACD(data: number[]) {
   console.warn('[Deprecated] calculateMACD in utils/indicators.ts is deprecated. Use lib/indicators/macd.ts instead');
   
-  // 最小限のダミーデータを返す
-  if (env.NODE_ENV === 'development') {
-    return data.map(() => ({
-      macd: 0,
-      signal: 0,
-      histogram: 0
+  try {
+    // Import the proper implementation
+    const { calculateMACD: properCalculateMACD } = require('../indicators/macd');
+    
+    // Convert simple array to required format
+    const formattedData = data.map((close, index) => ({
+      time: Date.now() - (data.length - index) * 60000, // Assume 1 minute intervals
+      close
     }));
+    
+    const result = properCalculateMACD(formattedData);
+    
+    // Return only the values for backward compatibility
+    return result.map(item => ({
+      macd: item.macd,
+      signal: item.signal,
+      histogram: item.histogram
+    }));
+  } catch (error) {
+    logger.error('[Indicators] Failed to calculate MACD', { error });
+    
+    // Fallback for development
+    if (env.NODE_ENV === 'development') {
+      return data.slice(26 + 9 - 1).map(() => ({
+        macd: 0,
+        signal: 0,
+        histogram: 0
+      }));
+    }
+    
+    throw new Error(`Failed to calculate MACD: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  throw new Error('calculateMACD is not implemented. Please use lib/indicators/macd.ts');
 }
 
 /**
  * Calculate RSI indicator
  * @deprecated Use lib/indicators/rsi.ts instead
- * @notImplemented This is a placeholder - use the proper implementation
+ * This function now delegates to the proper implementation
  */
-export function calculateRSI(data: number[]) {
+export function calculateRSI(data: number[], period: number = 14) {
   console.warn('[Deprecated] calculateRSI in utils/indicators.ts is deprecated. Use lib/indicators/rsi.ts instead');
   
-  // 最小限のダミーデータを返す（RSI 50 = 中立）
-  if (env.NODE_ENV === 'development') {
-    return data.map(() => 50);
+  try {
+    // Import the proper implementation
+    const { calculateRSI: properCalculateRSI } = require('../indicators/rsi');
+    
+    // Convert simple array to required format
+    const formattedData = data.map((close, index) => ({
+      time: Date.now() - (data.length - index) * 60000, // Assume 1 minute intervals
+      close
+    }));
+    
+    const result = properCalculateRSI(formattedData, period);
+    
+    // Return only the RSI values for backward compatibility
+    return result.map(item => item.value);
+  } catch (error) {
+    logger.error('[Indicators] Failed to calculate RSI', { error });
+    
+    // Fallback for development
+    if (env.NODE_ENV === 'development') {
+      return data.slice(period).map(() => 50);
+    }
+    
+    throw new Error(`Failed to calculate RSI: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  throw new Error('calculateRSI is not implemented. Please use lib/indicators/rsi.ts');
 }
 
 /**
  * Calculate Bollinger Bands
  * @deprecated Use lib/indicators/bollinger-bands.ts instead
- * @notImplemented This is a placeholder - use the proper implementation
+ * This function now delegates to the proper implementation
  */
-export function calculateBollingerBands(data: number[]) {
+export function calculateBollingerBands(data: number[], period: number = 20, stdDev: number = 2) {
   console.warn('[Deprecated] calculateBollingerBands in utils/indicators.ts is deprecated. Use lib/indicators/bollinger-bands.ts instead');
   
-  // 最小限のダミーデータを返す
-  if (env.NODE_ENV === 'development') {
-    return data.map((value) => ({
-      upper: value * 1.02,
-      middle: value,
-      lower: value * 0.98
+  try {
+    // Import the proper implementation
+    const { calculateBollingerBands: properCalculateBB } = require('../indicators/bollinger-bands');
+    
+    // Convert simple array to required format
+    const formattedData = data.map((close, index) => ({
+      time: Date.now() - (data.length - index) * 60000, // Assume 1 minute intervals
+      close
     }));
+    
+    const result = properCalculateBB(formattedData, period, stdDev);
+    
+    // Return in backward compatible format
+    return result.map(item => ({
+      upper: item.upper,
+      middle: item.middle,
+      lower: item.lower
+    }));
+  } catch (error) {
+    logger.error('[Indicators] Failed to calculate Bollinger Bands', { error });
+    
+    // Fallback for development
+    if (env.NODE_ENV === 'development') {
+      return data.slice(period - 1).map((value) => ({
+        upper: value * 1.02,
+        middle: value,
+        lower: value * 0.98
+      }));
+    }
+    
+    throw new Error(`Failed to calculate Bollinger Bands: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  throw new Error('calculateBollingerBands is not implemented. Please use lib/indicators/bollinger-bands.ts');
 }
 
 /**
  * Calculate Simple Moving Average
  * @deprecated Use lib/indicators/moving-average.ts instead
- * @notImplemented This is a placeholder - use the proper implementation
+ * This function now delegates to the proper implementation
  */
-export function calculateSMA(data: number[]) {
+export function calculateSMA(data: number[], period: number = 20) {
   console.warn('[Deprecated] calculateSMA in utils/indicators.ts is deprecated. Use lib/indicators/moving-average.ts instead');
   
-  // 最小限のダミーデータを返す
-  if (env.NODE_ENV === 'development') {
-    return data.map((value) => value);
+  try {
+    // Import the proper implementation
+    const { calculateSMA: properCalculateSMA } = require('../indicators/moving-average');
+    
+    // Convert simple array to required format
+    const formattedData = data.map((close, index) => ({
+      time: Date.now() - (data.length - index) * 60000, // Assume 1 minute intervals
+      close
+    }));
+    
+    const result = properCalculateSMA(formattedData, period);
+    
+    // Return only the SMA values for backward compatibility
+    return result.map(item => item.value);
+  } catch (error) {
+    logger.error('[Indicators] Failed to calculate SMA', { error });
+    
+    // Fallback for development
+    if (env.NODE_ENV === 'development') {
+      return data.slice(period - 1).map((_, index) => {
+        const start = index;
+        const end = index + period;
+        const slice = data.slice(start, end);
+        return slice.reduce((sum, val) => sum + val, 0) / slice.length;
+      });
+    }
+    
+    throw new Error(`Failed to calculate SMA: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  throw new Error('calculateSMA is not implemented. Please use lib/indicators/moving-average.ts');
 } 

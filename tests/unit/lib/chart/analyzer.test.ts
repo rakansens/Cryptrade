@@ -22,12 +22,12 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('Initialization', () => {
-    it('creates analyzer instance with data', () => {
+    it('should create analyzer instance with candlestick data', () => {
       expect(analyzer).toBeDefined()
       expect(analyzer).toBeInstanceOf(ChartAnalyzer)
     })
 
-    it('stores data internally', () => {
+    it('should store data internally and allow method calls', () => {
       // The analyzer should have access to the data
       // This is verified by the fact that methods can be called
       expect(() => analyzer.detectTrendLines({
@@ -39,7 +39,7 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('detectTrendLines', () => {
-    it('returns empty array (placeholder implementation)', () => {
+    it('should return empty array for now (placeholder implementation)', () => {
       const result = analyzer.detectTrendLines({
         lookbackPeriod: 10,
         minTouchPoints: 3,
@@ -49,7 +49,7 @@ describe('ChartAnalyzer', () => {
       expect(result).toEqual([])
     })
 
-    it('accepts configuration parameters', () => {
+    it('should accept and validate configuration parameters', () => {
       const config = {
         lookbackPeriod: 20,
         minTouchPoints: 4,
@@ -124,7 +124,7 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('detectSupportResistance', () => {
-    it('returns empty array (placeholder implementation)', () => {
+    it('should return empty array for now (placeholder implementation)', () => {
       const result = analyzer.detectSupportResistance({
         lookbackPeriod: 20,
         minTouches: 2,
@@ -135,7 +135,7 @@ describe('ChartAnalyzer', () => {
       expect(result).toEqual([])
     })
 
-    it('accepts configuration object', () => {
+    it('should accept and validate configuration object', () => {
       const config = {
         lookbackPeriod: 50,
         minTouches: 3,
@@ -209,7 +209,7 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('Edge Cases', () => {
-    it('handles empty data array', () => {
+    it('should handle empty data array without throwing errors', () => {
       const emptyAnalyzer = new ChartAnalyzer([])
       
       expect(() => emptyAnalyzer.detectTrendLines({
@@ -226,7 +226,7 @@ describe('ChartAnalyzer', () => {
       })).not.toThrow()
     })
 
-    it('handles single data point', () => {
+    it('should handle single data point gracefully', () => {
       const singleAnalyzer = new ChartAnalyzer([mockData[0] as CandlestickData<Time>])
       
       const trendResult = singleAnalyzer.detectTrendLines({
@@ -246,7 +246,7 @@ describe('ChartAnalyzer', () => {
       expect(srResult).toEqual([])
     })
 
-    it('handles invalid configuration gracefully', () => {
+    it('should handle invalid configuration values gracefully', () => {
       // Negative values
       expect(() => analyzer.detectTrendLines({
         lookbackPeriod: -10,
@@ -293,7 +293,7 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('Data Validation', () => {
-    it('handles malformed data gracefully', () => {
+    it('should handle malformed data with null values gracefully', () => {
       const malformedData = [
         { time: null, open: 100, high: 110, low: 90, close: 105 },
         { time: 1704067200, open: null, high: 110, low: 90, close: 105 },
@@ -311,7 +311,7 @@ describe('ChartAnalyzer', () => {
       })).not.toThrow()
     })
 
-    it('handles non-chronological data', () => {
+    it('should handle non-chronological (shuffled) data', () => {
       const shuffledData = [...mockData].sort(() => Math.random() - 0.5)
       const shuffledAnalyzer = new ChartAnalyzer(shuffledData)
       

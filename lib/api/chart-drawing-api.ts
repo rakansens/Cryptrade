@@ -3,6 +3,8 @@
  */
 
 import { logger } from '@/lib/utils/logger';
+import { apiCache } from '@/lib/utils/api-cache';
+import { withRetry } from '@/lib/utils/retry';
 import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 
 export interface TimeframeState {
@@ -35,21 +37,65 @@ export class ChartDrawingAPI {
   }
 
   /**
-   * Load drawings from database
+   * Load drawings from database with retry and caching
    */
   static async loadDrawings(sessionId: string): Promise<ChartDrawing[]> {
+    const cacheKey = apiCache.createKey('chart_drawings', { sessionId });
+    
+    // キャッシュから取得を試みる
+    const cached = apiCache.get<ChartDrawing[]>(cacheKey, { 
+      ttl: 300000, // 5分
+      useLocalStorage: true 
+    });
+    
+    if (cached) {
+      logger.debug('[ChartDrawingAPI] Returning cached drawings', { sessionId });
+      return cached;
+    }
+    
     try {
-      const response = await fetch(`/api/chart/sessions/${sessionId}/drawings`);
+      const drawings = await withRetry(async () => {
+        const response = await fetch(`/api/chart/sessions/${sessionId}/drawings`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to load drawings: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to load drawings: ${response.statusText}`);
+        }
 
-      const { drawings } = await response.json();
+        const { drawings } = await response.json();
+        return drawings as ChartDrawing[];
+      }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+          logger.warn('[ChartDrawingAPI] Retrying loadDrawings', { error: error.message, attempt, sessionId });
+        }
+      });
+      
+      // キャッシュに保存
+      apiCache.set(cacheKey, drawings, { useLocalStorage: true });
+      
       return drawings;
     } catch (error) {
-      logger.error('[ChartDrawingAPI] Failed to load drawings', { error });
-      return [];
+      logger.error('[ChartDrawingAPI] Failed to load drawings after retries', { error, sessionId });
+      
+      // キャッシュから古いデータを取得（フォールバック）
+      const staleCache = apiCache.get<ChartDrawing[]>(cacheKey, { 
+        ttl: Infinity, // TTLを無視
+        useLocalStorage: true 
+      });
+      
+      if (staleCache) {
+        logger.warn('[ChartDrawingAPI] Using stale cache due to API failure', { sessionId });
+        return staleCache;
+      }
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChartDrawingAPI] Returning empty array in development mode');
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load drawings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -76,21 +122,65 @@ export class ChartDrawingAPI {
   }
 
   /**
-   * Load patterns from database
+   * Load patterns from database with retry and caching
    */
   static async loadPatterns(sessionId: string): Promise<PatternData[]> {
+    const cacheKey = apiCache.createKey('chart_patterns', { sessionId });
+    
+    // キャッシュから取得を試みる
+    const cached = apiCache.get<PatternData[]>(cacheKey, { 
+      ttl: 300000, // 5分
+      useLocalStorage: true 
+    });
+    
+    if (cached) {
+      logger.debug('[ChartDrawingAPI] Returning cached patterns', { sessionId });
+      return cached;
+    }
+    
     try {
-      const response = await fetch(`/api/chart/sessions/${sessionId}/patterns`);
+      const patterns = await withRetry(async () => {
+        const response = await fetch(`/api/chart/sessions/${sessionId}/patterns`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to load patterns: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to load patterns: ${response.statusText}`);
+        }
 
-      const { patterns } = await response.json();
+        const { patterns } = await response.json();
+        return patterns as PatternData[];
+      }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+          logger.warn('[ChartDrawingAPI] Retrying loadPatterns', { error: error.message, attempt, sessionId });
+        }
+      });
+      
+      // キャッシュに保存
+      apiCache.set(cacheKey, patterns, { useLocalStorage: true });
+      
       return patterns;
     } catch (error) {
-      logger.error('[ChartDrawingAPI] Failed to load patterns', { error });
-      return [];
+      logger.error('[ChartDrawingAPI] Failed to load patterns after retries', { error, sessionId });
+      
+      // キャッシュから古いデータを取得（フォールバック）
+      const staleCache = apiCache.get<PatternData[]>(cacheKey, { 
+        ttl: Infinity, // TTLを無視
+        useLocalStorage: true 
+      });
+      
+      if (staleCache) {
+        logger.warn('[ChartDrawingAPI] Using stale cache due to API failure', { sessionId });
+        return staleCache;
+      }
+      
+      // 開発環境では空配列を返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('[ChartDrawingAPI] Returning empty array in development mode');
+        return [];
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load patterns: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -134,7 +224,76 @@ export class ChartDrawingAPI {
       return state;
     } catch (error) {
       logger.error('[ChartDrawingAPI] Failed to load timeframe state', { error });
-      return null;
+      
+      // 開発環境ではnullを返す（後方互換性のため）
+      if (process.env.NODE_ENV === 'development') {
+        return null;
+      }
+      
+      // 本番環境ではエラーを投げる
+      throw new Error(`Failed to load timeframe state: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Delete a specific drawing
+   */
+  static async deleteDrawing(sessionId: string, drawingId: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/chart/sessions/${sessionId}/drawings/${drawingId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete drawing: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.error('[ChartDrawingAPI] Failed to delete drawing', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a specific pattern
+   */
+  static async deletePattern(sessionId: string, patternId: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/chart/sessions/${sessionId}/patterns/${patternId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete pattern: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.error('[ChartDrawingAPI] Failed to delete pattern', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Migrate data from localStorage to database
+   */
+  static async migrateFromLocalStorage(data: {
+    drawings: ChartDrawing[];
+    patterns: PatternData[];
+    sessionId?: string;
+  }): Promise<void> {
+    try {
+      const response = await fetch('/api/chart/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to migrate data: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.error('[ChartDrawingAPI] Failed to migrate from localStorage', { error });
+      throw error;
     }
   }
 

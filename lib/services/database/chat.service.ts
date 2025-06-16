@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import type { ConversationSession, ConversationMessage, Prisma } from '@prisma/client';
 import { logger } from '@/lib/utils/logger';
 import { checkDatabaseHealth } from '@/lib/db/health-check';
+import { withDatabase, DatabaseConnection } from '@/lib/utils/db-connection';
 import {
   validateAndSanitizeChatMessage,
   UpdateSessionTitleSchema,
@@ -94,45 +95,62 @@ export class ChatDatabaseService {
     userId?: string,
     pagination?: { limit?: number; cursor?: string }
   ): Promise<ConversationSession[]> {
-    try {
-      const validatedUserId = userId ? UserIdSchema.parse(userId) : undefined;
-      const { limit, cursor } = PaginationSchema.parse(pagination || {});
-      
-      // Check cache first (only for non-paginated requests)
-      if (!cursor) {
-        const cacheKey = validatedUserId || 'anonymous';
-        const cached = chatCaches.sessionLists.get(cacheKey);
-        if (cached) {
-          logger.debug('[ChatDB] Sessions retrieved from cache', { userId, count: cached.length });
-          return cached.slice(0, limit);
-        }
+    const validatedUserId = userId ? UserIdSchema.parse(userId) : undefined;
+    const { limit, cursor } = PaginationSchema.parse(pagination || {});
+    
+    // Check cache first (only for non-paginated requests)
+    if (!cursor) {
+      const cacheKey = validatedUserId || 'anonymous';
+      const cached = chatCaches.sessionLists.get(cacheKey);
+      if (cached) {
+        logger.debug('[ChatDB] Sessions retrieved from cache', { userId, count: cached.length });
+        return cached.slice(0, limit);
       }
-      
-      // Apply rate limiting
-      const rateLimitKey = userId || 'anonymous';
-      await enforceRateLimit(chatRateLimiters.sessionQuery, rateLimitKey);
-      
-      const sessions = await prisma.conversationSession.findMany({
-        where: userId ? { userId: validatedUserId } : {},
-        orderBy: { lastActiveAt: 'desc' },
-        take: limit,
-        ...(cursor && {
-          cursor: { id: cursor },
-          skip: 1,
-        }),
-      });
-      
-      // Cache the results (only for non-paginated requests)
-      if (!cursor && sessions.length > 0) {
-        const cacheKey = validatedUserId || 'anonymous';
-        chatCaches.sessionLists.set(cacheKey, sessions);
-      }
-      
-      return sessions;
-    } catch (error) {
-      logger.error('[ChatDB] Failed to get sessions', { error, userId });
-      return [];
     }
+    
+    return withDatabase(
+      async () => {
+        // Apply rate limiting
+        const rateLimitKey = userId || 'anonymous';
+        await enforceRateLimit(chatRateLimiters.sessionQuery, rateLimitKey);
+        
+        const sessions = await prisma.conversationSession.findMany({
+          where: userId ? { userId: validatedUserId } : {},
+          orderBy: { lastActiveAt: 'desc' },
+          take: limit,
+          ...(cursor && {
+            cursor: { id: cursor },
+            skip: 1,
+          }),
+        });
+        
+        // Cache the results (only for non-paginated requests)
+        if (!cursor && sessions.length > 0) {
+          const cacheKey = validatedUserId || 'anonymous';
+          chatCaches.sessionLists.set(cacheKey, sessions);
+        }
+        
+        return sessions;
+      },
+      async () => {
+        // Fallback: Return cached data even if expired
+        const cacheKey = validatedUserId || 'anonymous';
+        const staleCache = chatCaches.sessionLists.get(cacheKey);
+        
+        if (staleCache) {
+          logger.warn('[ChatDB] Using stale cache due to database error', { userId });
+          return staleCache.slice(0, limit);
+        }
+        
+        // If no cache available, return empty array in development
+        if (process.env.NODE_ENV === 'development') {
+          logger.warn('[ChatDB] Returning empty array in development mode');
+          return [];
+        }
+        
+        throw new Error('Database unavailable and no cached data found');
+      }
+    );
   }
 
   /**
@@ -155,29 +173,45 @@ export class ChatDatabaseService {
    * Get all messages for a session
    */
   static async getMessages(sessionId: string): Promise<ChatMessage[]> {
-    try {
-      // Check cache first
-      const cachedMessages = chatCaches.messages.get(sessionId);
-      if (cachedMessages) {
-        logger.debug('[ChatDB] Messages retrieved from cache', { sessionId });
-        return cachedMessages.map(msg => ChatDatabaseService.convertToChatMessage(msg));
-      }
-      
-      const messages = await prisma.conversationMessage.findMany({
-        where: { sessionId },
-        orderBy: { timestamp: 'asc' },
-      });
-      
-      // Cache the results
-      if (messages.length > 0) {
-        chatCaches.messages.set(sessionId, messages);
-      }
-      
-      return messages.map(msg => ChatDatabaseService.convertToChatMessage(msg));
-    } catch (error) {
-      logger.error('[ChatDB] Failed to get messages', { error, sessionId });
-      return [];
+    // Check cache first
+    const cachedMessages = chatCaches.messages.get(sessionId);
+    if (cachedMessages) {
+      logger.debug('[ChatDB] Messages retrieved from cache', { sessionId });
+      return cachedMessages.map(msg => ChatDatabaseService.convertToChatMessage(msg));
     }
+    
+    return withDatabase(
+      async () => {
+        const messages = await prisma.conversationMessage.findMany({
+          where: { sessionId },
+          orderBy: { timestamp: 'asc' },
+        });
+        
+        // Cache the results
+        if (messages.length > 0) {
+          chatCaches.messages.set(sessionId, messages);
+        }
+        
+        return messages.map(msg => ChatDatabaseService.convertToChatMessage(msg));
+      },
+      async () => {
+        // Fallback: Return cached data even if expired
+        const staleCache = chatCaches.messages.get(sessionId);
+        
+        if (staleCache) {
+          logger.warn('[ChatDB] Using stale cache due to database error', { sessionId });
+          return staleCache.map(msg => ChatDatabaseService.convertToChatMessage(msg));
+        }
+        
+        // If no cache available, return empty array in development
+        if (process.env.NODE_ENV === 'development') {
+          logger.warn('[ChatDB] Returning empty array in development mode');
+          return [];
+        }
+        
+        throw new Error('Database unavailable and no cached messages found');
+      }
+    );
   }
 
   /**

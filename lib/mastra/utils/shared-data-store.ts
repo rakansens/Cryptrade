@@ -163,7 +163,13 @@ export class SharedDataStore {
     const namespaceStore = instance.store.get(namespace);
     
     if (!namespaceStore) {
-      return [];
+      // 名前空間が存在しない場合は空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(`[SharedDataStore] Namespace '${namespace}' not found`);
+        return [];
+      }
+      
+      throw new Error(`Namespace '${namespace}' does not exist in SharedDataStore`);
     }
     
     return Array.from(namespaceStore.keys());

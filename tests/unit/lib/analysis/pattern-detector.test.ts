@@ -37,8 +37,8 @@ describe('PatternDetector', () => {
           type: expect.any(String),
           confidence: expect.any(Number),
           description: expect.any(String),
-          startIndex: expect.any(Number),
-          endIndex: expect.any(Number),
+          startTime: expect.any(Number),
+          endTime: expect.any(Number),
           visualization: expect.any(Object),
           metrics: expect.any(Object),
           trading_implication: expect.any(String),
@@ -85,7 +85,9 @@ describe('PatternDetector', () => {
       const patterns = detector.detectPatterns(params);
 
       patterns.forEach(pattern => {
-        expect((pattern as any).startIndex).toBeGreaterThanOrEqual(mockData.length - 20);
+        // Check that patterns are from recent data based on time
+        const recentDataStartTime = mockData[mockData.length - 20]!.time;
+        expect(pattern.startTime).toBeGreaterThanOrEqual(recentDataStartTime);
       });
     });
   });

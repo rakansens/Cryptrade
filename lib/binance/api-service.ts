@@ -183,5 +183,14 @@ export class BinanceAPIService extends BaseService {
 }
 
 // Legacy singleton export for backward compatibility
-// TODO: Migrate all usages to DI pattern
+// Migration guide:
+// 1. Import BinanceAPIService class instead of binanceAPI singleton
+// 2. Create instance with dependency injection: new BinanceAPIService()
+// 3. Pass instance to components/hooks that need it
+// 4. Remove this export once all usages are migrated
+//
+// Example migration:
+// Before: import { binanceAPI } from '@/lib/binance/api-service';
+// After:  import { BinanceAPIService } from '@/lib/binance/api-service';
+//         const binanceAPI = new BinanceAPIService();
 export const binanceAPI = new BinanceAPIService();

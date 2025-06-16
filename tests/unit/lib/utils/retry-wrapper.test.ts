@@ -22,7 +22,7 @@ describe('RetryWrapper', () => {
   });
 
   describe('execute', () => {
-    it('should succeed on first attempt', async () => {
+    it('should execute operation successfully on first attempt without retry', async () => {
       const mockOperation = jest.fn<() => Promise<string>>().mockResolvedValue('success');
       
       const result = await retryWrapper.execute(mockOperation);
@@ -31,7 +31,7 @@ describe('RetryWrapper', () => {
       expect(mockOperation).toHaveBeenCalledTimes(1);
     });
 
-    it('should retry and succeed on second attempt', async () => {
+    it('should retry failed operation and succeed on second attempt with onRetry callback', async () => {
       const mockOperation = jest.fn<() => Promise<string>>()
         .mockRejectedValueOnce(new Error('First failure'))
         .mockResolvedValueOnce('success');
@@ -54,7 +54,7 @@ describe('RetryWrapper', () => {
       );
     });
 
-    it('should fail after all retries exhausted', async () => {
+    it('should throw original error after all retry attempts are exhausted', async () => {
       const mockOperation = jest.fn<() => Promise<any>>()
         .mockRejectedValue(new Error('Persistent failure'));
       
@@ -64,7 +64,7 @@ describe('RetryWrapper', () => {
       expect(mockOperation).toHaveBeenCalledTimes(3);
     });
 
-    it('should apply exponential backoff', async () => {
+    it('should apply exponential backoff with increasing delays between retries', async () => {
       const mockOperation = jest.fn<() => Promise<string>>()
         .mockRejectedValueOnce(new Error('Fail 1'))
         .mockRejectedValueOnce(new Error('Fail 2'))
@@ -87,7 +87,7 @@ describe('RetryWrapper', () => {
       }
     });
 
-    it('should respect maxDelay', async () => {
+    it('should cap retry delays at maxDelay configuration value', async () => {
       const mockOperation = jest.fn<() => Promise<any>>()
         .mockRejectedValue(new Error('Always fails'));
       
@@ -118,7 +118,7 @@ describe('RetryWrapper', () => {
   });
 
   describe('wrap', () => {
-    it('should create a retryable function', async () => {
+    it('should wrap function with retry logic preserving original arguments', async () => {
       const originalFn = jest.fn<(...args: any[]) => Promise<string>>()
         .mockRejectedValueOnce(new Error('Fail once'))
         .mockResolvedValueOnce('success');

@@ -787,7 +787,20 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
           const state = get();
           
           if (!state.isDbEnabled) {
-            return [];
+            // DBが無効の場合はメモリから取得を試みる
+            const session = state.sessions[sessionId];
+            if (session && session.messages.length > 0) {
+              logger.info('[EnhancedConversationMemory] Returning messages from memory (DB disabled)');
+              return session.messages;
+            }
+            
+            // メモリにもデータがない場合
+            if (process.env.NODE_ENV === 'development') {
+              logger.debug('[EnhancedConversationMemory] No archived messages available (DB disabled)');
+              return [];
+            }
+            
+            throw new Error('Database is disabled and no messages found in memory.');
           }
           
           try {
@@ -808,7 +821,22 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             } as ConversationMessage));
           } catch (error) {
             logger.error('[EnhancedConversationMemory] Failed to get archived messages', { error });
-            return [];
+            
+            // メモリからのフォールバックを試みる
+            const session = state.sessions[sessionId];
+            if (session && session.messages.length > 0) {
+              logger.warn('[EnhancedConversationMemory] Using memory cache due to DB error');
+              return session.messages.slice(0, 100); // 最大00件まで
+            }
+            
+            // 開発環境では空配列を返す
+            if (process.env.NODE_ENV === 'development') {
+              logger.warn('[EnhancedConversationMemory] Returning empty array in development');
+              return [];
+            }
+            
+            // 本番環境ではエラーを投げる
+            throw new Error(`Failed to retrieve archived messages: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         },
 });

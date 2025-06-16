@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
 import type { ChartDrawing as PrismaChartDrawing, PatternAnalysis, DrawingType } from '@prisma/client';
 import { logger } from '@/lib/utils/logger';
+import { withDatabase } from '@/lib/utils/db-connection';
 import { ChartDrawing, PatternData, DrawingPoint, DrawingStyle, PatternVisualization, PatternMetrics } from '@/lib/validation/chart-drawing.schema';
 
 // Check if we're running in the browser
@@ -64,26 +65,35 @@ export class ChartDrawingDatabaseService {
     // Prisma doesn't work in the browser
     if (isBrowser) {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
-      return [];
+      
+      // ブラウザ環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      throw new Error('ChartDrawingDB cannot be used in browser environment');
     }
     
-    try {
-      // Ensure database connection is initialized
-      await prisma.$connect();
-      
-      const dbDrawings = await prisma.chartDrawing.findMany({
-        where: sessionId ? { sessionId } : {},
-        orderBy: { createdAt: 'asc' },
-      });
+    return withDatabase(
+      async () => {
+        const dbDrawings = await prisma.chartDrawing.findMany({
+          where: sessionId ? { sessionId } : {},
+          orderBy: { createdAt: 'asc' },
+        });
 
-      return dbDrawings.map(drawing => this.convertToChartDrawing(drawing));
-    } catch (error) {
-      logger.error('[ChartDrawingDB] Failed to load drawings', { 
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      return [];
-    }
+        return dbDrawings.map(drawing => this.convertToChartDrawing(drawing));
+      },
+      async () => {
+        // Fallback: Return empty array with warning
+        logger.warn('[ChartDrawingDB] Database unavailable, returning empty array', { sessionId });
+        
+        if (process.env.NODE_ENV === 'development') {
+          return [];
+        }
+        
+        throw new Error('Database unavailable for loading drawings');
+      }
+    );
   }
 
   /**
@@ -216,26 +226,35 @@ export class ChartDrawingDatabaseService {
     // Prisma doesn't work in the browser
     if (isBrowser) {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
-      return [];
+      
+      // ブラウザ環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      throw new Error('ChartDrawingDB cannot be used in browser environment');
     }
     
-    try {
-      // Ensure database connection is initialized
-      await prisma.$connect();
-      
-      const dbPatterns = await prisma.patternAnalysis.findMany({
-        where: sessionId ? { sessionId } : {},
-        orderBy: { createdAt: 'desc' },
-      });
+    return withDatabase(
+      async () => {
+        const dbPatterns = await prisma.patternAnalysis.findMany({
+          where: sessionId ? { sessionId } : {},
+          orderBy: { createdAt: 'desc' },
+        });
 
-      return dbPatterns.map(pattern => this.convertToPatternData(pattern));
-    } catch (error) {
-      logger.error('[ChartDrawingDB] Failed to load patterns', { 
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      return [];
-    }
+        return dbPatterns.map(pattern => this.convertToPatternData(pattern));
+      },
+      async () => {
+        // Fallback: Return empty array with warning
+        logger.warn('[ChartDrawingDB] Database unavailable, returning empty array', { sessionId });
+        
+        if (process.env.NODE_ENV === 'development') {
+          return [];
+        }
+        
+        throw new Error('Database unavailable for loading patterns');
+      }
+    );
   }
 
   /**
@@ -345,30 +364,49 @@ export class ChartDrawingDatabaseService {
     // Prisma doesn't work in the browser
     if (isBrowser) {
       logger.warn('[ChartDrawingDB] Cannot use database in browser environment');
-      return [];
+      
+      // ブラウザ環境では空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        return [];
+      }
+      
+      throw new Error('ChartDrawingDB cannot be used in browser environment');
     }
     
-    try {
-      const dbDrawings = await prisma.chartDrawing.findMany({
-        where: {
-          ...(sessionId && { sessionId }),
-          metadata: {
-            path: ['symbol'],
-            equals: symbol,
+    return withDatabase(
+      async () => {
+        const dbDrawings = await prisma.chartDrawing.findMany({
+          where: {
+            ...(sessionId && { sessionId }),
+            metadata: {
+              path: ['symbol'],
+              equals: symbol,
+            },
           },
-        },
-      });
+        });
 
-      // Filter by timeframe in metadata
-      const filteredDrawings = dbDrawings.filter(drawing => {
-        const metadata = drawing.metadata as Record<string, unknown> | null;
-        return metadata?.['timeframe'] === timeframe;
-      });
+        // Filter by timeframe in metadata
+        const filteredDrawings = dbDrawings.filter(drawing => {
+          const metadata = drawing.metadata as Record<string, unknown> | null;
+          return metadata?.['timeframe'] === timeframe;
+        });
 
-      return filteredDrawings.map(drawing => this.convertToChartDrawing(drawing));
-    } catch (error) {
-      logger.error('[ChartDrawingDB] Failed to get timeframe drawings', { error });
-      return [];
-    }
+        return filteredDrawings.map(drawing => this.convertToChartDrawing(drawing));
+      },
+      async () => {
+        // Fallback: Return empty array with warning
+        logger.warn('[ChartDrawingDB] Database unavailable, returning empty array', { 
+          symbol, 
+          timeframe, 
+          sessionId 
+        });
+        
+        if (process.env.NODE_ENV === 'development') {
+          return [];
+        }
+        
+        throw new Error('Database unavailable for loading timeframe drawings');
+      }
+    );
   }
 }

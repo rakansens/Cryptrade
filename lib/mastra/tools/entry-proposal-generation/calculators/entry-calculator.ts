@@ -83,7 +83,13 @@ export async function calculateEntryPoints(
   const lastCandle = marketData[marketData.length - 1];
   if (!lastCandle) {
     logger.warn('[EntryCalculator] No market data available');
-    return [];
+    
+    // マーケットデータがない場合は空配列を返す
+    if (process.env.NODE_ENV === 'development') {
+      return [];
+    }
+    
+    throw new Error('No market data available for entry point calculation');
   }
   const currentPrice = lastCandle.close;
   const entryPoints: EntryPoint[] = [];

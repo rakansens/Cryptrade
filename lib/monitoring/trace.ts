@@ -82,17 +82,66 @@ class TraceManager {
     this.activeTraces.delete(correlationId);
   }
   
-  private recordPrometheusMetrics(_trace: TraceContext, _metrics: TraceMetrics, _duration: number) {
-    // TODO: Phase2で実装
-    // prometheus.register.histogram('agent_latency_seconds', {
-    //   name: 'agent_latency_seconds',
-    //   help: 'Agent execution latency',
-    //   labelNames: ['agent_id', 'operation_type', 'success'],
-    //   buckets: [0.1, 0.5, 1, 2, 5, 10],
-    // }).observe(
-    //   { agent_id: trace.agentId, operation_type: trace.operationType, success: metrics.success },
-    //   duration / 1000
-    // );
+  private recordPrometheusMetrics(trace: TraceContext, metrics: TraceMetrics, duration: number) {
+    try {
+      // Import Prometheus metrics
+      const { metrics: prometheusMetrics } = require('./prometheus');
+      
+      // Record agent latency
+      prometheusMetrics.agentLatency.observe(
+        {
+          agent_id: trace.agentId,
+          operation_type: trace.operationType,
+          success: String(metrics.success)
+        },
+        duration / 1000 // Convert to seconds
+      );
+      
+      // Record token usage
+      if (metrics.tokensUsed > 0) {
+        prometheusMetrics.agentTokenUsage.inc(
+          {
+            agent_id: trace.agentId,
+            operation_type: trace.operationType
+          },
+          metrics.tokensUsed
+        );
+      }
+      
+      // Record errors
+      if (!metrics.success && metrics.errorType) {
+        prometheusMetrics.agentErrors.inc({
+          agent_id: trace.agentId,
+          error_type: metrics.errorType
+        });
+      }
+      
+      // Also log metrics for observability
+      logger.info('[TraceManager] Metrics recorded', {
+        metric_type: 'agent_latency',
+        agent_id: trace.agentId,
+        operation_type: trace.operationType,
+        success: metrics.success,
+        duration_ms: duration,
+        duration_seconds: duration / 1000,
+        tokens_used: metrics.tokensUsed,
+        error_type: metrics.errorType,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      logger.error('[TraceManager] Failed to record Prometheus metrics', { error });
+      
+      // Fallback to logging only
+      logger.info('[TraceManager] Metrics recorded (fallback)', {
+        agent_id: trace.agentId,
+        operation_type: trace.operationType,
+        success: metrics.success,
+        duration_ms: duration,
+        tokens_used: metrics.tokensUsed,
+        error_type: metrics.errorType
+      });
+    }
   }
 }
 
@@ -136,9 +185,20 @@ export function withTrace<T extends TraceableParams[], R extends TraceableResult
     try {
       const result = await fn(...args);
       
-      // TODO: 実際のtoken使用量を取得
-      tokensInput = result.tokensUsed?.input || 0;
-      tokensOutput = result.tokensUsed?.output || 0;
+      // Extract token usage from result
+      if (result.tokensUsed) {
+        tokensInput = result.tokensUsed.input || 0;
+        tokensOutput = result.tokensUsed.output || 0;
+      } else if ('usage' in result && typeof result.usage === 'object') {
+        // Alternative format from some AI providers
+        const usage = result.usage as any;
+        tokensInput = usage.prompt_tokens || usage.input_tokens || 0;
+        tokensOutput = usage.completion_tokens || usage.output_tokens || 0;
+      }
+      
+      // Estimate cost based on token usage (GPT-4o pricing as example)
+      // Input: $2.50 per 1M tokens, Output: $10.00 per 1M tokens
+      costUsd = (tokensInput * 0.0000025) + (tokensOutput * 0.00001);
       costUsd = calculateCost(agentId, tokensInput, tokensOutput);
       
       traceManager.endTrace(trace.correlationId, {

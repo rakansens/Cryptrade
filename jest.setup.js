@@ -1,6 +1,28 @@
 // Jest setup file for additional configuration
 require('@testing-library/jest-dom');
 
+// Performance optimizations
+jest.setTimeout(5000); // Global timeout for all tests
+
+// Disable fake timers by default (can cause performance issues)
+jest.useRealTimers();
+
+// Reduce timer delays in tests
+const originalSetTimeout = global.setTimeout;
+const originalSetInterval = global.setInterval;
+
+global.setTimeout = (fn, delay, ...args) => {
+  // Reduce delays in test environment
+  const reducedDelay = delay > 10 ? Math.min(delay / 10, 100) : delay;
+  return originalSetTimeout(fn, reducedDelay, ...args);
+};
+
+global.setInterval = (fn, delay, ...args) => {
+  // Reduce intervals in test environment
+  const reducedDelay = delay > 10 ? Math.min(delay / 10, 100) : delay;
+  return originalSetInterval(fn, reducedDelay, ...args);
+};
+
 // Load environment variables from .env.local for tests
 require('dotenv').config({ path: '.env.local' });
 
@@ -11,14 +33,16 @@ process.env.NODE_ENV = 'test';
 global.fetch = jest.fn();
 
 // Mock console methods for cleaner test output
+const originalConsole = console;
 global.console = {
   ...console,
   // Suppress debug/info logs in tests unless explicitly needed
   debug: jest.fn(),
   info: jest.fn(),
-  // Keep warn and error for important test feedback
-  warn: console.warn,
-  error: console.error,
+  log: jest.fn(),
+  // Keep warn and error for important test feedback but reduce noise
+  warn: process.env.SHOW_TEST_WARNINGS ? originalConsole.warn : jest.fn(),
+  error: process.env.SHOW_TEST_ERRORS ? originalConsole.error : jest.fn(),
 };
 
 // Mock WebSocket for connection manager tests
@@ -44,3 +68,38 @@ if (typeof global.TextDecoder === 'undefined') {
 
 // Setup timezone for consistent date/time tests
 process.env.TZ = 'UTC';
+
+// Optimize module resolution
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Mock heavy dependencies
+jest.mock('@/lib/monitoring/metrics', () => ({
+  metricsCollector: {
+    increment: jest.fn(),
+    histogram: jest.fn(),
+    gauge: jest.fn(),
+    reset: jest.fn(),
+    toJSON: jest.fn(() => ({
+      drawing_success_total: { value: 0 },
+      drawing_failed_total: { value: 0 },
+      drawing_retry_total: { value: 0 },
+    })),
+  },
+}));
+
+// Clean up after each test
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+// Prevent memory leaks
+afterAll(() => {
+  jest.restoreAllMocks();
+});

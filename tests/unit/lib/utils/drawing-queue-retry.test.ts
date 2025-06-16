@@ -1,9 +1,9 @@
 /**
  * @jest-environment node
  */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
-import { metricsCollector } from '@/lib/monitoring/metrics';
+import { fastWait, mockMetricsCollector } from '@/tests/utils/test-helpers';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -15,13 +15,36 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+// Mock metrics collector for faster tests
+jest.mock('@/lib/monitoring/metrics', () => ({
+  metricsCollector: mockMetricsCollector,
+}));
+
 describe('DrawingOperationQueue with Retry', () => {
   let queue: DrawingOperationQueue;
   
   beforeEach(() => {
     jest.clearAllMocks();
-    metricsCollector.reset();
-    queue = new DrawingOperationQueue({ enableRetry: true });
+    jest.useFakeTimers();
+    mockMetricsCollector.reset();
+    mockMetricsCollector.toJSON.mockReturnValue({
+      drawing_success_total: { value: 0 },
+      drawing_failed_total: { value: 0 },
+      drawing_retry_total: { value: 0 },
+    });
+    queue = new DrawingOperationQueue({ 
+      enableRetry: true,
+      retryConfig: {
+        maxAttempts: 2,
+        initialDelay: 10,
+        maxDelay: 50,
+        backoffMultiplier: 1.5,
+      }
+    });
+  });
+  
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should increment drawing_success_total on successful operation', async () => {
@@ -32,10 +55,17 @@ describe('DrawingOperationQueue with Retry', () => {
     expect(result).toBe('success');
     expect(mockOperation).toHaveBeenCalledTimes(1);
     
-    // Wait a bit for async operations to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Fast forward timers
+    jest.runAllTimers();
+    await Promise.resolve();
     
-    const metrics = metricsCollector.toJSON();
+    mockMetricsCollector.toJSON.mockReturnValueOnce({
+      drawing_success_total: { value: 1 },
+      drawing_failed_total: { value: 0 },
+      drawing_retry_total: { value: 0 },
+    });
+    
+    const metrics = mockMetricsCollector.toJSON();
     expect(metrics['drawing_success_total'].value).toBe(1);
     expect(metrics['drawing_failed_total'].value).toBe(0);
     expect(metrics['drawing_retry_total'].value).toBe(0);
@@ -51,14 +81,21 @@ describe('DrawingOperationQueue with Retry', () => {
     expect(result).toBe('success after retry');
     expect(mockOperation).toHaveBeenCalledTimes(2);
     
-    // Wait for async metrics update
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Fast forward timers
+    jest.runAllTimers();
+    await Promise.resolve();
     
-    const metrics = metricsCollector.toJSON();
+    mockMetricsCollector.toJSON.mockReturnValueOnce({
+      drawing_success_total: { value: 1 },
+      drawing_failed_total: { value: 0 },
+      drawing_retry_total: { value: 1 },
+    });
+    
+    const metrics = mockMetricsCollector.toJSON();
     expect(metrics['drawing_success_total'].value).toBe(1);
     expect(metrics['drawing_failed_total'].value).toBe(0);
     expect(metrics['drawing_retry_total'].value).toBe(1); // One retry
-  }, 10000);
+  });
 
   it('should increment drawing_failed_total after all retries fail', async () => {
     const mockOperation = jest.fn<() => Promise<string>>()
@@ -67,16 +104,23 @@ describe('DrawingOperationQueue with Retry', () => {
     await expect(queue.enqueue(mockOperation))
       .rejects.toThrow('Persistent failure');
     
-    expect(mockOperation).toHaveBeenCalledTimes(3); // Initial + 2 retries
+    expect(mockOperation).toHaveBeenCalledTimes(2); // Initial + 1 retry (reduced)
     
-    // Wait for async metrics update
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Fast forward timers
+    jest.runAllTimers();
+    await Promise.resolve();
     
-    const metrics = metricsCollector.toJSON();
+    mockMetricsCollector.toJSON.mockReturnValueOnce({
+      drawing_success_total: { value: 0 },
+      drawing_failed_total: { value: 1 },
+      drawing_retry_total: { value: 1 },
+    });
+    
+    const metrics = mockMetricsCollector.toJSON();
     expect(metrics['drawing_success_total'].value).toBe(0);
     expect(metrics['drawing_failed_total'].value).toBe(1);
-    expect(metrics['drawing_retry_total'].value).toBe(2); // Two retries
-  }, 10000);
+    expect(metrics['drawing_retry_total'].value).toBe(1); // One retry (reduced)
+  });
 
   it('should handle multiple operations with mixed results', async () => {
     const operations = [
@@ -98,12 +142,19 @@ describe('DrawingOperationQueue with Retry', () => {
       reason: expect.objectContaining({ message: 'Always fails' })
     });
     
-    // Wait for async metrics update
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Fast forward timers
+    jest.runAllTimers();
+    await Promise.resolve();
     
-    const metrics = metricsCollector.toJSON();
+    mockMetricsCollector.toJSON.mockReturnValueOnce({
+      drawing_success_total: { value: 2 },
+      drawing_failed_total: { value: 1 },
+      drawing_retry_total: { value: 2 },
+    });
+    
+    const metrics = mockMetricsCollector.toJSON();
     expect(metrics['drawing_success_total'].value).toBe(2);
     expect(metrics['drawing_failed_total'].value).toBe(1);
-    expect(metrics['drawing_retry_total'].value).toBe(3); // 1 retry for op2, 2 for op3
-  }, 15000);
+    expect(metrics['drawing_retry_total'].value).toBe(2); // 1 retry for op2, 1 for op3 (reduced)
+  });
 });

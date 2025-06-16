@@ -5,6 +5,14 @@ import { logger } from '@/lib/utils/logger';
 import { FallbackHandler } from '../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
 
+// Agent-to-Agent message type
+interface A2AMessage {
+  type: 'response' | 'error';
+  content?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * Agent Selection Tool - エージェント選択ツール (A2A通信対応)
  * 
@@ -211,7 +219,7 @@ async function executeWithA2ACommunication(
       new Promise<null>((_, reject) => 
         setTimeout(() => reject(new Error('A2A communication timeout')), 10000)
       )
-    ]) as any; // TODO: Add proper A2AMessage type from @/types
+    ]) as A2AMessage; // Type assertion for agent-to-agent message
 
     if (!a2aMessage) {
       return {

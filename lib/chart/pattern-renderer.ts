@@ -222,13 +222,14 @@ export class PatternRenderer {
   //     
   //     // Find min/max values for the area
   //     // const minValue = Math.min(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
-  //     // const maxValue = Math.max(...points.map(p => p?.value ?? 0).filter(v => v !== 0));
-  //     // const minTime = Math.min(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
-  //     // const maxTime = Math.max(...points.map(p => p?.time ?? 0).filter(t => t !== 0));
+  //     // Pattern area rendering implementation
+  //     // Note: Area rendering is currently disabled due to visual artifacts
+  //     // Future implementation options:
+  //     // 1. Use custom overlay with Canvas API
+  //     // 2. Use multiple area series with transparent fills
+  //     // 3. Use histogram series for vertical highlighting
   //     
-  //     // Skip area rendering for now to avoid the red vertical bar issue
-  //     // TODO: Implement proper area highlighting using a different approach
-  //     logger.info('[PatternRenderer] Skipping area rendering to avoid visual artifacts');
+  //     logger.info('[PatternRenderer] Area rendering is disabled. Use PatternAreaRenderer for custom implementation');
   //   });
   // }
   

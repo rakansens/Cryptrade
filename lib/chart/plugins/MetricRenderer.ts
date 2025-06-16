@@ -347,7 +347,13 @@ export class MetricRenderer implements IMetricRendererPlugin {
     timeRange: { startTime: number; endTime: number }
   ): Promise<ISeriesApi<SeriesType>[]> {
     if (!this.context) {
-      return [];
+      // コンテキストがない場合は空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[MetricRenderer] Context not initialized for pattern metrics');
+        return [];
+      }
+      
+      throw new Error('MetricRenderer context is not initialized. Cannot render pattern metrics.');
     }
     
     const createdSeries: ISeriesApi<SeriesType>[] = [];

@@ -409,7 +409,13 @@ export async function semanticSearch(
     }
     
     if (allMessages.length === 0) {
-      return [];
+      // メッセージがない場合は空配列を返す
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug('[ConversationMemory] No messages found for semantic search');
+        return [];
+      }
+      
+      throw new Error('No messages available for semantic search');
     }
     
     logger.info('[ConversationMemory] Semantic search fallback to text search', {

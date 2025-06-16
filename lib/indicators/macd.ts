@@ -7,6 +7,8 @@
  */
 
 import type { MACDData } from '@/types/market';
+import { validatePriceData, handleIndicatorError } from './validation';
+import { logger } from '@/lib/utils/logger';
 
 function calculateEMA(data: number[], period: number): number[] {
   const ema: number[] = [];
@@ -35,9 +37,25 @@ export function calculateMACD(
   slowPeriod: number = 26,
   signalPeriod: number = 9
 ): MACDData[] {
-  if (data.length < slowPeriod + signalPeriod) {
-    return [];
+  // 入力データの検証
+  const validation = validatePriceData(data, {
+    minLength: slowPeriod + signalPeriod,
+    checkMonotonic: true,
+    allowNaN: false,
+    allowInfinity: false
+  });
+
+  if (!validation.valid) {
+    return handleIndicatorError('MACD', new Error(validation.error!), []);
   }
+
+  if (validation.warnings) {
+    validation.warnings.forEach(warning => {
+      logger.warn(`[MACD] ${warning}`);
+    });
+  }
+
+  try {
 
   const closePrices = data.map(d => d.close);
   
@@ -85,6 +103,9 @@ export function calculateMACD(
   }
 
   return result;
+  } catch (error) {
+    return handleIndicatorError('MACD', error, []);
+  }
 }
 
 export function getMACDColor(histogram: number): string {

@@ -1,0 +1,66 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Simple mock Binance WebSocket server
+RUN cat > server.js << 'EOF'
+const WebSocket = require('ws');
+const http = require('http');
+
+const port = process.env.PORT || 8080;
+const mockDelay = parseInt(process.env.MOCK_DELAY || '100');
+
+// Create HTTP server for health checks
+const server = http.createServer((req, res) => {
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+  
+  // Send mock market data periodically
+  const interval = setInterval(() => {
+    const mockData = {
+      e: 'trade',
+      s: 'BTCUSDT',
+      p: (50000 + Math.random() * 1000).toFixed(2),
+      q: Math.random().toFixed(8),
+      T: Date.now()
+    };
+    
+    ws.send(JSON.stringify(mockData));
+  }, mockDelay);
+  
+  ws.on('close', () => {
+    console.log('Client disconnected');
+    clearInterval(interval);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    clearInterval(interval);
+  });
+});
+
+server.listen(port, () => {
+  console.log(`Mock Binance server running on port ${port}`);
+});
+EOF
+
+# Install WebSocket library
+RUN npm init -y && npm install ws
+
+# Expose port
+EXPOSE 8080
+
+# Start server
+CMD ["node", "server.js"]

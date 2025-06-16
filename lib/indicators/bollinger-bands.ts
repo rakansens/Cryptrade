@@ -1,5 +1,7 @@
 import type { UTCTimestamp } from 'lightweight-charts';
 import type { BollingerBandsConfig } from '@/types/market';
+import { validatePriceData, handleIndicatorError } from './validation';
+import { logger } from '@/lib/utils/logger';
 
 // Lightweight Charts compatibility types
 interface PriceDataLightweight {
@@ -28,9 +30,25 @@ export function calculateBollingerBands(
   period: number = 20,
   stdDev: number = 2
 ): BollingerBandsDataLightweight[] {
-  if (data.length < period) {
-    return [];
+  // 入力データの検証
+  const validation = validatePriceData(data as any, {
+    minLength: period,
+    checkMonotonic: true,
+    allowNaN: false,
+    allowInfinity: false
+  });
+
+  if (!validation.valid) {
+    return handleIndicatorError('BollingerBands', new Error(validation.error!), []);
   }
+
+  if (validation.warnings) {
+    validation.warnings.forEach(warning => {
+      logger.warn(`[BollingerBands] ${warning}`);
+    });
+  }
+
+  try {
 
   const result: BollingerBandsDataLightweight[] = [];
 
@@ -87,6 +105,9 @@ export function calculateBollingerBands(
   }
 
   return result;
+  } catch (error) {
+    return handleIndicatorError('BollingerBands', error, []);
+  }
 }
 
 /**

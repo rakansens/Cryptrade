@@ -1,4 +1,6 @@
 import type { UTCTimestamp } from 'lightweight-charts';
+import { validatePriceData, handleIndicatorError } from './validation';
+import { logger } from '@/lib/utils/logger';
 
 // Lightweight Charts compatibility types
 interface PriceDataLightweight {
@@ -21,45 +23,63 @@ export function calculateSMA(
   data: PriceDataLightweight[], 
   period: number
 ): MovingAverageDataLightweight[] {
-  if (data.length < period) {
-    return [];
+  // 入力データの検証
+  const validation = validatePriceData(data as any, {
+    minLength: period,
+    checkMonotonic: true,
+    allowNaN: false,
+    allowInfinity: false
+  });
+
+  if (!validation.valid) {
+    return handleIndicatorError('SMA', new Error(validation.error!), []);
   }
 
-  const result: MovingAverageDataLightweight[] = [];
-  
-  // Calculate initial sum for first window
-  let sum = 0;
-  for (let i = 0; i < period; i++) {
-    const candle = data[i];
-    if (candle) {
-      sum += candle.close;
-    }
-  }
-  
-  // Add first SMA value
-  const firstCandle = data[period - 1];
-  if (firstCandle) {
-    result.push({
-      time: firstCandle.time,
-      value: sum / period
+  if (validation.warnings) {
+    validation.warnings.forEach(warning => {
+      logger.warn(`[SMA] ${warning}`);
     });
   }
-  
-  // Use sliding window for remaining values (O(N) complexity)
-  for (let i = period; i < data.length; i++) {
-    const oldCandle = data[i - period];
-    const newCandle = data[i];
-    if (oldCandle && newCandle) {
-      // Remove oldest value and add newest value
-      sum = sum - oldCandle.close + newCandle.close;
+
+  try {
+    const result: MovingAverageDataLightweight[] = [];
+    
+    // Calculate initial sum for first window
+    let sum = 0;
+    for (let i = 0; i < period; i++) {
+      const candle = data[i];
+      if (candle) {
+        sum += candle.close;
+      }
+    }
+    
+    // Add first SMA value
+    const firstCandle = data[period - 1];
+    if (firstCandle) {
       result.push({
-        time: newCandle.time,
+        time: firstCandle.time,
         value: sum / period
       });
     }
+    
+    // Use sliding window for remaining values (O(N) complexity)
+    for (let i = period; i < data.length; i++) {
+      const oldCandle = data[i - period];
+      const newCandle = data[i];
+      if (oldCandle && newCandle) {
+        // Remove oldest value and add newest value
+        sum = sum - oldCandle.close + newCandle.close;
+        result.push({
+          time: newCandle.time,
+          value: sum / period
+        });
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    return handleIndicatorError('SMA', error, []);
   }
-  
-  return result;
 }
 
 /**
@@ -72,44 +92,62 @@ export function calculateEMA(
   data: PriceDataLightweight[], 
   period: number
 ): MovingAverageDataLightweight[] {
-  if (data.length < period) {
-    return [];
+  // 入力データの検証
+  const validation = validatePriceData(data as any, {
+    minLength: period,
+    checkMonotonic: true,
+    allowNaN: false,
+    allowInfinity: false
+  });
+
+  if (!validation.valid) {
+    return handleIndicatorError('EMA', new Error(validation.error!), []);
   }
 
-  const result: MovingAverageDataLightweight[] = [];
-  const multiplier = 2 / (period + 1);
-  
-  // First EMA value is SMA
-  let sum = 0;
-  for (let i = 0; i < period; i++) {
-    const candle = data[i];
-    if (candle) {
-      sum += candle.close;
-    }
-  }
-  const firstEMA = sum / period;
-  const firstCandle = data[period - 1];
-  if (firstCandle) {
-    result.push({
-      time: firstCandle.time,
-      value: firstEMA
+  if (validation.warnings) {
+    validation.warnings.forEach(warning => {
+      logger.warn(`[EMA] ${warning}`);
     });
   }
 
-  // Calculate subsequent EMA values
-  for (let i = period; i < data.length; i++) {
-    const candle = data[i];
-    const lastResult = result[result.length - 1];
-    if (candle && lastResult) {
-      const emaValue = (candle.close - lastResult.value) * multiplier + lastResult.value;
+  try {
+    const result: MovingAverageDataLightweight[] = [];
+    const multiplier = 2 / (period + 1);
+    
+    // First EMA value is SMA
+    let sum = 0;
+    for (let i = 0; i < period; i++) {
+      const candle = data[i];
+      if (candle) {
+        sum += candle.close;
+      }
+    }
+    const firstEMA = sum / period;
+    const firstCandle = data[period - 1];
+    if (firstCandle) {
       result.push({
-        time: candle.time,
-        value: emaValue
+        time: firstCandle.time,
+        value: firstEMA
       });
     }
-  }
 
-  return result;
+    // Calculate subsequent EMA values
+    for (let i = period; i < data.length; i++) {
+      const candle = data[i];
+      const lastResult = result[result.length - 1];
+      if (candle && lastResult) {
+        const emaValue = (candle.close - lastResult.value) * multiplier + lastResult.value;
+        result.push({
+          time: candle.time,
+          value: emaValue
+        });
+      }
+    }
+
+    return result;
+  } catch (error) {
+    return handleIndicatorError('EMA', error, []);
+  }
 }
 
 /**

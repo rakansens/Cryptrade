@@ -1,13 +1,35 @@
 import { logger } from '@/lib/utils/logger';
 
+/**
+ * リトライ設定オプション
+ */
 export interface RetryOptions {
+  /** 最大試行回数 (デフォルト: 3) */
   maxAttempts?: number;
+  /** 初回遅延時間 (ms, デフォルト: 1000) */
   initialDelay?: number;
+  /** 最大遅延時間 (ms, デフォルト: 8000) */
   maxDelay?: number;
+  /** バックオフ係数 (デフォルト: 2) */
   factor?: number;
+  /** リトライ時のコールバック */
   onRetry?: (error: Error, attempt: number) => void;
 }
 
+/**
+ * リトライ機能を提供するラッパークラス
+ * 指数バックオフを使用して失敗した操作を再試行します
+ * 
+ * @example
+ * ```typescript
+ * const retryWrapper = new RetryWrapper({
+ *   maxAttempts: 3,
+ *   initialDelay: 100,
+ *   factor: 2
+ * });
+ * const result = await retryWrapper.execute(() => fetchData());
+ * ```
+ */
 export class RetryWrapper {
   private readonly defaultOptions: Required<RetryOptions> = {
     maxAttempts: 3,
@@ -21,6 +43,14 @@ export class RetryWrapper {
     this.options = { ...this.defaultOptions, ...options };
   }
 
+  /**
+   * 操作を実行し、必要に応じてリトライします
+   * 
+   * @param operation - 実行する非同期操作
+   * @param operationName - 操作名（ログ用）
+   * @returns 操作の結果
+   * @throws {Error} すべてのリトライが失敗した場合の最後のエラー
+   */
   async execute<T>(
     operation: () => Promise<T>,
     operationName?: string
@@ -84,7 +114,17 @@ export class RetryWrapper {
   }
 
   /**
-   * Create a retryable version of a function
+   * 関数をリトライ可能なバージョンにラップします
+   * 
+   * @param fn - ラップする非同期関数
+   * @param operationName - 操作名（ログ用）
+   * @returns リトライ機能付きの同じシグネチャの関数
+   * 
+   * @example
+   * ```typescript
+   * const retryableFetch = retryWrapper.wrap(fetchApi, 'api-fetch');
+   * const data = await retryableFetch('/api/data');
+   * ```
    */
   wrap<T extends (...args: unknown[]) => Promise<unknown>>(
     fn: T,
