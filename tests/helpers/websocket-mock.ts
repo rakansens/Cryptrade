@@ -74,6 +74,12 @@ export class MockWebSocket {
   private messageQueue: BinanceMessage[] = [];
   private closeCode?: number;
   private closeReason?: string;
+  
+  // Event handler properties
+  onopen?: (event: Event) => void;
+  onclose?: (event: CloseEvent) => void;
+  onerror?: (event: Event) => void;
+  onmessage?: (event: MessageEvent) => void;
 
   // WebSocket constants
   static CONNECTING = 0;
@@ -169,7 +175,10 @@ export class MockWebSocket {
 
   // Simulate connection error
   simulateError(error?: Error): void {
-    this.trigger('error', new ErrorEvent('error', { error: error || new Error('WebSocket error') }));
+    // Create a simple error event without using ErrorEvent constructor
+    const errorEvent = new Event('error') as any;
+    errorEvent.error = error || new Error('WebSocket error');
+    this.trigger('error', errorEvent);
   }
 
   // Simulate network disconnection
@@ -180,7 +189,7 @@ export class MockWebSocket {
     }
   }
 
-  private trigger<K extends keyof WebSocketEventMap>(event: K, data: WebSocketEventMap[K]): void {
+  public trigger<K extends keyof WebSocketEventMap>(event: K, data: WebSocketEventMap[K]): void {
     const handlers = (this.listeners.get(event) || []) as Array<WebSocketEventHandler<K>>;
     handlers.forEach(handler => {
       try {
@@ -228,7 +237,12 @@ export class MockWebSocket {
   static clearInstances(): void {
     MockWebSocket.instances.forEach(instance => {
       if (instance.readyState !== MockWebSocket.CLOSED) {
-        instance.close();
+        try {
+          instance.close();
+        } catch (error) {
+          // Ignore close errors during cleanup
+          console.warn('Error closing WebSocket during cleanup:', error);
+        }
       }
     });
     MockWebSocket.instances = [];

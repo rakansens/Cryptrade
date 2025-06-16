@@ -5,20 +5,11 @@ import { DrawingPointSchema, DrawingStyleSchema, DrawingTypeSchema, DrawingModeS
 export const ChartDrawingSchema = z.object({
   id: z.string().min(1),
   type: DrawingTypeSchema,
-  points: z.array(DrawingPointSchema).min(1).max(10), // Most drawings need 1-2 points
-  style: DrawingStyleSchema.partial().optional(),
-  price: z.number().optional(),
-  time: z.number().optional(),
-  levels: z.array(z.number()).optional(),
-  visible: z.boolean().optional().default(true),
-  interactive: z.boolean().optional().default(true),
-  metadata: z.record(z.string(), z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.union([z.string(), z.number(), z.boolean()])),
-    z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-  ])).optional()
+  points: z.array(DrawingPointSchema).min(1).max(10),
+  style: DrawingStyleSchema,
+  visible: z.boolean(),
+  interactive: z.boolean(),
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 // Re-import from types/pattern.ts to avoid duplication
@@ -84,17 +75,11 @@ export const PatternMetricsSchema = z.object({
 
 // Pattern Data Schema
 export const PatternDataSchema = z.object({
-  id: z.string().min(1),
-  type: PatternTypeSchema,
-  symbol: z.string().min(1),
-  interval: z.string().min(1),
-  startTime: z.number().positive(),
-  endTime: z.number().positive(),
-  visualization: PatternVisualizationSchema,
-  metrics: PatternMetricsSchema.optional(),
-  description: z.string().optional(),
-  tradingImplication: TradingImplicationSchema,
-  confidence: z.number().min(0).max(1)
+  type: z.string().min(1),
+  visualization: z.any(),
+  metrics: z.record(z.string(), z.any()).optional(),
+  tradingImplication: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional()
 });
 
 // Validation helpers

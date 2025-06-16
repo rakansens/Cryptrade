@@ -9,14 +9,14 @@ import { z, ZodIssue } from 'zod';
 
 // Drawing point schema - enforces value property (not price)
 export const DrawingPointSchema = z.object({
-  time: z.number().describe('Unix timestamp in seconds'),
+  time: z.number().positive().int().describe('Unix timestamp in milliseconds'),
   value: z.number().describe('Price value at this point'),
 });
 
 // Drawing style schema
 export const DrawingStyleSchema = z.object({
-  color: z.string(), // Accept any string for flexibility (can be hex, rgb, hsl, named colors)
-  lineWidth: z.number().min(1).max(10),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color format'), // Enforce hex color format
+  lineWidth: z.number().int().min(1).max(10),
   lineStyle: z.enum(['solid', 'dashed', 'dotted']),
   showLabels: z.boolean().optional().default(false),
 });
