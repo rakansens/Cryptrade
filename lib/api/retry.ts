@@ -100,7 +100,7 @@ export async function withBinanceRetry<T>(
 }
 
 // Circuit breaker pattern for repeated failures
-class CircuitBreaker {
+export class CircuitBreaker {
   private failures = 0;
   private lastFailureTime = 0;
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';

@@ -98,7 +98,10 @@ patterns.forEach((pattern, index) => {
     // Try to clean up
     try {
       fs.unlinkSync(`/tmp/jest-result-${index}.json`);
-    } catch (e) {}
+    } catch (e) {
+      // Ignore file cleanup errors
+      console.error(`Failed to clean up temp file:`, e.message || e);
+    }
   }
 });
 

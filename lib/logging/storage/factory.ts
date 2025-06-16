@@ -16,6 +16,7 @@
 
 import type { IUnifiedStorage } from '../unified-logger';
 import { isTest } from '@/config/env';
+import { logger } from '@/lib/utils/logger';
 
 // Storage configuration type
 export interface StorageConfig {
@@ -54,11 +55,11 @@ export async function createUnifiedStorage(config: StorageConfig): Promise<IUnif
           await sqliteStorage.init();
           return sqliteStorage;
         } catch (initError) {
-          console.error('[UnifiedStorage] SQLite init failed, falling back to memory:', initError);
+          logger.error('[UnifiedStorage] SQLite init failed, falling back to memory', { error: initError });
           sqliteUnavailable = true;
         }
       } catch (importError) {
-        console.error('[UnifiedStorage] SQLite module load failed, falling back to memory:', importError);
+        logger.error('[UnifiedStorage] SQLite module load failed, falling back to memory', { error: importError });
         sqliteUnavailable = true;
       }
       // Mutate config so subsequent calls default to memory storage
@@ -75,7 +76,7 @@ export async function createUnifiedStorage(config: StorageConfig): Promise<IUnif
         });
       } catch (error) {
         // If PostgreSQL module fails to load, fall back to memory storage
-        console.warn('[UnifiedStorage] PostgreSQL storage failed to initialize, using memory storage as fallback.', error);
+        logger.warn('[UnifiedStorage] PostgreSQL storage failed to initialize, using memory storage as fallback', { error });
         const { UnifiedMemoryStorage: FallbackMemory } = await import('./memory');
         return new FallbackMemory(config);
       }

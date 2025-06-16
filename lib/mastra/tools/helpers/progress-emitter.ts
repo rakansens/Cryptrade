@@ -6,14 +6,14 @@ import { logger } from '@/lib/utils/logger';
  * that can be consumed by SSE endpoints
  */
 
-interface ProgressEvent {
+export interface ProgressEvent {
   type: string;
   step?: string;
   progress?: number;
   details?: unknown;
 }
 
-type ProgressCallback = (event: ProgressEvent) => void;
+export type ProgressCallback = (event: ProgressEvent) => void;
 
 class ProgressEmitter {
   private callbacks: Set<ProgressCallback> = new Set();

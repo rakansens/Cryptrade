@@ -15,7 +15,7 @@ import {
 } from '@/lib/tools/enhanced-market-data-with-errors';
 
 // Define MarketAnalysisData interface
-interface MarketAnalysisData {
+export interface MarketAnalysisData {
   symbol: string;
   klines: Array<{
     time: number;

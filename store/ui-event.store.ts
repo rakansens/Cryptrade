@@ -8,7 +8,7 @@ const initialState = {
 };
 
 // Simple store for UI event publishing
-interface UIEventState {
+export interface UIEventState {
   isInitialized: boolean;
   setInitialized: (initialized: boolean) => void;
   reset: () => void;

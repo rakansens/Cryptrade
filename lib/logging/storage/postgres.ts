@@ -1,7 +1,10 @@
 /**
- * PostgreSQL Storage Implementation
+ * @alpha
+ * PostgreSQL Storage Implementation - Placeholder
  * 
  * This is a placeholder implementation for PostgreSQL storage.
+ * All methods simulate operations but do not actually connect to PostgreSQL.
+ * 
  * In production, this would require:
  * - PostgreSQL client library (pg)
  * - Connection pooling
@@ -14,6 +17,10 @@ import type { LogEntry, LogQuery } from '../types';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
 
+/**
+ * @alpha
+ * Placeholder PostgreSQL storage class
+ */
 export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
   private isConnected = false;
   private connectionUrl: string;

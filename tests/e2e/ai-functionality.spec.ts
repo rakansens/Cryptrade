@@ -123,6 +123,11 @@ test.describe('AI Chart Control Functionality', () => {
     });
     
     if (storeState) {
+      /**
+       * @todo Multiple drawing implementation - should create 5 trendlines
+       * @notImplemented Current implementation only supports single drawing
+       * @description Once multiple drawing support is added, this should verify 5 trendlines are created
+       */
       // TODO: 複数描画実装後は5本になるはず
       expect(storeState.drawings.length).toBe(1);
     }

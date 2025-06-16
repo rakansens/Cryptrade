@@ -10,6 +10,7 @@
 
 /* eslint-disable no-restricted-syntax */
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 
 // Client-side environment schema (only NEXT_PUBLIC_* variables)
 const ClientEnvSchema = z.object({
@@ -45,7 +46,9 @@ function createClientEnv(rawEnv: Record<string, string | undefined>): ClientEnv 
   });
 
   if (!parseResult.success) {
-    console.warn('[ClientEnv] Some client environment variables are invalid:', parseResult.error.issues);
+    logger.warn('[ClientEnv] Some client environment variables are invalid', {
+      issues: parseResult.error.issues
+    });
     // Return partial data even if validation fails in client
     return {
       NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: false,
@@ -89,7 +92,9 @@ export function getClientEnv(): ClientEnv {
       return _clientEnv;
     } catch (error) {
       // Fallback if server env is not available (e.g., during build)
-      console.warn('[ClientEnv] Failed to load server environment, using process.env fallback');
+      logger.warn('[ClientEnv] Failed to load server environment, using process.env fallback', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

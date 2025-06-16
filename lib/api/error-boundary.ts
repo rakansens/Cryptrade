@@ -25,7 +25,7 @@ import type { ApiHandler, ApiHandlerContext } from '@/lib/api/types';
 /**
  * Error response structure
  */
-interface ErrorResponse {
+export interface ErrorResponse {
   success: false;
   error: {
     code: string;
@@ -175,8 +175,8 @@ function handleUncaughtError(
 /**
  * Error boundary wrapper for API handlers
  * 
- * @param handler - The API handler function
- * @returns Wrapped handler with error handling
+ * @param {ApiHandler<NextRequest, T>} handler - The API handler function
+ * @returns {ApiHandler<NextRequest, T>} Wrapped handler with error handling
  */
 export function withErrorBoundary<T = unknown>(
   handler: ApiHandler<NextRequest, T>
@@ -284,11 +284,11 @@ export function withStreamingErrorBoundary<T = unknown>(
 /**
  * Validation wrapper for request bodies
  */
-interface ValidationSchema<T> {
+export interface ValidationSchema<T> {
   parse?: (data: unknown) => T;
 }
 
-type ValidationFunction = (data: unknown) => Promise<{ valid: boolean; message?: string; field?: string; value?: unknown; details?: Record<string, unknown> }>;
+export type ValidationFunction = (data: unknown) => Promise<{ valid: boolean; message?: string; field?: string; value?: unknown; details?: Record<string, unknown> }>;
 
 export function withValidation<T>(
   schema: ValidationSchema<T> | ValidationFunction,

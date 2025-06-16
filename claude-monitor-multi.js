@@ -283,7 +283,9 @@ class ClaudeInstance {
     try {
       const { stdout } = require('child_process').execSync(`lsof -p ${this.pid} | grep cwd | awk '{print $NF}'`);
       return stdout.trim();
-    } catch {
+    } catch (error) {
+      // Log error when getting process directory
+      console.error(`[claude-monitor] Failed to get cwd for PID ${this.pid}:`, error.message || error);
       return 'unknown';
     }
   }
@@ -337,7 +339,10 @@ async function findClaudeProcesses() {
       try {
         const { stdout: ttyInfo } = await execPromise(`ps -p ${pid} -o tty=`);
         tty = ttyInfo.trim();
-      } catch {}
+      } catch (error) {
+        // Ignore error getting TTY info - process may have ended
+        console.error(`[claude-monitor] Failed to get TTY for PID ${pid}:`, error.message || error);
+      }
       
       currentPIDs.add(pid);
       
@@ -848,11 +853,17 @@ function startClaudeOutputMonitor() {
                   });
                 }
                 currentFiles.get(filePath).pids.add(pid);
-              } catch {}
+              } catch (error) {
+                // Ignore stat errors - file may have been deleted
+                console.error(`[claude-monitor] Failed to stat file ${filePath}:`, error.message || error);
+              }
             }
           }
         }
-      } catch {}
+      } catch (error) {
+        // Ignore lsof errors - process may have ended
+        console.error(`[claude-monitor] Failed to run lsof for PID ${pid}:`, error.message || error);
+      }
     }
     
     // ファイルの変更と読み込みを検出
@@ -1023,7 +1034,10 @@ async function detectAndLogFileOperation(operation, filePath, relativePath) {
         }
       }
     }
-  } catch {}
+  } catch (error) {
+    // Log error when detecting operations
+    console.error(`[claude-monitor] Failed to detect file operations:`, error.message || error);
+  }
   
   // lsofで検出できなかった場合、複数のアクティブなインスタンスがある場合はスキップ
   if (!activeInstance) {

@@ -2,15 +2,15 @@ import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import { logger } from '@/lib/utils/logger';
 import type { ConversationSession } from '@/types/conversation-memory';
 
-interface SyncState {
+export interface SyncState {
   currentSessionId?: string | null;
   sessions: Record<string, ConversationSession>;
   isDbEnabled: boolean;
   isSyncing: boolean;
 }
 
-type SetFn<T> = (fn: (state: T) => void) => void;
-type GetFn<T> = () => T;
+export type SetFn<T> = (fn: (state: T) => void) => void;
+export type GetFn<T> = () => T;
 
 export function createDbSyncHandlers<T extends SyncState>(set: SetFn<T>, get: GetFn<T>) {
   return {

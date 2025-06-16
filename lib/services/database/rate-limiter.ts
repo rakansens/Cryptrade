@@ -1,11 +1,11 @@
 import { logger } from '@/lib/utils/logger';
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;  // Time window in milliseconds
   maxRequests: number;  // Maximum requests per window
 }
 
-interface RateLimitEntry {
+export interface RateLimitEntry {
   count: number;
   resetTime: number;
 }

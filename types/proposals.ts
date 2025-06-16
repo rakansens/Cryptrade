@@ -596,3 +596,5 @@ export type DrawingType = 'pattern' | 'drawing';
 // Legacy naming support (to be deprecated)
 export type Proposal = DrawingProposal;
 export type ProposalGroup = DrawingProposalGroup;
+
+// DrawingProposalGroup is already exported as an interface above

@@ -16,8 +16,8 @@ export function useAlerts(userId?: string) {
         const data = await res.json();
         setAlerts(data.alerts);
       }
-    } catch (error) {
-      logger.error('[useAlerts] Failed to fetch alerts', { error });
+    } catch (_error) {
+      logger.error('[useAlerts] Failed to fetch alerts', { error: _error });
     }
   }, [userId]);
 
@@ -41,8 +41,8 @@ export function useAlerts(userId?: string) {
           const data = await res.json();
           setAlerts(prev => [...prev, data.alert]);
         }
-      } catch (error) {
-        logger.error('[useAlerts] Failed to create alert', { error });
+      } catch (_error) {
+        logger.error('[useAlerts] Failed to create alert', { error: _error });
       }
     },
     [userId]
@@ -51,12 +51,12 @@ export function useAlerts(userId?: string) {
   useSSEStream({
     url: '/api/events',
     eventTypes: ['alertTriggered'],
-    onEvent: (_type, ev) => {
+    onEvent: (_, ev) => {
       try {
         const payload = JSON.parse(ev.data);
         if (!userId || payload.userId !== userId) return;
         logger.info('[useAlerts] Alert triggered', payload);
-      } catch (e) {
+      } catch (_e) {
         logger.warn('[useAlerts] Failed to parse event', { data: ev.data });
       }
     },

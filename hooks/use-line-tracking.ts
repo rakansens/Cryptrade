@@ -5,14 +5,14 @@ import { useAnalysisHistory, useAnalysisActions } from '@/store/analysis-history
 import { logger } from '@/lib/utils/logger';
 import type { TouchEvent, AnalysisRecord } from '@/types/analysis-history';
 
-interface PriceUpdate {
+export interface PriceUpdate {
   symbol: string;
   price: number;
   volume: number;
   timestamp: number;
 }
 
-interface UseLineTrackingReturn {
+export interface UseLineTrackingReturn {
   activeRecords: AnalysisRecord[];
   recordTouch: (recordId: string, result: 'bounce' | 'break' | 'test') => void;
   completeRecord: (recordId: string, result: 'success' | 'partial' | 'failure') => void;

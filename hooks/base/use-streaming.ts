@@ -53,7 +53,8 @@ export function useStreaming<T = unknown>(options: StreamingHookOptions<T>): Str
     parseResponse = (chunk: string) => {
       try {
         return JSON.parse(chunk);
-      } catch {
+      } catch (error) {
+        // Return null for invalid JSON - this is expected for non-JSON responses
         return null;
       }
     }

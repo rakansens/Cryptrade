@@ -4,7 +4,7 @@ import { logger } from '@/lib/utils/logger'
 import { env, isDevelopment } from '@/config/env'
 
 // Prismaイベントの型定義
-type PrismaQueryEvent = {
+export type PrismaQueryEvent = {
   timestamp: Date;
   query: string;
   params: string;
@@ -12,13 +12,13 @@ type PrismaQueryEvent = {
   target: string;
 }
 
-type PrismaLogEvent = {
+export type PrismaLogEvent = {
   timestamp: Date;
   message: string;
   target?: string;
 }
 
-type PrismaErrorEvent = {
+export type PrismaErrorEvent = {
   timestamp: Date;
   message: string;
   target?: string;
@@ -82,7 +82,7 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 if (env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // BigIntを持つ可能性があるデータの型
-type SerializableData = 
+export type SerializableData = 
   | string 
   | number 
   | boolean 

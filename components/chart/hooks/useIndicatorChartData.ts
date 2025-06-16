@@ -12,7 +12,7 @@ import type {
   SeriesDataFormatter
 } from '@/types/indicator.types';
 
-interface UseIndicatorChartDataProps {
+export interface UseIndicatorChartDataProps {
   chartId: string;
   priceData: ProcessedKline[];
   seriesRefs: IndicatorSeriesRefs;

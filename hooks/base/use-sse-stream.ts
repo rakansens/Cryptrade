@@ -22,7 +22,7 @@ export interface UseSSEStreamOptions {
   autoConnect?: boolean;
 }
 
-interface UseSSEStreamReturn {
+export interface UseSSEStreamReturn {
   connect: () => void;
   disconnect: () => void;
   isStreaming: boolean;

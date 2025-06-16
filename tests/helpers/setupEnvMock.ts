@@ -36,8 +36,8 @@ type RestoreFunction = () => void;
 /**
  * Mock environment variables for the duration of a test
  * 
- * @param mockValues Object containing environment variables to mock
- * @returns Restore function to reset environment back to original state
+ * @param {EnvMockValues} mockValues - Object containing environment variables to mock
+ * @returns {RestoreFunction} Restore function to reset environment back to original state
  */
 export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
   // Store original environment values
@@ -78,7 +78,9 @@ export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
       envModule._resetEnvCache();
     }
   } catch (error) {
-    // Module not loaded yet or _resetEnvCache not available - that's fine
+    // Module not loaded yet or _resetEnvCache not available - this is expected
+    // during initial test setup when env module hasn't been imported yet.
+    // No action needed as the module will be loaded when first accessed.
   }
   
   // Return restore function
@@ -103,7 +105,9 @@ export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
         envModule._resetEnvCache();
       }
     } catch (error) {
-      // Module not loaded yet or _resetEnvCache not available - that's fine
+      // Module not loaded yet or _resetEnvCache not available after restoration.
+      // This is expected behavior and doesn't affect test execution.
+      // The env module will reload with correct values when next imported.
     }
   };
 }
@@ -154,6 +158,8 @@ export function resetEnvCache(): void {
       envModule._resetEnvCache();
     }
   } catch (error) {
-    // Module not loaded yet or _resetEnvCache not available - that's fine
+    // Module not loaded yet or _resetEnvCache not available.
+    // This is normal in test environments where the env module
+    // may not have been imported yet. Safe to ignore.
   }
 }

@@ -210,7 +210,7 @@ function countTrendlineTouches(
 /**
  * トレンドライン上のボリューム分析
  */
-interface VolumeAnalysis {
+export interface VolumeAnalysis {
   averageVolume: number;
   volumeRatio: number;
   volumeTrend: 'increasing' | 'decreasing' | 'stable';

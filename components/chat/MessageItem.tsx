@@ -206,7 +206,7 @@ export const MessageItem = React.memo(function MessageItem({
                 )
               }
             }
-          } catch (e) {
+          } catch {
             // Not JSON or parsing failed, show as regular content
           }
           

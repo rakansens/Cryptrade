@@ -26,8 +26,8 @@ export interface UseAsyncStateReturn<T, A extends unknown[]> extends AsyncState<
  * よくある「loading / error / data」3 状態をまとめて扱う汎用フック。
  * 同じ useState パターンを 1 行で置き換えられる。
  *
- * @param asyncFn 任意の非同期関数
- * @returns execute / state など
+ * @param {(...args: A) => Promise<T>} asyncFn - 任意の非同期関数
+ * @returns {UseAsyncStateReturn<T, A>} execute / state など
  */
 export function useAsyncState<
   T = unknown,

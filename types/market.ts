@@ -301,7 +301,10 @@ export function validateBinanceKlines(data: unknown): ProcessedKline[] {
 
     // ③ Empty array handling
     if (data.length === 0) {
-      console.warn('[validateBinanceKlines] Empty array received');
+      console.warn('[validateBinanceKlines] Empty array received', {
+        reason: 'No kline data provided from Binance API',
+        suggestion: 'Check if the symbol, interval, and time range are valid'
+      });
       return [];
     }
 
@@ -340,9 +343,11 @@ export function validateBinanceKlines(data: unknown): ProcessedKline[] {
       });
     } else {
       // Fast validation in production with better error handling
-      return (data as unknown[]).map((kline, index) => {
+      const invalidKlines: Array<{ index: number; kline: unknown }> = [];
+      
+      const processed = (data as unknown[]).map((kline, index) => {
         if (!Array.isArray(kline) || kline.length < 6) {
-          console.error(`[validateBinanceKlines] Invalid kline at index ${index}:`, kline);
+          invalidKlines.push({ index, kline });
           return null;
         }
         return {
@@ -354,6 +359,17 @@ export function validateBinanceKlines(data: unknown): ProcessedKline[] {
           volume: parseFloat(String(kline[5])),
         };
       }).filter(Boolean) as ProcessedKline[];
+      
+      if (invalidKlines.length > 0) {
+        console.error(`[validateBinanceKlines] Filtered out ${invalidKlines.length} invalid klines`, {
+          totalKlines: data.length,
+          validKlines: processed.length,
+          invalidSamples: invalidKlines.slice(0, 3), // Show first 3 invalid entries
+          reason: 'Klines must be arrays with at least 6 elements [time, open, high, low, close, volume]'
+        });
+      }
+      
+      return processed;
     }
   } catch (error: unknown) {
     console.error('[validateBinanceKlines] Validation failed:', error);

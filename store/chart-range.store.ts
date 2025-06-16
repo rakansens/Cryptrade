@@ -4,7 +4,7 @@ import type { LogicalRange } from 'lightweight-charts';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
 
-interface ChartRangeState {
+export interface ChartRangeState {
   // Main chart visible range for synchronization
   visibleLogicalRange: LogicalRange | null;
   
@@ -15,7 +15,7 @@ interface ChartRangeState {
   isSyncing: boolean;
 }
 
-interface ChartRangeActions {
+export interface ChartRangeActions {
   // Range management
   setVisibleLogicalRange: (range: LogicalRange | null) => void;
   
@@ -30,7 +30,7 @@ interface ChartRangeActions {
   reset: () => void;
 }
 
-type ChartRangeStore = ChartRangeState & ChartRangeActions;
+export type ChartRangeStore = ChartRangeState & ChartRangeActions;
 
 const debug = createStoreDebugger('ChartRangeStore');
 

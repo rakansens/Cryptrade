@@ -205,7 +205,7 @@ export class ErrorTracker {
 /**
  * Error statistics interface
  */
-interface ErrorStats {
+export interface ErrorStats {
   total: number;
   byCategory: Record<string, number>;
   bySeverity: Record<string, number>;

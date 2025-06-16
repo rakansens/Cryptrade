@@ -111,7 +111,7 @@ export const createCircuitBreakerMiddleware = (config: CircuitBreakerConfig): Ap
     try {
       return await circuitBreaker.execute(async () => {
         return raceWithCleanup([
-          async (_signal) => {
+          async () => {
             // Pass the signal to the context if supported
             // const enhancedCtx = { ...ctx, signal };
             return next();

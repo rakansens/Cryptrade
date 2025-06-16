@@ -1,7 +1,7 @@
 import { logger } from '@/lib/utils/logger';
 import type { ConversationSession, ConversationMessage } from '@prisma/client';
 
-interface CacheEntry<T> {
+export interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;

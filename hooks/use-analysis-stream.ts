@@ -9,7 +9,7 @@ import {
 } from '@/types/analysis-progress';
 import { streamToLines } from '@/lib/utils/stream-utils';
 
-interface UseAnalysisStreamOptions {
+export interface UseAnalysisStreamOptions {
   onStepStart?: (step: AnalysisStep) => void;
   onStepProgress?: (step: AnalysisStep) => void;
   onStepComplete?: (step: AnalysisStep) => void;
@@ -17,7 +17,7 @@ interface UseAnalysisStreamOptions {
   onError?: (error: string) => void;
 }
 
-interface UseAnalysisStreamReturn {
+export interface UseAnalysisStreamReturn {
   steps: AnalysisStep[];
   currentStepIndex: number;
   isAnalyzing: boolean;

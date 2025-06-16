@@ -118,7 +118,11 @@ describe('AI Chat + Market Analysis Integration', () => {
         timestamp: Date.now()
       });
       
-      // TODO: Fix agent API usage for testing
+      /**
+       * @todo Fix agent API usage for testing
+       * @fixme Currently using mock data instead of actual agent API
+       * @description Should use actual mastra agent API for generating analysis
+       */
       // const analysisResult = await (await mastra.getAgent('tradingAgent')).generate({
       //   messages: [{ role: 'user', content: userMessage }],
       //   symbol,
@@ -207,7 +211,11 @@ describe('AI Chat + Market Analysis Integration', () => {
             analysisCount++;
             
             // Perform new analysis
-            // TODO: Fix agent API usage
+            /**
+             * @todo Fix agent API usage for real-time analysis
+             * @fixme Currently using mock data instead of actual agent API
+             * @description Should use actual mastra agent API for real-time price movement analysis
+             */
             // const result = await (await mastra.getAgent('tradingAgent')).generate({
             //   messages: [{ role: 'system', content: 'Significant price movement detected' }],
             //   symbol,
@@ -435,7 +443,11 @@ describe('AI Chat + Market Analysis Integration', () => {
         marketStore.addKline(symbol, kline);
       });
       
-      // TODO: Fix agent API usage
+      /**
+       * @todo Fix agent API usage for pattern detection
+       * @fixme Currently using mock data instead of actual agent API
+       * @description Should use actual mastra agent API for detecting chart patterns
+       */
       // const result = await (await mastra.getAgent('tradingAgent')).generate({
       //   messages: [{ role: 'system', content: 'Detect chart patterns' }],
       //   symbol,
@@ -469,7 +481,11 @@ describe('AI Chat + Market Analysis Integration', () => {
         }
       });
       
-      // TODO: Fix enhancedProposalGenerationTool import and usage
+      /**
+       * @todo Fix enhancedProposalGenerationTool import and usage
+       * @notImplemented Enhanced proposal generation from patterns not yet implemented
+       * @description Should generate trading proposals based on detected patterns
+       */
       // const patternProposal = await enhancedProposalGenerationTool.execute({
       //   marketData: marketStore.klines[`${symbol}_1m`],
       //   pattern,
@@ -507,7 +523,11 @@ describe('AI Chat + Market Analysis Integration', () => {
         timestamp: Date.now()
       });
       
-      // TODO: Fix agent API usage
+      /**
+       * @todo Fix agent API usage for multi-agent orchestration
+       * @fixme Currently using mock data instead of actual orchestrator agent
+       * @description Should use actual mastra orchestrator agent for coordinating multiple analysis agents
+       */
       // const orchestratorResult = await (await mastra.getAgent('orchestratorAgent')).generate({
       //   request: 'comprehensive analysis',
       //   symbol,

@@ -51,14 +51,16 @@ function getEnvVar(key: string): string | undefined {
     // Browser environment - only access process.env for public variables
     try {
       return process?.env?.[key];
-    } catch {
+    } catch (error) {
+      // Silently fail - environment variables may not be accessible in some contexts
       return undefined;
     }
   } else {
     // Server environment - can access all environment variables
     try {
       return process?.env?.[key];
-    } catch {
+    } catch (error) {
+      // Silently fail - environment variables may not be accessible in some contexts
       return undefined;
     }
   }

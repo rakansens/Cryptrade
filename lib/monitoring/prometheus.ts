@@ -1,7 +1,9 @@
 /**
- * Prometheus Metrics Implementation
+ * @alpha
+ * Prometheus Metrics Implementation - Placeholder
  * 
  * This module provides a placeholder implementation for Prometheus metrics.
+ * All metrics operations are simulated and do not actually send data to Prometheus.
  * In production, this would integrate with the actual prometheus-client library.
  */
 
@@ -31,7 +33,9 @@ export interface GaugeOptions {
 }
 
 /**
+ * @alpha
  * Placeholder Histogram metric
+ * Simulates histogram operations without actual Prometheus integration
  */
 export class Histogram {
   private name: string;
@@ -62,7 +66,9 @@ export class Histogram {
 }
 
 /**
+ * @alpha
  * Placeholder Counter metric
+ * Simulates counter operations without actual Prometheus integration
  */
 export class Counter {
   private name: string;
@@ -99,7 +105,9 @@ export class Counter {
 }
 
 /**
+ * @alpha
  * Placeholder Gauge metric
+ * Simulates gauge operations without actual Prometheus integration
  */
 export class Gauge {
   private name: string;
@@ -146,7 +154,9 @@ export class Gauge {
 }
 
 /**
- * Metrics Registry (placeholder)
+ * @alpha
+ * Metrics Registry - Placeholder
+ * Simulates metric registry without actual Prometheus integration
  */
 export class Registry {
   private metrics: Map<string, Histogram | Counter | Gauge> = new Map();
@@ -265,9 +275,9 @@ export const metrics = {
 
 /**
  * Utility function to increment a metric
- * @param metricName - The name of the metric to increment
- * @param labels - Optional labels for the metric
- * @param value - The value to increment by (default: 1)
+ * @param {keyof typeof metrics} metricName - The name of the metric to increment
+ * @param {MetricLabels} [labels] - Optional labels for the metric
+ * @param {number} [value=1] - The value to increment by
  */
 export function incrementMetric(
   metricName: keyof typeof metrics,

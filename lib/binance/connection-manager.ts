@@ -4,16 +4,16 @@ import { validateBinanceTradeMessage, validateBinanceKlineMessage, type BinanceT
 
 const rateLimitedLogger = createRateLimitedLogger(logger as any);
 
-type MessageHandler = (data: BinanceTradeMessage | BinanceKlineMessage | Record<string, unknown>) => void;
-type UnsubscribeFunction = () => void;
+export type MessageHandler = (data: BinanceTradeMessage | BinanceKlineMessage | Record<string, unknown>) => void;
+export type UnsubscribeFunction = () => void;
 
-interface StreamSubscription {
+export interface StreamSubscription {
   id: string;
   handler: MessageHandler;
   streamName: string;
 }
 
-class BinanceConnectionManager {
+export class BinanceConnectionManager {
   private ws: WebSocket | null = null;
   private subscriptions: Map<string, StreamSubscription[]> = new Map();
   private isConnected = false;

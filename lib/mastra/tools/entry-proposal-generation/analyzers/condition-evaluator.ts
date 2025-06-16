@@ -8,7 +8,7 @@ import type { EntryConditions, MarketContext, TradingStrategyType } from '@/type
 import type { EntryPoint } from '../calculators/entry-calculator';
 import { logger } from '@/lib/utils/logger';
 
-interface EvaluateEntryConditionsInput {
+export interface EvaluateEntryConditionsInput {
   entryPoint: EntryPoint;
   marketContext: MarketContext;
   currentPrice: number;

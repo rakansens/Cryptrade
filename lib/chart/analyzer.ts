@@ -42,10 +42,10 @@ export class ChartAnalyzer {
    * トレンドラインを検出する
    * ローカルの最小値・最大値を結んで上昇・下降トレンドラインを検出します
    * 
-   * @param config - トレンドライン検出の設定
-   * @param config.lookbackPeriod - 分析対象期間（直近のキャンドル数）
-   * @param config.minTouchPoints - 最小タッチポイント数（2以上）
-   * @param config.confidenceThreshold - 信頼度の閾値（0.0〜1.0）
+   * @param {Object} config - トレンドライン検出の設定
+   * @param {number} config.lookbackPeriod - 分析対象期間（直近のキャンドル数）
+   * @param {number} config.minTouchPoints - 最小タッチポイント数（2以上）
+   * @param {number} config.confidenceThreshold - 信頼度の閾値（0.0〜1.0）
    * @returns 検出されたトレンドライン配列
    * @throws {Error} データが不十分な場合（本番環境のみ）
    */
@@ -206,11 +206,11 @@ export class ChartAnalyzer {
    * サポート・レジスタンスラインを検出する
    * 価格が複数回反発した水平ラインを検出します
    * 
-   * @param config - サポート・レジスタンス検出の設定
-   * @param config.lookbackPeriod - 分析対象期間（直近のキャンドル数）
-   * @param config.minTouches - 最小タッチ回数
-   * @param config.priceThreshold - 価格の丸め単位（同一価格とみなす範囲）
-   * @param config.strengthThreshold - 強度の閾値（0.0〜2.0）
+   * @param {Object} config - サポート・レジスタンス検出の設定
+   * @param {number} config.lookbackPeriod - 分析対象期間（直近のキャンドル数）
+   * @param {number} config.minTouches - 最小タッチ回数
+   * @param {number} config.priceThreshold - 価格の丸め単位（同一価格とみなす範囲）
+   * @param {number} config.strengthThreshold - 強度の閾値（0.0〜2.0）
    * @returns 検出された水平ライン配列（サポート・レジスタンス）
    * @throws {Error} データが不十分な場合（本番環境のみ）
    */

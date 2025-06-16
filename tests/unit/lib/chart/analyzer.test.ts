@@ -89,6 +89,11 @@ describe('ChartAnalyzer', () => {
       expect(result.some(r => r.metadata?.['direction'] === 'down')).toBe(true)
     })
 
+    /**
+     * @todo Implement test for minimum touch points validation
+     * @description This test should verify that the analyzer filters out trend lines
+     * that don't meet the minimum touch points requirement
+     */
     it('TODO: should respect minimum touch points', () => {
       const result = analyzer.detectTrendLines({
         lookbackPeriod: 10,
@@ -100,6 +105,11 @@ describe('ChartAnalyzer', () => {
       expect(result).toEqual([])
     })
 
+    /**
+     * @todo Implement test for confidence threshold validation
+     * @description This test should verify that the analyzer filters out trend lines
+     * that fall below the specified confidence threshold
+     */
     it('TODO: should respect confidence threshold', () => {
       const result = analyzer.detectTrendLines({
         lookbackPeriod: 10,
@@ -243,21 +253,45 @@ describe('ChartAnalyzer', () => {
   })
 
   describe('Future Methods', () => {
+    /**
+     * @todo Implement detectPatterns method test
+     * @notImplemented This is a placeholder for future pattern detection functionality
+     * @description Should test the ability to detect chart patterns like triangles,
+     * head and shoulders, flags, etc.
+     */
     it('TODO: detectPatterns method', () => {
       // Future implementation for pattern detection
       // expect(analyzer.detectPatterns).toBeDefined()
     })
 
+    /**
+     * @todo Implement detectFibonacciLevels method test
+     * @notImplemented This is a placeholder for future Fibonacci analysis functionality
+     * @description Should test the ability to detect and calculate Fibonacci
+     * retracement and extension levels
+     */
     it('TODO: detectFibonacciLevels method', () => {
       // Future implementation for Fibonacci level detection
       // expect(analyzer.detectFibonacciLevels).toBeDefined()
     })
 
+    /**
+     * @todo Implement detectVolumeAnomalies method test
+     * @notImplemented This is a placeholder for future volume analysis functionality
+     * @description Should test the ability to detect unusual volume patterns
+     * and anomalies in trading volume
+     */
     it('TODO: detectVolumeAnomalies method', () => {
       // Future implementation for volume analysis
       // expect(analyzer.detectVolumeAnomalies).toBeDefined()
     })
 
+    /**
+     * @todo Implement calculateIndicators method test
+     * @notImplemented This is a placeholder for future technical indicator functionality
+     * @description Should test the ability to calculate various technical indicators
+     * like RSI, MACD, Bollinger Bands, etc.
+     */
     it('TODO: calculateIndicators method', () => {
       // Future implementation for technical indicators
       // expect(analyzer.calculateIndicators).toBeDefined()

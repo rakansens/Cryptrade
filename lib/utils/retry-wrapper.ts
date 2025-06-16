@@ -46,9 +46,9 @@ export class RetryWrapper {
   /**
    * 操作を実行し、必要に応じてリトライします
    * 
-   * @param operation - 実行する非同期操作
-   * @param operationName - 操作名（ログ用）
-   * @returns 操作の結果
+   * @param {() => Promise<T>} operation - 実行する非同期操作
+   * @param {string} [operationName] - 操作名（ログ用）
+   * @returns {Promise<T>} 操作の結果
    * @throws {Error} すべてのリトライが失敗した場合の最後のエラー
    */
   async execute<T>(
@@ -116,9 +116,9 @@ export class RetryWrapper {
   /**
    * 関数をリトライ可能なバージョンにラップします
    * 
-   * @param fn - ラップする非同期関数
-   * @param operationName - 操作名（ログ用）
-   * @returns リトライ機能付きの同じシグネチャの関数
+   * @param {T} fn - ラップする非同期関数
+   * @param {string} [operationName] - 操作名（ログ用）
+   * @returns {T} リトライ機能付きの同じシグネチャの関数
    * 
    * @example
    * ```typescript

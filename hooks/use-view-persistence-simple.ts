@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@/store/chat.store';
 
-interface UseViewPersistenceReturn {
+export interface UseViewPersistenceReturn {
   currentView: 'home' | 'chat';
   showHome: boolean;
   showChat: boolean;

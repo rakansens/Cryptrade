@@ -16,10 +16,10 @@ class RateLimiter {
 
   /**
    * Check if action is allowed within rate limit
-   * @param key - Unique identifier for the action
-   * @param maxCount - Maximum allowed actions
-   * @param windowMs - Time window in milliseconds
-   * @returns true if allowed, false if rate limited
+   * @param {string} key - Unique identifier for the action
+   * @param {number} maxCount - Maximum allowed actions
+   * @param {number} windowMs - Time window in milliseconds
+   * @returns {boolean} true if allowed, false if rate limited
    */
   isAllowed(key: string, maxCount: number, windowMs: number): boolean {
     const now = Date.now();
@@ -82,7 +82,7 @@ export const rateLimiter = new RateLimiter();
 /**
  * Rate-limited logger wrapper
  */
-interface Logger {
+export interface Logger {
   info: (message: string, ...args: unknown[]) => void;
   warn: (message: string, ...args: unknown[]) => void;
   error: (message: string, ...args: unknown[]) => void;

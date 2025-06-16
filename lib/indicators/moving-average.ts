@@ -3,21 +3,21 @@ import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
 
 // Lightweight Charts compatibility types
-interface PriceDataLightweight {
+export interface PriceDataLightweight {
   time: UTCTimestamp;
   close: number;
 }
 
-interface MovingAverageDataLightweight {
+export interface MovingAverageDataLightweight {
   time: UTCTimestamp;
   value: number;
 }
 
 /**
  * Calculate Simple Moving Average (SMA) - Optimized O(N) version
- * @param data Array of price data with time and close values
- * @param period Moving average period
- * @returns Array of moving average data points
+ * @param {PriceDataLightweight[]} data - Array of price data with time and close values
+ * @param {number} period - Moving average period
+ * @returns {MovingAverageDataLightweight[]} Array of moving average data points
  */
 export function calculateSMA(
   data: PriceDataLightweight[], 
@@ -84,9 +84,9 @@ export function calculateSMA(
 
 /**
  * Calculate Exponential Moving Average (EMA)
- * @param data Array of price data with time and close values
- * @param period EMA period
- * @returns Array of EMA data points
+ * @param {PriceDataLightweight[]} data - Array of price data with time and close values
+ * @param {number} period - EMA period
+ * @returns {MovingAverageDataLightweight[]} Array of EMA data points
  */
 export function calculateEMA(
   data: PriceDataLightweight[], 
@@ -152,10 +152,10 @@ export function calculateEMA(
 
 /**
  * Calculate multiple moving averages at once
- * @param data Array of price data
- * @param periods Array of periods to calculate
- * @param type Type of moving average ('SMA' | 'EMA')
- * @returns Object with period as key and MA data as value
+ * @param {PriceDataLightweight[]} data - Array of price data
+ * @param {number[]} periods - Array of periods to calculate
+ * @param {'SMA' | 'EMA'} type - Type of moving average
+ * @returns {Record<number, MovingAverageDataLightweight[]>} Object with period as key and MA data as value
  */
 export function calculateMultipleMovingAverages(
   data: PriceDataLightweight[],
@@ -175,8 +175,8 @@ export function calculateMultipleMovingAverages(
 
 /**
  * Get moving average configuration with colors
- * @param periods Array of periods
- * @returns Array of MA configurations with colors
+ * @param {number[]} periods - Array of periods
+ * @returns {Array<{period: number, color: string, title: string}>} Array of MA configurations with colors
  */
 export function getMovingAverageConfigs(periods: number[]) {
   const colors = ['#ffcc33', '#ff4d8c', '#5db3ff', '#00e676', '#ff6d00'];

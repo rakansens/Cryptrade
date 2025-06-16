@@ -6,7 +6,7 @@ import type {
 } from '@/types/analysis-history';
 
 // Client-safe type definitions (without Prisma dependencies)
-type DbAnalysisRecord = {
+export type DbAnalysisRecord = {
   id: string;
   proposalId: string | null;
   sessionId: string | null;
@@ -23,7 +23,7 @@ type DbAnalysisRecord = {
   touchEvents?: DbTouchEvent[];
 };
 
-type DbTouchEvent = {
+export type DbTouchEvent = {
   id: string;
   timestamp: bigint;
   price: { toString(): string };

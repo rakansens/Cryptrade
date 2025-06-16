@@ -15,10 +15,8 @@ import { logger } from '@/lib/utils/logger';
  * RSI（相対力指数）を計算します
  * Wilder's smoothing methodを使用してO(N)の効率的な実装です
  * 
- * @param data - 時系列価格データ配列
- * @param data[].time - タイムスタンプ
- * @param data[].close - 終値
- * @param period - RSI計算期間（デフォルト: 14）
+ * @param {Array<{time: number, close: number}>} data - 時系列価格データ配列
+ * @param {number} period - RSI計算期間（デフォルト: 14）
  * @returns RSIデータ配列（時刻とRSI値）
  * @throws {Error} データ検証エラー（ログに記録して空配列を返す）
  * 

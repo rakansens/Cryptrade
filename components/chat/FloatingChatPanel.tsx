@@ -196,7 +196,7 @@ export default function FloatingChatPanel({ isVisible, onToggleVisibility }: Flo
     }
 
     // チャートフィット
-    const onChartFit = (_e: Event) => {
+    const onChartFit = () => {
       // チャートフィット機能をトリガー
       // 実際のチャートコンポーネントでこのイベントをリッスンして fitContent() を呼び出す
       console.log('[FloatingChatPanel] Chart fit requested')

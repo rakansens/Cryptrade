@@ -92,7 +92,12 @@ export function useChartDataPreparation<T, R>(
       if (!rawData || rawData.length === 0) return []
       return prepareFunction(rawData)
     } catch (error) {
-      console.error('[ChartDataPreparation] Error preparing data:', error)
+      console.error('[ChartDataPreparation] Error preparing data:', error, {
+        dataLength: rawData?.length || 0,
+        dataType: Array.isArray(rawData) ? 'array' : typeof rawData,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return []
     }
   }, [rawData, prepareFunction, ...dependencies])

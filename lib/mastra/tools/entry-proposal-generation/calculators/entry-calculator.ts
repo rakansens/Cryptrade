@@ -23,7 +23,7 @@ export interface EntryPoint {
   relatedDrawings?: string[];
 }
 
-interface Pattern {
+export interface Pattern {
   id: string;
   type: string;
   confidence: number;
@@ -35,7 +35,7 @@ interface Pattern {
   endTime: number;
 }
 
-interface SupportResistanceLevel {
+export interface SupportResistanceLevel {
   id: string;
   type: 'support' | 'resistance';
   price?: number;
@@ -43,7 +43,7 @@ interface SupportResistanceLevel {
   touchPoints?: Array<{ time: number; price: number }>;
 }
 
-interface Trendline {
+export interface Trendline {
   id: string;
   direction?: '上昇' | '下降';
   slope?: number;
@@ -52,7 +52,7 @@ interface Trendline {
   touchPoints?: Array<{ time: number; price: number }>;
 }
 
-interface IndicatorData {
+export interface IndicatorData {
   rsi?: number;
   macd?: {
     value: number;
@@ -65,7 +65,7 @@ interface IndicatorData {
   };
 }
 
-interface CalculateEntryPointsInput {
+export interface CalculateEntryPointsInput {
   marketData: PriceData[];
   analysisResults?: {
     patterns?: Pattern[];

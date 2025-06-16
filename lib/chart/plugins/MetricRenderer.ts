@@ -17,7 +17,7 @@ import { ValidationUtils, NumberUtils } from './utils';
 import { logger } from '@/lib/utils/logger';
 import { isDevelopment } from '@/config/env';
 
-interface MetricLineData {
+export interface MetricLineData {
   time: number;
   value: number;
 }

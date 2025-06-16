@@ -18,7 +18,7 @@ export const TradingAnalysisInput = z.object({
 });
 
 // Type definitions
-type MarketData = {
+export type MarketData = {
   symbol: string;
   currentPrice: number;
   priceChangePercent24h: number;
@@ -26,7 +26,7 @@ type MarketData = {
   volatility: 'low' | 'medium' | 'high';
 };
 
-type TechnicalAnalysis = {
+export type TechnicalAnalysis = {
   response?: string;
   analysis?: string;
   recommendations?: string[];
@@ -212,7 +212,7 @@ export async function executeTradingAnalysisA2A(
 }
 
 // ヘルパー関数
-interface AnalysisResult {
+export interface AnalysisResult {
   response?: string;
   analysis?: string;
   recommendations?: string[];
@@ -246,12 +246,12 @@ function extractRecommendations(analysisResult: AnalysisResult): string[] {
   return recommendations.slice(0, 5);
 }
 
-interface MarketDataRisk {
+export interface MarketDataRisk {
   volatility?: 'low' | 'medium' | 'high';
   priceChangePercent24h?: number;
 }
 
-interface AnalysisResultWithRisk {
+export interface AnalysisResultWithRisk {
   riskAssessment?: {
     level: 'low' | 'medium' | 'high';
     factors: string[];

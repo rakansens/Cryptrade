@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import type { IChartApi, Time } from 'lightweight-charts';
 import { logger } from '@/lib/utils/logger';
 
-interface ChartSyncManager {
+export interface ChartSyncManager {
   registerChart: (id: string, chart: IChartApi, isMain?: boolean) => void;
   unregisterChart: (id: string) => void;
   syncTimeScale: (fromChartId: string, timeRange?: { from: Time; to: Time }) => void;

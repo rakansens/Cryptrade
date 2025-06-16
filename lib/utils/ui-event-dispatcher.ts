@@ -281,6 +281,9 @@ export const uiEventDispatcher = UIEventDispatcher.getInstance();
 
 /**
  * Legacy compatibility function for typed UI event dispatch
+ * @deprecated Use UIEventDispatcher instead
+ * @alpha
+ * @notImplemented This is a placeholder for legacy compatibility
  */
 export function dispatchTypedUIEvent(_event: CustomEvent | { event: string; data?: unknown }): void {
   // Placeholder implementation for legacy compatibility

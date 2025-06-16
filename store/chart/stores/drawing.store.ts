@@ -66,7 +66,7 @@ const initialState: DrawingState & UndoRedoState = {
   redoStack: [],
 };
 
-interface DrawingStoreState
+export interface DrawingStoreState
   extends DrawingState,
     UndoRedoState,
     DrawingActions,

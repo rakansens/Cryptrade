@@ -548,7 +548,9 @@ Respond with ONLY the agent ID, no explanation:`;
       try {
         const response = await this.sendMessage('system', id, 'health_check', {}, `health-${id}-${Date.now()}`);
         results[id] = response?.type !== 'error';
-      } catch {
+      } catch (error) {
+        // Mark agent as unhealthy if health check fails
+        logger.warn(`[AgentNetwork] Health check failed for agent ${id}:`, { error });
         results[id] = false;
       }
     }

@@ -3,10 +3,10 @@ import { logger } from './logger';
 
 /**
  * Generic safe parse wrapper with logging
- * @param schema - Zod schema to validate against
- * @param data - Data to validate
- * @param context - Context string for logging (e.g., 'WebSocket', 'ChatInput')
- * @returns Parsed data if valid, null if invalid
+ * @param {z.ZodSchema<T>} schema - Zod schema to validate against
+ * @param {unknown} data - Data to validate
+ * @param {string} context - Context string for logging (e.g., 'WebSocket', 'ChatInput')
+ * @returns {T | null} Parsed data if valid, null if invalid
  */
 export function safeParseOrWarn<T>(
   schema: z.ZodSchema<T>, 
@@ -36,10 +36,10 @@ export function safeParseOrWarn<T>(
 
 /**
  * Safe parse with error logging for critical validations
- * @param schema - Zod schema to validate against
- * @param data - Data to validate
- * @param context - Context string for logging
- * @returns Parsed data if valid, null if invalid
+ * @param {z.ZodSchema<T>} schema - Zod schema to validate against
+ * @param {unknown} data - Data to validate
+ * @param {string} context - Context string for logging
+ * @returns {T | null} Parsed data if valid, null if invalid
  */
 export function safeParseOrError<T>(
   schema: z.ZodSchema<T>, 
@@ -69,9 +69,13 @@ export function safeParseOrError<T>(
 
 /**
  * Validate with custom success/failure callbacks
- * @param schema - Zod schema to validate against
- * @param data - Data to validate
- * @param options - Configuration options
+ * @param {z.ZodSchema<T>} schema - Zod schema to validate against
+ * @param {unknown} data - Data to validate
+ * @param {Object} options - Configuration options
+ * @param {string} options.context - Context string for logging
+ * @param {(data: T) => void} [options.onSuccess] - Success callback
+ * @param {(errors: z.ZodIssue[]) => void} [options.onFailure] - Failure callback
+ * @param {'info' | 'warn' | 'error'} [options.logLevel] - Log level
  */
 export function validateWithCallbacks<T>(
   schema: z.ZodSchema<T>,

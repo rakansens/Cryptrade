@@ -18,7 +18,7 @@ import type {
 } from '@/types/mastra.types';
 
 // Extended interface for enhanced chart analysis
-interface ExtendedChartAnalysisResult extends ChartAnalysisResult {
+export interface ExtendedChartAnalysisResult extends ChartAnalysisResult {
   recommendations?: {
     trendlineDrawing: Array<{
       points: ChartPoint[];
@@ -39,7 +39,7 @@ interface ExtendedChartAnalysisResult extends ChartAnalysisResult {
 
 // Using ChartPoint from @/types/mastra.types
 
-interface CandleData {
+export interface CandleData {
   time: number;
   open: number;
   high: number;

@@ -3,7 +3,7 @@ import { env } from '@/config/env';
 import { checkRateLimit, getClientIdentifier, type RateLimitConfig } from './rate-limit';
 import * as crypto from 'crypto';
 
-interface MiddlewareRateLimitConfig {
+export interface MiddlewareRateLimitConfig {
   windowMs: number; // Time window in milliseconds (converted to seconds internally)
   maxRequests: number; // Max requests per window
 }

@@ -23,7 +23,7 @@ import {
 /**
  * 型安全なイベント公開関数の型
  */
-type PublishEventFunction = <T extends EventTypeName>(
+export type PublishEventFunction = <T extends EventTypeName>(
   eventType: T,
   payload?: EventPayload<T>
 ) => Promise<void>;
@@ -31,7 +31,7 @@ type PublishEventFunction = <T extends EventTypeName>(
 /**
  * UIイベントストリームのオプション
  */
-interface UseTypedUIEventStreamOptions {
+export interface UseTypedUIEventStreamOptions {
   /**
    * 受信するイベントタイプのフィルター
    * 未指定の場合はすべてのイベントを受信
@@ -63,7 +63,7 @@ interface UseTypedUIEventStreamOptions {
 /**
  * フックの戻り値
  */
-interface TypedUIEventStreamResult {
+export interface TypedUIEventStreamResult {
   /**
    * イベントを公開する関数（型安全）
    */

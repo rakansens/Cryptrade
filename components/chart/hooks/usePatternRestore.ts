@@ -10,7 +10,7 @@ import type { PatternRenderer, PatternVisualization as PatternViz } from '@/type
  * This ensures patterns persist across timeframe changes
  */
 
-interface UsePatternRestoreProps {
+export interface UsePatternRestoreProps {
   patternRenderer: PatternRenderer | null;
   isChartReady: boolean;
   timeframe: string;

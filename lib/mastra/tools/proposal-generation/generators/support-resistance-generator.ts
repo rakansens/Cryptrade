@@ -25,7 +25,7 @@ import { calculateSupportResistanceConfidence } from '../analyzers/confidence-ca
 import { validateDrawingData } from '../validators/drawing-validator';
 import { generateProposalId, calculatePercentile, unique } from '../utils/helpers';
 
-interface PriceLevel {
+export interface PriceLevel {
   price: number;
   touches: Array<{
     time: number;

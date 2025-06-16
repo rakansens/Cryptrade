@@ -4,7 +4,7 @@ import { logger } from '@/lib/utils/logger';
  * Prometheus-compatible metrics collector
  */
 
-interface MetricValue {
+export interface MetricValue {
   value: number;
   labels?: Record<string, string>;
   help?: string;

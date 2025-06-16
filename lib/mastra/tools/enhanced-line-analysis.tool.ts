@@ -5,7 +5,7 @@ import { multiTimeframeLineDetector, type DetectedLine, type LineDetectionResult
 import { enhancedMarketDataService, type MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 
 // Type definitions for enhanced line analysis
-interface ConfluenceZone {
+export interface ConfluenceZone {
   type: 'support' | 'resistance' | 'pivot';
   priceRange: {
     min: number;
@@ -18,7 +18,7 @@ interface ConfluenceZone {
   description?: string;
 }
 
-interface MarketStructure {
+export interface MarketStructure {
   currentTrend: 'bullish' | 'bearish' | 'sideways';
   trendStrength: number;
   keyLevels: Array<{
@@ -35,7 +35,7 @@ interface MarketStructure {
   };
 }
 
-interface EnhancedLine extends DetectedLine {
+export interface EnhancedLine extends DetectedLine {
   description: string;
   tradingImplication: 'bullish' | 'bearish' | 'neutral' | undefined;
 }

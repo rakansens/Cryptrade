@@ -5,7 +5,7 @@ import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.s
 import { enhancedLineDetectorV2, type EnhancedLineV2 } from '@/lib/analysis/enhanced-line-detector-v2';
 
 // Type definitions for enhanced line analysis
-interface MultiTimeframeData {
+export interface MultiTimeframeData {
   timeframes: Record<string, {
     data: Array<{
       close: number;
@@ -14,7 +14,7 @@ interface MultiTimeframeData {
   }>;
 }
 
-interface DetectionResult {
+export interface DetectionResult {
   horizontalLines: EnhancedLineV2[];
   trendlines: EnhancedLineV2[];
 }
@@ -22,7 +22,7 @@ interface DetectionResult {
 // Removed unused interfaces TouchPoint and LineWithTouchAnalysis
 // If needed in future, can extend EnhancedLineV2 with touch analysis
 
-interface UserConfig {
+export interface UserConfig {
   [key: string]: unknown;
 }
 

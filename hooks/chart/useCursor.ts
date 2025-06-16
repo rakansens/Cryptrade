@@ -8,7 +8,7 @@ import { useCallback } from 'react';
 
 export type CursorType = 'default' | 'crosshair' | 'pointer' | 'grab' | 'grabbing' | 'move' | 'not-allowed';
 
-interface UseCursorReturn {
+export interface UseCursorReturn {
   setCursor: (cursorType: CursorType) => void;
   resetCursor: () => void;
   setDrawingCursor: () => void;

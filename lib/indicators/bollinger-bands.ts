@@ -4,12 +4,12 @@ import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
 
 // Lightweight Charts compatibility types
-interface PriceDataLightweight {
+export interface PriceDataLightweight {
   time: UTCTimestamp;
   close: number;
 }
 
-interface BollingerBandsDataLightweight {
+export interface BollingerBandsDataLightweight {
   time: UTCTimestamp;
   upper: number;
   middle: number;  // SMA
@@ -20,10 +20,10 @@ interface BollingerBandsDataLightweight {
  * Calculate Bollinger Bands - Optimized O(N) version
  * ボリンジャーバンド = 移動平均 ± (標準偏差 × 係数)
  * 
- * @param data Array of price data with time and close values
- * @param period SMA period (typically 20)
- * @param stdDev Standard deviation multiplier (typically 2)
- * @returns Array of Bollinger Bands data points
+ * @param {PriceDataLightweight[]} data - Array of price data with time and close values
+ * @param {number} period - SMA period (typically 20)
+ * @param {number} stdDev - Standard deviation multiplier (typically 2)
+ * @returns {BollingerBandsDataLightweight[]} Array of Bollinger Bands data points
  */
 export function calculateBollingerBands(
   data: PriceDataLightweight[],
@@ -112,8 +112,8 @@ export function calculateBollingerBands(
 
 /**
  * Get Bollinger Bands configuration with colors
- * @param config Bollinger Bands configuration
- * @returns Configuration object for chart display
+ * @param {BollingerBandsConfig} config - Bollinger Bands configuration
+ * @returns {Object} Configuration object for chart display
  */
 export function getBollingerBandsConfig(config: BollingerBandsConfig) {
   return {
@@ -135,10 +135,10 @@ export function getBollingerBandsConfig(config: BollingerBandsConfig) {
 
 /**
  * Get trading signals from Bollinger Bands
- * @param currentPrice Current price
- * @param bollingerData Current Bollinger Bands data point
- * @param prevBollingerData Previous Bollinger Bands data point
- * @returns Trading signal analysis
+ * @param {number} currentPrice - Current price
+ * @param {BollingerBandsDataLightweight} bollingerData - Current Bollinger Bands data point
+ * @param {BollingerBandsDataLightweight} [prevBollingerData] - Previous Bollinger Bands data point
+ * @returns {Object} Trading signal analysis
  */
 export function getBollingerSignal(
   currentPrice: number,
@@ -185,9 +185,9 @@ export function getBollingerSignal(
 /**
  * Calculate Bollinger Band squeeze detection
  * Squeeze occurs when bands are unusually narrow, indicating low volatility
- * @param bollingerData Array of recent Bollinger Bands data
- * @param lookbackPeriod Period to compare current width against
- * @returns Squeeze information
+ * @param {BollingerBandsDataLightweight[]} bollingerData - Array of recent Bollinger Bands data
+ * @param {number} lookbackPeriod - Period to compare current width against
+ * @returns {Object} Squeeze information
  */
 export function detectBollingerSqueeze(
   bollingerData: BollingerBandsDataLightweight[],

@@ -8,7 +8,7 @@ import type { IUnifiedTransport, UnifiedLogEntry, UnifiedLoggerConfig } from '..
 import { env } from '@/config/env';
 
 // Minimal Sentry type definitions
-interface SentryScope {
+export interface SentryScope {
   setLevel(level: string): void;
   setTag(key: string, value: string): void;
   setContext(key: string, context: Record<string, unknown>): void;
@@ -16,7 +16,7 @@ interface SentryScope {
   setExtra(key: string, extra: unknown): void;
 }
 
-interface SentrySDK {
+export interface SentrySDK {
   withScope(callback: (scope: SentryScope) => void): void;
   captureException(error: unknown): void;
   captureMessage(message: string): void;

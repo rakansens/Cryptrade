@@ -199,7 +199,10 @@ async function updatePaneLogs() {
       cpuTrend.push(totalCpu);
       memTrend.push(totalMem);
       if(cpuTrend.length>30){cpuTrend.shift();memTrend.shift();}
-    } catch {}
+    } catch (error) {
+      // Ignore errors when updating pane logs - pane may have closed
+      console.error(`[claude-monitor-tmux] Failed to update logs for pane ${paneId}:`, error.message || error);
+    }
   });
   await Promise.all(promises);
 }

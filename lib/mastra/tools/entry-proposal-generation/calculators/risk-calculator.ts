@@ -9,7 +9,7 @@ import type { PriceData } from '@/types/market';
 import type { RiskParameters, TradingDirection, TradingStrategyType } from '@/types/trading';
 import { logger } from '@/lib/utils/logger';
 
-interface CalculateRiskManagementInput {
+export interface CalculateRiskManagementInput {
   entryPrice: number;
   direction: TradingDirection;
   marketData: PriceData[];

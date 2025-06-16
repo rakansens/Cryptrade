@@ -10,7 +10,7 @@ import { logger } from '@/lib/utils/logger';
 import { ToolError } from '@/lib/errors/base-error';
 
 // Zodスキーマ型の拡張
-type ZodTypeAny = z.ZodType<unknown, z.ZodTypeDef, unknown>;
+export type ZodTypeAny = z.ZodType<unknown, z.ZodTypeDef, unknown>;
 
 // ツールの基本型定義
 export interface Tool<TInput = unknown, TOutput = unknown> {
@@ -21,10 +21,10 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
 }
 
 // パラメータ型
-type ToolParams = Record<string, unknown> | unknown[];
+export type ToolParams = Record<string, unknown> | unknown[];
 
 // レスポンス型
-type ToolResponse = 
+export type ToolResponse = 
   | string 
   | number 
   | boolean 
@@ -322,7 +322,7 @@ export class ToolCompatibilityAdapter {
 /**
  * Provider configuration interface
  */
-interface ProviderConfig {
+export interface ProviderConfig {
   name: string;
   supportsOptionalProperties: boolean;
   supportsEnums: boolean;

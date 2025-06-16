@@ -43,7 +43,7 @@ const MarketDataOutput = z.object({
   }).optional(),
 });
 
-type MarketStatsResult = z.infer<typeof MarketDataOutput>;
+export type MarketStatsResult = z.infer<typeof MarketDataOutput>;
 
 // Market data service instance using BaseService
 class MarketDataService extends BaseService {
@@ -59,7 +59,7 @@ class MarketDataService extends BaseService {
 const marketDataService = new MarketDataService();
 
 // Enhanced cache structure with dynamic TTL
-interface CacheEntry {
+export interface CacheEntry {
   data: MarketStatsResult;
   timestamp: number;
   ttl: number; // Individual TTL for this entry

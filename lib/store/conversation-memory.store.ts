@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import type { StateCreator } from 'zustand';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
 import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
@@ -18,7 +19,7 @@ import { embeddingService } from '@/lib/services/semantic-embedding.service';
 
 
 // ストアの状態型定義
-interface ConversationMemoryState {
+export interface ConversationMemoryState {
   sessions: Record<string, ConversationSession>;
   currentSessionId: string | null;
   
@@ -44,11 +45,11 @@ interface ConversationMemoryState {
 }
 
 // Define proper types for immer's set function
-type ImmerSet = (fn: (draft: ConversationMemoryState) => void) => void;
+type SetState = (fn: (draft: ConversationMemoryState) => void) => void;
 type GetState = () => ConversationMemoryState;
 
 // Simplify the type by extracting the store implementation
-const storeImplementation = (set: ImmerSet, get: GetState): ConversationMemoryState => ({
+const storeImplementation = (set: SetState, get: GetState): ConversationMemoryState => ({
         sessions: {},
         currentSessionId: null,
         isDbEnabled: true,
@@ -150,7 +151,13 @@ const storeImplementation = (set: ImmerSet, get: GetState): ConversationMemorySt
 
         getRecentMessages: (sessionId, limit = 8) => {
           const session = get().sessions[sessionId];
-          if (!session) return [];
+          if (!session) {
+            logger.warn('[ConversationMemory] Session not found in getRecentMessages', {
+              sessionId,
+              availableSessions: Object.keys(get().sessions)
+            });
+            return [];
+          }
           
           return session.messages?.slice(-limit) ?? [];
         },
@@ -341,7 +348,7 @@ const storeImplementation = (set: ImmerSet, get: GetState): ConversationMemorySt
 
 // Memory Store Implementation with simplified type inference
 // Split the store creation to avoid deep type instantiation
-type ConversationMemoryStore = ConversationMemoryState;
+export type ConversationMemoryStore = ConversationMemoryState;
 
 const persistConfig = {
   name: 'conversation-memory',
@@ -365,14 +372,20 @@ const persistConfig = {
 
 // Create store with type assertions to avoid deep instantiation issues
 // This is a known issue with Zustand when using multiple middleware
+// Solution: Cast the store implementation to StateCreator
+const storeCreator: StateCreator<
+  ConversationMemoryStore,
+  [['zustand/devtools', never], ['zustand/persist', unknown], ['zustand/immer', never]]
+> = storeImplementation as any;
+
 export const useConversationMemory = create<ConversationMemoryStore>()(
   devtools(
     persist(
-      immer(storeImplementation) as any,
+      immer(storeCreator),
       persistConfig
-    ) as any,
+    ),
     { name: 'conversation-memory' }
-  ) as any
+  )
 );
 
 // Helper functions for semantic search (future implementation)

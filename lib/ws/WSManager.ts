@@ -355,7 +355,9 @@ export class WSManager {
           logger.debug('[WSManager] Triggered garbage collection after all streams cleanup');
         }
       } catch (error) {
-        // Ignore GC errors in production
+        logger.warn('[WSManager] Failed to trigger garbage collection', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }

@@ -7,10 +7,10 @@ import { logger } from '@/lib/utils/logger';
 
 /**
  * キーポイントを元に SeriesMarker 配列を生成し、既存マーカーとマージして mainSeries へ適用
- * @param id        パターンID
- * @param visualization PatternVisualization
- * @param mainSeries   lightweight-charts のメインシリーズ
- * @param markerStore  PatternRenderer が保持する markers Map
+ * @param {string} id - パターンID
+ * @param {PatternVisualization} visualization - PatternVisualization
+ * @param {ISeriesApi<SeriesType>} mainSeries - lightweight-charts のメインシリーズ
+ * @param {Map<string, SeriesMarker<Time>[]>} markerStore - PatternRenderer が保持する markers Map
  */
 export function renderKeyPointMarkers(
   id: string,

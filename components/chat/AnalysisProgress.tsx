@@ -61,7 +61,7 @@ export function AnalysisProgress({
   }, [autoStart, symbol, interval, analysisType, maxProposals, startAnalysis]);
 
   // Get status icon
-  const getStatusIcon = (step: AnalysisStep, _index?: number) => {
+  const getStatusIcon = (step: AnalysisStep) => {
     if (step.status === 'completed') {
       return <CheckCircle className="w-4 h-4 text-[hsl(var(--color-profit))]" />;
     }
@@ -75,7 +75,7 @@ export function AnalysisProgress({
   };
 
   // Get step style based on status
-  const getStepStyle = (step: AnalysisStep, _index?: number) => {
+  const getStepStyle = (step: AnalysisStep) => {
     if (step.status === 'completed') {
       return 'bg-[hsl(var(--color-profit)/0.1)] border-[hsl(var(--color-profit)/0.3)]';
     }
@@ -132,13 +132,13 @@ export function AnalysisProgress({
 
           {/* Steps */}
           <div className="space-y-[var(--space-xs)]">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div
                 key={step.id}
-                className={`p-[var(--space-sm)] border rounded-lg transition-all duration-300 ${getStepStyle(step, index)}`}
+                className={`p-[var(--space-sm)] border rounded-lg transition-all duration-300 ${getStepStyle(step)}`}
               >
                 <div className="flex items-start gap-[var(--space-sm)]">
-                  {getStatusIcon(step, index)}
+                  {getStatusIcon(step)}
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-[var(--font-xs)] font-medium text-[hsl(var(--text-primary))]">

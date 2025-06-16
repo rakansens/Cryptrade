@@ -23,7 +23,7 @@ import {
 // STATE INTERFACE
 // =============================================================================
 
-interface AnalysisHistoryState {
+export interface AnalysisHistoryState {
   // Data
   records: AnalysisRecord[];
   
@@ -43,7 +43,7 @@ interface AnalysisHistoryState {
   currentSessionId: string | null;
 }
 
-interface AnalysisHistoryActions {
+export interface AnalysisHistoryActions {
   // Record management
   addRecord: (record: Omit<AnalysisRecord, 'id' | 'timestamp'>) => Promise<string>;
   updateRecord: (id: string, updates: Partial<AnalysisRecord>) => Promise<void>;
@@ -81,7 +81,7 @@ interface AnalysisHistoryActions {
   getUnsyncedRecords: () => AnalysisRecord[];
 }
 
-type AnalysisHistoryStore = AnalysisHistoryState & AnalysisHistoryActions;
+export type AnalysisHistoryStore = AnalysisHistoryState & AnalysisHistoryActions;
 
 // =============================================================================
 // STORE IMPLEMENTATION

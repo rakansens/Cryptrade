@@ -8,7 +8,7 @@ export interface CacheConfig {
   storage?: CacheStorage;
 }
 
-interface CacheEntry extends Omit<CacheEntryType<unknown>, 'data'> {
+export interface CacheEntry extends Omit<CacheEntryType<unknown>, 'data'> {
   response: {
     status: number;
     statusText: string;
@@ -53,7 +53,7 @@ class MemoryCacheStorage implements CacheStorage {
   }
 }
 
-interface CacheStorage {
+export interface CacheStorage {
   get(key: string): Promise<CacheEntry | null>;
   set(key: string, entry: CacheEntry): Promise<void>;
   delete(key: string): Promise<boolean>;

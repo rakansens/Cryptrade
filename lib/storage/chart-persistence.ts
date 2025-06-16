@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
 
 import type { TimeframeState } from '@/lib/api/chart-drawing-api';
 
-interface PersistenceConfig {
+export interface PersistenceConfig {
   useDatabase: boolean;
   sessionId?: string;
   fallbackToLocal: boolean;

@@ -6,7 +6,7 @@ import { safeParseOrWarn, CommonSchemas } from '@/lib/utils/validation';
 import { streamToLines } from '@/lib/utils/stream-utils';
 
 // Middleware function type for future Mastra integration
-type AIMiddleware = (fn: () => Promise<void>) => Promise<void>;
+export type AIMiddleware = (fn: () => Promise<void>) => Promise<void>;
 
 // Middleware for store synchronization
 const storeSync: AIMiddleware = async (fn) => {

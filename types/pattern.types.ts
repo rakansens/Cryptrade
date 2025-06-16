@@ -108,6 +108,9 @@ export interface PatternRenderer {
   updateTimeScale(timeScale: unknown): void;
 }
 
+// Export additional types for compatibility
+// PatternRenderer is already exported as an interface above
+
 // ===== Pattern Debug Types =====
 
 export interface PatternDebugState {

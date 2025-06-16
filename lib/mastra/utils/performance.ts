@@ -11,7 +11,7 @@ import { incrementMetric, observeMetric } from '@/lib/monitoring/metrics';
  * - エラーハンドリング
  */
 
-interface PerformanceOptions {
+export interface PerformanceOptions {
   name?: string;
   logLevel?: 'debug' | 'info' | 'warn';
   includeArgs?: boolean;

@@ -16,7 +16,7 @@ export interface CacheOptions {
   maxMemoryItems?: number; // メモリキャッシュの最大アイテム数
 }
 
-interface CacheItem<T> {
+export interface CacheItem<T> {
   data: T;
   timestamp: number;
   key: string;

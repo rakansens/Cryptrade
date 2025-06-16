@@ -11,7 +11,7 @@ import { isDevelopment } from '@/config/env';
  * - 型安全なアクセス
  */
 
-interface StoredData<T = unknown> {
+export interface StoredData<T = unknown> {
   value: T;
   timestamp: number;
   ttl?: number; // milliseconds

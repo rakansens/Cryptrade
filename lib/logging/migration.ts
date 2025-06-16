@@ -8,7 +8,7 @@ import type { LogLevel, UnifiedLoggerConfig, UnifiedLogEntry, LogFilter } from '
 import { env } from '@/config/env';
 
 // Type definitions for legacy configurations
-interface LegacyLoggerConfig {
+export interface LegacyLoggerConfig {
   level?: LogLevel;
   enableConsole?: boolean;
   enableThrottling?: boolean;
@@ -25,7 +25,7 @@ interface LegacyLoggerConfig {
   beforeLog?: (entry: UnifiedLogEntry) => UnifiedLogEntry | null;
 }
 
-interface LegacyLogEntry {
+export interface LegacyLogEntry {
   id?: string;
   timestamp?: Date | string | number;
   level: LogLevel;

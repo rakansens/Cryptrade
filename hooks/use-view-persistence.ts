@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { logger } from '@/lib/utils/logger';
 
-interface UseViewPersistenceReturn {
+export interface UseViewPersistenceReturn {
   currentView: 'home' | 'chat';
   showHome: boolean;
   showChat: boolean;
@@ -38,7 +39,9 @@ export function useViewPersistence(): UseViewPersistenceReturn {
           return savedView;
         }
       } catch (error) {
-        // Ignore localStorage errors
+        logger.warn('[ViewPersistence] Failed to read from localStorage', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
     
@@ -55,7 +58,9 @@ export function useViewPersistence(): UseViewPersistenceReturn {
       try {
         localStorage.setItem('cryptrade_current_view', newView);
       } catch (error) {
-        // Ignore localStorage errors
+        logger.warn('[ViewPersistence] Failed to write to localStorage', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
     
@@ -66,7 +71,9 @@ export function useViewPersistence(): UseViewPersistenceReturn {
         params.set('view', newView);
         router.push(`?${params.toString()}`, { scroll: false });
       } catch (error) {
-        // Ignore navigation errors
+        logger.warn('[ViewPersistence] Failed to update URL', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   };
@@ -82,13 +89,17 @@ export function useViewPersistence(): UseViewPersistenceReturn {
             try {
               localStorage.setItem('cryptrade_current_view', urlView);
             } catch (error) {
-              // Ignore localStorage errors
+              logger.warn('[ViewPersistence] Failed to sync localStorage with URL', {
+                error: error instanceof Error ? error.message : String(error)
+              });
             }
           }
         }
       }
     } catch (error) {
-      // Ignore URL parsing errors
+      logger.warn('[ViewPersistence] Failed to parse URL parameters', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }, [searchParams, currentView]);
 

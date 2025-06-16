@@ -23,7 +23,7 @@ import { calculateFibonacciConfidence } from '../analyzers/confidence-calculator
 import { validateDrawingData } from '../validators/drawing-validator';
 import { generateProposalId, calculatePriceChangePercent } from '../utils/helpers';
 
-interface SwingPoint {
+export interface SwingPoint {
   index: number;
   time: number;
   price: number;

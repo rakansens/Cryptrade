@@ -6,7 +6,7 @@ import { calculateMultipleMovingAverages, getMovingAverageConfigs } from '@/lib/
 import { calculateBollingerBands, getBollingerBandsConfig } from '@/lib/indicators/bollinger-bands';
 import type { ChartSeriesRefs } from './useChartInstance';
 
-interface UseChartDataProps {
+export interface UseChartDataProps {
   priceData: ProcessedKline[];
   indicators: IndicatorOptions;
   bollingerSettings?: { period: number; stdDev: number };
@@ -101,8 +101,13 @@ export function useChartData({
       isInitialUpdate.current = false;
 
     } catch (error) {
-      console.error('[ChartData] Error setting chart data:', error);
-      console.log('[ChartData] Data sample:', formattedData.slice(-5));
+      console.error('[ChartData] Error setting chart data:', error, {
+        dataLength: formattedData.length,
+        hasCandelstickSeries: !!series.candlestick,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      console.log('[ChartData] Data sample (last 5 candles):', formattedData.slice(-5));
     }
   }, [formattedData, getSeries, fitContent, autoFit]);
 
@@ -154,7 +159,12 @@ export function useChartData({
         }
       }
     } catch (error) {
-      console.error('[ChartData] Error setting indicator data:', error);
+      console.error('[ChartData] Error setting indicator data:', error, {
+        hasMAData: Object.keys(movingAverageData).length > 0,
+        hasBBData: !!bollingerBandsData,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }, [movingAverageData, bollingerBandsData, getSeries]);
 

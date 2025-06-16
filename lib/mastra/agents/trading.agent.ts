@@ -7,7 +7,7 @@ import { proposalGenerationTool } from '../tools/proposal-generation.tool';
 import { entryProposalGenerationTool } from '../tools/entry-proposal-generation';
 
 // Context type for trading agent
-interface TradingAgentContext {
+export interface TradingAgentContext {
   marketVolatility?: string;
   userLevel?: string;
   analysisType?: string;

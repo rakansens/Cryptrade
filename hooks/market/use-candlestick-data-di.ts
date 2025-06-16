@@ -13,7 +13,7 @@ import { useIsClient } from '@/hooks/use-is-client';
 import type { BinanceKlineMessage, ProcessedKline, BinanceTradeMessage } from '@/types/market';
 import { logger } from '@/lib/utils/logger';
 
-interface UseCandlestickDataOptions {
+export interface UseCandlestickDataOptions {
   symbol: string;
   interval: string;
   limit?: number;

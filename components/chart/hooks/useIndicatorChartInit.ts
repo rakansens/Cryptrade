@@ -14,7 +14,7 @@ export interface IndicatorSeriesRefs {
   [key: string]: ISeriesApi<'Line' | 'Histogram'> | null;
 }
 
-interface UseIndicatorChartInitProps {
+export interface UseIndicatorChartInitProps {
   chartId: string;
   height?: number;
   theme?: IndicatorChartTheme;

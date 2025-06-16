@@ -4,7 +4,7 @@ import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
 
 // Storage engine interface for future abstraction
-interface StorageEngine {
+export interface StorageEngine {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
   removeItem: (key: string) => void;
@@ -77,7 +77,7 @@ export interface PerformanceConfig {
   enableHardwareAcceleration: boolean;
 }
 
-interface ConfigState {
+export interface ConfigState {
   // Configuration sections
   theme: ThemeConfig;
   chart: ChartConfig;
@@ -94,7 +94,7 @@ interface ConfigState {
   migrationCompleted: boolean;
 }
 
-interface ConfigActions {
+export interface ConfigActions {
   // Theme actions
   setThemeMode: (mode: ThemeMode) => void;
   setAccentColor: (color: AccentColor) => void;
@@ -128,7 +128,7 @@ interface ConfigActions {
   initialize: () => void;
 }
 
-type ConfigStore = ConfigState & ConfigActions;
+export type ConfigStore = ConfigState & ConfigActions;
 
 const debug = createStoreDebugger('ConfigStore');
 

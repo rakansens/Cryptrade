@@ -36,8 +36,8 @@ type RestoreFunction = () => void;
 /**
  * Mock environment variables for the duration of a test
  * 
- * @param mockValues Object containing environment variables to mock
- * @returns Restore function to reset environment back to original state
+ * @param {EnvMockValues} mockValues - Object containing environment variables to mock
+ * @returns {RestoreFunction} Restore function to reset environment back to original state
  */
 export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
   // Store original environment values

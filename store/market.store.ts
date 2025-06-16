@@ -3,12 +3,12 @@ import type { MarketTicker, BinanceTradeMessage, ProcessedKline, PriceUpdate } f
 import { createBaseStore, BaseState, BaseActions, createStoreHooks } from '@/lib/store/base.store';
 import { logger } from '@/lib/utils/logger';
 
-interface MarketConfig {
+export interface MarketConfig {
   maxCandles: number;
   maxSymbols: number;
 }
 
-interface MarketState extends BaseState {
+export interface MarketState extends BaseState {
   // Candlestick data (OHLCV)
   priceData: Record<string, ProcessedKline[]>;
   
@@ -31,7 +31,7 @@ interface MarketState extends BaseState {
   pendingPriceUpdates: Record<string, BinanceTradeMessage>;
 }
 
-interface MarketCustomActions {
+export interface MarketCustomActions {
   // Candlestick data
   setPriceData: (symbol: string, data: ProcessedKline[]) => void;
   addKline: (symbol: string, kline: ProcessedKline) => void;
@@ -60,9 +60,9 @@ interface MarketCustomActions {
   updateConfig: (config: Partial<MarketConfig>) => void;
 }
 
-interface MarketActions extends BaseActions, MarketCustomActions {}
+export interface MarketActions extends BaseActions, MarketCustomActions {}
 
-type MarketStore = MarketState & MarketActions;
+export type MarketStore = MarketState & MarketActions;
 
 const DEFAULT_CONFIG: MarketConfig = {
   maxCandles: 1000,

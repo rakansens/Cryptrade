@@ -6,13 +6,13 @@ import { useIsClient } from '@/hooks/use-is-client';
 import type { BinanceKlineMessage, ProcessedKline } from '@/types/market';
 import { logger } from '@/lib/utils/logger';
 
-interface UseCandlestickDataOptions {
+export interface UseCandlestickDataOptions {
   symbol: string;
   interval: string;
   limit?: number;
 }
 
-interface UseCandlestickDataReturn {
+export interface UseCandlestickDataReturn {
   priceData: ProcessedKline[];
   isLoading: boolean;
   error: null;

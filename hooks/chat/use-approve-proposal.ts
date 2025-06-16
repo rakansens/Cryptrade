@@ -14,7 +14,7 @@ import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/no
 import { logger } from '@/lib/utils/logger';
 import type { AnalysisRecord } from '@/types/analysis-history';
 
-interface UseApproveProposalReturn {
+export interface UseApproveProposalReturn {
   approveProposal: (message: ProposalMessage, proposalId: string) => Promise<void | null>;
   approveAllProposals: (message: ProposalMessage) => Promise<void>;
   approveLoading: boolean;

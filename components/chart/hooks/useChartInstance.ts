@@ -24,7 +24,7 @@ export interface ChartSeriesRefs {
   };
 }
 
-interface UseChartInstanceProps {
+export interface UseChartInstanceProps {
   height?: number;
   theme?: ChartTheme;
 }

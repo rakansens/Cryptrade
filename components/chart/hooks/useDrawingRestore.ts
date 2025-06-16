@@ -11,7 +11,7 @@ import type { Time } from 'lightweight-charts';
  * This ensures drawings persist across chart resets
  */
 
-interface UseDrawingRestoreProps {
+export interface UseDrawingRestoreProps {
   drawingManager: ChartDrawingManager | null;
   isChartReady: boolean;
   timeframe: string;

@@ -15,7 +15,7 @@ import { emitUIEvent } from '@/lib/server/uiEventBus';
 import { raceWithCleanup } from '@/lib/utils/concurrent';
 
 // Agent-to-Agent message type
-interface A2AMessage {
+export interface A2AMessage {
   type: 'response' | 'error';
   /** unique id of the message */
   id?: string;
@@ -382,7 +382,7 @@ async function executeWithA2ACommunication(
 
 
 // UI操作の型定義
-interface UIOperation {
+export interface UIOperation {
   clientEvent?: {
     event: string;
     data: unknown;
@@ -390,7 +390,7 @@ interface UIOperation {
   [key: string]: unknown;
 }
 
-interface ToolResult {
+export interface ToolResult {
   operation?: unknown;
   result?: {
     operations?: UIOperation[];
@@ -398,12 +398,12 @@ interface ToolResult {
   [key: string]: unknown;
 }
 
-interface Step {
+export interface Step {
   toolResults?: ToolResult[];
   [key: string]: unknown;
 }
 
-interface AgentResult {
+export interface AgentResult {
   toolResults?: ToolResult[];
   steps?: Step[];
   proposalGroup?: unknown;

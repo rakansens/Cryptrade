@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { logger } from '../../utils/logger';
 
 // Type definitions for chart data analysis
-interface Candle {
+export interface Candle {
   time: number;
   open: number;
   high: number;
@@ -12,7 +12,7 @@ interface Candle {
   volume: number;
 }
 
-interface TechnicalAnalysis {
+export interface TechnicalAnalysis {
   trend: {
     direction: 'bullish' | 'bearish' | 'sideways';
     strength: number;
@@ -53,7 +53,7 @@ interface TechnicalAnalysis {
   };
 }
 
-interface Pattern {
+export interface Pattern {
   type: string;
   confidence: number;
   timeframe: string;

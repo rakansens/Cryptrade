@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { ApprovedDrawingIds } from '@/types/proposals';
 
 // Drawing type definition
-type DrawingType = 'pattern' | 'drawing';
+export type DrawingType = 'pattern' | 'drawing';
 
 // Define initial state for consistency
 const initialState = {
@@ -11,7 +11,7 @@ const initialState = {
   drawingTypes: new Map<string, DrawingType>(),
 };
 
-interface ProposalApprovalState {
+export interface ProposalApprovalState {
   // State
   approvedDrawingIds: ApprovedDrawingIds;
   drawingTypes: Map<string, DrawingType>;

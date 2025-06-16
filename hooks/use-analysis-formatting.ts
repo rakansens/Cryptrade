@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 
-interface AnalysisFormatting {
+export interface AnalysisFormatting {
   formatDate: (timestamp: number) => string;
   formatDuration: (milliseconds: number) => string;
   formatPercentage: (value: number) => string;

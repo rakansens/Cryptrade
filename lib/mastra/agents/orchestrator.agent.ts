@@ -12,7 +12,7 @@ import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/stor
 import { registerAllAgents } from '../network/agent-registry';
 
 // Context type for orchestrator agent
-interface OrchestratorAgentContext {
+export interface OrchestratorAgentContext {
   queryComplexity?: string;
   userTier?: string;
   isProposalMode?: boolean;

@@ -16,7 +16,7 @@ import { ValidationUtils, ColorUtils, TimeUtils } from './utils';
 import { logger } from '@/lib/utils/logger';
 import { isDevelopment } from '@/config/env';
 
-interface LineData {
+export interface LineData {
   time: number;
   value: number;
 }

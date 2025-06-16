@@ -9,7 +9,7 @@ import type { DetectedLine } from '@/lib/analysis/types';
 import type { MLPrediction, MLReasoning } from '@/types/shared/ml';
 
 // Type definitions for proposal generation
-interface Proposal {
+export interface Proposal {
   id: string;
   type: string;
   description: string;
@@ -29,14 +29,14 @@ interface Proposal {
   };
 }
 
-interface SupportResistanceLevel {
+export interface SupportResistanceLevel {
   type: 'support' | 'resistance';
   price: number;
   touchPoints: Array<{ time: number; value: number }>;
   confidence: number;
 }
 
-interface TrendlineData {
+export interface TrendlineData {
   direction: '上昇' | '下降';
   touchPoints: Array<{ time: number; value: number }>;
   confidence: number;
@@ -44,7 +44,7 @@ interface TrendlineData {
   intercept: number;
 }
 
-interface TouchPoint {
+export interface TouchPoint {
   index: number;
   time: number;
   value: number;

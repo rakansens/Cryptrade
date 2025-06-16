@@ -16,20 +16,20 @@ import type {
 import type { StorageConfig } from './factory';
 
 // Minimal SQLite type definitions
-interface SQLiteStatement {
+export interface SQLiteStatement {
   run(...params: unknown[]): { changes: number };
   get(...params: unknown[]): Record<string, unknown>;
   all(...params: unknown[]): Record<string, unknown>[];
 }
 
-interface SQLiteDatabase {
+export interface SQLiteDatabase {
   prepare(sql: string): SQLiteStatement;
   exec(sql: string): void;
   close(): void;
   transaction<T>(fn: (args: T) => void): (args: T) => void;
 }
 
-interface SQLiteLogRow {
+export interface SQLiteLogRow {
   id: string;
   timestamp: number;
   level: string;

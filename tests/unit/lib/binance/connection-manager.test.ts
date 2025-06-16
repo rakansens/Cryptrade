@@ -382,6 +382,11 @@ describe('BinanceConnectionManager', () => {
       );
     });
 
+    /**
+     * @fixme This test is skipped due to issues with mocking server-side behavior
+     * @todo Fix the global window mocking to properly test server-side connection prevention
+     * @description Should verify that WebSocket connections are prevented on server-side
+     */
     it.skip('should not connect on server-side', () => {
       const originalWindow = global.window;
       delete (global as any).window;
@@ -623,6 +628,11 @@ describe('BinanceConnectionManager', () => {
       );
     });
 
+    /**
+     * @fixme This test is skipped due to timing issues in the mock implementation
+     * @todo Refactor the test to properly verify exponential backoff delays
+     * @description Should verify that reconnection attempts use exponential backoff timing
+     */
     it.skip('should use exponential backoff for reconnections', async () => {
       // Force multiple reconnection attempts
       // Mock reconnectAttempts to simulate multiple attempts
@@ -717,6 +727,11 @@ describe('BinanceConnectionManager', () => {
       );
     });
 
+    /**
+     * @fixme This test is skipped due to issues with error handler mocking
+     * @todo Fix the mock setup to properly test subscription handler error scenarios
+     * @description Should verify that errors in subscription handlers are caught and logged
+     */
     it.skip('should handle subscription handler errors', async () => {
       const errorHandler = jest.fn(() => {
         throw new Error('Handler error');
@@ -751,6 +766,11 @@ describe('BinanceConnectionManager', () => {
       );
     });
 
+    /**
+     * @fixme This test is skipped due to environment mocking complexities
+     * @todo Improve production environment simulation for proper testing
+     * @description Should verify that error details are suppressed in production environments
+     */
     it.skip('should suppress error details in production', async () => {
       const originalConsoleWarn = console.warn;
       console.warn = jest.fn();

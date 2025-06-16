@@ -5,7 +5,7 @@ import { calculateRSI } from '@/lib/indicators/rsi';
 import { calculateMACD } from '@/lib/indicators/macd';
 import type { UTCTimestamp } from 'lightweight-charts';
 
-interface IndicatorValues {
+export interface IndicatorValues {
   ma7: number | null;
   ma25: number | null;
   ma99: number | null;

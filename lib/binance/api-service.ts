@@ -3,7 +3,7 @@ import { validateBinanceKlines, type BinanceTicker24hr, type ProcessedKline, typ
 import { BaseService } from '@/lib/api/base-service';
 
 // Binance Exchange Info types
-interface BinanceSymbol {
+export interface BinanceSymbol {
   symbol: string;
   status: string;
   baseAsset: string;
@@ -23,7 +23,7 @@ interface BinanceSymbol {
   permissions: string[];
 }
 
-interface BinanceExchangeInfo {
+export interface BinanceExchangeInfo {
   timezone: string;
   serverTime: number;
   rateLimits: Array<{
@@ -36,12 +36,12 @@ interface BinanceExchangeInfo {
   symbols: BinanceSymbol[];
 }
 
-interface BinanceErrorResponse {
+export interface BinanceErrorResponse {
   code: number;
   msg: string;
 }
 
-type KlinesResponse = ProcessedKline[] | BinanceKlineTuple[];
+export type KlinesResponse = ProcessedKline[] | BinanceKlineTuple[];
 
 export class BinanceAPIService extends BaseService {
   constructor() {

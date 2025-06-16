@@ -266,7 +266,9 @@ export class FeatureExtractor {
 
   /**
    * タイムフレーム間の一致度を計算
-   * @notImplemented 実装予定
+   * @notImplemented
+   * @alpha
+   * @returns {number} Timeframe confluence score (0.5-0.65 in dev, 0.5 in prod)
    */
   private calculateTimeframeConfluence(_line: DetectedLine): number {
     // 開発環境では固定値を返す
@@ -281,7 +283,9 @@ export class FeatureExtractor {
 
   /**
    * 上位タイムフレームとの整合性をチェック
-   * @notImplemented 実装予定
+   * @notImplemented
+   * @alpha
+   * @returns {boolean} Always true in dev, false in prod
    */
   private checkHigherTimeframeAlignment(_line: DetectedLine): boolean {
     // 開発環境では固定値を返す
@@ -296,7 +300,9 @@ export class FeatureExtractor {
 
   /**
    * 近傍のパターンをチェック
-   * @notImplemented 実装予定
+   * @notImplemented
+   * @alpha
+   * @returns {boolean} Always false as placeholder implementation
    */
   private checkNearbyPatterns(_line: DetectedLine): boolean {
     // 開発環境では固定値を返す

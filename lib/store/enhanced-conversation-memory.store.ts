@@ -33,7 +33,7 @@ export interface ConversationSession {
   tokenUsage?: { total: number; input: number; output: number };
 }
 
-interface EnhancedConversationMemoryState {
+export interface EnhancedConversationMemoryState {
   sessions: Record<string, ConversationSession>;
   currentSessionId: string | null;
   defaultProcessors: MemoryProcessor[];
@@ -85,8 +85,8 @@ const DEFAULT_PROCESSORS: MemoryProcessor[] = [
 ];
 
 // Extract store implementation to simplify type inference
-type SetState = (state: (draft: EnhancedConversationMemoryState) => void) => void;
-type GetState = () => EnhancedConversationMemoryState;
+export type SetState = (state: (draft: EnhancedConversationMemoryState) => void) => void;
+export type GetState = () => EnhancedConversationMemoryState;
 
 const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConversationMemoryState => ({
         sessions: {},
@@ -308,7 +308,13 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
         getProcessedMessages: (sessionId, limit = 20) => {
           const state = get();
           const session = state.sessions[sessionId];
-          if (!session) return [];
+          if (!session) {
+            logger.warn('[EnhancedConversationMemory] Session not found in getProcessedMessages', {
+              sessionId,
+              availableSessions: Object.keys(state.sessions)
+            });
+            return [];
+          }
           
           // Use cached processed messages if available and still valid
           if (session.processedMessages && session.processedMessages.length > 0) {
@@ -845,7 +851,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
 
 // Enhanced Memory Store Implementation with DB
 // Split the store creation to avoid deep type instantiation
-type EnhancedConversationMemoryStore = EnhancedConversationMemoryState;
+export type EnhancedConversationMemoryStore = EnhancedConversationMemoryState;
 
 const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
   name: 'enhanced-conversation-memory',
@@ -885,10 +891,11 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
 export const useEnhancedConversationMemory = create<EnhancedConversationMemoryStore>()(
   devtools(
     persist(
-      immer(enhancedStoreImplementation) as any,
-      persistConfig as any
-    ) as any
-  ) as any
+      immer(enhancedStoreImplementation as any),
+      persistConfig
+    ),
+    { name: 'enhanced-conversation-memory' }
+  )
 );
 
 // Export convenience functions
