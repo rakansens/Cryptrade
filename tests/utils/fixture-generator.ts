@@ -38,8 +38,8 @@ export class FixtureGenerator {
       const trendBias = trendMap[trend];
       
       // Add some market structure
-      const hourOfDay = new Date(time * 1000).getHours();
-      const dayOfWeek = new Date(time * 1000).getDay();
+      const hourOfDay = new Date((time as number) * 1000).getHours();
+      const dayOfWeek = new Date((time as number) * 1000).getDay();
       
       // Higher volatility during market hours
       const timeVolatility = (hourOfDay >= 9 && hourOfDay <= 16) ? 1.5 : 1;
@@ -110,6 +110,7 @@ export class FixtureGenerator {
       
       const convergence = 1 - (i / patternLength) * 0.5;
       const candle = data[index];
+      if (!candle) continue;
       const middle = (candle.high + candle.low) / 2;
       const range = (candle.high - candle.low) * convergence;
       
@@ -199,6 +200,7 @@ export class FixtureGenerator {
       if (index >= data.length) break;
       
       const candle = data[index];
+      if (!candle) continue;
       const increase = 100 * (i + 1);
       data[index] = {
         ...candle,
@@ -211,7 +213,7 @@ export class FixtureGenerator {
     
     // Consolidation (flag)
     const flagStart = patternStart + 5;
-    const basePrice = data[flagStart - 1].close;
+    const basePrice = data[flagStart - 1]?.close ?? 0;
     
     for (let i = 0; i < 10; i++) {
       const index = flagStart + i;
@@ -220,8 +222,10 @@ export class FixtureGenerator {
       const drift = -10 * i; // Slight downward drift
       const range = 50;
       
+      const existingCandle = data[index];
+      if (!existingCandle) continue;
       data[index] = {
-        time: data[index].time,
+        time: existingCandle.time,
         open: basePrice + drift + Math.random() * range - range / 2,
         high: basePrice + drift + range,
         low: basePrice + drift - range,
@@ -236,6 +240,7 @@ export class FixtureGenerator {
     if (index >= data.length) return;
     
     const candle = data[index];
+    if (!candle) return;
     data[index] = {
       ...candle,
       open: candle.open + adjustment,

@@ -9,14 +9,17 @@ export class MockBinanceAPIService {
   private intervalIds = new Map<string, NodeJS.Timeout>();
 
   async getKlines(symbol: string, interval: string, limit: number = 100) {
-    // Return mock historical kline data
+    // Return mock historical kline data for the given symbol
     const klines = [];
     const now = Date.now();
     const intervalMs = this.getIntervalMs(interval);
     
+    // Generate mock data based on symbol to provide some variation
+    const basePrice = symbol.includes('BTC') ? 48000 : symbol.includes('ETH') ? 3200 : 100;
+    
     for (let i = limit - 1; i >= 0; i--) {
       const time = now - (i * intervalMs);
-      const open = 48000 + Math.random() * 1000 - 500;
+      const open = basePrice + Math.random() * 1000 - 500;
       const close = open + (Math.random() - 0.5) * 200;
       const high = Math.max(open, close) + Math.random() * 100;
       const low = Math.min(open, close) - Math.random() * 100;

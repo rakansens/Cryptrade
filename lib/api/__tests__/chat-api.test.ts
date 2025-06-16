@@ -27,8 +27,8 @@ describe('ChatAPI', () => {
       const dbSession = {
         id: 'session-1',
         title: 'Test Session',
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-        updatedAt: new Date('2024-01-01T01:00:00Z'),
+        createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
+        updatedAt: new Date('2024-01-01T01:00:00Z').getTime(),
       };
 
       const result = ChatAPI.convertToChatSession(dbSession);
@@ -44,9 +44,9 @@ describe('ChatAPI', () => {
     it('should handle null title with default value', () => {
       const dbSession = {
         id: 'session-1',
-        title: null,
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-        updatedAt: new Date('2024-01-01T01:00:00Z'),
+        title: '',
+        createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
+        updatedAt: new Date('2024-01-01T01:00:00Z').getTime(),
       };
 
       const result = ChatAPI.convertToChatSession(dbSession);
@@ -80,18 +80,19 @@ describe('ChatAPI', () => {
 
     it('should handle proposal group data', () => {
       const proposalGroup: ProposalGroup = {
+        id: 'group-1',
         proposals: [
           {
-            symbol: 'BTCUSDT',
-            action: 'BUY',
-            timeframe: '1h',
-            entry: 50000,
-            targets: [51000, 52000],
+            id: 'proposal-1',
+            type: 'buy',
+            price: 50000,
             stopLoss: 49000,
+            takeProfit: 52000,
             confidence: 0.8,
-            reasoning: 'Test reasoning',
+            reason: 'Test reasoning',
           },
         ],
+        timestamp: Date.now(),
       };
 
       const dbMessage: AddMessageResponse['message'] = {
@@ -110,18 +111,21 @@ describe('ChatAPI', () => {
 
     it('should handle entry proposal group data', () => {
       const entryProposalGroup: EntryProposalGroup = {
-        proposals: [
+        id: 'entry-group-1',
+        entries: [
           {
-            symbol: 'BTCUSDT',
-            action: 'BUY',
-            entry: 50000,
+            id: 'entry-1',
+            entryType: 'market',
+            direction: 'long',
+            entryPrice: 50000,
             stopLoss: 49000,
-            targets: [51000],
-            confidence: 0.9,
+            takeProfit: 51000,
+            riskRewardRatio: 2.0,
+            positionSize: 0.1,
             reasoning: 'Entry reasoning',
-            timestamp: new Date().toISOString(),
           },
         ],
+        timestamp: Date.now(),
       };
 
       const dbMessage: AddMessageResponse['message'] = {
@@ -161,8 +165,8 @@ describe('ChatAPI', () => {
         session: {
           id: 'new-session',
           title: 'New Session',
-          createdAt: new Date('2024-01-01T00:00:00Z'),
-          updatedAt: new Date('2024-01-01T00:00:00Z'),
+          createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
+          updatedAt: new Date('2024-01-01T00:00:00Z').getTime(),
         },
       };
 
@@ -193,9 +197,9 @@ describe('ChatAPI', () => {
       const mockResponse: CreateSessionResponse = {
         session: {
           id: 'new-session',
-          title: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          title: '',
+          createdAt: new Date().getTime(),
+          updatedAt: new Date().getTime(),
         },
       };
 
@@ -247,7 +251,7 @@ describe('ChatAPI', () => {
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('chat_sessions_user-1');
+      (createKey as jest.Mock).mockReturnValue('chat_sessions_user-1');
       mockApiCache.get.mockReturnValue(cachedSessions);
 
       const result = await ChatAPI.getUserSessions('user-1');
@@ -292,7 +296,7 @@ describe('ChatAPI', () => {
 
       await ChatAPI.getUserSessions();
 
-      expect(mockApiCache.createKey).toHaveBeenCalledWith('chat_sessions', { userId: 'default' });
+      expect(createKey).toHaveBeenCalledWith('chat_sessions', { userId: 'default' });
       expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'GET',
         headers: {},
@@ -325,7 +329,7 @@ describe('ChatAPI', () => {
 
     it('should return empty array in development when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -335,19 +339,19 @@ describe('ChatAPI', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning empty array in development mode');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true, configurable: true });
     });
 
     it('should throw error in production when no cache available', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
 
       await expect(ChatAPI.getUserSessions()).rejects.toThrow('Failed to get sessions: API Error');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true, configurable: true });
     });
   });
 
@@ -394,18 +398,19 @@ describe('ChatAPI', () => {
 
     it('should add a proposal message with proposal group', async () => {
       const proposalGroup: ProposalGroup = {
+        id: 'group-1',
         proposals: [
           {
-            symbol: 'BTCUSDT',
-            action: 'BUY',
-            timeframe: '1h',
-            entry: 50000,
-            targets: [51000],
+            id: 'proposal-1',
+            type: 'buy',
+            price: 50000,
             stopLoss: 49000,
+            takeProfit: 51000,
             confidence: 0.8,
-            reasoning: 'Test',
+            reason: 'Test',
           },
         ],
+        timestamp: Date.now(),
       };
 
       const mockResponse: AddMessageResponse = {
@@ -499,7 +504,7 @@ describe('ChatAPI', () => {
         },
       ];
 
-      mockApiCache.createKey.mockReturnValue('chat_messages_session-1');
+      (createKey as jest.Mock).mockReturnValue('chat_messages_session-1');
       mockApiCache.get.mockReturnValue(cachedMessages);
 
       const result = await ChatAPI.getMessages('session-1');
@@ -536,6 +541,7 @@ describe('ChatAPI', () => {
     it('should handle retry mechanism', async () => {
       mockApiCache.get.mockReturnValue(null);
 
+      // @ts-ignore - retryFn is only used in mock implementation
       const retryFn = jest.fn()
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce([]);
@@ -606,7 +612,7 @@ describe('ChatAPI', () => {
 
     it('should return null in development mode when API fails', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -616,7 +622,7 @@ describe('ChatAPI', () => {
       expect(result).toBeNull();
       expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning null in development mode');
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true, configurable: true });
     });
   });
 

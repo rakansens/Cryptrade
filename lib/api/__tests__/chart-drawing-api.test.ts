@@ -35,6 +35,8 @@ describe('ChartDrawingAPI', () => {
             lineStyle: 'solid' as const,
             showLabels: true
           },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -90,6 +92,8 @@ describe('ChartDrawingAPI', () => {
             { time: 100, value: 100 },
           ],
           style: { color: '#00FF00', lineWidth: 2, lineStyle: 'solid' as const, showLabels: true },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -112,6 +116,8 @@ describe('ChartDrawingAPI', () => {
           type: 'horizontal',
           points: [{ time: 0, value: 50 }],
           style: { color: '#0000FF', lineWidth: 1, lineStyle: 'solid' as const, showLabels: true },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -167,6 +173,8 @@ describe('ChartDrawingAPI', () => {
           type: 'horizontal',
           points: [{ time: 50, value: 50 }],
           style: { color: '#000000', lineWidth: 1, lineStyle: 'solid' as const, showLabels: true },
+          visible: true,
+          interactive: true,
         },
       ];
 
@@ -216,16 +224,20 @@ describe('ChartDrawingAPI', () => {
     it('should save patterns successfully', async () => {
       const patterns: PatternData[] = [
         {
-          id: 'pattern-1',
           type: 'triangle',
-          points: [
-            { time: 0, value: 0 },
-            { time: 50, value: 100 },
-            { time: 100, value: 0 },
-          ],
-          timeframe: '1h',
-          symbol: 'BTCUSDT',
-          timestamp: Date.now(),
+          visualization: {
+            lines: [
+              {
+                id: 'pattern-1',
+                points: [
+                  { time: 0, value: 0 },
+                  { time: 50, value: 100 },
+                  { time: 100, value: 0 },
+                ],
+              },
+            ],
+          },
+          confidence: 0.8,
         },
       ];
 
@@ -263,12 +275,11 @@ describe('ChartDrawingAPI', () => {
     it('should return cached patterns if available', async () => {
       const cachedPatterns: PatternData[] = [
         {
-          id: 'cached-pattern',
           type: 'head-and-shoulders',
-          points: [],
-          timeframe: '4h',
-          symbol: 'ETHUSDT',
-          timestamp: Date.now(),
+          visualization: {
+            lines: [],
+          },
+          confidence: 0.75,
         },
       ];
 
@@ -284,12 +295,11 @@ describe('ChartDrawingAPI', () => {
     it('should fetch patterns from API when cache is empty', async () => {
       const patterns: PatternData[] = [
         {
-          id: 'pattern-1',
           type: 'flag',
-          points: [],
-          timeframe: '15m',
-          symbol: 'BTCUSDT',
-          timestamp: Date.now(),
+          visualization: {
+            lines: [],
+          },
+          confidence: 0.85,
         },
       ];
 

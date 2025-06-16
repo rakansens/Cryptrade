@@ -53,6 +53,8 @@ describe('ChatDatabaseService', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       lastActiveAt: new Date(),
+      startedAt: new Date(),
+      metadata: null,
     };
 
     it('should create a session successfully', async () => {
@@ -146,6 +148,8 @@ describe('ChatDatabaseService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastActiveAt: new Date(),
+        startedAt: new Date(),
+        metadata: null,
       },
       {
         id: 'session-2',
@@ -154,6 +158,8 @@ describe('ChatDatabaseService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastActiveAt: new Date(Date.now() - 3600000),
+        startedAt: new Date(),
+        metadata: null,
       },
     ];
 

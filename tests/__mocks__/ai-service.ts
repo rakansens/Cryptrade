@@ -15,7 +15,7 @@ export class MockAIService {
   private customResponses: Map<string, any> = new Map();
 
   // Analysis methods
-  async analyzeTradingOpportunity(params: any) {
+  async analyzeTradingOpportunity(_params: any) {
     if (this.shouldFail) {
       throw new Error('AI service temporarily unavailable');
     }
@@ -26,7 +26,7 @@ export class MockAIService {
     return customResponse || mockTradingProposal;
   }
 
-  async generateDrawingProposal(params: any) {
+  async generateDrawingProposal(_params: any) {
     if (this.shouldFail) {
       throw new Error('AI service temporarily unavailable');
     }
@@ -37,7 +37,7 @@ export class MockAIService {
     return customResponse || mockDrawingProposal;
   }
 
-  async analyzeIndicators(params: any) {
+  async analyzeIndicators(_params: any) {
     if (this.shouldFail) {
       throw new Error('AI service temporarily unavailable');
     }
@@ -48,7 +48,7 @@ export class MockAIService {
     return customResponse || mockIndicatorAnalysis;
   }
 
-  async getMarketSentiment(symbol: string) {
+  async getMarketSentiment(_symbol: string) {
     if (this.shouldFail) {
       throw new Error('AI service temporarily unavailable');
     }
@@ -60,7 +60,7 @@ export class MockAIService {
   }
 
   // Streaming chat simulation
-  async *streamChat(messages: any[], onProgress?: (progress: number) => void) {
+  async *streamChat(_messages: any[], onProgress?: (progress: number) => void) {
     if (this.shouldFail) {
       throw new Error('AI service temporarily unavailable');
     }
@@ -143,7 +143,7 @@ export class MockAnthropicClient {
     })
   };
 
-  async *stream(params: any) {
+  async *stream(_params: any) {
     const response = 'Streaming response from Anthropic';
     for (const char of response) {
       await new Promise(resolve => setTimeout(resolve, 10));

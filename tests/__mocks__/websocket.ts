@@ -19,7 +19,7 @@ export class MockWebSocket {
   private closeCode?: number;
   private closeReason?: string;
 
-  constructor(url: string, protocols?: string | string[]) {
+  constructor(url: string, _protocols?: string | string[]) {
     this.url = url;
     this.readyState = MockWebSocket.CONNECTING;
     
