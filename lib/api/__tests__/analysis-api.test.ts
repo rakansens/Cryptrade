@@ -1,3 +1,12 @@
+// Mock dependencies before imports
+jest.mock('@/lib/utils/api-cache');
+jest.mock('@/lib/utils/retry');
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/utils/db-conversions');
+
+// Mock global fetch
+global.fetch = jest.fn();
+
 import { AnalysisAPI } from '../analysis-api';
 import { apiCache } from '@/lib/utils/api-cache';
 import { withRetry } from '@/lib/utils/retry';
@@ -10,15 +19,6 @@ import type {
   TrackingData,
   SentimentData
 } from '@/types/analysis-history';
-
-// Mock dependencies
-jest.mock('@/lib/utils/api-cache');
-jest.mock('@/lib/utils/retry');
-jest.mock('@/lib/utils/logger');
-jest.mock('@/lib/utils/db-conversions');
-
-// Mock global fetch
-global.fetch = jest.fn();
 
 describe('AnalysisAPI', () => {
   beforeEach(() => {

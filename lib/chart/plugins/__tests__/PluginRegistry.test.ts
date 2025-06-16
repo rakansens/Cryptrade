@@ -1,3 +1,13 @@
+// Mock logger before imports
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { PluginRegistry } from '../PluginRegistry';
 import type { 
@@ -7,16 +17,6 @@ import type {
   PluginOptions 
 } from '../interfaces';
 import type { PatternVisualization } from '@/types/pattern';
-
-// Mock logger
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
 
 // Mock plugin implementation
 class MockPlugin implements IRendererPlugin {

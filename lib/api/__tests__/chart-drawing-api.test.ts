@@ -1,16 +1,16 @@
-import { ChartDrawingAPI, TimeframeState } from '../chart-drawing-api';
-import { apiCache } from '@/lib/utils/api-cache';
-import { withRetry } from '@/lib/utils/retry';
-import { logger } from '@/lib/utils/logger';
-import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
-
-// Mock dependencies
+// Mock dependencies before imports
 jest.mock('@/lib/utils/api-cache');
 jest.mock('@/lib/utils/retry');
 jest.mock('@/lib/utils/logger');
 
 // Mock global fetch
 global.fetch = jest.fn();
+
+import { ChartDrawingAPI, TimeframeState } from '../chart-drawing-api';
+import { apiCache } from '@/lib/utils/api-cache';
+import { withRetry } from '@/lib/utils/retry';
+import { logger } from '@/lib/utils/logger';
+import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.schema';
 
 describe('ChartDrawingAPI', () => {
   beforeEach(() => {

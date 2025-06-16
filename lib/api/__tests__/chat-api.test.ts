@@ -1,17 +1,17 @@
-import { ChatAPI, ChatMessage, ChatSession } from '../chat-api';
-import { apiCache } from '@/lib/utils/api-cache';
-import { withRetry } from '@/lib/utils/retry';
-import { logger } from '@/lib/utils/logger';
-import type { CreateSessionResponse, AddMessageResponse } from '@/types/api.types';
-import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
-
-// Mock dependencies
+// Mock dependencies before imports
 jest.mock('@/lib/utils/api-cache');
 jest.mock('@/lib/utils/retry');
 jest.mock('@/lib/utils/logger');
 
 // Mock global fetch
 global.fetch = jest.fn();
+
+import { ChatAPI, ChatMessage, ChatSession } from '../chat-api';
+import { apiCache } from '@/lib/utils/api-cache';
+import { withRetry } from '@/lib/utils/retry';
+import { logger } from '@/lib/utils/logger';
+import type { CreateSessionResponse, AddMessageResponse } from '@/types/api.types';
+import type { ProposalGroup, EntryProposalGroup } from '@/types/database.types';
 
 describe('ChatAPI', () => {
   beforeEach(() => {

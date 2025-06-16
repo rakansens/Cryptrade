@@ -1,10 +1,10 @@
+// Mock dependencies before imports
+jest.mock('@/lib/utils/logger');
+
 import { renderPatternLines, PatternLineRendererDeps } from '../patternLineRenderer';
 import { logger } from '@/lib/utils/logger';
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { PatternVisualization } from '@/types/pattern';
-
-// Mock dependencies
-jest.mock('@/lib/utils/logger');
 
 describe('renderPatternLines', () => {
   let mockChart: jest.Mocked<IChartApi>;

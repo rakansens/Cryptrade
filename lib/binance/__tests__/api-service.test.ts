@@ -1,9 +1,4 @@
-import { BinanceAPIService } from '../api-service';
-import { logger } from '@/lib/utils/logger';
-import { validateBinanceKlines } from '@/types/market';
-import type { BinanceTicker24hr, ProcessedKline, BinanceKlineTuple } from '@/types/market';
-
-// Mock dependencies
+// Mock dependencies before imports
 jest.mock('@/lib/utils/logger');
 jest.mock('@/types/market', () => ({
   ...jest.requireActual('@/types/market'),
@@ -17,6 +12,11 @@ jest.mock('@/lib/api/base-service', () => ({
     get: jest.fn(),
   })),
 }));
+
+import { BinanceAPIService } from '../api-service';
+import { logger } from '@/lib/utils/logger';
+import { validateBinanceKlines } from '@/types/market';
+import type { BinanceTicker24hr, ProcessedKline, BinanceKlineTuple } from '@/types/market';
 
 describe('BinanceAPIService', () => {
   let service: BinanceAPIService;
