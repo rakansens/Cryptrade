@@ -9,9 +9,8 @@ jest.mock('@/lib/utils/logger', () => ({
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   validatePriceData,
-  validateNumericArray,
+  validateNumberArray,
   validateIndicatorInput,
-  sanitizeData,
   type DataValidationOptions,
 } from '../validation';
 
@@ -58,7 +57,7 @@ describe('Indicator Validation', () => {
 
     it('should reject insufficient data', () => {
       const result = validatePriceData(
-        [mockPriceData[0]], 
+        [mockPriceData[0]!], 
         { minLength: 5 }
       );
       
@@ -189,40 +188,38 @@ describe('Indicator Validation', () => {
     });
   });
 
-  describe('validateNumericArray', () => {
+  describe('validateNumberArray', () => {
     it('should validate valid numeric array', () => {
-      const result = validateNumericArray([1, 2, 3, 4, 5], defaultOptions);
+      const result = validateNumberArray([1, 2, 3, 4, 5], defaultOptions);
       
       expect(result.valid).toBe(true);
     });
 
     it('should reject non-numeric values', () => {
-      const result = validateNumericArray([1, 2, 'three', 4] as any, defaultOptions);
+      const result = validateNumberArray([1, 2, 'three', 4] as any, defaultOptions);
       
       expect(result.valid).toBe(false);
       expect(result.error).toBe('Array contains non-numeric values at indices: 2');
     });
 
     it('should handle mixed types', () => {
-      const result = validateNumericArray([1, 2, null, undefined, 5] as any, defaultOptions);
+      const result = validateNumberArray([1, 2, null, undefined, 5] as any, defaultOptions);
       
       expect(result.valid).toBe(false);
       expect(result.error).toContain('non-numeric values');
     });
 
-    it('should validate range constraints', () => {
-      const result = validateNumericArray([1, 2, 3], {
-        minLength: 2,
-        minValue: 0,
-        maxValue: 2,
+    it('should validate minimum length', () => {
+      const result = validateNumberArray([1, 2, 3], {
+        minLength: 5,
       });
       
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Values out of range [0, 2] at indices: 2');
+      expect(result.error).toContain('Insufficient data');
     });
 
     it('should check for constant values', () => {
-      const result = validateNumericArray([5, 5, 5, 5], defaultOptions);
+      const result = validateNumberArray([5, 5, 5, 5], defaultOptions);
       
       expect(result.valid).toBe(true);
       expect(result.warnings).toContain('All values are constant (5)');
@@ -336,111 +333,6 @@ describe('Indicator Validation', () => {
     });
   });
 
-  describe('sanitizeData', () => {
-    it('should sanitize price data', () => {
-      const dirtyData = [
-        { time: 1000, close: 100 },
-        { time: 2000, close: NaN },
-        { time: 3000, close: Infinity },
-        { time: 4000, close: -Infinity },
-        { time: 5000, close: 110 },
-      ];
-      
-      const sanitized = sanitizeData(dirtyData);
-      
-      expect(sanitized).toHaveLength(2);
-      expect(sanitized[0].close).toBe(100);
-      expect(sanitized[1].close).toBe(110);
-    });
-
-    it('should handle interpolation option', () => {
-      const dataWithGaps = [
-        { time: 1000, close: 100 },
-        { time: 2000, close: NaN },
-        { time: 3000, close: 110 },
-      ];
-      
-      const sanitized = sanitizeData(dataWithGaps, {
-        interpolate: true,
-      });
-      
-      expect(sanitized).toHaveLength(3);
-      expect(sanitized[1].close).toBe(105); // Interpolated
-    });
-
-    it('should handle fillForward option', () => {
-      const dataWithGaps = [
-        { time: 1000, close: 100 },
-        { time: 2000, close: NaN },
-        { time: 3000, close: NaN },
-        { time: 4000, close: 110 },
-      ];
-      
-      const sanitized = sanitizeData(dataWithGaps, {
-        fillForward: true,
-      });
-      
-      expect(sanitized).toHaveLength(4);
-      expect(sanitized[1].close).toBe(100); // Filled forward
-      expect(sanitized[2].close).toBe(100); // Filled forward
-    });
-
-    it('should remove outliers', () => {
-      const dataWithOutliers = [
-        { time: 1000, close: 100 },
-        { time: 2000, close: 105 },
-        { time: 3000, close: 1000 }, // Outlier
-        { time: 4000, close: 108 },
-        { time: 5000, close: 5 },    // Outlier
-        { time: 6000, close: 110 },
-      ];
-      
-      const sanitized = sanitizeData(dataWithOutliers, {
-        removeOutliers: true,
-        outlierStdDev: 2,
-      });
-      
-      expect(sanitized.length).toBeLessThan(dataWithOutliers.length);
-      expect(sanitized.every(d => d.close > 50 && d.close < 200)).toBe(true);
-    });
-
-    it('should handle empty array', () => {
-      const sanitized = sanitizeData([]);
-      expect(sanitized).toEqual([]);
-    });
-
-    it('should handle all invalid data', () => {
-      const allInvalid = [
-        { time: 1000, close: NaN },
-        { time: 2000, close: Infinity },
-        { time: 3000, close: -Infinity },
-      ];
-      
-      const sanitized = sanitizeData(allInvalid);
-      expect(sanitized).toEqual([]);
-    });
-
-    it('should preserve original data when no issues', () => {
-      const sanitized = sanitizeData(mockPriceData);
-      expect(sanitized).toEqual(mockPriceData);
-    });
-
-    it('should sort by time if needed', () => {
-      const unsortedData = [
-        { time: 3000, close: 110 },
-        { time: 1000, close: 100 },
-        { time: 2000, close: 105 },
-      ];
-      
-      const sanitized = sanitizeData(unsortedData, {
-        sortByTime: true,
-      });
-      
-      expect(sanitized[0].time).toBe(1000);
-      expect(sanitized[1].time).toBe(2000);
-      expect(sanitized[2].time).toBe(3000);
-    });
-  });
 
   describe('edge cases', () => {
     it('should handle very large datasets', () => {

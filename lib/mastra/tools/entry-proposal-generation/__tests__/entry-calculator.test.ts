@@ -24,15 +24,16 @@ describe('calculateEntryPoints', () => {
   }));
 
   const mockMarketContext: MarketContext = {
+    currentPrice: 50000,
     trend: 'bullish',
     volatility: 'normal',
-    momentum: 'positive',
-    volume: 'increasing',
+    volume: 'average',
     keyLevels: {
-      support: [49000, 48500, 48000],
-      resistance: [51000, 51500, 52000],
+      nearestSupport: 49000,
+      nearestResistance: 51000,
+      dailyHigh: 52000,
+      dailyLow: 48000,
     },
-    marketStructure: 'uptrend',
   };
 
   const mockAnalysisResults = {
@@ -40,37 +41,52 @@ describe('calculateEntryPoints', () => {
       {
         id: 'pattern-1',
         type: 'triangle',
-        direction: 'bullish',
-        targetPrice: 52000,
+        trading_implication: 'bullish' as const,
         confidence: 0.85,
+        startTime: Date.now() - 86400000,
+        endTime: Date.now(),
+        metrics: {
+          breakout_level: 52000,
+        },
       },
       {
         id: 'pattern-2',
         type: 'flag',
-        direction: 'bearish',
-        targetPrice: 48000,
+        trading_implication: 'bearish' as const,
         confidence: 0.75,
+        startTime: Date.now() - 86400000,
+        endTime: Date.now(),
+        metrics: {
+          breakout_level: 48000,
+        },
       },
     ],
     supportResistance: [
-      { level: 50000, type: 'support', strength: 0.9 },
-      { level: 51000, type: 'resistance', strength: 0.85 },
+      { id: 's1', price: 50000, type: 'support' as const },
+      { id: 'r1', price: 51000, type: 'resistance' as const },
     ],
     trendlines: [
       {
         id: 'trendline-1',
-        type: 'support',
-        currentPrice: 49800,
+        direction: '上昇' as const,
         slope: 0.02,
+        confidence: 0.8,
+        points: [
+          { time: Date.now() - 86400000, value: 49000 },
+          { time: Date.now(), value: 49800 },
+        ],
       },
     ],
     indicators: {
-      rsi: { value: 45, signal: 'oversold' },
-      macd: { histogram: 50, signal: 'bullish' },
-      bollingerBands: {
-        upper: 51500,
-        middle: 50000,
-        lower: 48500,
+      rsi: 45,
+      macd: {
+        value: 100,
+        signal: 50,
+        histogram: 50,
+      },
+      ma: {
+        short: 49900,
+        long: 50100,
       },
     },
   };
@@ -141,7 +157,9 @@ describe('calculateEntryPoints', () => {
       
       // Scalping entries should have tight zones
       const entry = scalpingEntries[0];
-      const zoneSize = Math.abs(entry.zone.end - entry.zone.start);
+      expect(entry).toBeDefined();
+      expect(entry.zone).toBeDefined();
+      const zoneSize = Math.abs(entry.zone!.max - entry.zone!.min);
       const pricePercentage = zoneSize / entry.price;
       expect(pricePercentage).toBeLessThan(0.005); // Less than 0.5%
     });
@@ -169,7 +187,7 @@ describe('calculateEntryPoints', () => {
       
       // Swing entries should have wider zones
       const entry = swingEntries[0];
-      const zoneSize = Math.abs(entry.zone.end - entry.zone.start);
+      const zoneSize = Math.abs(entry.zone.max - entry.zone.min);
       const pricePercentage = zoneSize / entry.price;
       expect(pricePercentage).toBeGreaterThan(0.005); // More than 0.5%
     });
@@ -331,9 +349,11 @@ describe('calculateEntryPoints', () => {
       // Should have entries near key levels
       const nearKeyLevel = entryPoints.some(entry => {
         const allLevels = [
-          ...mockMarketContext.keyLevels.support,
-          ...mockMarketContext.keyLevels.resistance,
-        ];
+          mockMarketContext.keyLevels.nearestSupport,
+          mockMarketContext.keyLevels.nearestResistance,
+          mockMarketContext.keyLevels.dailyHigh,
+          mockMarketContext.keyLevels.dailyLow,
+        ].filter(Boolean) as number[];
         return allLevels.some(level => 
           Math.abs(entry.price - level) / level < 0.02 // Within 2%
         );
@@ -366,7 +386,8 @@ describe('calculateEntryPoints', () => {
 
       entryPoints.forEach(entry => {
         expect(entry.reasoning).toBeTruthy();
-        expect(entry.reasoning.length).toBeGreaterThan(0);
+        expect(entry.reasoning.primary).toBeTruthy();
+        expect(entry.reasoning.technicalFactors.length).toBeGreaterThan(0);
       });
     });
 
@@ -416,7 +437,7 @@ describe('calculateEntryPoints', () => {
       expect(entryPoints).toBeDefined();
       // Entries should have wider zones in volatile markets
       if (entryPoints.length > 0) {
-        const zoneSize = entryPoints[0].zone.end - entryPoints[0].zone.start;
+        const zoneSize = entryPoints[0].zone.max - entryPoints[0].zone.min;
         expect(zoneSize).toBeGreaterThan(0);
       }
     });

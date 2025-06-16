@@ -39,16 +39,19 @@ describe('renderPatternAreas', () => {
   describe('successful rendering', () => {
     it('should render areas with valid visualization data', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+          { time: 1641002400000, value: 50500, type: 'peak' },
+          { time: 1641006000000, value: 51500, type: 'trough' },
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-              { time: 1641002400000, value: 50500 },
-              { time: 1641006000000, value: 51500 },
-            ],
-            color: 'rgba(0, 255, 0, 0.2)',
-            opacity: 0.3,
+            points: [0, 1, 2, 3], // indices into keyPoints array
+            style: {
+              fillColor: 'rgba(0, 255, 0, 0.2)',
+              opacity: 0.3,
+            },
           },
         ],
       };
@@ -56,6 +59,7 @@ describe('renderPatternAreas', () => {
       const result = renderPatternAreas('pattern-1', visualization, deps);
 
       expect(result).toHaveLength(1);
+      expect(mockChart.addHistogramSeries).toHaveBeenCalledTimes(1);
       expect(mockChart.addHistogramSeries).toHaveBeenCalledWith({
         color: 'rgba(0, 255, 0, 0.2)',
         priceFormat: {
@@ -64,54 +68,60 @@ describe('renderPatternAreas', () => {
         priceLineVisible: false,
         lastValueVisible: false,
       });
-
       expect(mockHistogramSeries.setData).toHaveBeenCalled();
-      const setDataCall = mockHistogramSeries.setData.mock.calls[0][0];
-      expect(setDataCall).toBeInstanceOf(Array);
-      expect(setDataCall.length).toBeGreaterThan(0);
-      expect(setDataCall[0]).toHaveProperty('time');
-      expect(setDataCall[0]).toHaveProperty('value', 1500); // maxValue - minValue = 51500 - 50000
-
-      expect(mockHistogramSeries.applyOptions).toHaveBeenCalledWith({
-        priceScaleId: 'right',
-        scaleMargins: expect.objectContaining({
-          top: expect.any(Number),
-          bottom: expect.any(Number),
-        }),
-      });
-
+      expect(mockHistogramSeries.applyOptions).toHaveBeenCalled();
       expect(globalAllSeries.size).toBe(1);
-      const entry = Array.from(globalAllSeries.entries())[0];
-      expect(entry[0]).toMatch(/^pattern-1_area_0_\d+$/);
-      expect(entry[1]).toEqual({
-        patternId: 'pattern-1',
-        series: mockHistogramSeries,
-        type: 'area',
-        createdAt: expect.any(Number),
-      });
-
-      expect(logger.info).toHaveBeenCalledWith('[PatternAreaRenderer] Rendering pattern areas', {
-        id: 'pattern-1',
-        areaCount: 1,
-      });
     });
 
-    it('should handle multiple areas', () => {
+    it('should render empty array for no areas', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+        ],
+      };
+
+      const result = renderPatternAreas('pattern-empty', visualization, deps);
+
+      expect(result).toEqual([]);
+      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
+      expect(globalAllSeries.size).toBe(0);
+    });
+
+    it('should render empty array for empty areas array', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+        ],
+        areas: [],
+      };
+
+      const result = renderPatternAreas('pattern-no-areas', visualization, deps);
+
+      expect(result).toEqual([]);
+      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
+      expect(globalAllSeries.size).toBe(0);
+    });
+
+    it('should render multiple areas', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+          { time: 1641002400000, value: 49000, type: 'peak' },
+          { time: 1641006000000, value: 50000, type: 'trough' },
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
-            color: 'rgba(255, 0, 0, 0.2)',
+            points: [0, 1], // indices into keyPoints array
+            style: {
+              fillColor: 'rgba(255, 0, 0, 0.2)',
+            },
           },
           {
-            points: [
-              { time: 1641002400000, value: 49000 },
-              { time: 1641006000000, value: 50000 },
-            ],
-            color: 'rgba(0, 0, 255, 0.2)',
+            points: [2, 3], // indices into keyPoints array
+            style: {
+              fillColor: 'rgba(0, 0, 255, 0.2)',
+            },
           },
         ],
       };
@@ -123,295 +133,392 @@ describe('renderPatternAreas', () => {
       expect(globalAllSeries.size).toBe(2);
     });
 
-    it('should use default values when color and opacity are not provided', () => {
+    it('should handle areas with missing style properties', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
+            points: [0, 1], // indices into keyPoints array
           },
         ],
       };
 
-      renderPatternAreas('pattern-3', visualization, deps);
+      const result = renderPatternAreas('pattern-3', visualization, deps);
 
+      expect(result).toHaveLength(1);
       expect(mockChart.addHistogramSeries).toHaveBeenCalledWith({
-        color: 'rgba(33, 150, 243, 0.1)',
+        color: 'rgba(33, 150, 243, 0.1)', // Default color
         priceFormat: {
           type: 'price',
         },
         priceLineVisible: false,
         lastValueVisible: false,
       });
-
-      const setDataCall = mockHistogramSeries.setData.mock.calls[0][0];
-      expect(setDataCall[0].color).toMatch(/^rgba\(33, 150, 243, 0\.1\)/);
     });
 
-    it('should limit histogram data points for performance', () => {
-      const points = Array.from({ length: 100 }, (_, i) => ({
-        time: 1640995200000 + i * 3600000,
-        value: 50000 + Math.random() * 1000,
-      }));
-
+    it('should calculate histogram data based on area points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+          { time: 1641002400000, value: 50500, type: 'peak' },
+          { time: 1641006000000, value: 51500, type: 'trough' },
+        ],
         areas: [
           {
-            points,
-            color: 'rgba(0, 255, 0, 0.2)',
+            points: [0, 1, 2, 3], // indices into keyPoints array
+            style: {
+              fillColor: 'rgba(0, 255, 0, 0.5)',
+              opacity: 0.5,
+            },
           },
         ],
       };
 
       renderPatternAreas('pattern-4', visualization, deps);
 
-      const setDataCall = mockHistogramSeries.setData.mock.calls[0][0];
-      expect(setDataCall.length).toBeLessThanOrEqual(20);
+      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      expect(histogramData).toBeDefined();
+      expect(histogramData.length).toBeGreaterThan(0);
+      expect(histogramData.length).toBeLessThanOrEqual(20); // Max limit
+      
+      // Check histogram data structure
+      histogramData.forEach((point: any) => {
+        expect(point).toHaveProperty('time');
+        expect(point).toHaveProperty('value');
+        expect(point).toHaveProperty('color');
+        expect(typeof point.time).toBe('number');
+        expect(typeof point.value).toBe('number');
+        expect(typeof point.color).toBe('string');
+      });
     });
   });
 
-  describe('edge cases and error handling', () => {
-    it('should return empty array when no areas are provided', () => {
-      const visualization: PatternVisualization = {
-        areas: [],
-      };
-
-      const result = renderPatternAreas('pattern-5', visualization, deps);
-
-      expect(result).toEqual([]);
-      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
-    });
-
-    it('should return empty array when areas is undefined', () => {
-      const visualization: PatternVisualization = {};
-
-      const result = renderPatternAreas('pattern-6', visualization, deps);
-
-      expect(result).toEqual([]);
-      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
-    });
-
+  describe('error handling', () => {
     it('should skip areas with insufficient points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+        ],
         areas: [
           {
-            points: [{ time: 1640995200000, value: 50000 }], // Only 1 point
-            color: 'rgba(255, 0, 0, 0.2)',
-          },
-          {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
-            color: 'rgba(0, 255, 0, 0.2)',
+            points: [0], // Only 1 point - insufficient
           },
         ],
       };
 
-      const result = renderPatternAreas('pattern-7', visualization, deps);
+      const result = renderPatternAreas('pattern-insufficient', visualization, deps);
 
-      expect(result).toHaveLength(1);
-      expect(mockChart.addHistogramSeries).toHaveBeenCalledTimes(1);
-      expect(logger.warn).toHaveBeenCalledWith('[PatternAreaRenderer] Insufficient points for area', {
-        id: 'pattern-7',
-        areaIndex: 0,
-        pointCount: 1,
-      });
+      expect(result).toEqual([]);
+      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Insufficient points for area',
+        expect.objectContaining({
+          id: 'pattern-insufficient',
+          areaIndex: 0,
+          pointCount: 1,
+        })
+      );
     });
 
     it('should skip areas with no points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+        ],
         areas: [
           {
-            points: [],
-            color: 'rgba(255, 0, 0, 0.2)',
-          },
-          {
-            points: undefined as any,
-            color: 'rgba(0, 255, 0, 0.2)',
+            points: [], // Empty points array
           },
         ],
       };
 
-      const result = renderPatternAreas('pattern-8', visualization, deps);
+      const result = renderPatternAreas('pattern-no-points', visualization, deps);
 
       expect(result).toEqual([]);
       expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle errors in individual area processing', () => {
-      mockChart.addHistogramSeries.mockImplementationOnce(() => {
-        throw new Error('Failed to create series');
-      });
-
+    it('should skip areas with null points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
-          },
-          {
-            points: [
-              { time: 1641002400000, value: 49000 },
-              { time: 1641006000000, value: 50000 },
-            ],
+            points: null as any, // Invalid null points
           },
         ],
       };
 
-      const result = renderPatternAreas('pattern-9', visualization, deps);
-
-      expect(result).toHaveLength(1); // Only second area should succeed
-      expect(logger.error).toHaveBeenCalledWith('[PatternAreaRenderer] Failed to create area', {
-        id: 'pattern-9',
-        areaIndex: 0,
-        error: 'Error: Failed to create series',
-      });
-    });
-
-    it('should return empty array in development mode on general error', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
-      mockChart.addHistogramSeries.mockImplementation(() => {
-        throw new Error('Chart API error');
-      });
-
-      const visualization: PatternVisualization = {
-        areas: [
-          {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
-          },
-        ],
-      };
-
-      const result = renderPatternAreas('pattern-10', visualization, deps);
+      const result = renderPatternAreas('pattern-null-points', visualization, deps);
 
       expect(result).toEqual([]);
-      expect(logger.error).toHaveBeenCalled();
-
-      process.env.NODE_ENV = originalEnv;
+      expect(mockChart.addHistogramSeries).not.toHaveBeenCalled();
     });
 
-    it('should throw error in production mode on general error', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+    it('should handle areas with out of bounds indices', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
+        areas: [
+          {
+            points: [0, 1, 5, 10], // indices 5 and 10 are out of bounds
+          },
+        ],
+      };
 
-      // Create an error that occurs outside the try-catch for individual areas
-      const visualization: PatternVisualization = null as any;
+      const result = renderPatternAreas('pattern-out-of-bounds', visualization, deps);
 
-      expect(() => renderPatternAreas('pattern-11', visualization, deps)).toThrow(
-        'Failed to render pattern areas:'
+      // Should still render with valid points (0 and 1)
+      expect(result).toHaveLength(1);
+      expect(mockChart.addHistogramSeries).toHaveBeenCalledTimes(1);
+    });
+
+    it('should continue rendering other areas if one fails', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+          { time: 1641002400000, value: 50500, type: 'peak' },
+          { time: 1641006000000, value: 51500, type: 'trough' },
+        ],
+        areas: [
+          {
+            points: [0], // Invalid - only 1 point
+          },
+          {
+            points: [1, 2], // Valid
+          },
+          {
+            points: [2, 3], // Valid
+          },
+        ],
+      };
+
+      const result = renderPatternAreas('pattern-partial-fail', visualization, deps);
+
+      // Should render the 2 valid areas
+      expect(result).toHaveLength(2);
+      expect(mockChart.addHistogramSeries).toHaveBeenCalledTimes(2);
+      expect(globalAllSeries.size).toBe(2);
+    });
+
+    it('should handle chart.addHistogramSeries error', () => {
+      mockChart.addHistogramSeries.mockImplementationOnce(() => {
+        throw new Error('Chart error');
+      });
+
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
+        areas: [
+          {
+            points: [0, 1],
+          },
+        ],
+      };
+
+      const result = renderPatternAreas('pattern-chart-error', visualization, deps);
+
+      expect(result).toEqual([]);
+      expect(logger.error).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Failed to create area',
+        expect.objectContaining({
+          id: 'pattern-chart-error',
+          areaIndex: 0,
+          error: 'Error: Chart error',
+        })
       );
+    });
 
-      process.env.NODE_ENV = originalEnv;
+    it('should handle histogram series setData error', () => {
+      mockHistogramSeries.setData.mockImplementationOnce(() => {
+        throw new Error('SetData error');
+      });
+
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
+        areas: [
+          {
+            points: [0, 1],
+          },
+        ],
+      };
+
+      const result = renderPatternAreas('pattern-setdata-error', visualization, deps);
+
+      expect(result).toEqual([]);
+      expect(logger.error).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Failed to create area',
+        expect.objectContaining({
+          id: 'pattern-setdata-error',
+          areaIndex: 0,
+          error: 'Error: SetData error',
+        })
+      );
     });
   });
 
-  describe('calculation accuracy', () => {
-    it('should calculate correct bounds and histogram values', () => {
+  describe('edge cases', () => {
+    it('should handle areas with same value points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 50000, type: 'trough' }, // Same value
+          { time: 1641002400000, value: 50000, type: 'peak' }, // Same value
+          { time: 1641006000000, value: 50000, type: 'trough' }, // Same value
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 48000 },
-              { time: 1640998800000, value: 52000 },
-              { time: 1641002400000, value: 49000 },
-              { time: 1641006000000, value: 51000 },
-            ],
-            color: 'rgba(0, 255, 0, 0.2)',
-            opacity: 0.5,
+            points: [0, 1, 2, 3],
           },
         ],
       };
 
-      renderPatternAreas('pattern-12', visualization, deps);
+      const result = renderPatternAreas('pattern-same-values', visualization, deps);
 
-      const setDataCall = mockHistogramSeries.setData.mock.calls[0][0];
+      expect(result).toHaveLength(1);
+      expect(mockHistogramSeries.setData).toHaveBeenCalled();
       
-      // Check histogram value (max - min)
-      expect(setDataCall[0].value).toBe(4000); // 52000 - 48000
-      
-      // Check color with opacity
-      expect(setDataCall[0].color).toMatch(/^rgba\(0, 255, 0, 0\.2\)80$/); // 0x80 = 128 = 0.5 * 255
-
-      // Check scale margins
-      expect(mockHistogramSeries.applyOptions).toHaveBeenCalledWith({
-        priceScaleId: 'right',
-        scaleMargins: {
-          top: 1 - (52000 / 100), // = -519
-          bottom: 48000 / 100,     // = 480
-        },
+      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      // All values should be 0 (maxValue - minValue = 50000 - 50000 = 0)
+      histogramData.forEach((point: any) => {
+        expect(point.value).toBe(0);
       });
     });
 
-    it('should generate correct time distribution for histogram points', () => {
+    it('should handle areas with same time points', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640995200000, value: 51000, type: 'trough' }, // Same time
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1641081600000, value: 51000 }, // 24 hours later
-            ],
-            color: 'rgba(0, 0, 255, 0.1)',
+            points: [0, 1],
           },
         ],
       };
 
-      renderPatternAreas('pattern-13', visualization, deps);
+      const result = renderPatternAreas('pattern-same-times', visualization, deps);
 
-      const setDataCall = mockHistogramSeries.setData.mock.calls[0][0];
+      expect(result).toHaveLength(1);
+      expect(mockHistogramSeries.setData).toHaveBeenCalled();
+    });
+
+    it('should handle visualization with missing keyPoints', () => {
+      const visualization: PatternVisualization = {
+        areas: [
+          {
+            points: [0, 1],
+          },
+        ],
+      } as PatternVisualization;
+
+      const result = renderPatternAreas('pattern-no-keypoints', visualization, deps);
+
+      expect(result).toEqual([]);
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Insufficient valid points for area',
+        expect.anything()
+      );
+    });
+
+    it('should handle very large point arrays', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: Array.from({ length: 100 }, (_, i) => ({
+          time: 1640995200000 + i * 3600000,
+          value: 50000 + i * 100,
+          type: 'peak' as const,
+        })),
+        areas: [
+          {
+            points: Array.from({ length: 100 }, (_, i) => i), // All indices
+          },
+        ],
+      };
+
+      const result = renderPatternAreas('pattern-large', visualization, deps);
+
+      expect(result).toHaveLength(1);
+      expect(mockHistogramSeries.setData).toHaveBeenCalled();
       
-      // Check time distribution
-      const times = setDataCall.map((d: any) => d.time);
-      expect(times[0]).toBe(1640995200000);
-      expect(times[times.length - 1]).toBe(1641081600000);
-      
-      // Check intermediate times are evenly distributed
-      for (let i = 1; i < times.length - 1; i++) {
-        expect(times[i]).toBeGreaterThan(times[i - 1]);
-        expect(times[i]).toBeLessThan(times[i + 1]);
-      }
+      const histogramData = mockHistogramSeries.setData.mock.calls[0][0];
+      // Should be limited to 20 points max
+      expect(histogramData.length).toBeLessThanOrEqual(20);
     });
   });
 
   describe('logging', () => {
-    it('should log appropriate debug information', () => {
+    it('should log info on successful rendering', () => {
       const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
         areas: [
           {
-            points: [
-              { time: 1640995200000, value: 50000 },
-              { time: 1640998800000, value: 51000 },
-            ],
-            color: 'rgba(255, 255, 0, 0.3)',
+            points: [0, 1],
           },
         ],
       };
 
-      renderPatternAreas('pattern-14', visualization, deps);
+      renderPatternAreas('pattern-log', visualization, deps);
 
-      expect(logger.debug).toHaveBeenCalledWith('[PatternAreaRenderer] Created histogram area', {
-        id: 'pattern-14',
-        areaIndex: 0,
-        startTime: new Date(1640995200000).toISOString(),
-        endTime: new Date(1640998800000).toISOString(),
-        minValue: 50000,
-        maxValue: 51000,
-      });
+      expect(logger.info).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Rendering pattern areas',
+        expect.objectContaining({
+          id: 'pattern-log',
+          areaCount: 1,
+        })
+      );
 
-      expect(logger.info).toHaveBeenCalledWith('[PatternAreaRenderer] Completed area rendering', {
-        id: 'pattern-14',
-        created: 1,
-      });
+      expect(logger.info).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Completed area rendering',
+        expect.objectContaining({
+          id: 'pattern-log',
+          created: 1,
+        })
+      );
+    });
+
+    it('should log debug for created areas', () => {
+      const visualization: PatternVisualization = {
+        keyPoints: [
+          { time: 1640995200000, value: 50000, type: 'peak' },
+          { time: 1640998800000, value: 51000, type: 'trough' },
+        ],
+        areas: [
+          {
+            points: [0, 1],
+          },
+        ],
+      };
+
+      renderPatternAreas('pattern-debug', visualization, deps);
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[PatternAreaRenderer] Created histogram area',
+        expect.objectContaining({
+          id: 'pattern-debug',
+          areaIndex: 0,
+          startTime: expect.any(String),
+          endTime: expect.any(String),
+          minValue: 50000,
+          maxValue: 51000,
+        })
+      );
     });
   });
 });

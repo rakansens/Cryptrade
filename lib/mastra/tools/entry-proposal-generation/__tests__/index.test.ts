@@ -27,7 +27,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { EntryProposalGenerationTool } from '../index';
 import type { EntryProposalGenerationInput } from '../index';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { EntryProposal, MarketContext } from '@/types/trading';
+import type { MarketContext } from '@/types/trading';
 
 jest.mock('../calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn(),
@@ -52,15 +52,16 @@ describe('EntryProposalGenerationTool', () => {
   }));
 
   const mockMarketContext: MarketContext = {
+    currentPrice: 50000,
     trend: 'bullish',
     volatility: 'normal',
-    momentum: 'positive',
-    volume: 'increasing',
+    volume: 'average',
     keyLevels: {
-      support: [49000, 48500],
-      resistance: [51000, 51500],
+      nearestSupport: 49000,
+      nearestResistance: 51000,
+      dailyHigh: 52000,
+      dailyLow: 48000,
     },
-    marketStructure: 'uptrend',
   };
 
   const mockEntryPoints = [
@@ -147,9 +148,10 @@ describe('EntryProposalGenerationTool', () => {
 
       expect(result.success).toBe(true);
       expect(result.proposalGroup).toBeDefined();
-      expect(result.proposalGroup?.proposals).toHaveLength(2);
+      const proposalGroup = result.proposalGroup as any;
+      expect(proposalGroup.proposals).toHaveLength(2);
       
-      const proposal = result.proposalGroup?.proposals[0];
+      const proposal = proposalGroup.proposals[0];
       expect(proposal).toMatchObject({
         symbol: 'BTCUSDT',
         direction: 'long',
@@ -208,7 +210,8 @@ describe('EntryProposalGenerationTool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.proposalGroup?.proposals).toHaveLength(2);
+      const proposalGroup = result.proposalGroup as any;
+      expect(proposalGroup?.proposals).toHaveLength(2);
     });
 
     it('should use analysis results when provided', async () => {
@@ -242,7 +245,8 @@ describe('EntryProposalGenerationTool', () => {
         });
 
         expect(result.success).toBe(true);
-        expect(result.proposalGroup?.title).toContain(
+        const proposalGroup = result.proposalGroup as any;
+        expect(proposalGroup?.title).toContain(
           strategy === 'scalping' ? 'スキャルピング' :
           strategy === 'dayTrading' ? 'デイトレード' :
           strategy === 'swingTrading' ? 'スイングトレード' :
@@ -279,7 +283,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      expect(result.proposalGroup?.proposals[0]?.priority).toBe('high');
+      const proposalGroup = result.proposalGroup as any;
+      expect(proposalGroup?.proposals[0]?.priority).toBe('high');
     });
 
     it('should generate appropriate group description', async () => {
@@ -287,7 +292,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      const description = result.proposalGroup?.description;
+      const proposalGroup = result.proposalGroup as any;
+      const description = proposalGroup?.description;
       expect(description).toContain('2個のエントリー提案を生成しました');
       expect(description).toContain('ロング: 1個、ショート: 1個');
       expect(description).toContain('通常のボラティリティ');
@@ -302,7 +308,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      expect(result.proposalGroup?.description).toContain('全てロングポジション');
+      const proposalGroup = result.proposalGroup as any;
+      expect(proposalGroup?.description).toContain('全てロングポジション');
     });
 
     it('should handle only short positions', async () => {
@@ -313,7 +320,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      expect(result.proposalGroup?.description).toContain('全てショートポジション');
+      const proposalGroup = result.proposalGroup as any;
+      expect(proposalGroup?.description).toContain('全てショートポジション');
     });
 
     it('should dispatch UI event on success', async () => {
@@ -363,9 +371,11 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      expect(result1.proposalGroup?.id).not.toBe(result2.proposalGroup?.id);
-      expect(result1.proposalGroup?.proposals[0]?.id).not.toBe(
-        result2.proposalGroup?.proposals[0]?.id
+      const proposalGroup1 = result1.proposalGroup as any;
+      const proposalGroup2 = result2.proposalGroup as any;
+      expect(proposalGroup1?.id).not.toBe(proposalGroup2?.id);
+      expect(proposalGroup1?.proposals[0]?.id).not.toBe(
+        proposalGroup2?.proposals[0]?.id
       );
     });
 
@@ -375,7 +385,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      const proposal = result.proposalGroup?.proposals[0];
+      const proposalGroup = result.proposalGroup as any;
+      const proposal = proposalGroup?.proposals[0];
       expect(proposal?.expiresAt).toBeGreaterThan(now);
       expect(proposal?.expiresAt).toBeLessThanOrEqual(now + 24 * 60 * 60 * 1000);
     });
@@ -385,7 +396,8 @@ describe('EntryProposalGenerationTool', () => {
         context: baseInput 
       });
 
-      const avgConfidence = result.proposalGroup?.summary.averageConfidence;
+      const proposalGroup = result.proposalGroup as any;
+      const avgConfidence = (proposalGroup?.summary as any)?.averageConfidence;
       expect(avgConfidence).toBe((0.85 + 0.75) / 2);
     });
 
@@ -403,7 +415,8 @@ describe('EntryProposalGenerationTool', () => {
           context: baseInput 
         });
 
-        expect(result.proposalGroup?.description).toContain(
+        const proposalGroup = result.proposalGroup as any;
+        expect(proposalGroup?.description).toContain(
           volatility === 'low' ? '低ボラティリティ' :
           volatility === 'normal' ? '通常のボラティリティ' :
           '高ボラティリティ'
@@ -425,7 +438,8 @@ describe('EntryProposalGenerationTool', () => {
           context: baseInput 
         });
 
-        expect(result.proposalGroup?.description).toContain(
+        const proposalGroup = result.proposalGroup as any;
+        expect(proposalGroup?.description).toContain(
           trend === 'bullish' ? '上昇トレンド' :
           trend === 'bearish' ? '下降トレンド' :
           'レンジ相場'

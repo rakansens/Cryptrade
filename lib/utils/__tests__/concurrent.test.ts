@@ -260,12 +260,12 @@ describe('Concurrent Utilities', () => {
         updates.push(state);
       });
       
-      const queue = new StateUpdateQueue(0, onUpdate);
+      const queue = new StateUpdateQueue<number>(0, onUpdate);
       
       // Enqueue multiple updates
-      await queue.enqueue(state => state + 1);
-      await queue.enqueue(state => state * 2);
-      await queue.enqueue(state => state + 10);
+      await queue.enqueue((state) => Promise.resolve(state + 1));
+      await queue.enqueue((state) => Promise.resolve(state * 2));
+      await queue.enqueue((state) => Promise.resolve(state + 10));
       
       expect(updates).toEqual([1, 2, 12]);
       expect(onUpdate).toHaveBeenCalledTimes(3);

@@ -82,7 +82,7 @@ describe('BinanceWebSocketManager', () => {
   describe('subscribe', () => {
     it('should create connection and subscribe to symbol', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      const unsubscribe = manager.subscribe('BTCUSDT', callback);
+      const unsubscribe = await manager.subscribe('BTCUSDT', callback);
       
       expect(logger.info).toHaveBeenCalledWith(
         '[BinanceWS] Creating connection',
@@ -100,9 +100,9 @@ describe('BinanceWebSocketManager', () => {
       expect(typeof unsubscribe).toBe('function');
     });
 
-    it('should normalize symbol to uppercase', () => {
+    it('should normalize symbol to uppercase', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('btcusdt', callback);
+      await manager.subscribe('btcusdt', callback);
       
       expect(logger.info).toHaveBeenCalledWith(
         '[BinanceWS] Subscribed to symbol',
@@ -110,12 +110,12 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should reuse connection for multiple callbacks on same symbol', () => {
+    it('should reuse connection for multiple callbacks on same symbol', async () => {
       const callback1: PriceUpdateCallback = jest.fn();
       const callback2: PriceUpdateCallback = jest.fn();
       
-      manager.subscribe('ETHUSDT', callback1);
-      manager.subscribe('ETHUSDT', callback2);
+      await manager.subscribe('ETHUSDT', callback1);
+      await manager.subscribe('ETHUSDT', callback2);
       
       // Should only create one connection
       expect(MockWebSocket.instances).toHaveLength(1);
@@ -124,7 +124,7 @@ describe('BinanceWebSocketManager', () => {
 
     it('should handle connection open event', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       // Wait for async connection
       jest.advanceTimersByTime(20);
@@ -141,9 +141,9 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('unsubscribe', () => {
-    it('should remove callback from subscriptions', () => {
+    it('should remove callback from subscriptions', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      const unsubscribe = manager.subscribe('BTCUSDT', callback);
+      const unsubscribe = await manager.subscribe('BTCUSDT', callback);
       
       unsubscribe();
       
@@ -155,7 +155,7 @@ describe('BinanceWebSocketManager', () => {
 
     it('should close connection when no callbacks remain', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -171,12 +171,12 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should not close connection if other callbacks exist', () => {
+    it('should not close connection if other callbacks exist', async () => {
       const callback1: PriceUpdateCallback = jest.fn();
       const callback2: PriceUpdateCallback = jest.fn();
       
-      manager.subscribe('BTCUSDT', callback1);
-      manager.subscribe('BTCUSDT', callback2);
+      await manager.subscribe('BTCUSDT', callback1);
+      await manager.subscribe('BTCUSDT', callback2);
       
       jest.advanceTimersByTime(20);
       
@@ -190,9 +190,9 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('message handling', () => {
-    it('should process trade data and notify callbacks', () => {
+    it('should process trade data and notify callbacks', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -222,9 +222,9 @@ describe('BinanceWebSocketManager', () => {
       expect(status.lastUpdate).toBeGreaterThan(0);
     });
 
-    it('should handle malformed messages', () => {
+    it('should handle malformed messages', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -240,12 +240,12 @@ describe('BinanceWebSocketManager', () => {
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it('should handle callback errors gracefully', () => {
+    it('should handle callback errors gracefully', async () => {
       const errorCallback: PriceUpdateCallback = jest.fn(() => {
         throw new Error('Callback error');
       });
       
-      manager.subscribe('BTCUSDT', errorCallback);
+      await manager.subscribe('BTCUSDT', errorCallback);
       
       jest.advanceTimersByTime(20);
       
@@ -274,9 +274,9 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('connection management', () => {
-    it('should handle connection close event', () => {
+    it('should handle connection close event', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -304,9 +304,9 @@ describe('BinanceWebSocketManager', () => {
       expect(status.subscribedSymbols.has('BTCUSDT')).toBe(false);
     });
 
-    it('should handle connection error event', () => {
+    it('should handle connection error event', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -324,7 +324,7 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should handle connection creation errors', () => {
+    it('should handle connection creation errors', async () => {
       // Mock WebSocket to throw on creation
       const originalWebSocket = (global as any).WebSocket;
       (global as any).WebSocket = jest.fn(() => {
@@ -332,7 +332,7 @@ describe('BinanceWebSocketManager', () => {
       });
       
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       expect(logger.error).toHaveBeenCalledWith(
         '[BinanceWS] Failed to create connection',
@@ -347,9 +347,9 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('reconnection', () => {
-    it('should schedule reconnection on connection close', () => {
+    it('should schedule reconnection on connection close', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -368,9 +368,9 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should use exponential backoff for reconnections', () => {
+    it('should use exponential backoff for reconnections', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       // Simulate multiple reconnection attempts
       manager['status'].reconnectCount = 3;
@@ -385,9 +385,9 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should cap reconnection delay at maximum', () => {
+    it('should cap reconnection delay at maximum', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       // Simulate many reconnection attempts
       manager['status'].reconnectCount = 10;
@@ -401,9 +401,9 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should clear reconnect timeout on manual close', () => {
+    it('should clear reconnect timeout on manual close', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -424,9 +424,9 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('heartbeat monitoring', () => {
-    it('should detect stale connections', () => {
+    it('should detect stale connections', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -441,9 +441,9 @@ describe('BinanceWebSocketManager', () => {
       );
     });
 
-    it('should not reconnect fresh connections', () => {
+    it('should not reconnect fresh connections', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       jest.advanceTimersByTime(20);
       
@@ -489,12 +489,12 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('closeAll', () => {
-    it('should close all connections and clear state', () => {
+    it('should close all connections and clear state', async () => {
       const callback1: PriceUpdateCallback = jest.fn();
       const callback2: PriceUpdateCallback = jest.fn();
       
-      manager.subscribe('BTCUSDT', callback1);
-      manager.subscribe('ETHUSDT', callback2);
+      await manager.subscribe('BTCUSDT', callback1);
+      await manager.subscribe('ETHUSDT', callback2);
       
       jest.advanceTimersByTime(20);
       
@@ -513,9 +513,9 @@ describe('BinanceWebSocketManager', () => {
       expect(status.subscribedSymbols.size).toBe(0);
     });
 
-    it('should clear all timeouts on closeAll', () => {
+    it('should clear all timeouts on closeAll', async () => {
       const callback: PriceUpdateCallback = jest.fn();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       // Trigger reconnect scheduling
       manager['scheduleReconnect']('BTCUSDT');
@@ -529,25 +529,25 @@ describe('BinanceWebSocketManager', () => {
   });
 
   describe('integration scenarios', () => {
-    it('should handle rapid subscribe/unsubscribe', () => {
+    it('should handle rapid subscribe/unsubscribe', async () => {
       const callback: PriceUpdateCallback = jest.fn();
       
       // Rapid subscribe/unsubscribe
-      const unsubscribe = manager.subscribe('BTCUSDT', callback);
+      const unsubscribe = await manager.subscribe('BTCUSDT', callback);
       unsubscribe();
-      manager.subscribe('BTCUSDT', callback);
+      await manager.subscribe('BTCUSDT', callback);
       
       expect(MockWebSocket.instances).toHaveLength(2);
     });
 
-    it('should handle multiple symbols simultaneously', () => {
+    it('should handle multiple symbols simultaneously', async () => {
       const btcCallback: PriceUpdateCallback = jest.fn();
       const ethCallback: PriceUpdateCallback = jest.fn();
       const bnbCallback: PriceUpdateCallback = jest.fn();
       
-      manager.subscribe('BTCUSDT', btcCallback);
-      manager.subscribe('ETHUSDT', ethCallback);
-      manager.subscribe('BNBUSDT', bnbCallback);
+      await manager.subscribe('BTCUSDT', btcCallback);
+      await manager.subscribe('ETHUSDT', ethCallback);
+      await manager.subscribe('BNBUSDT', bnbCallback);
       
       jest.advanceTimersByTime(20);
       

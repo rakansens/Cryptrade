@@ -265,9 +265,10 @@ describe('PluginRegistry', () => {
     });
 
     it('should return empty array when no plugins support data', () => {
+      // Create a pattern with no keyPoints to ensure it's not supported
       const pattern: PatternVisualization = {
-        ...mockPattern,
-        type: 'unsupported-type' as any,
+        keyPoints: [], // Empty keyPoints means MockPlugin won't support it
+        lines: mockPattern.lines
       };
       
       registry.register(mockPlugin);
@@ -326,7 +327,11 @@ describe('PluginRegistry', () => {
     });
 
     it('should remove metadata and options', () => {
-      registry.register(mockPlugin, { version: '1.0.0' }, { enabled: true });
+      registry.register(mockPlugin, { 
+        name: 'test-plugin',
+        version: '1.0.0',
+        supports: ['test']
+      }, { enabled: true });
       
       registry.unregister('test-plugin');
       
@@ -374,7 +379,11 @@ describe('PluginRegistry', () => {
     });
 
     it('should clear all internal state', async () => {
-      registry.register(mockPlugin, { version: '1.0.0' }, { enabled: true });
+      registry.register(mockPlugin, { 
+        name: 'test-plugin',
+        version: '1.0.0',
+        supports: ['test']
+      }, { enabled: true });
       
       await registry.dispose();
       
@@ -391,24 +400,22 @@ describe('PluginRegistry', () => {
 
     it('should update plugin options', () => {
       const result = registry.updateOptions('test-plugin', { 
-        enabled: false,
-        priority: 5,
+        enabled: false
       });
       
       expect(result).toBe(true);
       expect(registry.getOptions('test-plugin')).toEqual({
-        enabled: false,
-        priority: 5,
+        enabled: false
       });
     });
 
     it('should merge options on update', () => {
       registry.updateOptions('test-plugin', { enabled: true });
-      registry.updateOptions('test-plugin', { priority: 3 });
+      registry.updateOptions('test-plugin', { config: { priority: 3 } });
       
       expect(registry.getOptions('test-plugin')).toEqual({
         enabled: true,
-        priority: 3,
+        config: { priority: 3 }
       });
     });
 
@@ -464,7 +471,7 @@ describe('PluginRegistry', () => {
 
     it('should pass extra data to render', async () => {
       const customPlugin = new MockPlugin();
-      customPlugin.render = jest.fn().mockResolvedValue(undefined) as any;
+      customPlugin.render = jest.fn() as any;
       
       registry.register(customPlugin);
       
@@ -487,11 +494,11 @@ describe('PluginRegistry', () => {
     it('should remove from all plugins', async () => {
       const plugin1 = new MockPlugin();
       plugin1.name = 'plugin1';
-      plugin1.remove = jest.fn().mockResolvedValue(undefined) as any;
+      plugin1.remove = jest.fn() as any;
       
       const plugin2 = new MockPlugin();
       plugin2.name = 'plugin2';
-      plugin2.remove = jest.fn().mockResolvedValue(undefined) as any;
+      plugin2.remove = jest.fn() as any;
       
       registry.register(plugin1);
       registry.register(plugin2);
@@ -554,6 +561,7 @@ describe('PluginRegistry', () => {
         supports: () => true,
         render: async () => {},
         remove: async () => {},
+        dispose: async () => {},
       };
       
       registry.register(minimalPlugin);

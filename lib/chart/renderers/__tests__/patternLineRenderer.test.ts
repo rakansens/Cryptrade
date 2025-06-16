@@ -47,8 +47,8 @@ describe('renderPatternLines', () => {
     it('should render lines with valid visualization data', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
           { time: 1641002400000, value: 49500 },
         ],
         lines: [
@@ -99,8 +99,8 @@ describe('renderPatternLines', () => {
       expect(mockLineSeries.setData).toHaveBeenCalledTimes(2);
       const firstLineData = mockLineSeries.setData.mock.calls[0][0];
       expect(firstLineData).toEqual([
-        { time: 1640995200000, value: 50000 },
-        { time: 1640998800000, value: 51000 },
+        { time: 1640995200000, value: 50000, type: 'peak' as const },
+        { time: 1640998800000, value: 51000, type: 'trough' as const },
       ]);
 
       // Verify global series tracking
@@ -118,14 +118,14 @@ describe('renderPatternLines', () => {
     it('should handle reverse time order correctly', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640998800000, value: 51000 }, // Later time
-          { time: 1640995200000, value: 50000 }, // Earlier time
+          { time: 1640998800000, value: 51000, type: 'trough' as const }, // Later time
+          { time: 1640995200000, value: 50000, type: 'peak' as const }, // Earlier time
         ],
         lines: [
           {
             from: 0, // Later time point
             to: 1,   // Earlier time point
-            type: 'trendline',
+            type: 'support',
           },
         ],
       };
@@ -141,8 +141,8 @@ describe('renderPatternLines', () => {
     it('should use default line style when not specified', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -169,7 +169,7 @@ describe('renderPatternLines', () => {
   describe('edge cases and error handling', () => {
     it('should return empty array when no lines are provided', () => {
       const visualization: PatternVisualization = {
-        keyPoints: [{ time: 1640995200000, value: 50000 }],
+        keyPoints: [{ time: 1640995200000, value: 50000, type: 'peak' as const }],
         lines: [],
       };
 
@@ -181,7 +181,7 @@ describe('renderPatternLines', () => {
 
     it('should return empty array when lines is undefined', () => {
       const visualization: PatternVisualization = {
-        keyPoints: [{ time: 1640995200000, value: 50000 }],
+        keyPoints: [{ time: 1640995200000, value: 50000, type: 'peak' as const }],
       };
 
       const result = renderPatternLines('pattern-5', visualization, deps);
@@ -196,8 +196,8 @@ describe('renderPatternLines', () => {
     it('should skip lines with missing endpoints', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -228,12 +228,12 @@ describe('renderPatternLines', () => {
         .mockImplementationOnce(() => {
           throw new Error('Failed to create series');
         })
-        .mockReturnValueOnce(mockLineSeries);
+        .mockReturnValueOnce(mockLineSeries as any);
 
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -322,8 +322,8 @@ describe('renderPatternLines', () => {
     it('should convert different line styles correctly', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -345,14 +345,14 @@ describe('renderPatternLines', () => {
     it('should handle custom line widths', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
             from: 0,
             to: 1,
-            type: 'trendline',
+            type: 'support',
             style: {
               lineWidth: 4,
             },
@@ -374,8 +374,8 @@ describe('renderPatternLines', () => {
     it('should log start and completion information', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -409,8 +409,8 @@ describe('renderPatternLines', () => {
 
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -449,8 +449,8 @@ describe('renderPatternLines', () => {
 
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {
@@ -470,8 +470,8 @@ describe('renderPatternLines', () => {
     it('should generate unique keys for lines', () => {
       const visualization: PatternVisualization = {
         keyPoints: [
-          { time: 1640995200000, value: 50000 },
-          { time: 1640998800000, value: 51000 },
+          { time: 1640995200000, value: 50000, type: 'peak' as const },
+          { time: 1640998800000, value: 51000, type: 'trough' as const },
         ],
         lines: [
           {

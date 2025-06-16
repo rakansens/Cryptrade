@@ -70,8 +70,8 @@ export async function createUnifiedStorage(config: StorageConfig): Promise<IUnif
       try {
         const { UnifiedPostgreSQLStorage } = await import('./postgres');
         return new UnifiedPostgreSQLStorage({
-          connectionUrl: config.connectionUrl || undefined,
-          tableName: config.tableName || undefined
+          ...(config.connectionUrl && { connectionUrl: config.connectionUrl }),
+          ...(config.tableName && { tableName: config.tableName })
         });
       } catch (error) {
         // If PostgreSQL module fails to load, fall back to memory storage

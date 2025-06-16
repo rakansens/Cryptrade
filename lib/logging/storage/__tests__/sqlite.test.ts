@@ -15,7 +15,7 @@ jest.mock('better-sqlite3', () => {
 // Mock fs and path
 jest.mock('fs', () => ({
   promises: {
-    mkdir: jest.fn().mockResolvedValue(undefined),
+    mkdir: jest.fn().mockImplementation(() => Promise.resolve()),
   },
 }));
 
@@ -35,10 +35,19 @@ import type {
 describe('UnifiedSQLiteStorage', () => {
   let storage: UnifiedSQLiteStorage;
   const mockConfig: UnifiedLoggerConfig = {
-    environment: 'test',
-    storageType: 'sqlite',
+    level: 'debug',
+    source: 'test',
+    enableConsole: false,
+    enableThrottling: false,
+    throttleInterval: 1000,
+    enableStorage: true,
+    storage: 'sqlite',
+    bufferSize: 100,
+    flushInterval: 5000,
     connectionString: './test-logs/test.db',
-    logLevel: 'debug',
+    enableMetrics: false,
+    enableStackTrace: false,
+    format: 'json',
   };
 
   const mockLogEntry: UnifiedLogEntry = {
@@ -232,7 +241,7 @@ describe('UnifiedSQLiteStorage', () => {
       ];
       
       for (const field of sortFields) {
-        const result = await storage.query({}, { sortBy: field });
+        const result = await storage.query({}, { sortBy: field as keyof UnifiedLogEntry });
         expect(result).toBeDefined();
       }
     });
@@ -268,7 +277,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should include agent and tool stats when available', async () => {
       const mockDb = {
-        prepare: jest.fn().mockImplementation((query: string): any => {
+        prepare: jest.fn().mockImplementation((query: any) => {
           if (query.includes('agent_name')) {
             return {
               all: jest.fn().mockReturnValue([
@@ -315,7 +324,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should calculate performance stats when durations are available', async () => {
       const mockDb = {
-        prepare: jest.fn().mockImplementation((query: string): any => {
+        prepare: jest.fn().mockImplementation((query: any) => {
           if (query.includes('AVG(duration)')) {
             return {
               all: jest.fn().mockReturnValue([
@@ -410,7 +419,7 @@ describe('UnifiedSQLiteStorage', () => {
 
     it('should handle invalid sort fields', async () => {
       await storage.init();
-      const result = await storage.query({}, { sortBy: 'invalidField' });
+      const result = await storage.query({}, { sortBy: 'invalidField' as keyof UnifiedLogEntry });
       expect(result).toBeDefined();
     });
 

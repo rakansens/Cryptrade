@@ -18,7 +18,7 @@ import {
   useChatActions,
   useChat,
 } from '@/store/chat.store';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage } from '@/store/chat/types';
 
 // Import the base store for direct access
 // @ts-ignore - importing private export for testing

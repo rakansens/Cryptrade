@@ -87,38 +87,67 @@ jest.mock('@/components/ui/tabs', () => {
 describe('ChatPanel', () => {
   const mockUseChatReturn = {
     sessions: {
-      'session-1': { id: 'session-1', title: 'Test Session', createdAt: Date.now() }
+      'session-1': { id: 'session-1', title: 'Test Session', createdAt: Date.now(), updatedAt: Date.now() }
     },
     currentSessionId: 'session-1',
     messages: [],
+    messagesBySession: { 'session-1': [] },
     inputValue: '',
     isInputFromHomeScreen: false,
+    isOpen: true,
     isStreaming: false,
     isLoading: false,
+    isSidebarOpen: false,
+    isCollapsed: false,
+    isDbEnabled: true,
+    isSyncing: false,
+    error: null,
+    // Actions
+    createSession: jest.fn().mockResolvedValue('new-session-id'),
+    switchSession: jest.fn().mockResolvedValue(undefined),
+    selectSession: jest.fn().mockResolvedValue(undefined),
+    renameSession: jest.fn().mockResolvedValue(undefined),
+    deleteSession: jest.fn().mockResolvedValue(undefined),
+    deleteAllSessions: jest.fn().mockResolvedValue(undefined),
+    addMessage: jest.fn(),
+    updateLastMessage: jest.fn(),
+    clearMessages: jest.fn(),
+    setOpen: jest.fn(),
+    setStreaming: jest.fn(),
+    setLoading: jest.fn(),
+    setSidebarOpen: jest.fn(),
+    toggleCollapsed: jest.fn(),
     setInputValue: jest.fn(),
-    createSession: jest.fn(),
-    error: null
+    setError: jest.fn(),
+    enableDbSync: jest.fn().mockResolvedValue(undefined),
+    disableDbSync: jest.fn(),
+    syncWithDatabase: jest.fn().mockResolvedValue(undefined),
+    loadFromDatabase: jest.fn().mockResolvedValue(undefined),
+    reset: jest.fn()
   }
 
-  const mockUseAIChatReturn = {
-    isReady: true
+  const mockUseAIChatReturn: UseAIChatReturn = {
+    isReady: true,
+    send: jest.fn().mockResolvedValue(undefined)
   }
 
   const mockUseMessageHandlingReturn = {
-    handleSendMessage: jest.fn(),
+    handleSendMessage: jest.fn().mockResolvedValue(undefined),
     handleCopyMessage: jest.fn(),
     handleAnalysisComplete: jest.fn(),
     copiedMessageId: null,
-    analysisInProgress: null
+    analysisInProgress: null,
+    setAnalysisInProgress: jest.fn()
   }
 
   const mockUseProposalManagementReturn = {
     approvedDrawingIds: new Map(),
-    handleApproveProposal: jest.fn(),
-    handleRejectProposal: jest.fn(),
-    handleApproveAllProposals: jest.fn(),
-    handleRejectAllProposals: jest.fn(),
-    handleCancelDrawing: jest.fn()
+    handleApproveProposal: jest.fn().mockResolvedValue(null),
+    handleRejectProposal: jest.fn().mockResolvedValue(undefined),
+    handleApproveAllProposals: jest.fn().mockResolvedValue(undefined),
+    handleRejectAllProposals: jest.fn().mockResolvedValue(undefined),
+    handleCancelDrawing: jest.fn().mockResolvedValue(undefined),
+    approveLoading: false
   }
 
   beforeEach(() => {
@@ -188,7 +217,8 @@ describe('ChatPanel', () => {
 
     it('disables input when not ready', () => {
       mockedUseAIChat.mockReturnValue({
-        isReady: false
+        isReady: false,
+        send: jest.fn()
       })
       
       render(<ChatPanel />)
@@ -243,7 +273,8 @@ describe('ChatPanel', () => {
 
     it('does not auto-send when not ready', () => {
       mockedUseAIChat.mockReturnValue({
-        isReady: false
+        isReady: false,
+        send: jest.fn()
       })
       
       mockedUseChat.mockReturnValue({
@@ -348,7 +379,8 @@ describe('ChatPanel', () => {
       
       mockedUseMessageHandling.mockReturnValue({
         ...mockUseMessageHandlingReturn,
-        analysisInProgress: analysisProgress
+        analysisInProgress: analysisProgress,
+        setAnalysisInProgress: jest.fn()
       })
       
       render(<ChatPanel />)
@@ -377,7 +409,8 @@ describe('ChatPanel', () => {
       
       mockedUseProposalManagement.mockReturnValue({
         ...mockUseProposalManagementReturn,
-        approvedDrawingIds: approvedIds
+        approvedDrawingIds: approvedIds,
+        approveLoading: false
       })
       
       render(<ChatPanel />)
@@ -396,7 +429,8 @@ describe('ChatPanel', () => {
     it('tracks copied message ID', () => {
       mockedUseMessageHandling.mockReturnValue({
         ...mockUseMessageHandlingReturn,
-        copiedMessageId: 'msg-1'
+        copiedMessageId: 'msg-1',
+        setAnalysisInProgress: jest.fn()
       })
       
       render(<ChatPanel />)

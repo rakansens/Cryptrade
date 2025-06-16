@@ -174,7 +174,7 @@ describe('ChartAnalyzer', () => {
         strengthThreshold: 0.5
       })
 
-      const prices = result.map(r => r.points[0].y)
+      const prices = result.map(r => r.points[0].value)
       const unique = new Set(prices.map(p => Math.round(p / 0.01)))
       expect(unique.size).toBeLessThan(prices.length)
     })

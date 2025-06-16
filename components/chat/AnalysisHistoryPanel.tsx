@@ -20,7 +20,9 @@ import {
 import { AnalysisRecordItem } from '@/components/shared/analysis/AnalysisRecordItem'
 import { useAnalysisFormatting } from '@/hooks/use-analysis-formatting'
 
-export function AnalysisHistoryPanel() {
+interface AnalysisHistoryPanelProps {}
+
+export function AnalysisHistoryPanel({}: AnalysisHistoryPanelProps) {
   const records = useAnalysisRecords()
   const metrics = useAnalysisMetrics()
   const filter = useAnalysisHistory(state => state.filter)

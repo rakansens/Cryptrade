@@ -12,7 +12,9 @@ import { useMessageHandling } from '@/hooks/chat/use-message-handling'
 import { useProposalManagement } from '@/hooks/chat/use-proposal-management'
 import { logger } from '@/lib/utils/logger'
 
-export default function ChatPanel() {
+interface ChatPanelProps {}
+
+export default function ChatPanel({}: ChatPanelProps) {
   const { 
     currentSessionId,
     messages, 

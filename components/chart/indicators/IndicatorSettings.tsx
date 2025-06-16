@@ -7,7 +7,9 @@ import { useChart } from '@/store/chart.store'
 import { type IndicatorOptions } from '@/types/market'
 import { safeParseOrWarn, CommonSchemas } from '@/lib/utils/validation'
 
-const IndicatorSettings = memo(function IndicatorSettings() {
+interface IndicatorSettingsProps {}
+
+const IndicatorSettings = memo(function IndicatorSettings({}: IndicatorSettingsProps) {
   const { indicators, updateIndicator } = useChart()
   const typedIndicators = indicators as IndicatorOptions
   

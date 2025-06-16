@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist, type PersistOptions } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
@@ -43,11 +43,12 @@ interface ConversationMemoryState {
   loadFromDatabase: () => Promise<void>;
 }
 
-// Simplify the type by extracting the store implementation
-type SetState = (state: (draft: ConversationMemoryState) => void) => void;
+// Define proper types for immer's set function
+type ImmerSet = (fn: (draft: ConversationMemoryState) => void) => void;
 type GetState = () => ConversationMemoryState;
 
-const storeImplementation = (set: SetState, get: GetState): ConversationMemoryState => ({
+// Simplify the type by extracting the store implementation
+const storeImplementation = (set: ImmerSet, get: GetState): ConversationMemoryState => ({
         sessions: {},
         currentSessionId: null,
         isDbEnabled: true,
@@ -342,33 +343,35 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
 // Split the store creation to avoid deep type instantiation
 type ConversationMemoryStore = ConversationMemoryState;
 
-const persistConfig: PersistOptions<ConversationMemoryStore> = {
+const persistConfig = {
   name: 'conversation-memory',
   version: 2, // Increment for DB integration
-  migrate: (persistedState: ConversationMemoryStore | unknown, version: number) => {
+  migrate: (persistedState: any, version: number) => {
     if (version === 0 || version === 1) {
       return {
-        ...(persistedState as ConversationMemoryStore),
+        ...persistedState,
         isDbEnabled: true,
         isSyncing: false,
       };
     }
-    return persistedState as ConversationMemoryStore;
+    return persistedState;
   },
-  partialize: (state) => ({
+  partialize: (state: ConversationMemoryStore) => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
     isDbEnabled: state.isDbEnabled,
-  }) as any,
+  }),
 };
 
-// Create store with type assertions to avoid deep instantiation
+// Create store with type assertions to avoid deep instantiation issues
+// This is a known issue with Zustand when using multiple middleware
 export const useConversationMemory = create<ConversationMemoryStore>()(
   devtools(
     persist(
       immer(storeImplementation) as any,
-      persistConfig as any
-    ) as any
+      persistConfig
+    ) as any,
+    { name: 'conversation-memory' }
   ) as any
 );
 

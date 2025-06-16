@@ -369,10 +369,11 @@ describe('Entry Proposal End-to-End Integration', () => {
         expect(proposal).toHaveProperty('priority');
         
         // Verify chart drawing data
-        expect(proposal!.entryZone).toHaveProperty('start');
-        expect(proposal!.entryZone).toHaveProperty('end');
-        expect(proposal!.riskParameters?.stopLoss).toBeGreaterThan(0);
-        expect(proposal!.riskParameters?.takeProfitTargets).toBeInstanceOf(Array);
+        const entryProposal = proposal as any; // Type assertion for entry proposal
+        expect(entryProposal.entryZone).toHaveProperty('min');
+        expect(entryProposal.entryZone).toHaveProperty('max');
+        expect(entryProposal.riskParameters?.stopLoss).toBeGreaterThan(0);
+        expect(entryProposal.riskParameters?.takeProfitTargets).toBeInstanceOf(Array);
       }
     });
   });

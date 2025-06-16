@@ -7,7 +7,9 @@ import ChatLayout from './ChatLayout'
 import { MainLayout } from '@/components/MainLayout'
 import { useViewPersistence } from '@/hooks/use-view-persistence-simple'
 
-export function AnimatedChatTransition() {
+interface AnimatedChatTransitionProps {}
+
+export function AnimatedChatTransition({}: AnimatedChatTransitionProps) {
   const { showHome, isClient, goToChat, goToHome } = useViewPersistence()
 
   const handleTransitionToChat = () => {

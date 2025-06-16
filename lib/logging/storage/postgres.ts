@@ -286,12 +286,12 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
   async query(filter: any, pagination?: any): Promise<any> {
     // Convert to LogQuery format and delegate
     const logQuery: LogQuery = {
-      level: filter?.level,
-      category: filter?.category,
-      startDate: filter?.timeRange?.from ? new Date(filter.timeRange.from) : undefined,
-      endDate: filter?.timeRange?.to ? new Date(filter.timeRange.to) : undefined,
-      limit: pagination?.limit,
-      offset: pagination?.offset
+      ...(filter?.level && { level: filter.level }),
+      ...(filter?.category && { category: filter.category }),
+      ...(filter?.timeRange?.from && { startDate: new Date(filter.timeRange.from) }),
+      ...(filter?.timeRange?.to && { endDate: new Date(filter.timeRange.to) }),
+      ...(pagination?.limit && { limit: pagination.limit }),
+      ...(pagination?.offset && { offset: pagination.offset })
     };
     
     const entries = await this.queryLogs(logQuery);

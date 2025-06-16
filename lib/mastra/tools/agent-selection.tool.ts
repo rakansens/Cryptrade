@@ -310,7 +310,11 @@ async function executeWithA2ACommunication(
       });
       
       // A2A通信は成功したが、ツールの実行結果として失敗メッセージを返す
-      return {
+      const result: Record<string, unknown> & {
+        success: boolean;
+        targetAgent: string;
+        response: string;
+      } = {
         success: true,
         targetAgent: targetAgentId,
         response,
@@ -319,13 +323,27 @@ async function executeWithA2ACommunication(
         metadata: {
           ...(a2aMessage as any).metadata,
           toolExecutionFailed: true,
-        },
-        data: undefined,
-        error: undefined,
-        steps: undefined,
-        toolResults: undefined,
-        proposalGroup: undefined,
+        }
       };
+      
+      // Only add properties if they have values
+      if ('data' in a2aMessage && a2aMessage['data'] !== undefined) {
+        result['data'] = a2aMessage['data'];
+      }
+      if ('error' in a2aMessage && a2aMessage['error'] !== undefined) {
+        result['error'] = a2aMessage['error'];
+      }
+      if ('steps' in a2aMessage && a2aMessage['steps'] !== undefined) {
+        result['steps'] = a2aMessage['steps'];
+      }
+      if ('toolResults' in a2aMessage && a2aMessage['toolResults'] !== undefined) {
+        result['toolResults'] = a2aMessage['toolResults'];
+      }
+      if ('proposalGroup' in a2aMessage && a2aMessage['proposalGroup'] !== undefined) {
+        result['proposalGroup'] = a2aMessage['proposalGroup'];
+      }
+      
+      return result;
     }
 
     // a2aMessageの全体構造を返す（stepsやtoolResultsを含む）

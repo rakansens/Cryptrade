@@ -39,7 +39,7 @@ describe('memoryRecallTool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (semanticSearch as jest.Mock).mockReset();
+    (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockReset();
     
     // Setup mock memory store
     mockMemoryStore = {
@@ -55,7 +55,7 @@ describe('memoryRecallTool', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    (semanticSearch as jest.Mock).mockReset();
+    (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockReset();
   });
 
   describe('execute - getRecent operation', () => {
@@ -167,6 +167,7 @@ describe('memoryRecallTool', () => {
       const mockSearchResults = [
         {
           id: '3',
+          sessionId: 'session-123',
           role: 'user' as const,
           content: 'Show me the ETH chart',
           timestamp: new Date('2024-01-01T11:00:00Z'),
@@ -175,15 +176,16 @@ describe('memoryRecallTool', () => {
         },
         {
           id: '4',
+          sessionId: 'session-123',
           role: 'assistant' as const,
           content: 'Here is the ETH/USDT chart analysis',
           timestamp: new Date('2024-01-01T11:00:30Z'),
           agentId: 'chart-agent',
-          metadata: { chartType: 'candlestick' },
+          metadata: { chartType: 'candlestick' } as any,
         },
       ];
 
-      (semanticSearch as jest.Mock).mockResolvedValue(mockSearchResults);
+      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockResolvedValue(mockSearchResults);
 
       const result = await memoryRecallTool.execute!({
         context: {
@@ -234,13 +236,14 @@ describe('memoryRecallTool', () => {
     it('should respect limit in search results', async () => {
       const manyResults = Array(20).fill(null).map((_, i) => ({
         id: String(i),
+        sessionId: 'session-123',
         role: 'user' as const,
         content: `Message ${i}`,
         timestamp: new Date(),
         agentId: 'user-123',
       }));
 
-      (semanticSearch as jest.Mock).mockResolvedValue(manyResults.slice(0, 10));
+      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockResolvedValue(manyResults.slice(0, 10));
 
       const result = await memoryRecallTool.execute!({
         context: {
@@ -257,7 +260,7 @@ describe('memoryRecallTool', () => {
     });
 
     it('should fallback to text search on semantic error', async () => {
-      (semanticSearch as jest.Mock).mockRejectedValue(new Error('fail'));
+      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockRejectedValue(new Error('fail'));
       const fallbackResults = [
         { id: '1', role: 'user' as const, content: 'fallback1', timestamp: new Date(), agentId: 'a' },
         { id: '2', role: 'assistant' as const, content: 'fallback2', timestamp: new Date(), agentId: 'b' },
