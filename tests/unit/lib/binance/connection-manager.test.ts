@@ -77,7 +77,7 @@ class MockWebSocket {
 (global as any).WebSocket = MockWebSocket;
 
 // Mock the singleton before it's instantiated
-jest.doMock('../connection-manager', () => {
+jest.doMock('@/lib/binance/connection-manager', () => {
   // Create a test-friendly implementation
   class TestBinanceConnectionManager {
     private ws: WebSocket | null = null;
@@ -352,7 +352,7 @@ describe('BinanceConnectionManager', () => {
     jest.clearAllMocks();
     
     // Get the mocked module
-    const connectionModule = require('../connection-manager');
+    const connectionModule = require('@/lib/binance/connection-manager');
     connectionManager = connectionModule.binanceConnectionManager;
   });
   
@@ -763,7 +763,7 @@ describe('BinanceConnectionManager', () => {
       jest.clearAllMocks();
       
       // Create a new instance with production window
-      const { binanceConnectionManager: prodManager } = require('../connection-manager');
+      const { binanceConnectionManager: prodManager } = require('@/lib/binance/connection-manager');
       prodManager.connect();
       
       await new Promise(resolve => setTimeout(resolve, 20));

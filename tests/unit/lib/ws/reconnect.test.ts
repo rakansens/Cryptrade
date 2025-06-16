@@ -22,8 +22,12 @@ const cleanupMock = setupWebSocketMocking();
 describe('WSManager E2E - Reconnection Logic', () => {
   let manager: WSManager;
 
+  // Set timeout for all tests in this describe block
+  jest.setTimeout(10000);
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
     MockWebSocket.clearInstances();
   });
 
@@ -32,6 +36,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
       manager.destroy();
     }
     MockWebSocket.clearInstances();
+    jest.clearAllTimers();
   });
 
   afterAll(() => {
@@ -43,7 +48,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
       manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         maxRetryAttempts: 3,
-        baseRetryDelay: 50,
+        baseRetryDelay: 10,
         debug: true
       });
 
@@ -72,7 +77,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
         if (ws) {
           ws.simulateDisconnect();
         }
-      }, 30);
+      }, 20);
 
       // Send message after reconnection time
       setTimeout(() => {
@@ -81,8 +86,8 @@ describe('WSManager E2E - Reconnection Logic', () => {
         if (activeWs) {
           activeWs.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000'));
         }
-      }, 200);
-    }, 5000);
+      }, 100);
+    }, 1000);
   });
 
   describe('Exponential Backoff', () => {
@@ -114,7 +119,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
       });
     });
 
-    it('should respect max retry attempts', (done) => {
+    it('should respect max retry attempts', async () => {
       manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         maxRetryAttempts: 2,
@@ -122,23 +127,26 @@ describe('WSManager E2E - Reconnection Logic', () => {
         debug: true
       });
 
-
-      manager.subscribe('btcusdt@trade').subscribe({
-        next: () => {},
-        error: (_error) => {
-          expect(_error.message).toContain('Max retry attempts');
-          done();
-        }
+      const errorPromise = new Promise((resolve, reject) => {
+        manager.subscribe('btcusdt@trade').subscribe({
+          next: () => {},
+          error: (error) => {
+            resolve(error);
+          }
+        });
       });
 
       // Simulate immediate connection failure
-      setTimeout(() => {
-        const instances = MockWebSocket.getAllInstances();
-        instances.forEach(ws => {
-          ws.simulateError(new Error('Connection failed'));
-          ws.close(1006);
-        });
-      }, 10);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const instances = MockWebSocket.getAllInstances();
+      instances.forEach(ws => {
+        ws.simulateError(new Error('Connection failed'));
+        ws.close(1006);
+      });
+
+      const error = await errorPromise;
+      expect(error).toBeDefined();
+      expect(error.message).toContain('Max retry attempts');
     });
   });
 
@@ -183,7 +191,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
         if (ws) {
           ws.simulateDisconnect();
         }
-      }, 50);
+      }, 30);
 
       // Send messages after reconnection
       setTimeout(() => {
@@ -193,8 +201,8 @@ describe('WSManager E2E - Reconnection Logic', () => {
           activeWs.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '51000'));
           activeWs.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '52000'));
         }
-      }, 200);
-    }, 5000);
+      }, 100);
+    }, 1000);
   });
 
   describe('Multiple Stream Reconnection', () => {
@@ -241,7 +249,7 @@ describe('WSManager E2E - Reconnection Logic', () => {
         MockWebSocket.getAllInstances().forEach(ws => {
           ws.simulateDisconnect();
         });
-      }, 50);
+      }, 30);
 
       // Send messages after reconnection
       setTimeout(() => {
@@ -253,39 +261,43 @@ describe('WSManager E2E - Reconnection Logic', () => {
             ws.simulateMessage(BinanceMessageGenerator.tradeMessage('ETHUSDT', '3500'));
           }
         });
-      }, 200);
-    }, 5000);
+      }, 100);
+    }, 1000);
   });
 
   describe('Reconnection Metrics', () => {
-    it('should track reconnection metrics', (done) => {
+    it('should track reconnection metrics', async () => {
       manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         maxRetryAttempts: 2,
-        baseRetryDelay: 50
+        baseRetryDelay: 10
       });
 
       const initialMetrics = manager.getMetrics();
       expect(initialMetrics.totalReconnections).toBe(0);
       expect(initialMetrics.retryCount).toBe(0);
 
-      manager.subscribe('btcusdt@trade').subscribe({
-        next: () => {},
-        error: () => {
-          const finalMetrics = manager.getMetrics();
-          expect(finalMetrics.retryCount).toBeGreaterThan(0);
-          done();
-        }
+      const errorPromise = new Promise((resolve) => {
+        manager.subscribe('btcusdt@trade').subscribe({
+          next: () => {},
+          error: () => {
+            resolve(true);
+          }
+        });
       });
 
       // Force connection failure
-      setTimeout(() => {
-        const ws = MockWebSocket.getAllInstances()[0];
-        if (ws) {
-          ws.simulateError(new Error('Test error'));
-          ws.close(1006);
-        }
-      }, 20);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const ws = MockWebSocket.getAllInstances()[0];
+      if (ws) {
+        ws.simulateError(new Error('Test error'));
+        ws.close(1006);
+      }
+
+      await errorPromise;
+      
+      const finalMetrics = manager.getMetrics();
+      expect(finalMetrics.retryCount).toBeGreaterThan(0);
     });
   });
 });

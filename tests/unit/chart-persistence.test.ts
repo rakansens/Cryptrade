@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { ChartPersistenceManager } from '@/lib/storage/chart-persistence';
 import { ChartDrawingAPI } from '@/lib/api/chart-drawing-api';

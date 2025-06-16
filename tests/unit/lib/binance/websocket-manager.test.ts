@@ -61,23 +61,22 @@ class MockWebSocket {
 
 (global as any).WebSocket = MockWebSocket;
 
-// Mock timers
-jest.useFakeTimers();
-
 describe('BinanceWebSocketManager', () => {
+  // Set test timeout
+  jest.setTimeout(10000);
   let manager: BinanceWebSocketManager;
   
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.clearAllTimers();
+    jest.useFakeTimers();
     MockWebSocket.clearInstances();
     manager = new BinanceWebSocketManager();
   });
   
   afterEach(() => {
     manager.closeAll();
-    // Don't run all timers as it causes infinite loop with heartbeat
     jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   describe('subscribe', () => {
@@ -566,7 +565,7 @@ describe('BinanceWebSocketManager', () => {
       
       // Re-import to trigger registration
       jest.resetModules();
-      require('../websocket-manager');
+      require('@/lib/binance/websocket-manager');
       
       expect(addEventListenerSpy).toHaveBeenCalledWith(
         'beforeunload',

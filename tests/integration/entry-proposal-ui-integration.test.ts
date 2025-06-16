@@ -1,4 +1,7 @@
 /**
+ * @jest-environment jsdom
+ */
+/**
  * Entry Proposal UI Integration Test
  * 
  * Tests the integration between entry proposal generation and UI components

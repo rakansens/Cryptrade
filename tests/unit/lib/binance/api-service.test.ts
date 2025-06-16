@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BinanceAPIService } from '@/lib/binance/api-service';
 import { logger } from '@/lib/utils/logger';

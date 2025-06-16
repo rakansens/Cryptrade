@@ -5,19 +5,19 @@
 
 describe('WSManager Module Exports', () => {
   it('should export WSManager class', () => {
-    const { WSManager } = require('../index');
+    const { WSManager } = require('@/lib/ws/index');
     expect(WSManager).toBeDefined();
     expect(typeof WSManager).toBe('function');
   });
 
   it('should export BinanceConnectionManagerShim class', () => {
-    const { BinanceConnectionManagerShim } = require('../index');
+    const { BinanceConnectionManagerShim } = require('@/lib/ws/index');
     expect(BinanceConnectionManagerShim).toBeDefined();
     expect(typeof BinanceConnectionManagerShim).toBe('function');
   });
 
   it('should export singleton binanceConnectionManagerShim', () => {
-    const { binanceConnectionManagerShim } = require('../index');
+    const { binanceConnectionManagerShim } = require('@/lib/ws/index');
     expect(binanceConnectionManagerShim).toBeDefined();
     expect(typeof binanceConnectionManagerShim).toBe('object');
   });
@@ -28,7 +28,7 @@ describe('WSManager Module Exports', () => {
       connectionMigration,
       getBinanceConnection,
       createBinanceConnectionAPI
-    } = require('../index');
+    } = require('@/lib/ws/index');
     
     expect(BinanceConnectionMigration).toBeDefined();
     expect(connectionMigration).toBeDefined();
@@ -45,7 +45,7 @@ describe('WSManager Module Exports', () => {
     // This test ensures TypeScript types are properly exported
     // by importing the module without errors
     expect(() => {
-      require('../index');
+      require('@/lib/ws/index');
     }).not.toThrow();
   });
 });

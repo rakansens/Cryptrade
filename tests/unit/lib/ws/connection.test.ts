@@ -161,7 +161,7 @@ describe('WSManager E2E - Connection Management', () => {
   });
 
   describe('Connection Metrics', () => {
-    it('should track connection metrics accurately', () => {
+    it('should track connection metrics accurately', async () => {
       const initialMetrics = manager.getMetrics();
       expect(initialMetrics.activeConnections).toBe(0);
       expect(initialMetrics.totalStreamCreations).toBe(0);
@@ -179,11 +179,10 @@ describe('WSManager E2E - Connection Management', () => {
       sub2.unsubscribe();
       
       // Allow for cleanup
-      setTimeout(() => {
-        const finalMetrics = manager.getMetrics();
-        expect(finalMetrics.activeConnections).toBeLessThanOrEqual(2);
-        expect(finalMetrics.totalStreamCreations).toBe(2); // Total should remain
-      }, 50);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const finalMetrics = manager.getMetrics();
+      expect(finalMetrics.activeConnections).toBeLessThanOrEqual(2);
+      expect(finalMetrics.totalStreamCreations).toBe(2); // Total should remain
     });
 
     it('should track high water mark', () => {

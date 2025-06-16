@@ -1,5 +1,5 @@
 // Setup test environment before any imports
-import { mockTestEnv } from '@/config/testing/setupEnvMock';
+import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 
 const restoreEnv = mockTestEnv({
   ENABLE_SENTRY: 'false',

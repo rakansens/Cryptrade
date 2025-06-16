@@ -6,9 +6,23 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
  */
 
 // モックの設定
-jest.mock('@/lib/network/agent-network');
-jest.mock('@/store/enhanced-conversation-memory.store');
-jest.mock('@/tests/unit/db/prisma');
+jest.mock('@/lib/mastra/network/agent-network');
+jest.mock('@/lib/store/enhanced-conversation-memory.store');
+jest.mock('@/lib/database/client', () => ({
+  prisma: {
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    conversation: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn()
+    },
+    conversationMessage: {
+      create: jest.fn(),
+      findMany: jest.fn()
+    }
+  }
+}));
 
 describe('Agent Performance - Unit Tests', () => {
   beforeEach(() => {
@@ -17,7 +31,7 @@ describe('Agent Performance - Unit Tests', () => {
 
   describe('A2A Communication Timeout', () => {
     it('should have timeout set to 10 seconds or less', () => {
-      const { agentNetwork } = require('../network/agent-network');
+      const { agentNetwork } = require('@/lib/mastra/network/agent-network');
       
       // 現在のタイムアウト設定を確認
       expect(agentNetwork.config?.timeout).toBeLessThanOrEqual(10000);
@@ -30,7 +44,7 @@ describe('Agent Performance - Unit Tests', () => {
       const EXPECTED_TTL = 30000; // 30秒
       
       // market-data-resilient.toolのキャッシュ設定を確認
-      const { getCacheConfig } = require('../tools/market-data-resilient.tool');
+      const { getCacheConfig } = require('@/lib/mastra/tools/market-data-resilient.tool');
       const cacheConfig = getCacheConfig();
       
       expect(cacheConfig.ttl).toBeGreaterThanOrEqual(EXPECTED_TTL);
@@ -39,14 +53,14 @@ describe('Agent Performance - Unit Tests', () => {
 
   describe('Memory Management', () => {
     it('should have a maximum message limit for in-memory storage', () => {
-      const { MAX_MESSAGES_IN_MEMORY } = require('../../store/enhanced-conversation-memory.store');
+      const { MAX_MESSAGES_IN_MEMORY } = require('@/lib/store/enhanced-conversation-memory.store');
       
       // 50メッセージ以下であるべき
       expect(MAX_MESSAGES_IN_MEMORY).toBeLessThanOrEqual(50);
     });
 
     it('should implement message archiving', () => {
-      const store = require('../../store/enhanced-conversation-memory.store');
+      const store = require('@/lib/store/enhanced-conversation-memory.store');
       
       // アーカイブ機能が実装されているか確認
       expect(store.archiveOldMessages).toBeDefined();
@@ -59,7 +73,7 @@ describe('Agent Performance - Unit Tests', () => {
       // ModelSelectorが存在するか確認（まだ実装されていない）
       let ModelSelector;
       try {
-        ModelSelector = require('../utils/model-selector').ModelSelector;
+        ModelSelector = require('@/lib/mastra/utils/model-selector').ModelSelector;
       } catch (e) {
         ModelSelector = null;
       }
@@ -74,7 +88,7 @@ describe('Agent Performance - Unit Tests', () => {
       // SharedDataStoreが存在するか確認（まだ実装されていない）
       let SharedDataStore;
       try {
-        SharedDataStore = require('../utils/shared-data-store').SharedDataStore;
+        SharedDataStore = require('@/lib/mastra/utils/shared-data-store').SharedDataStore;
       } catch (e) {
         SharedDataStore = null;
       }
@@ -88,7 +102,7 @@ describe('Agent Performance - Unit Tests', () => {
       // AgentErrorクラスが存在するか確認（まだ実装されていない）
       let AgentError;
       try {
-        AgentError = require('../utils/agent-error').AgentError;
+        AgentError = require('@/lib/mastra/utils/agent-error').AgentError;
       } catch (e) {
         AgentError = null;
       }
@@ -103,7 +117,7 @@ describe('Agent Performance - Unit Tests', () => {
       // measurePerformanceデコレータが存在するか確認
       let measurePerformance;
       try {
-        measurePerformance = require('../utils/performance').measurePerformance;
+        measurePerformance = require('@/lib/mastra/utils/performance').measurePerformance;
       } catch (e) {
         measurePerformance = null;
       }

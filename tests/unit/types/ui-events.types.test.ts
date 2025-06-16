@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 // Jest is configured globally, no imports needed
 import type {
   DrawingPoint,

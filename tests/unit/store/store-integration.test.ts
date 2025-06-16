@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { act, renderHook } from '@testing-library/react';
 import { useChartStore, useDrawingStore, usePatternStore, useChartBaseStore } from '@/store/chart';
 import { useChatStore, useChatActions } from '@/store/chat.store';

@@ -74,7 +74,7 @@ describe('Agent Performance Optimization', () => {
 
     it('should share data between tools using SharedDataStore', async () => {
       // SharedDataStoreの実装をテスト（まだ存在しない）
-      const SharedDataStore = require('../utils/shared-data-store').SharedDataStore;
+      const SharedDataStore = require('@/lib/mastra/utils/shared-data-store').SharedDataStore;
       const store = new SharedDataStore();
       
       // データを保存
@@ -89,7 +89,7 @@ describe('Agent Performance Optimization', () => {
 
   describe('Memory Management', () => {
     it('should archive old messages after 50 messages', async () => {
-      const { useEnhancedConversationMemory } = require('../../store/enhanced-conversation-memory.store');
+      const { useEnhancedConversationMemory } = require('@/lib/store/enhanced-conversation-memory.store');
       const store = useEnhancedConversationMemory.getState();
       
       const sessionId = 'test-memory-' + Date.now();
@@ -113,7 +113,7 @@ describe('Agent Performance Optimization', () => {
     });
 
     it('should use WeakMap for temporary data to prevent memory leaks', () => {
-      const UIEventDispatcher = require('../../utils/ui-event-dispatcher').UIEventDispatcher;
+      const UIEventDispatcher = require('@/lib/utils/ui-event-dispatcher').UIEventDispatcher;
       const dispatcher = UIEventDispatcher.getInstance();
       
       // WeakMapを使用していることを確認
@@ -123,7 +123,7 @@ describe('Agent Performance Optimization', () => {
 
   describe('Model Selection Optimization', () => {
     it('should select appropriate model based on task complexity', async () => {
-      const ModelSelector = require('../utils/model-selector').ModelSelector;
+      const ModelSelector = require('@/lib/mastra/utils/model-selector').ModelSelector;
       
       // 簡単なタスク → 速いモデル
       const simpleModel = ModelSelector.selectByComplexity('price_inquiry', 'free');
@@ -141,7 +141,7 @@ describe('Agent Performance Optimization', () => {
 
   describe('Error Handling Consistency', () => {
     it('should use unified AgentError class for all agent errors', async () => {
-      const AgentError = require('../utils/agent-error').AgentError;
+      const AgentError = require('@/lib/mastra/utils/agent-error').AgentError;
       
       try {
         await executeImprovedOrchestrator('', 'test-session', {});
@@ -155,7 +155,7 @@ describe('Agent Performance Optimization', () => {
 
   describe('Performance Metrics', () => {
     it('should measure and report agent execution time', async () => {
-      const metrics = require('../../monitoring/metrics').metrics;
+      const metrics = require('@/lib/monitoring/metrics').metrics;
       const recordSpy = jest.spyOn(metrics, 'recordAgentExecution');
       
       await executeImprovedOrchestrator('BTCの価格は？', 'test-metrics', {});
@@ -169,7 +169,7 @@ describe('Agent Performance Optimization', () => {
     });
 
     it('should track cache hit rates', () => {
-      const metrics = require('../../monitoring/metrics').metrics;
+      const metrics = require('@/lib/monitoring/metrics').metrics;
       const cacheMetrics = metrics.getCacheMetrics();
       
       expect(cacheMetrics).toHaveProperty('hitRate');
@@ -182,15 +182,15 @@ describe('Agent Performance Optimization', () => {
 describe('Code Structure Improvements', () => {
   it('should have separated Orchestrator modules', () => {
     // ファイルが存在することを確認
-    expect(() => require('../agents/orchestrator.handlers')).not.toThrow();
-    expect(() => require('../agents/orchestrator.utils')).not.toThrow();
-    expect(() => require('../agents/orchestrator.types')).not.toThrow();
+    expect(() => require('@/lib/mastra/agents/orchestrator.handlers')).not.toThrow();
+    expect(() => require('@/lib/mastra/agents/orchestrator.utils')).not.toThrow();
+    expect(() => require('@/lib/mastra/agents/orchestrator.types')).not.toThrow();
   });
 
   it('should have no duplicate type definitions', () => {
     // 型定義の重複チェック
-    const types = require('../agents/orchestrator.types');
-    const utilTypes = require('../utils/intent');
+    const types = require('@/lib/mastra/agents/orchestrator.types');
+    const utilTypes = require('@/lib/mastra/utils/intent');
     
     // IntentAnalysisResultは1箇所でのみ定義されるべき
     expect(types.IntentAnalysisResult).toBeDefined();

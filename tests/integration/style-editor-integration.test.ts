@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { renderHook } from '@testing-library/react'
 import { useAgentEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers'
 import { showToast } from '@/components/ui/toast'

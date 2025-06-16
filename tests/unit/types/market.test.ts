@@ -86,7 +86,7 @@ describe('validateBinanceKlines - Dual Mode', () => {
     // Clear the module cache to reload the schema with new environment
     jest.resetModules();
     // Re-import to get the new environment context
-    const { validateBinanceKlines: prodValidateBinanceKlines } = require('../market');
+    const { validateBinanceKlines: prodValidateBinanceKlines } = require('@/types/market');
     
     const mixedData = [
       [1640995200000, "47000", "47500", "46800", "47200", "1234.56", 1640995259999, "58000000", 100, "617.28", "29000000", "0"],
