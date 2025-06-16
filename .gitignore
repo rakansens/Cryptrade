@@ -87,3 +87,7 @@ test-server.log
 # Jest cache
 .jest-cache/
 test_results*.json
+*test*result*.json
+integration-test-results.json
+unit-test-results.json
+test-results-after-fix.json
