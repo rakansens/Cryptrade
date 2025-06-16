@@ -18,4 +18,4 @@ export type {
 export {
   ProposalStatus,
   ProposalType
-} from '../proposals'; 
+} from '../enums';

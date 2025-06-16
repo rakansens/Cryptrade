@@ -61,6 +61,9 @@ describe('Orchestrator Agent Integration Tests', () => {
         { query: 'BTCの価格を教えて', symbol: 'BTC' },
         { query: 'イーサリアムの現在価格は？', symbol: 'ETH' },
         { query: 'ビットコインはいくら？', symbol: 'BTC' },
+        { query: 'ETH quote please', symbol: 'ETH' },
+        { query: 'XRPの相場は？', symbol: 'XRP' },
+        { query: 'BTC prc?', symbol: 'BTC' },
       ];
 
       test.each(priceQueries)('should handle price inquiry: "$query"', async ({ query }) => {
@@ -78,6 +81,9 @@ describe('Orchestrator Agent Integration Tests', () => {
         'BTCの技術分析をして',
         'エントリーポイントを提案して',
         'サポートとレジスタンスラインを分析して',
+        'BTCのTAお願い',
+        'ETHのFAを見せて',
+        'エントリーとexitの見解は？',
       ];
 
       test.each(analysisQueries)('should handle analysis request: "%s"', async (query) => {
@@ -95,6 +101,9 @@ describe('Orchestrator Agent Integration Tests', () => {
         { query: 'BTCのチャートに切り替えて', expectedAction: 'switch_chart' },
         { query: 'トレンドラインを描いて', expectedAction: 'draw_line' },
         { query: '15分足に変更して', expectedAction: 'change_timeframe' },
+        { query: 'MAを表示して', expectedAction: 'show_indicator' },
+        { query: 'チャートswして', expectedAction: 'switch_chart' },
+        { query: 'tfを1hにchg', expectedAction: 'change_timeframe' },
       ];
 
       test.each(uiQueries)('should handle UI operation: "$query"', async ({ query }) => {

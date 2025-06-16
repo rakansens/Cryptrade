@@ -10,7 +10,8 @@
 - デバッグガイド
 - デプロイメント手順
 - トラブルシューティング
+- 意図分類キーワード一覧
 
 ## ドキュメント一覧
 
-（今後追加予定）
+- [Intent Classification Keywords](./intent-classification.md)

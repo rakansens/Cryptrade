@@ -3,7 +3,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { DrawingProposalGroup, DrawingProposal, ProposalStatus, ProposalType } from '@/types/proposals';
+import { DrawingProposalGroup, DrawingProposal } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/enums';
 import { BinanceKline, BinanceTicker24hr } from '@/types/market';
 
 // Mock data generators

@@ -257,6 +257,18 @@ Ensure these variables are set in your production environment:
 
 For detailed architecture decisions, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
+## Intent Classification
+
+Cryptrade's AI routes user queries based on keywords. The keyword lists now include common abbreviations from chat logs.
+
+Examples:
+
+- `ETH quote please` → price inquiry
+- `MAを表示して` → UI control
+- `BTCのTAお願い` → trading analysis
+
+See [docs/guides/intent-classification.md](docs/guides/intent-classification.md) for the full list.
+
 ## Contributing
 
 1. Fork the repository

@@ -418,14 +418,29 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
       }
     };
 
-    // Redo Last Drawing Handler - placeholder
+    // Redo Last Drawing Handler - restore the last removed drawing using undo stack
     const handleRedoLastDrawing = () => {
       logger.info('[Drawing Event] Handling redo last drawing');
-      // TODO: Implement when undo/redo stack is available
-      showAgentSuccess({
-        eventType: 'chart:redoLastDrawing',
-        operation: 'Redo last drawing',
-      }, 'Redo functionality coming soon');
+
+      try {
+        const { undoStack } = getState();
+        if (undoStack.length > 0) {
+          // Revert the last undo (usually a deletion)
+          undo();
+
+          showAgentSuccess({
+            eventType: 'chart:redoLastDrawing',
+            operation: 'Redo last drawing',
+          }, 'Last drawing restored');
+        } else {
+          logger.warn('[Drawing Event] No drawing actions to redo');
+        }
+      } catch (error) {
+        handleAgentError(error, {
+          eventType: 'chart:redoLastDrawing',
+          operation: 'Redo last drawing',
+        });
+      }
     };
 
     // Update Drawing Style Handler

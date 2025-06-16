@@ -78,23 +78,32 @@ export function validateResponse(response: unknown): response is AgentResponse {
 
 /**
  * インテント信頼度の計算
+ *
+ * `INTENT_KEYWORDS` に定義されたキーワードがクエリに
+ * いくつ含まれるかを元にスコアを算出する。
+ * 一致率が高いほどスコアも高くなり、全て一致すると 1.0、
+ * 一致しない場合は 0 を返す。
  */
 export function calculateIntentConfidence(
   query: string,
   detectedIntent: IntentType
 ): number {
   const queryLower = query.toLowerCase();
-  
-  // 明確なキーワードがある場合は高信頼度
+
+  // INTENT_KEYWORDSに登録されたキーワードの一致数をカウント
   const patterns = INTENT_KEYWORDS[detectedIntent] || [];
-  const hasPattern = patterns.some((pattern: string) => queryLower.includes(pattern));
-  
-  if (hasPattern) {
-    return 0.9 + Math.random() * 0.1; // 0.9-1.0
+  const matches = patterns.filter(keyword =>
+    queryLower.includes(keyword.toLowerCase())
+  ).length;
+
+  if (matches === 0 || patterns.length === 0) {
+    return 0;
   }
-  
-  // パターンが見つからない場合は中程度の信頼度
-  return 0.6 + Math.random() * 0.3; // 0.6-0.9
+
+  // 一致率に応じて 0.6〜1.0 の範囲でスコアリング
+  const ratio = matches / patterns.length; // 0.0 - 1.0
+  const score = 0.6 + 0.4 * ratio;
+  return Math.min(1, Math.max(0, Number(score.toFixed(2))));
 }
 
 /**

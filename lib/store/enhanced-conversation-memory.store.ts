@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist, createJSONStorage } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
@@ -846,10 +846,10 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
 // Split the store creation to avoid deep type instantiation
 type EnhancedConversationMemoryStore = EnhancedConversationMemoryState;
 
-const persistConfig = {
+const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
   name: 'enhanced-conversation-memory',
   version: 3, // Increment for DB integration
-  migrate: (persistedState: any, version: number) => {
+  migrate: (persistedState: EnhancedConversationMemoryStore | unknown, version: number) => {
     if (version < 3) {
       return {
         ...persistedState,
@@ -858,7 +858,7 @@ const persistConfig = {
         defaultProcessors: DEFAULT_PROCESSORS,
       };
     }
-    return persistedState;
+    return persistedState as EnhancedConversationMemoryStore;
   },
   partialize: (state: EnhancedConversationMemoryStore) => ({
     sessions: state.sessions,
@@ -883,11 +883,11 @@ const persistConfig = {
 // Create store with explicit typing to avoid deep instantiation
 export const useEnhancedConversationMemory = create<EnhancedConversationMemoryStore>()(
   devtools(
-    persist(
-      immer(enhancedStoreImplementation as any),
-      persistConfig as any
-    ) as any
-  ) as any
+    persist<EnhancedConversationMemoryStore>(
+      immer<EnhancedConversationMemoryStore>(enhancedStoreImplementation),
+      persistConfig
+    )
+  )
 );
 
 // Export convenience functions

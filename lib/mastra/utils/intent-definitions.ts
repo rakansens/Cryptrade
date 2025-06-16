@@ -36,7 +36,7 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
   {
     category: IntentCategory.PRICE_INQUIRY,
     agentId: 'priceInquiryAgent',
-    keywords: ['価格', 'price', 'いくら', 'how much', '値段', 'value', 'rate', 'レート'],
+    keywords: ['価格', 'price', 'いくら', 'how much', '値段', 'value', 'rate', 'レート', '相場', 'quote', 'prc', '現在値'],
     patterns: [
       /(?:btc|eth|ada|sol|doge|xrp|dot|link|uni|avax|matic).*(?:価格|price)/i,
       /(?:価格|price).*(?:btc|eth|ada|sol|doge|xrp|dot|link|uni|avax|matic)/i,
@@ -44,9 +44,9 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
     ],
     description: '暗号通貨の現在価格や価格変動に関する質問',
     examples: [
-      'BTCの価格は？',
-      'ETHの現在価格を教えて',
-      'ビットコインはいくら？',
+      'BTCの相場は？',
+      'ETH quote please',
+      'XRPのprcを知りたい',
     ],
     priority: 90,
   },
@@ -54,7 +54,7 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
   {
     category: IntentCategory.UI_CONTROL,
     agentId: 'uiControlAgent',
-    keywords: ['チャート', 'chart', '表示', 'display', '切り替え', 'switch', '変更', 'change', '描画', 'draw'],
+    keywords: ['チャート', 'chart', '表示', 'display', '切り替え', 'switch', '変更', 'change', '描画', 'draw', 'disp', 'sw', 'chg', 'tf', 'zoom', 'ズーム', 'ma', 'rsi', 'macd', 'bb', 'ind'],
     patterns: [
       /(?:1分|5分|15分|30分|1時間|4時間|日|週|月).*(?:足|チャート|chart)/i,
       /(?:移動平均|MA|RSI|MACD|ボリンジャー).*(?:表示|描画|追加)/i,
@@ -62,9 +62,9 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
     ],
     description: 'チャートの表示設定やインジケーターの操作',
     examples: [
-      '1時間足に変更して',
-      '移動平均を表示して',
-      'BTCのチャートに切り替えて',
+      'MAを表示して',
+      'チャートswして',
+      'tfを1時間にchg',
     ],
     priority: 85,
   },
@@ -72,7 +72,7 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
   {
     category: IntentCategory.TRADING_ANALYSIS,
     agentId: 'tradingAnalysisAgent',
-    keywords: ['分析', 'analysis', '投資', 'investment', '取引', 'trading', '戦略', 'strategy', 'リスク', 'risk'],
+    keywords: ['分析', 'analysis', '投資', 'investment', '取引', 'trading', '戦略', 'strategy', 'リスク', 'risk', 'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '評価', '見解'],
     patterns: [
       /(?:技術|テクニカル|ファンダメンタル).*(?:分析|analysis)/i,
       /(?:買い|売り|ロング|ショート).*(?:タイミング|シグナル|サイン)/i,
@@ -80,9 +80,9 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
     ],
     description: '取引分析、投資アドバイス、リスク評価',
     examples: [
-      'BTCの投資判断を分析して',
-      'ETHの技術的分析をお願い',
-      '今週のトレード戦略は？',
+      'BTCのTAお願い',
+      'ETHのFAを見せて',
+      'エントリーとexitの見解は？',
     ],
     priority: 80,
   },
@@ -124,7 +124,7 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
   {
     category: IntentCategory.CONVERSATIONAL,
     agentId: 'orchestratorAgent',
-    keywords: ['こんにちは', 'hello', 'ありがとう', 'thank', 'help', 'ヘルプ'],
+    keywords: ['こんにちは', 'hello', 'ありがとう', 'thank', 'help', 'ヘルプ', 'thx', 'pls', 'yo', '助けて'],
     patterns: [
       /^(こんにちは|hello|hi|hey)/i,
       /^(ありがとう|thanks|thank you)/i,
@@ -132,9 +132,9 @@ export const INTENT_DEFINITIONS: IntentDefinition[] = [
     ],
     description: '一般的な会話や挨拶',
     examples: [
-      'こんにちは',
-      'ありがとう',
-      'どんなことができますか？',
+      'hey',
+      'thx for your help',
+      'pls help',
     ],
     priority: 10, // 最低優先度
   },

@@ -65,6 +65,9 @@ export {
   // Enums
   ProposalStatus,
   ProposalType,
+} from './enums';
+
+export {
   // Type guards
   isDrawingProposal,
   isEntryProposal,

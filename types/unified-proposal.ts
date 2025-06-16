@@ -22,4 +22,4 @@ export {
 } from './proposals';
 
 // Keep the ProposalType export for files that import it directly from this file
-export { ProposalType } from './proposals';
+export { ProposalType } from './enums';

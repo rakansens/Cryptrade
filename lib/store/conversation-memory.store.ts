@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, type PersistOptions } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
@@ -338,18 +338,18 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
 // Split the store creation to avoid deep type instantiation
 type ConversationMemoryStore = ConversationMemoryState;
 
-const persistConfig = {
+const persistConfig: PersistOptions<ConversationMemoryStore> = {
   name: 'conversation-memory',
   version: 2, // Increment for DB integration
-  migrate: (persistedState: unknown, version: number) => {
+  migrate: (persistedState: ConversationMemoryStore | unknown, version: number) => {
     if (version === 0 || version === 1) {
       return {
-        ...(persistedState as Record<string, unknown>),
+        ...(persistedState as ConversationMemoryStore),
         isDbEnabled: true,
         isSyncing: false,
       };
     }
-    return persistedState as any;
+    return persistedState as ConversationMemoryStore;
   },
   partialize: (state: ConversationMemoryStore) => ({
     sessions: state.sessions,
@@ -361,11 +361,11 @@ const persistConfig = {
 // Create store with explicit typing to avoid deep instantiation
 export const useConversationMemory = create<ConversationMemoryStore>()(
   devtools(
-    persist(
-      immer(storeImplementation as any),
-      persistConfig as any
-    ) as any
-  ) as any
+    persist<ConversationMemoryStore>(
+      immer<ConversationMemoryStore>(storeImplementation),
+      persistConfig
+    )
+  )
 );
 
 // Helper functions for semantic search (future implementation)

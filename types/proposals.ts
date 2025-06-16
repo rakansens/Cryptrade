@@ -11,30 +11,10 @@
 // ====================================
 
 /**
- * Status of a proposal
+ * Status and type enums are centralised in './enums'.
+ * Re-exporting here for backward compatibility.
  */
-export enum ProposalStatus {
-  PENDING = 'pending',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  EXPIRED = 'expired',
-}
-
-/**
- * Types of proposals supported
- */
-export enum ProposalType {
-  TRENDLINE = 'trendline',
-  HORIZONTAL_LINE = 'horizontalLine',
-  VERTICAL_LINE = 'verticalLine',
-  RECTANGLE = 'rectangle',
-  CIRCLE = 'circle',
-  TEXT = 'text',
-  FIBONACCI = 'fibonacci',
-  PATTERN = 'pattern',
-  ENTRY = 'entry',
-  SUPPORT_RESISTANCE = 'support_resistance',
-}
+export { ProposalStatus, ProposalType } from './enums';
 
 /**
  * Trading direction for entry proposals

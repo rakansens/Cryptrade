@@ -9,7 +9,8 @@ import { useProposalApprovalActions } from '@/store/proposal-approval.store';
 import { useUIEventPublisher } from '@/store/ui-event.store';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
 import { logger } from '@/lib/utils/logger';
-import { DrawingProposalGroup, ProposalStatus, ProposalType } from '@/types/proposals';
+import { DrawingProposalGroup } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/enums';
 
 // Mock dependencies
 jest.mock('@/store/analysis-history.store');

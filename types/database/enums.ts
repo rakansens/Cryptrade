@@ -5,17 +5,9 @@
  * to ensure consistency between database and application code
  */
 
-// AnalysisType - Maps to Prisma enum
-export const AnalysisType = {
-  SUPPORT: 'support',
-  RESISTANCE: 'resistance',
-  TRENDLINE: 'trendline',
-  PATTERN: 'pattern',
-  FIBONACCI: 'fibonacci',
-  VOLUME: 'volume',
-} as const;
-
-export type AnalysisType = typeof AnalysisType[keyof typeof AnalysisType];
+// AnalysisType moved to '../enums' for reuse across modules
+export { AnalysisType } from '../enums';
+export type { AnalysisType } from '../enums';
 
 // TouchResult - Maps to Prisma enum
 export const TouchResult = {

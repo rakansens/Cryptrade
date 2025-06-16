@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { applyCorsHeaders, applySecurityHeaders } from '@/lib/api/middleware';
-import { UnifiedProposal, toUnifiedProposal, ProposalType } from '@/types/proposals';
+import { UnifiedProposal, toUnifiedProposal } from '@/types/proposals';
+import { ProposalType } from '@/types/enums';
 import type { OrchestratorResult, ProposalGroup, ToolResult } from '@/lib/api/types';
 
 /**

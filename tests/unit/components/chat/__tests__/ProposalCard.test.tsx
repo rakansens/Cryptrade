@@ -5,7 +5,7 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ProposalCard } from '@/components/chat/ProposalCard'
 import type { DrawingProposalGroup, DrawingProposal } from '@/types/proposals'
-import { ProposalType, ProposalStatus } from '@/types/proposals'
+import { ProposalType, ProposalStatus } from '@/types/enums'
 
 // Mock the StyleEditor component
 jest.mock('@/components/chat/StyleEditor', () => ({

@@ -217,7 +217,46 @@ const useAnalysisHistoryBase = create<AnalysisHistoryStore>()(
           };
         });
         
-        // TODO: Update in database if enabled
+        const stateAfterUpdate = get();
+        if (stateAfterUpdate.isDbEnabled) {
+          const record = stateAfterUpdate.getRecord(id);
+          if (record) {
+            try {
+              await AnalysisAPI.saveAnalysis({
+                ...(stateAfterUpdate.currentSessionId && {
+                  sessionId: stateAfterUpdate.currentSessionId,
+                }),
+                symbol: record.symbol,
+                interval: record.interval,
+                type: record.type,
+                proposalData: record.proposal,
+                trackingData: record.tracking,
+                sentimentData: record.proposal?.sentiment,
+              });
+
+              set((state) => ({
+                records: state.records.map((r) =>
+                  r.id === id
+                    ? {
+                        ...r,
+                        dbMeta: {
+                          ...r.dbMeta,
+                          synced: true,
+                        },
+                      }
+                    : r
+                ),
+              }));
+
+              logger.info('[AnalysisHistory] Record saved to DB', { id });
+            } catch (error) {
+              logger.error('[AnalysisHistory] Failed to update record in DB', {
+                error,
+                id,
+              });
+            }
+          }
+        }
         
         logger.info('[AnalysisHistory] Record updated', { id });
       },

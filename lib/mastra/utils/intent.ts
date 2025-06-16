@@ -109,7 +109,8 @@ export function detectEntryProposal(userQuery: string, queryLower: string): Inte
 export function detectUIControl(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const uiControlKeywords = [
     'チャート', '切り替え', '変更', '表示して', '見せて', 'にして',
-    'switch', 'change', 'show', 'display'
+    'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム',
+    'ma', 'rsi', 'macd', 'bb', 'ind'
   ];
 
   const chartSwitchPatterns = [
@@ -146,9 +147,9 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
   const hasDrawingKeyword = drawingKeywords.some(keyword => queryLower.includes(keyword));
   const priceAnalysisKeywords = ['将来性', '見通し', '買い時', '売り時', '投資', 'どう思う', '分析'];
   const hasAnalysisKeyword = priceAnalysisKeywords.some(keyword => queryLower.includes(keyword));
-  const hasUIKeyword = ['チャート', '切り替え', '変更', '表示して', '見せて', 'にして', 'switch', 'change', 'show', 'display'].some(keyword => queryLower.includes(keyword));
+  const hasUIKeyword = ['チャート', '切り替え', '変更', '表示して', '見せて', 'にして', 'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム'].some(keyword => queryLower.includes(keyword));
 
-  if ((queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('値段') ||
+  if ((queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('値段') || queryLower.includes('相場') || queryLower.includes('quote') || queryLower.includes('現在値') || queryLower.includes('prc') ||
       /btc|eth|ada|sol|usdt|price|コイン/i.test(queryLower)) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
         hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
@@ -276,7 +277,8 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     '推奨', 'おすすめ', '戦略', 'リスク', '評価', 'レポート',
     '将来性', '見通し', '予想', '買い時', '売り時',
     'どう思う', '判断', 'トレンド', '動向', '展望',
-    'outlook', 'forecast', 'prediction', 'trend', 'analysis'
+    'outlook', 'forecast', 'prediction', 'trend', 'analysis',
+    'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解'
   ];
 
   if (analysisKeywords.some(keyword => queryLower.includes(keyword))) {
@@ -294,7 +296,7 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
 
 export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
-    /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey)\.?$/i,
+    /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey|yo)\.?$/i,
     /^(お疲れ様|よろしく|どうも)\.?$/i
   ];
 
@@ -313,7 +315,8 @@ export function detectGreeting(_userQuery: string, queryLower: string): IntentAn
 
 export function detectHelpRequest(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   if (queryLower.includes('ヘルプ') || queryLower.includes('使い方') ||
-      queryLower.includes('help') || queryLower.includes('how')) {
+      queryLower.includes('help') || queryLower.includes('how') ||
+      queryLower.includes('pls') || queryLower.includes('please help') || queryLower.includes('助けて')) {
     return {
       intent: 'help_request',
       confidence: 0.9,
@@ -362,7 +365,8 @@ export function detectSmallTalk(userQuery: string, queryLower: string): IntentAn
   const smallTalkKeywords = [
     '元気', 'げんき', '疲れ', 'つかれ', 'お疲れ', '大丈夫',
     'ありがとう', 'ありがと', 'すごい', 'いいね', 'そうだね',
-    'そうなんだ', 'なるほど', 'わかった', 'わかりました', 'OK', 'ok'
+    'そうなんだ', 'なるほど', 'わかった', 'わかりました', 'OK', 'ok',
+    'thx'
   ];
 
   const emotionalPhrases = [

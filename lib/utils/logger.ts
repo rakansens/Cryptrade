@@ -110,6 +110,23 @@ function getDefaultLogLevel(): LogLevel {
 //   return LOG_LEVELS[level] >= LOG_LEVELS[config.level];
 // }
 
+// Helper utilities
+function mapErrorProperties(error: Error): Record<string, unknown> {
+  return Object.getOwnPropertyNames(error).reduce((acc, prop) => {
+    if (!['name', 'message', 'stack'].includes(prop)) {
+      acc[prop] = (error as { [key: string]: unknown })[prop];
+    }
+    return acc;
+  }, {} as Record<string, unknown>);
+}
+
+function unknownToRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return { ...(value as Record<string, unknown>) };
+  }
+  return { value };
+}
+
 // Transport implementations
 class ConsoleTransport implements ILogTransport {
   private enableConsole: boolean;
@@ -150,15 +167,10 @@ class ConsoleTransport implements ILogTransport {
         name: error.name,
         message: error.message,
         stack: getEnvVar('NODE_ENV') === 'development' ? error.stack : undefined,
-        ...Object.getOwnPropertyNames(error).reduce((acc, prop) => {
-          if (!['name', 'message', 'stack'].includes(prop)) {
-            acc[prop] = (error as unknown as Record<string, unknown>)[prop];
-          }
-          return acc;
-        }, {} as Record<string, unknown>)
+        ...mapErrorProperties(error)
       };
     }
-    return error as Record<string, unknown>;
+    return unknownToRecord(error);
   }
 
   private formatMessage(entry: LogEntry): string {
@@ -182,12 +194,7 @@ class ConsoleTransport implements ILogTransport {
         name: value.name,
         message: value.message,
         stack: getEnvVar('NODE_ENV') === 'development' ? value.stack : undefined,
-        ...Object.getOwnPropertyNames(value).reduce((acc, prop) => {
-          if (!['name', 'message', 'stack'].includes(prop)) {
-            acc[prop] = (value as unknown as Record<string, unknown>)[prop];
-          }
-          return acc;
-        }, {} as Record<string, unknown>)
+        ...mapErrorProperties(value)
       };
     }
     return value;
