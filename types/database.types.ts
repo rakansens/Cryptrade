@@ -155,6 +155,25 @@ export interface AlertMetadata {
   customSound?: string;
 }
 
+export interface Alert {
+  id: string;
+  userId: string;
+  symbol: string;
+  conditions: AlertConditions;
+  metadata: AlertMetadata;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlertTrigger {
+  id: string;
+  alertId: string;
+  price?: number;
+  description?: string;
+  triggeredAt: string;
+}
+
 // ===== System Log Types =====
 
 export interface SystemLogMetadata {
