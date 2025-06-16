@@ -12,8 +12,11 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
   const priceUpdate = usePriceUpdate(symbol);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastConnectionUpdate = useRef<number>(0);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (!symbol || !isClient) return;
 
     const streamKey = `${symbol.toLowerCase()}@trade`;
@@ -25,6 +28,8 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
     const unsubscribe = binanceConnectionManager.subscribe(
       streamKey,
       ((data: BinanceTradeMessage) => {
+        if (!isMountedRef.current) return;
+        
         try {
           if (data.e === "trade" && data.s === symbol.toUpperCase()) {
             updatePrice(data);
@@ -39,8 +44,10 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
           }
         } catch (error) {
           logger.error('[PriceStream] Error processing trade data', { symbol }, error);
-          setConnectionError(`Failed to process price data for ${symbol}`);
-          lastConnectionUpdate.current = Date.now();
+          if (isMountedRef.current) {
+            setConnectionError(`Failed to process price data for ${symbol}`);
+            lastConnectionUpdate.current = Date.now();
+          }
         }
       }) as any
     );
@@ -49,9 +56,12 @@ export function usePriceStream(symbol: string = "BTCUSDT") {
 
     // Monitor connection status  
     const connectionStatus = binanceConnectionManager.getConnectionStatus();
-    setConnected(connectionStatus);
+    if (isMountedRef.current) {
+      setConnected(connectionStatus);
+    }
 
     return () => {
+      isMountedRef.current = false;
       logger.info('[PriceStream] Cleaning up price stream', { symbol });
       if (unsubscribeRef.current) {
         unsubscribeRef.current();

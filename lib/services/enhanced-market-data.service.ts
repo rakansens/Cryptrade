@@ -2,6 +2,7 @@ import { logger } from '@/lib/utils/logger';
 import { BaseService } from '@/lib/api/base-service';
 import { APP_CONSTANTS } from '@/config/app-constants';
 import type { ProcessedKline } from '@/types/market';
+import { makeCancellable, withTimeout } from '@/lib/utils/concurrent';
 
 /**
  * Enhanced Market Data Service
@@ -71,11 +72,12 @@ export class EnhancedMarketDataService extends BaseService {
   }
   
   /**
-   * Fetch multi-timeframe data for a symbol
+   * Fetch multi-timeframe data for a symbol with proper cancellation support
    */
   async fetchMultiTimeframeData(
     symbol: string,
-    timeframeConfigs: TimeframeConfig[] = DEFAULT_TIMEFRAME_CONFIG
+    timeframeConfigs: TimeframeConfig[] = DEFAULT_TIMEFRAME_CONFIG,
+    signal?: AbortSignal
   ): Promise<MultiTimeframeData> {
     const cacheKey = `${symbol}-${JSON.stringify(timeframeConfigs)}`;
     const cached = this.cache.get(cacheKey);
@@ -93,28 +95,57 @@ export class EnhancedMarketDataService extends BaseService {
     const timeframeData: Record<string, any> = {};
     
     try {
-      // Fetch data for all timeframes in parallel
+      // Check if already aborted
+      if (signal?.aborted) {
+        throw new Error('Operation aborted');
+      }
+
+      // Fetch data for all timeframes in parallel with timeout and cancellation
       const fetchPromises = timeframeConfigs.map(async (config) => {
-        try {
-          const response = await this.get<ProcessedKline[]>('/klines', {
-            symbol,
-            interval: config.interval,
-            limit: config.dataPoints.toString()
-          });
-          return {
-            interval: config.interval,
-            data: response.data,
-            weight: config.weight,
-            dataPoints: config.dataPoints
-          };
-        } catch (error) {
-          logger.warn('[EnhancedMarketData] Failed to fetch timeframe data', {
-            symbol,
-            interval: config.interval,
-            error: error instanceof Error ? error.message : String(error)
-          });
-          return null;
-        }
+        return withTimeout(
+          async (innerSignal) => {
+            try {
+              // Create a combined signal that aborts if either the outer or inner signal aborts
+              const controller = new AbortController();
+              const combinedSignal = controller.signal;
+              
+              // Abort if either signal aborts
+              const abortHandler = () => controller.abort();
+              signal?.addEventListener('abort', abortHandler);
+              innerSignal.addEventListener('abort', abortHandler);
+              
+              try {
+                const response = await this.get<ProcessedKline[]>('/klines', {
+                  symbol,
+                  interval: config.interval,
+                  limit: config.dataPoints.toString()
+                }, combinedSignal);
+                
+                return {
+                  interval: config.interval,
+                  data: response.data,
+                  weight: config.weight,
+                  dataPoints: config.dataPoints
+                };
+              } finally {
+                // Clean up event listeners
+                signal?.removeEventListener('abort', abortHandler);
+                innerSignal.removeEventListener('abort', abortHandler);
+              }
+            } catch (error) {
+              if (error instanceof Error && error.name === 'AbortError') {
+                throw error; // Re-throw abort errors
+              }
+              logger.warn('[EnhancedMarketData] Failed to fetch timeframe data', {
+                symbol,
+                interval: config.interval,
+                error: error instanceof Error ? error.message : String(error)
+              });
+              return null;
+            }
+          },
+          10000 // 10 second timeout per timeframe
+        );
       });
       
       const results = await Promise.allSettled(fetchPromises);

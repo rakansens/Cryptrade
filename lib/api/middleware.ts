@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/config/env';
 import { checkRateLimit, getClientIdentifier, type RateLimitConfig } from './rate-limit';
+import * as crypto from 'crypto';
 
 interface MiddlewareRateLimitConfig {
   windowMs: number; // Time window in milliseconds (converted to seconds internally)
@@ -109,7 +110,8 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
  */
 export function validateBinanceSymbol(symbol: string): boolean {
   // Binance symbol format: BTCUSDT, ETHUSDT, etc.
-  return /^[A-Z]{2,10}USDT?$/i.test(symbol);
+  // Must be uppercase and end with USDT or USDT
+  return /^[A-Z]{2,10}USDT$/i.test(symbol.toUpperCase());
 }
 
 export function validateInterval(interval: string): boolean {
@@ -121,12 +123,92 @@ export function validateInterval(interval: string): boolean {
 }
 
 /**
+ * Authentication middleware
+ */
+export function createAuthMiddleware() {
+  return async (request: NextRequest): Promise<NextResponse | null> => {
+    // Skip authentication if disabled
+    if (!env.API_AUTH_ENABLED) {
+      return null;
+    }
+
+    // Skip authentication for public endpoints
+    const publicPaths = ['/api/health', '/api/binance/ticker'];
+    const path = request.nextUrl.pathname;
+    if (publicPaths.some(publicPath => path.startsWith(publicPath))) {
+      return null;
+    }
+
+    // Check for API key in Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Missing or invalid authorization header' },
+        { status: 401 }
+      );
+    }
+
+    const apiKey = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Validate API key
+    if (!validateApiKey(apiKey)) {
+      return NextResponse.json(
+        { error: 'Invalid API key' },
+        { status: 401 }
+      );
+    }
+
+    return null; // Authentication successful
+  };
+}
+
+/**
+ * Validate API key against configured secret
+ */
+function validateApiKey(apiKey: string): boolean {
+  if (!env.API_AUTH_SECRET) {
+    console.error('[Auth] API_AUTH_SECRET is not configured');
+    return false;
+  }
+
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    const apiKeyBuffer = Buffer.from(apiKey);
+    const secretBuffer = Buffer.from(env.API_AUTH_SECRET);
+    
+    // Ensure buffers are same length for timing-safe comparison
+    if (apiKeyBuffer.length !== secretBuffer.length) {
+      return false;
+    }
+    
+    return crypto.timingSafeEqual(apiKeyBuffer, secretBuffer);
+  } catch (error) {
+    console.error('[Auth] Error validating API key:', error);
+    return false;
+  }
+}
+
+/**
+ * Generate a secure API key
+ */
+export function generateApiKey(): string {
+  return crypto.randomBytes(32).toString('base64');
+}
+
+/**
  * Combined middleware for API routes
  */
 export function createApiMiddleware(rateLimitConfig?: MiddlewareRateLimitConfig) {
   const rateLimiter = createRateLimiter(rateLimitConfig);
+  const authMiddleware = createAuthMiddleware();
   
   return async (request: NextRequest) => {
+    // Apply authentication first
+    const authResponse = await authMiddleware(request);
+    if (authResponse) {
+      return applyCorsHeaders(applySecurityHeaders(authResponse));
+    }
+
     // Apply rate limiting
     const rateLimitResponse = await rateLimiter(request);
     if (rateLimitResponse) {

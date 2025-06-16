@@ -20,6 +20,7 @@ const EnvSchema = z.object({
   
   // API Keys - Required for all environments
   OPENAI_API_KEY: z.string().min(1, 'OpenAI API key is required'),
+  ANTHROPIC_API_KEY: z.string().optional(),
   
   // Optional validation settings
   FORCE_VALIDATION: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
@@ -33,7 +34,12 @@ const EnvSchema = z.object({
   // CORS and security
   ALLOWED_ORIGINS: z.string().optional(),
   
+  // API Authentication
+  API_AUTH_SECRET: z.string().min(32, 'API auth secret must be at least 32 characters').optional(),
+  API_AUTH_ENABLED: z.enum(['true', 'false']).optional().transform(val => val === 'true').default(false),
+  
   // Database and storage
+  DATABASE_URL: z.string().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   KV_REST_API_URL: z.string().url().optional(),
@@ -63,6 +69,26 @@ const EnvSchema = z.object({
   
   // Server configuration
   PORT: z.coerce.number().min(1).max(65535).default(3000),
+  
+  // Test environment variables
+  CI: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
+  TEST_PORT: z.coerce.number().min(1).max(65535).optional(),
+  TEST_TYPE: z.string().optional(),
+  TEST_START_TIME: z.string().optional(),
+  JEST_SHARD_INDEX: z.coerce.number().optional(),
+  JEST_SHARD_TOTAL: z.coerce.number().optional(),
+  
+  // Demo mode
+  DEMO_MODE: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
+  
+  // System environment
+  TZ: z.string().optional(),
+  
+  // Next.js internal
+  __NEXT_BUILD_ID: z.string().optional(),
+  
+  // Process-specific (for testing/development)
+  CLAUDE_INSTANCE_PID: z.coerce.number().optional(),
 }).refine((data) => {
   // Production-specific validation
   if (data.NODE_ENV === 'production') {

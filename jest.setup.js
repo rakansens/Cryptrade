@@ -66,6 +66,48 @@ if (typeof global.TextDecoder === 'undefined') {
   global.TextDecoder = require('util').TextDecoder;
 }
 
+// Mock ReadableStream for Node.js test environment
+if (typeof global.ReadableStream === 'undefined') {
+  global.ReadableStream = class ReadableStream {
+    constructor(underlyingSource) {
+      this.underlyingSource = underlyingSource;
+      this.controller = {
+        chunks: [],
+        closed: false,
+        enqueue: function(chunk) {
+          this.chunks.push(chunk);
+        },
+        close: function() {
+          this.closed = true;
+        }
+      };
+      if (underlyingSource && underlyingSource.start) {
+        underlyingSource.start(this.controller);
+      }
+    }
+
+    async *[Symbol.asyncIterator]() {
+      for (const chunk of this.controller.chunks) {
+        yield chunk;
+      }
+    }
+
+    getReader() {
+      const controller = this.controller;
+      let index = 0;
+      return {
+        async read() {
+          if (index < controller.chunks.length) {
+            return { value: controller.chunks[index++], done: false };
+          }
+          return { done: true };
+        },
+        releaseLock() {}
+      };
+    }
+  };
+}
+
 // Setup timezone for consistent date/time tests
 process.env.TZ = 'UTC';
 

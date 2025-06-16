@@ -2,6 +2,7 @@
 
 import { logger } from '@/lib/utils/logger';
 import type { BinanceTradeMessage } from '@/types/market';
+import { Mutex } from '@/lib/utils/concurrent';
 
 export interface BinanceTradeData {
   symbol: string;      // Symbol
@@ -58,6 +59,9 @@ export class BinanceWebSocketManager {
   };
   private reconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private heartbeatInterval?: NodeJS.Timeout;
+  private connectionMutex = new Mutex();
+  private statusMutex = new Mutex();
+  private isDestroyed = false;
 
   constructor() {
     this.startHeartbeat();
@@ -66,26 +70,28 @@ export class BinanceWebSocketManager {
   /**
    * Subscribe to price updates for a symbol
    */
-  subscribe(symbol: string, callback: PriceUpdateCallback): () => void {
+  async subscribe(symbol: string, callback: PriceUpdateCallback): Promise<() => void> {
     const normalizedSymbol = symbol.toUpperCase();
     
-    // Add callback
-    if (!this.callbacks.has(normalizedSymbol)) {
-      this.callbacks.set(normalizedSymbol, new Set());
-    }
-    this.callbacks.get(normalizedSymbol)!.add(callback);
-    
-    // Create connection if needed
-    if (!this.connections.has(normalizedSymbol)) {
-      this.createConnection(normalizedSymbol);
-    }
-    
-    logger.info('[BinanceWS] Subscribed to symbol', { symbol: normalizedSymbol });
-    
-    // Return unsubscribe function
-    return () => {
-      this.unsubscribe(normalizedSymbol, callback);
-    };
+    return this.connectionMutex.runExclusive(async () => {
+      // Add callback
+      if (!this.callbacks.has(normalizedSymbol)) {
+        this.callbacks.set(normalizedSymbol, new Set());
+      }
+      this.callbacks.get(normalizedSymbol)!.add(callback);
+      
+      // Create connection if needed
+      if (!this.connections.has(normalizedSymbol)) {
+        await this.createConnection(normalizedSymbol);
+      }
+      
+      logger.info('[BinanceWS] Subscribed to symbol', { symbol: normalizedSymbol });
+      
+      // Return unsubscribe function
+      return () => {
+        this.unsubscribe(normalizedSymbol, callback);
+      };
+    });
   }
 
   /**
@@ -115,33 +121,67 @@ export class BinanceWebSocketManager {
   }
 
   /**
-   * Close all connections
+   * Close all connections and cleanup resources
    */
-  closeAll(): void {
+  async closeAll(): Promise<void> {
     logger.info('[BinanceWS] Closing all connections');
     
-    this.connections.forEach((ws) => {
-      ws.close();
+    this.isDestroyed = true;
+    
+    await this.connectionMutex.runExclusive(async () => {
+      // Clear heartbeat first
+      if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = undefined;
+      }
+      
+      // Clear all reconnect timeouts
+      this.reconnectTimeouts.forEach(timeout => clearTimeout(timeout));
+      this.reconnectTimeouts.clear();
+      
+      // Close all WebSocket connections
+      this.connections.forEach((ws, symbol) => {
+        try {
+          // Remove all event listeners before closing
+          ws.onopen = null;
+          ws.onmessage = null;
+          ws.onclose = null;
+          ws.onerror = null;
+          
+          if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close();
+          }
+        } catch (error) {
+          logger.error('[BinanceWS] Error closing connection', { symbol, error });
+        }
+      });
+      
+      this.connections.clear();
+      this.callbacks.clear();
+      
+      await this.statusMutex.runExclusive(async () => {
+        this.status.subscribedSymbols.clear();
+        this.status.connected = false;
+      });
     });
-    
-    this.connections.clear();
-    this.callbacks.clear();
-    this.status.subscribedSymbols.clear();
-    this.status.connected = false;
-    
-    // Clear timeouts
-    this.reconnectTimeouts.forEach(timeout => clearTimeout(timeout));
-    this.reconnectTimeouts.clear();
-    
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-    }
+  }
+  
+  /**
+   * Destroy the manager and cleanup all resources
+   */
+  async destroy(): Promise<void> {
+    await this.closeAll();
   }
 
   /**
    * Create WebSocket connection for a symbol
    */
-  private createConnection(symbol: string): void {
+  private async createConnection(symbol: string): Promise<void> {
+    if (this.isDestroyed) {
+      logger.warn('[BinanceWS] Manager is destroyed, not creating connection', { symbol });
+      return;
+    }
+    
     const streamName = `${symbol.toLowerCase()}@trade`;
     const wsUrl = `wss://stream.binance.com:9443/ws/${streamName}`;
     
@@ -150,24 +190,28 @@ export class BinanceWebSocketManager {
     try {
       const ws = new WebSocket(wsUrl);
       
-      ws.onopen = () => {
+      ws.onopen = async () => {
         logger.info('[BinanceWS] Connection opened', { symbol });
-        this.status.connected = true;
-        this.status.subscribedSymbols.add(symbol);
-        this.status.reconnectCount = 0;
+        await this.statusMutex.runExclusive(async () => {
+          this.status.connected = true;
+          this.status.subscribedSymbols.add(symbol);
+          this.status.reconnectCount = 0;
+        });
       };
       
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-          this.handleTradeData(symbol, data);
-          this.status.lastUpdate = Date.now();
+          await this.handleTradeData(symbol, data);
+          await this.statusMutex.runExclusive(async () => {
+            this.status.lastUpdate = Date.now();
+          });
         } catch (error) {
           logger.error('[BinanceWS] Failed to parse message', { symbol, error });
         }
       };
       
-      ws.onclose = (event) => {
+      ws.onclose = async (event) => {
         logger.warn('[BinanceWS] Connection closed', { 
           symbol, 
           code: event.code, 
@@ -175,16 +219,19 @@ export class BinanceWebSocketManager {
           wasClean: event.wasClean
         });
         
-        this.connections.delete(symbol);
-        this.status.subscribedSymbols.delete(symbol);
-        
-        // Update connection status
-        this.status.connected = this.connections.size > 0;
-        
-        // Attempt reconnection if there are still callbacks
-        if (this.callbacks.get(symbol)?.size) {
-          this.scheduleReconnect(symbol);
-        }
+        await this.connectionMutex.runExclusive(async () => {
+          this.connections.delete(symbol);
+          await this.statusMutex.runExclusive(async () => {
+            this.status.subscribedSymbols.delete(symbol);
+            // Update connection status
+            this.status.connected = this.connections.size > 0;
+          });
+          
+          // Attempt reconnection if there are still callbacks
+          if (this.callbacks.get(symbol)?.size) {
+            this.scheduleReconnect(symbol);
+          }
+        });
       };
       
       ws.onerror = (event) => {
@@ -208,7 +255,7 @@ export class BinanceWebSocketManager {
   /**
    * Handle incoming trade data
    */
-  private handleTradeData(symbol: string, data: BinanceTradeMessage): void {
+  private async handleTradeData(symbol: string, data: BinanceTradeMessage): Promise<void> {
     try {
       // Binance trade stream format
       const tradeData: BinanceTradeData = {
@@ -253,10 +300,15 @@ export class BinanceWebSocketManager {
    * Schedule reconnection with exponential backoff
    */
   private scheduleReconnect(symbol: string): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    
     // Clear existing timeout
     const existingTimeout = this.reconnectTimeouts.get(symbol);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
+      this.reconnectTimeouts.delete(symbol);
     }
     
     // Calculate backoff delay
@@ -267,8 +319,10 @@ export class BinanceWebSocketManager {
     logger.info('[BinanceWS] Scheduling reconnect', { symbol, delay, attempt: this.status.reconnectCount + 1 });
     
     const timeout = setTimeout(() => {
-      this.status.reconnectCount++;
-      this.createConnection(symbol);
+      if (!this.isDestroyed) {
+        this.status.reconnectCount++;
+        this.createConnection(symbol);
+      }
       this.reconnectTimeouts.delete(symbol);
     }, delay);
     
@@ -304,6 +358,14 @@ export class BinanceWebSocketManager {
    */
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
+      if (this.isDestroyed) {
+        if (this.heartbeatInterval) {
+          clearInterval(this.heartbeatInterval);
+          this.heartbeatInterval = undefined;
+        }
+        return;
+      }
+      
       const now = Date.now();
       const timeSinceLastUpdate = now - this.status.lastUpdate;
       
@@ -315,7 +377,7 @@ export class BinanceWebSocketManager {
         const symbols = Array.from(this.status.subscribedSymbols);
         symbols.forEach(symbol => {
           this.closeConnection(symbol);
-          if (this.callbacks.get(symbol)?.size) {
+          if (this.callbacks.get(symbol)?.size && !this.isDestroyed) {
             this.scheduleReconnect(symbol);
           }
         });
@@ -329,7 +391,23 @@ export const binanceWS = new BinanceWebSocketManager();
 
 // Cleanup on page unload
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    binanceWS.closeAll();
+  const cleanup = () => {
+    // Use async IIFE to handle the promise
+    (async () => {
+      await binanceWS.destroy();
+    })();
+  };
+  
+  window.addEventListener('beforeunload', cleanup);
+  window.addEventListener('unload', cleanup);
+  
+  // Also cleanup on page visibility change (mobile browsers)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // Use async IIFE to handle the promise
+      (async () => {
+        await binanceWS.closeAll();
+      })();
+    }
   });
 }

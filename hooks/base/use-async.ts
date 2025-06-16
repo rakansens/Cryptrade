@@ -8,7 +8,7 @@
  *  loading / error / result の状態を提供する共通フック。
  *  重複していたローディング & エラーハンドリングコードを削減するために追加。
  */
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 
 export interface AsyncFnState<TResult> {
   loading: boolean
@@ -37,14 +37,46 @@ export function useAsyncFn<TArgs extends unknown[], TResult>(
     error: null,
     result: null
   })
+  
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      // Cancel any pending operations on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   const execute = useCallback(async (...args: TArgs): Promise<TResult | void> => {
+    // Cancel previous execution if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController for this execution
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
       const result = await asyncFn(...args)
-      setState({ loading: false, error: null, result })
-      return result
+      
+      // Check if component is still mounted and operation wasn't aborted
+      if (mountedRef.current && !signal.aborted) {
+        setState({ loading: false, error: null, result })
+        return result
+      }
     } catch (err) {
+      // Don't update state if component unmounted or operation aborted
+      if (!mountedRef.current || signal.aborted) {
+        return
+      }
+      
       const message = err instanceof Error ? err.message : String(err)
       setState({ loading: false, error: message, result: null })
     }
@@ -52,6 +84,11 @@ export function useAsyncFn<TArgs extends unknown[], TResult>(
   }, [...deps, asyncFn])
 
   const reset = useCallback(() => {
+    // Cancel any pending operations
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
     setState({ loading: false, error: null, result: null })
   }, [])
 

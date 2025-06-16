@@ -28,20 +28,20 @@ export abstract class BaseService {
     });
   }
 
-  protected get<T>(url: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
-    return this.client.get<T>(this.resolve(url), params);
+  protected get<T>(url: string, params?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.client.get<T>(this.resolve(url), params, signal);
   }
 
-  protected post<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
-    return this.client.post<T>(this.resolve(url), data);
+  protected post<T>(url: string, data?: unknown, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.client.post<T>(this.resolve(url), data, signal);
   }
 
-  protected put<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
-    return this.client.put<T>(this.resolve(url), data);
+  protected put<T>(url: string, data?: unknown, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.client.put<T>(this.resolve(url), data, signal);
   }
 
-  protected delete<T>(url: string): Promise<ApiResponse<T>> {
-    return this.client.delete<T>(this.resolve(url));
+  protected delete<T>(url: string, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.client.delete<T>(this.resolve(url), signal);
   }
 
   // パス解決（basePath がフル URL の場合は重複しないよう調整）

@@ -103,13 +103,32 @@ export async function withRetryAll<T>(
 
 /**
  * 複数の関数を並行実行し、最初に成功したものを返す
+ * 失敗したプロミスは適切にクリーンアップされる
  */
 export async function withRetryRace<T>(
   fns: Array<() => Promise<T>>,
   options?: RetryOptions
 ): Promise<T> {
-  const promises = fns.map(fn => withRetry(fn, options));
-  return Promise.race(promises);
+  const { raceWithCleanup } = await import('./concurrent');
+  
+  return raceWithCleanup(
+    fns.map(fn => async (signal: AbortSignal) => {
+      // AbortSignalをチェックしながらリトライを実行
+      const retryWithAbort = async (): Promise<T> => {
+        if (signal.aborted) {
+          throw new Error('Operation aborted');
+        }
+        return withRetry(fn, options);
+      };
+      
+      return retryWithAbort();
+    }),
+    {
+      onCleanup: (error) => {
+        logger.warn('[Retry] Race cleanup due to error', { error: error.message });
+      }
+    }
+  );
 }
 
 /**

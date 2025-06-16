@@ -11,6 +11,7 @@
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import type { Prisma } from '@prisma/client';
+import { env } from '@/config/env';
 
 export interface TransactionOptions {
   maxWait?: number;
@@ -135,7 +136,7 @@ export async function withDatabase<T>(
     logger.error('[withDatabase] Operation failed', { error });
 
     // 開発環境またはフォールバックが提供されている場合
-    if (process.env.NODE_ENV === 'development' || fallback) {
+    if (env.NODE_ENV === 'development' || fallback) {
       if (fallback) {
         logger.warn('[withDatabase] Using fallback due to database error');
         return await fallback();

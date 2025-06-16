@@ -12,6 +12,7 @@
 import type { UnifiedStorageInterface, StorageMetrics } from '../types';
 import type { LogEntry, LogQuery } from '../types';
 import { logger } from '@/lib/utils/logger';
+import { env } from '@/config/env';
 
 export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
   private isConnected = false;
@@ -19,7 +20,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
   private tableName: string = 'unified_logs';
   
   constructor(config: { connectionUrl?: string; tableName?: string }) {
-    this.connectionUrl = config.connectionUrl || process.env.DATABASE_URL || 'postgresql://localhost:5432/cryptrade';
+    this.connectionUrl = config.connectionUrl || env.DATABASE_URL || 'postgresql://localhost:5432/cryptrade';
     if (config.tableName) {
       this.tableName = config.tableName;
     }
@@ -100,7 +101,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     } catch (error) {
       logger.error('[PostgreSQLStorage] Query failed', { error });
       
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         return [];
       }
       
@@ -124,7 +125,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     } catch (error) {
       logger.error('[PostgreSQLStorage] Count query failed', { error });
       
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         return 0;
       }
       
@@ -153,7 +154,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     } catch (error) {
       logger.error('[PostgreSQLStorage] Clear operation failed', { error });
       
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         return 0;
       }
       
@@ -180,7 +181,7 @@ export class UnifiedPostgreSQLStorage implements UnifiedStorageInterface {
     } catch (error) {
       logger.error('[PostgreSQLStorage] Cleanup failed', { error });
       
-      if (process.env.NODE_ENV === 'development') {
+      if (env.NODE_ENV === 'development') {
         return 0;
       }
       

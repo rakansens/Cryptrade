@@ -33,23 +33,29 @@ export function useSSEStream({
   const eventSourceRef = useRef<EventSource | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [lastError, setLastError] = useState<Error | null>(null);
+  const isMountedRef = useRef(true);
+  const eventListenersRef = useRef<Array<{ type: string; handler: (ev: Event) => void }>>([]);
 
   const connect = useCallback(() => {
+    // Cleanup existing connection
     if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      disconnect();
     }
+
+    if (!isMountedRef.current) return;
 
     logger.info('[useSSEStream] connecting', { url });
     const es = new EventSource(url);
     eventSourceRef.current = es;
 
     es.onopen = () => {
+      if (!isMountedRef.current) return;
       setIsStreaming(true);
       onOpen?.();
     };
 
     es.onerror = (e) => {
+      if (!isMountedRef.current) return;
       logger.error('[useSSEStream] error', { url, e });
       setIsStreaming(false);
       setLastError(new Error('SSE error'));
@@ -57,26 +63,52 @@ export function useSSEStream({
     };
 
     es.onmessage = (ev) => {
+      if (!isMountedRef.current) return;
       onEvent?.('message', ev);
     };
 
+    // Store event listeners for cleanup
+    eventListenersRef.current = [];
+    
     eventTypes.forEach((t) => {
-      es.addEventListener(t, (ev) => onEvent?.(t, ev as MessageEvent));
+      const handler = (ev: Event) => {
+        if (!isMountedRef.current) return;
+        onEvent?.(t, ev as MessageEvent);
+      };
+      es.addEventListener(t, handler);
+      eventListenersRef.current.push({ type: t, handler });
     });
   }, [url, JSON.stringify(eventTypes)]);
 
   const disconnect = useCallback(() => {
-    eventSourceRef.current?.close();
-    eventSourceRef.current = null;
+    if (eventSourceRef.current) {
+      // Remove all event listeners
+      eventListenersRef.current.forEach(({ type, handler }) => {
+        eventSourceRef.current?.removeEventListener(type, handler);
+      });
+      eventListenersRef.current = [];
+      
+      // Clear built-in event handlers
+      eventSourceRef.current.onopen = null;
+      eventSourceRef.current.onerror = null;
+      eventSourceRef.current.onmessage = null;
+      
+      // Close the connection
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
     setIsStreaming(false);
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (autoConnect) {
       connect();
     }
 
     return () => {
+      isMountedRef.current = false;
       disconnect();
     };
   }, [connect, autoConnect]);

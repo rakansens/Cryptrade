@@ -1,5 +1,6 @@
 import type { ApiMiddleware } from '@/types/api';
 import { logger } from '@/lib/utils/logger';
+import { raceWithCleanup } from '@/lib/utils/concurrent';
 
 export interface CircuitBreakerConfig {
   threshold: number;     // Number of failures before opening circuit
@@ -109,11 +110,21 @@ export const createCircuitBreakerMiddleware = (config: CircuitBreakerConfig): Ap
 
     try {
       return await circuitBreaker.execute(async () => {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Circuit breaker timeout')), config.timeout)
-        );
-
-        return Promise.race([next(), timeoutPromise]);
+        return raceWithCleanup([
+          async (signal) => {
+            // Pass the signal to the context if supported
+            const enhancedCtx = { ...ctx, signal };
+            return next();
+          }
+        ], {
+          timeout: config.timeout,
+          onCleanup: (error) => {
+            logger.debug('[CircuitBreaker] Request cleanup', { 
+              host, 
+              error: error.message 
+            });
+          }
+        });
       });
 
     } catch (error) {

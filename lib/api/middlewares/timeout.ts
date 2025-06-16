@@ -7,23 +7,48 @@ export interface TimeoutConfig {
 
 /**
  * Timeout middleware that aborts requests after a specified duration.
- * Throws an AbortError if the request takes longer than the timeout.
+ * Properly cleans up the timeout when the request completes.
  */
 export const createTimeoutMiddleware = (config: TimeoutConfig): ApiMiddleware =>
   async (ctx, next) => {
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         const timeoutError = new Error(`Request timeout after ${config.duration}ms`);
         timeoutError.name = 'TimeoutError';
+        controller.abort();
         reject(timeoutError);
       }, config.duration);
+
+      // Clean up timeout if aborted
+      controller.signal.addEventListener('abort', () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      });
     });
 
     try {
+      // Pass AbortSignal to the request context if supported
+      const enhancedCtx = {
+        ...ctx,
+        signal: controller.signal
+      };
+
       const result = await Promise.race([next(), timeoutPromise]);
+      
+      // Clean up timeout on success
+      controller.abort();
+      
       return result;
 
     } catch (error) {
+      // Clean up timeout on error
+      controller.abort();
+      
       if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
         logger.warn('[TimeoutMiddleware] Request timed out', {
           url: ctx.request.url,

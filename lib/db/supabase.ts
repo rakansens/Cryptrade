@@ -1,22 +1,53 @@
-/* eslint-disable no-restricted-syntax */
-// Updated: Supabaseデータベース設定 - ESLintルール一時無効化（環境変数未定義のため）
-import { createClient } from '@supabase/supabase-js'
+// Updated: Supabase database configuration with proper environment validation
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
 
-// Create a single supabase client for interacting with your database
-export const supabase = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+let supabase: SupabaseClient | null = null;
+let supabaseAdmin: SupabaseClient | null = null;
 
-// For server-side operations with admin privileges
-export const supabaseAdmin = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
+/**
+ * Get Supabase client instance
+ * Returns null if Supabase is not configured
+ */
+export function getSupabase(): SupabaseClient | null {
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
   }
-)
+
+  if (!supabase) {
+    supabase = createClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+  }
+
+  return supabase;
+}
+
+/**
+ * Get Supabase admin client instance
+ * Returns null if Supabase admin is not configured
+ */
+export function getSupabaseAdmin(): SupabaseClient | null {
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  }
+
+  return supabaseAdmin;
+}
+
+// Export for backward compatibility (will be null if not configured)
+export { supabase, supabaseAdmin };

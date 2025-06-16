@@ -499,7 +499,7 @@ export class WSManager {
   private stopPeriodicCleanup(): void {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      delete this.cleanupTimer;
+      this.cleanupTimer = undefined;
       
       if (this.options.debug) {
         logger.debug('[WSManager] Stopped periodic cleanup');
@@ -555,6 +555,11 @@ export class WSManager {
     // Signal all observables to complete
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Cleanup all streams before clearing
+    this.streams.forEach((_, streamName) => {
+      this.handleStreamCleanup(streamName);
+    });
     
     // Clear all streams
     this.streams.clear();

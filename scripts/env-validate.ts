@@ -1,81 +1,114 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env tsx
+/**
+ * Environment Validation Script
+ * 
+ * This script validates that all required environment variables are present
+ * and properly formatted according to the schema defined in /config/env.ts
+ */
 
-import { z } from 'zod';
+import { loadEnv } from '@/config/env';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
-// Environment schema based on .env.example
-const envSchema = z.object({
-  // Required Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+function checkEnvFiles(): void {
+  const envFiles = [
+    { name: '.env', required: false },
+    { name: '.env.local', required: false },
+    { name: '.env.production', required: false },
+    { name: '.env.development', required: false },
+  ];
 
-  // Required WebSocket & Hub
-  NEXT_PUBLIC_HUB_WS_URL: z.string().url(),
-  HUB_JWT_SECRET: z.string().min(32),
+  console.log('📁 Checking environment files...\n');
 
-  // Required Market Data
-  BINANCE_WS_BASE_URL: z.string().url(),
+  let hasEnvFile = false;
+  for (const file of envFiles) {
+    const path = join(process.cwd(), file.name);
+    const exists = existsSync(path);
+    
+    if (exists) {
+      hasEnvFile = true;
+      console.log(`  ✅ ${file.name} found`);
+    } else if (file.required) {
+      console.log(`  ❌ ${file.name} missing (required)`);
+    } else {
+      console.log(`  ⚪ ${file.name} not found (optional)`);
+    }
+  }
 
-  // Required Infrastructure
-  REDIS_URL: z.string().url(),
-  KAFKA_BROKER_URL: z.string().min(1),
-
-  // Optional API Keys
-  SUPABASE_ACCESS_TOKEN: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().optional(),
-  BITGET_API_KEY: z.string().optional(),
-
-  // Optional External APIs
-  BINANCE_BASE_URL: z.string().url().optional(),
-  BLOCKCHAIR_BASE_URL: z.string().url().optional(),
-  BLOCKCHAIR_API_KEY: z.string().optional(),
-  SENTIMENT_API_URL: z.string().url().optional(),
-  SENTIMENT_API_KEY: z.string().optional(),
-  NEWS_API_URL: z.string().url().optional(),
-  NEWS_API_KEY: z.string().optional(),
-  COINGLASS_BASE_URL: z.string().url().optional(),
-  COINGLASS_API_KEY: z.string().optional(),
-});
-
-export type EnvConfig = z.infer<typeof envSchema>;
+  if (!hasEnvFile) {
+    console.log('\n⚠️  No environment files found!');
+    console.log('💡 Copy .env.example to .env.local to get started:');
+    console.log('   cp .env.example .env.local\n');
+  } else {
+    console.log();
+  }
+}
 
 function validateEnvironment(): void {
+  console.log('🔍 Validating environment variables...\n');
+  
   try {
-    console.log('🔍 Validating environment variables...');
+    // This will throw if validation fails
+    const env = loadEnv();
     
-    const result = envSchema.safeParse(process.env);
+    console.log('✅ Environment validation passed!\n');
     
-    if (!result.success) {
-      console.error('❌ Environment validation failed:');
-      result.error.issues.forEach((issue) => {
-        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
-      });
-      process.exit(1);
-    }
+    // Show configuration summary
+    console.log('📊 Configuration Summary:');
+    console.log(`  - Environment: ${env.NODE_ENV}`);
+    console.log(`  - Port: ${env.PORT}`);
+    console.log(`  - OpenAI API Key: ${env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    console.log(`  - Anthropic API Key: ${env.ANTHROPIC_API_KEY ? '✅ Configured' : '⚪ Not set'}`);
     
-    console.log('✅ All required environment variables are valid');
+    // Database configuration
+    console.log('\n📦 Database Configuration:');
+    console.log(`  - PostgreSQL: ${env.DATABASE_URL ? '✅ Configured' : '⚪ Not set'}`);
+    console.log(`  - Redis/Upstash: ${env.UPSTASH_REDIS_REST_URL ? '✅ Configured' : '⚪ Not set'}`);
+    console.log(`  - Vercel KV: ${env.KV_REST_API_URL ? '✅ Configured' : '⚪ Not set'}`);
+    console.log(`  - Supabase: ${env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Configured' : '⚪ Not set'}`);
     
-    // Optional: show what's configured
-    const config = result.data;
-    const optionalConfigured = Object.entries(config)
-      .filter(([key]) => key.includes('OPTIONAL') || key.includes('API_KEY'))
-      .filter(([, value]) => value !== undefined)
-      .length;
-      
-    if (optionalConfigured > 0) {
-      console.log(`📊 ${optionalConfigured} optional services configured`);
-    }
+    // Feature flags
+    console.log('\n🚀 Feature Flags:');
+    console.log(`  - New WS Manager: ${env.USE_NEW_WS_MANAGER ? '✅ Enabled' : '⚪ Disabled'}`);
+    console.log(`  - Orchestrator Agent: ${env.ENABLE_ORCHESTRATOR_AGENT ? '✅ Enabled' : '⚪ Disabled'}`);
+    console.log(`  - Drawing Renderer: ${env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER ? '✅ Enabled' : '⚪ Disabled'}`);
+    console.log(`  - New Pattern Renderer: ${env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER ? '✅ Enabled' : '⚪ Disabled'}`);
+    
+    // Monitoring
+    console.log('\n📈 Monitoring:');
+    console.log(`  - Sentry: ${env.ENABLE_SENTRY ? '✅ Enabled' : '⚪ Disabled'}`);
+    console.log(`  - Log Level: ${env.LOG_LEVEL || 'default'}`);
+    console.log(`  - Log Transport: ${env.LOG_TRANSPORT}`);
+    
+    console.log('\n✨ Environment is properly configured!\n');
     
   } catch (error) {
-    console.error('❌ Environment validation error:', error);
-    process.exit(1);
+    console.error('❌ Environment validation failed!\n');
+    
+    if (error instanceof Error && error.message.includes('Environment validation failed')) {
+      // The error message from env.ts already contains detailed information
+      // Just exit with error code
+      process.exit(1);
+    } else {
+      console.error('Unexpected error:', error);
+      process.exit(1);
+    }
   }
+}
+
+function main() {
+  console.log('🌍 Cryptrade Environment Validator\n');
+  
+  // Check for environment files
+  checkEnvFiles();
+  
+  // Validate environment variables
+  validateEnvironment();
 }
 
 // Run validation if called directly
 if (require.main === module) {
-  validateEnvironment();
+  main();
 }
 
-export { envSchema, validateEnvironment };
+export { validateEnvironment };

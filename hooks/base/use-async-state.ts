@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface AsyncState<T> {
   loading: boolean;
@@ -36,24 +36,64 @@ export function useAsyncState<
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // Cancel any pending operations on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const execute = useCallback(async (...args: A): Promise<T | null> => {
+    // Cancel previous execution if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this execution
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     setLoading(true);
     setError(null);
     try {
       const result = await asyncFn(...args);
-      setData(result);
-      return result;
+      
+      // Check if component is still mounted and operation wasn't aborted
+      if (mountedRef.current && !signal.aborted) {
+        setData(result);
+        return result;
+      }
+      return null;
     } catch (e) {
+      // Don't update state if component unmounted or operation aborted
+      if (!mountedRef.current || signal.aborted) {
+        return null;
+      }
+      
       const msg = e instanceof Error ? e.message : 'Unknown Error';
       setError(msg);
       return null;
     } finally {
-      setLoading(false);
+      // Only update loading state if still mounted
+      if (mountedRef.current && !signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [asyncFn]);
 
   const reset = useCallback(() => {
+    // Cancel any pending operations
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
     setLoading(false);
     setError(null);
     setData(null);

@@ -97,9 +97,7 @@ describe('useStreaming', () => {
         ok: true,
         body: new ReadableStream({
           start(controller) {
-            controller.enqueue(new TextEncoder().encode('data: {"message": "hello"}
-
-'));
+            controller.enqueue(new TextEncoder().encode('data: {"message": "hello"}\n\n'));
             controller.close();
           }
         })
@@ -136,9 +134,7 @@ describe('useStreaming', () => {
         ok: true,
         body: new ReadableStream({
           start(controller) {
-            controller.enqueue(new TextEncoder().encode('data: {"message": "test"}
-
-'));
+            controller.enqueue(new TextEncoder().encode('data: {"message": "test"}\n\n'));
             controller.close();
           }
         })
@@ -209,15 +205,9 @@ describe('useStreaming', () => {
         body: new ReadableStream({
           start(controller) {
             const encoder = new TextEncoder();
-            controller.enqueue(encoder.encode('data: {"event": "start"}
-
-'));
-            controller.enqueue(encoder.encode('data: {"event": "data", "value": 42}
-
-'));
-            controller.enqueue(encoder.encode('data: {"event": "end"}
-
-'));
+            controller.enqueue(encoder.encode('data: {"event": "start"}\n\n'));
+            controller.enqueue(encoder.encode('data: {"event": "data", "value": 42}\n\n'));
+            controller.enqueue(encoder.encode('data: {"event": "end"}\n\n'));
             controller.close();
           }
         })
@@ -252,10 +242,8 @@ describe('useStreaming', () => {
         body: new ReadableStream({
           start(controller) {
             const encoder = new TextEncoder();
-            controller.enqueue(encoder.encode('{"type": "message", "text": "hello"}
-'));
-            controller.enqueue(encoder.encode('{"type": "message", "text": "world"}
-'));
+            controller.enqueue(encoder.encode('{"type": "message", "text": "hello"}\n'));
+            controller.enqueue(encoder.encode('{"type": "message", "text": "world"}\n'));
             controller.close();
           }
         })
@@ -287,10 +275,8 @@ describe('useStreaming', () => {
         body: new ReadableStream({
           start(controller) {
             const encoder = new TextEncoder();
-            controller.enqueue(encoder.encode('CUSTOM:hello
-'));
-            controller.enqueue(encoder.encode('CUSTOM:world
-'));
+            controller.enqueue(encoder.encode('CUSTOM:hello\n'));
+            controller.enqueue(encoder.encode('CUSTOM:world\n'));
             controller.close();
           }
         })
@@ -330,9 +316,7 @@ describe('useStreaming', () => {
             const encoder = new TextEncoder();
             // Split a message across two chunks
             controller.enqueue(encoder.encode('data: {"mess'));
-            controller.enqueue(encoder.encode('age": "split"}
-
-'));
+            controller.enqueue(encoder.encode('age": "split"}\n\n'));
             controller.close();
           }
         })
@@ -456,9 +440,7 @@ describe('useStreaming', () => {
           ok: true,
           body: new ReadableStream({
             start(controller) {
-              controller.enqueue(new TextEncoder().encode('data: {"success": true}
-
-'));
+              controller.enqueue(new TextEncoder().encode('data: {"success": true}\n\n'));
               controller.close();
             }
           })
@@ -598,9 +580,7 @@ describe('useStreaming', () => {
         ok: true,
         body: new ReadableStream({
           start(controller) {
-            controller.enqueue(new TextEncoder().encode('data: {"test": true}
-
-'));
+            controller.enqueue(new TextEncoder().encode('data: {"test": true}\n\n'));
             controller.close();
           }
         })

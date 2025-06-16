@@ -48,7 +48,7 @@ export class ApiClient {
     return middlewares;
   }
 
-  async execute<T>(url: string, init: RequestInit = {}): Promise<ApiResponse<T>> {
+  async execute<T>(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<ApiResponse<T>> {
     const fullUrl = url.startsWith('http') ? url : `${this.config.baseUrl}${url}`;
     
     const ctx: RequestCtx = {
@@ -58,7 +58,8 @@ export class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           ...init.headers,
-        }
+        },
+        signal: signal || init.signal
       },
       attempt: 0,
     };
@@ -100,29 +101,29 @@ export class ApiClient {
     }
   }
 
-  async get<T>(url: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
+  async get<T>(url: string, params?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
     const urlWithParams = params ? `${url}?${new URLSearchParams(params)}` : url;
-    return this.execute<T>(urlWithParams, { method: 'GET' });
+    return this.execute<T>(urlWithParams, { method: 'GET' }, signal);
   }
 
-  async post<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
+  async post<T>(url: string, data?: unknown, signal?: AbortSignal): Promise<ApiResponse<T>> {
     const options: RequestInit = {
       method: 'POST',
       ...(data !== undefined && { body: JSON.stringify(data) }),
     };
-    return this.execute<T>(url, options);
+    return this.execute<T>(url, options, signal);
   }
 
-  async put<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
+  async put<T>(url: string, data?: unknown, signal?: AbortSignal): Promise<ApiResponse<T>> {
     const options: RequestInit = {
       method: 'PUT',
       ...(data !== undefined && { body: JSON.stringify(data) }),
     };
-    return this.execute<T>(url, options);
+    return this.execute<T>(url, options, signal);
   }
 
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
-    return this.execute<T>(url, { method: 'DELETE' });
+  async delete<T>(url: string, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.execute<T>(url, { method: 'DELETE' }, signal);
   }
 
   // Queue-based request management for high-frequency scenarios

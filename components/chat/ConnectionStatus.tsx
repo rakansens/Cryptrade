@@ -18,18 +18,26 @@ export function ConnectionStatus({ className }: ConnectionStatusProps) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout
+    let intervalId: NodeJS.Timeout | undefined
+    let isComponentMounted = true
 
     const checkConnection = async () => {
+      if (!isComponentMounted) return
+      
       try {
         // Dynamically import the WebSocket manager
         const { binanceWS } = await import('@/lib/binance/websocket-manager')
+        
+        if (!isComponentMounted) return
+        
         const currentStatus = binanceWS.getStatus()
         setStatus(currentStatus)
         setIsLoading(false)
       } catch (error) {
         console.warn('WebSocket manager not available')
-        setIsLoading(false)
+        if (isComponentMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
@@ -40,6 +48,7 @@ export function ConnectionStatus({ className }: ConnectionStatusProps) {
     intervalId = setInterval(checkConnection, 5000)
 
     return () => {
+      isComponentMounted = false
       if (intervalId) {
         clearInterval(intervalId)
       }

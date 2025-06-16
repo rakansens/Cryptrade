@@ -4,6 +4,7 @@ import { agentNetwork } from '../network/agent-network';
 import { logger } from '@/lib/utils/logger';
 import { FallbackHandler } from '../utils/fallback-handler';
 import { emitUIEvent } from '@/lib/server/uiEventBus';
+import { raceWithCleanup } from '@/lib/utils/concurrent';
 
 // Agent-to-Agent message type
 interface A2AMessage {
@@ -203,23 +204,42 @@ async function executeWithA2ACommunication(
       contextKeys: userContext ? Object.keys(userContext) : [],
     });
     
-    // タイムアウト付きでA2A通信を実行
-    const a2aMessage = await Promise.race([
-      agentNetwork.sendMessage(
-        'orchestratorAgent',  // 送信元
-        targetAgentId,        // 送信先
-        'process_query',      // メソッド
-        {
-          query,
-          context: userContext,
-          timestamp: Date.now(),
-        },
-        correlationId
-      ),
-      new Promise<null>((_, reject) => 
-        setTimeout(() => reject(new Error('A2A communication timeout')), 10000)
-      )
-    ]) as A2AMessage; // Type assertion for agent-to-agent message
+    // タイムアウト付きでA2A通信を実行（適切なクリーンアップ付き）
+    const a2aMessage = await raceWithCleanup([
+      async (signal) => {
+        // Create a promise that rejects if aborted
+        const abortPromise = new Promise<never>((_, reject) => {
+          signal.addEventListener('abort', () => {
+            reject(new Error('A2A communication aborted'));
+          });
+        });
+        
+        // Race the actual operation with the abort promise
+        return Promise.race([
+          agentNetwork.sendMessage(
+            'orchestratorAgent',  // 送信元
+            targetAgentId,        // 送信先
+            'process_query',      // メソッド
+            {
+              query,
+              context: userContext,
+              timestamp: Date.now(),
+            },
+            correlationId
+          ),
+          abortPromise
+        ]);
+      }
+    ], {
+      timeout: 10000,
+      onCleanup: (error) => {
+        logger.warn('[agentSelectionTool] A2A communication cleanup', {
+          targetAgentId,
+          correlationId,
+          error: error.message
+        });
+      }
+    }) as A2AMessage; // Type assertion for agent-to-agent message
 
     if (!a2aMessage) {
       return {

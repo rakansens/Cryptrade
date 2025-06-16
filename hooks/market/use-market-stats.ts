@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { useMarketStore } from '@/store/market.store';
 import type { BinanceTicker24hr } from '@/types/market';
@@ -9,6 +9,7 @@ export function useMarketTicker(symbol: string) {
   const setTicker = useMarketStore(state => state.setTicker);
   const setConnectionError = useMarketStore(state => state.setConnectionError);
   const setSymbolLoading = useMarketStore(state => state.setSymbolLoading);
+  const isMountedRef = useRef(true);
   
   // Use individual selectors to avoid creating new objects
   const priceUpdate = useMarketStore(state => state.currentPrices[symbol]);
@@ -24,13 +25,15 @@ export function useMarketTicker(symbol: string) {
   }), [priceUpdate, ticker]);
 
   const fetchTicker = useCallback(async () => {
-    if (!symbol) return;
+    if (!symbol || !isMountedRef.current) return;
 
     try {
       setSymbolLoading(symbol, true);
       logger.info('[MarketStats] Fetching 24hr ticker', { symbol });
       
       const tickerData = await binanceAPI.fetchTicker24hr(symbol) as BinanceTicker24hr;
+      
+      if (!isMountedRef.current) return;
       
       // Convert Binance ticker to our MarketTicker format
       const ticker = {
@@ -53,15 +56,24 @@ export function useMarketTicker(symbol: string) {
       
     } catch (error) {
       logger.error('[MarketStats] Failed to fetch 24hr ticker', { symbol }, error);
-      setConnectionError(`Failed to fetch market stats for ${symbol}`);
+      if (isMountedRef.current) {
+        setConnectionError(`Failed to fetch market stats for ${symbol}`);
+      }
     } finally {
-      setSymbolLoading(symbol, false);
+      if (isMountedRef.current) {
+        setSymbolLoading(symbol, false);
+      }
     }
   }, [symbol, setTicker, setConnectionError, setSymbolLoading]);
 
   // Fetch initial ticker data
   useEffect(() => {
+    isMountedRef.current = true;
     fetchTicker();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [fetchTicker]);
 
   // Periodic refresh every 30 seconds

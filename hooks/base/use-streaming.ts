@@ -230,6 +230,8 @@ export function useStreaming<T = unknown>(options: StreamingHookOptions<T>): Str
 
   // Auto-connect on mount if enabled
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (autoConnect) {
       connect();
     }
@@ -262,11 +264,15 @@ export function useSSE<T = unknown>(options: SSEHookOptions<T>): StreamingHookRe
   const { eventTypes = [] } = options;
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const isMountedRef = useRef(true);
+  const eventListenersRef = useRef<Array<{ type: string; handler: (ev: Event) => void }>>([]);
 
   const connect = useCallback(async () => {
     if (eventSourceRef.current?.readyState === EventSource.OPEN) {
       return;
     }
+
+    if (!isMountedRef.current) return;
 
     try {
       const es = new EventSource(options.endpoint);
@@ -274,17 +280,20 @@ export function useSSE<T = unknown>(options: SSEHookOptions<T>): StreamingHookRe
       setEventSource(es);
 
       es.onopen = () => {
+        if (!isMountedRef.current) return;
         logger.debug('[useSSE] Connection opened', { endpoint: options.endpoint });
         options.onStart?.();
       };
 
       es.onerror = (event) => {
+        if (!isMountedRef.current) return;
         logger.error('[useSSE] Connection error', { endpoint: options.endpoint, event });
         const error = new Error('SSE connection failed');
         options.onError?.(error);
       };
 
       es.onmessage = (event) => {
+        if (!isMountedRef.current) return;
         try {
           const data = JSON.parse(event.data);
           options.onMessage?.(data);
@@ -293,26 +302,45 @@ export function useSSE<T = unknown>(options: SSEHookOptions<T>): StreamingHookRe
         }
       };
 
+      // Clear previous listeners
+      eventListenersRef.current = [];
+      
       // Register custom event listeners
       eventTypes.forEach(eventType => {
-        es.addEventListener(eventType, (event) => {
+        const handler = (event: Event) => {
+          if (!isMountedRef.current) return;
           try {
-            const data = JSON.parse(event.data);
+            const data = JSON.parse((event as MessageEvent).data);
             options.onMessage?.(data);
           } catch (error) {
             logger.error('[useSSE] Failed to parse event', { eventType, error });
           }
-        });
+        };
+        es.addEventListener(eventType, handler);
+        eventListenersRef.current.push({ type: eventType, handler });
       });
 
     } catch (error) {
       logger.error('[useSSE] Failed to create EventSource', { error });
-      options.onError?.(error instanceof Error ? error : new Error('Failed to create EventSource'));
+      if (isMountedRef.current) {
+        options.onError?.(error instanceof Error ? error : new Error('Failed to create EventSource'));
+      }
     }
   }, [options.endpoint, options.onStart, options.onError, options.onMessage, eventTypes]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
+      // Remove all event listeners
+      eventListenersRef.current.forEach(({ type, handler }) => {
+        eventSourceRef.current?.removeEventListener(type, handler);
+      });
+      eventListenersRef.current = [];
+      
+      // Clear built-in event handlers
+      eventSourceRef.current.onopen = null;
+      eventSourceRef.current.onerror = null;
+      eventSourceRef.current.onmessage = null;
+      
       eventSourceRef.current.close();
       eventSourceRef.current = null;
       setEventSource(null);
@@ -320,11 +348,14 @@ export function useSSE<T = unknown>(options: SSEHookOptions<T>): StreamingHookRe
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (options.autoConnect !== false) {
       connect();
     }
 
     return () => {
+      isMountedRef.current = false;
       disconnect();
     };
   }, []);

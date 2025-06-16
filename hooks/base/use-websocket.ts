@@ -153,6 +153,12 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
     reconnectAttemptsRef.current = 0;
     
     if (webSocketRef.current) {
+      // Clear all event handlers before closing
+      webSocketRef.current.onopen = null;
+      webSocketRef.current.onclose = null;
+      webSocketRef.current.onmessage = null;
+      webSocketRef.current.onerror = null;
+      
       webSocketRef.current.close();
       webSocketRef.current = null;
     }
@@ -258,15 +264,24 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
 
       // Update ready state periodically
       const stateInterval = setInterval(() => {
-        if (ws.readyState !== readyState) {
+        if (isMountedRef.current && ws.readyState !== readyState) {
           setReadyState(ws.readyState);
         }
       }, 100);
 
       // Cleanup interval when connection closes
-      ws.addEventListener('close', () => {
+      const cleanupStateInterval = () => {
         clearInterval(stateInterval);
-      });
+      };
+      
+      ws.addEventListener('close', cleanupStateInterval);
+      
+      // Store cleanup function for disconnect
+      const originalOnClose = ws.onclose;
+      ws.onclose = (event) => {
+        cleanupStateInterval();
+        originalOnClose?.(event);
+      };
 
     } catch (error) {
       logger.error('[useWebSocket] Failed to create WebSocket', { url: urlRef.current, error });
