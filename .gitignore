@@ -116,3 +116,48 @@ public/debug-*.html
 performance-report.md
 mutation-report.html
 snapshot-*.json
+
+# Dead code cleanup artifacts
+scan_report.json
+cleanup-metrics.json
+dead-code-summary-ja.md
+dead-functions-summary.json
+deps-summary.json
+lint-report.json
+patch-application-report.json
+unreachable-summary.json
+unused-imports-summary.json
+test-coverage-report.json
+type-consolidation-summary.md
+FINAL_DELIVERABLE.md
+*.patch
+migrate-patch-repo/
+scripts/analyze-deps*.js
+dup_map.json
+eslint-type-output.json
+generic_suggest.md
+type_tasks.json
+sync_report.md
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build info
+*.tsbuildinfo
+
+# Analysis reports  
+analysis.json
+directory_schema.json
