@@ -161,3 +161,6 @@ sync_report.md
 # Analysis reports  
 analysis.json
 directory_schema.json
+
+# Claude specific files
+.claude/
