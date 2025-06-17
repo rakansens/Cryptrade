@@ -1,0 +1,228 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Orphaned Components Regression Tests Component Snapshots should match AlertForm snapshot 1`] = `
+<div>
+  <form
+    class="space-y-4"
+  >
+    <div>
+      <label
+        class="block text-sm font-medium mb-1"
+        for="symbol"
+      >
+        Symbol
+      </label>
+      <input
+        class="w-full px-3 py-2 border rounded-md"
+        id="symbol"
+        name="symbol"
+        placeholder="e.g., BTCUSDT"
+        required=""
+        type="text"
+        value=""
+      />
+    </div>
+    <div>
+      <label
+        class="block text-sm font-medium mb-1"
+        for="price"
+      >
+        Price
+      </label>
+      <input
+        class="w-full px-3 py-2 border rounded-md"
+        id="price"
+        min="0"
+        name="price"
+        required=""
+        step="0.01"
+        type="number"
+        value=""
+      />
+    </div>
+    <div>
+      <label
+        class="block text-sm font-medium mb-1"
+        for="condition"
+      >
+        Condition
+      </label>
+      <select
+        class="w-full px-3 py-2 border rounded-md"
+        id="condition"
+        name="condition"
+      >
+        <option
+          value="above"
+        >
+          Above
+        </option>
+        <option
+          value="below"
+        >
+          Below
+        </option>
+      </select>
+    </div>
+    <div
+      class="flex justify-end gap-2 pt-4"
+    >
+      <button
+        class="px-4 py-2 border rounded-md hover:bg-gray-50"
+        type="button"
+      >
+        Cancel
+      </button>
+      <button
+        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        type="submit"
+      >
+        Create Alert
+      </button>
+    </div>
+  </form>
+</div>
+`;
+
+exports[`Orphaned Components Regression Tests Component Snapshots should match AlertList snapshot 1`] = `
+<div>
+  <div
+    class="space-y-2"
+  >
+    <div
+      class="flex items-center justify-between p-4 border rounded-lg"
+    >
+      <div
+        class="flex-1"
+      >
+        <div
+          class="flex items-center gap-2"
+        >
+          <span
+            class="font-medium"
+          >
+            BTCUSDT
+          </span>
+          <span
+            class="text-sm text-gray-500"
+          >
+            above $50,000
+          </span>
+        </div>
+        <div
+          class="text-xs text-gray-400 mt-1"
+        >
+          Created: 6/17/2025, 10:00:00 AM
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-2"
+      >
+        <label
+          class="relative inline-flex items-center cursor-pointer"
+        >
+          <input
+            checked=""
+            class="sr-only peer"
+            role="switch"
+            type="checkbox"
+          />
+          <div
+            class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+          />
+        </label>
+        <button
+          class="p-1 hover:bg-gray-100 rounded"
+          title="Edit"
+        >
+          Edit
+        </button>
+        <button
+          class="p-1 hover:bg-gray-100 rounded text-red-500"
+          title="Delete"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Orphaned Components Regression Tests Component Snapshots should match MainLayout snapshot 1`] = `
+<div>
+  <div
+    class="flex flex-col h-screen"
+  >
+    <header
+      class="border-b px-4 py-3"
+      role="banner"
+    >
+      <div
+        class="flex items-center justify-between"
+      >
+        <button
+          class="lg:hidden"
+          type="button"
+        >
+          Menu
+        </button>
+        <h1
+          class="text-xl font-semibold"
+        >
+          Cryptrade
+        </h1>
+      </div>
+    </header>
+    <div
+      class="flex flex-1 overflow-hidden"
+    >
+      <aside
+        class="w-64 border-r bg-gray-50 -translate-x-full lg:translate-x-0 transition-transform"
+        role="complementary"
+      >
+        <nav
+          class="p-4"
+          role="navigation"
+        >
+          <ul
+            class="space-y-2"
+          >
+            <li>
+              <a
+                class="block px-3 py-2 rounded hover:bg-gray-200"
+                href="/"
+              >
+                Dashboard
+              </a>
+            </li>
+            <li>
+              <a
+                class="block px-3 py-2 rounded hover:bg-gray-200"
+                href="/alerts"
+              >
+                Alerts
+              </a>
+            </li>
+            <li>
+              <a
+                class="block px-3 py-2 rounded hover:bg-gray-200"
+                href="/settings"
+              >
+                Settings
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+      <main
+        class="flex-1 overflow-auto"
+      >
+        <div>
+          Content
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+`;
