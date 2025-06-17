@@ -1,3 +1,4 @@
+// 更新: ロゴを画像（/logo.png）に差し替え + サイズ再調整（64px）
 'use client'
 
 import { SimpleScrollArea } from '@/components/ui/simple-scroll-area'
@@ -5,12 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Edit2, Trash2, MessageSquare, Clock, Archive, Sparkles, BarChart3, AlertTriangle, Trash } from 'lucide-react'
+import { Edit2, Trash2, MessageSquare, Clock, Archive, Sparkles, BarChart3, AlertTriangle, Trash, LogIn, UserPlus, LogOut, User } from 'lucide-react'
 import { useChat } from '@/store/chat.store'
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import './ChatSidebar.css'
 import { AnalysisHistoryPanel } from './AnalysisHistoryPanel'
+import Image from 'next/image'
+import { useAuth } from '@/hooks/use-auth'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface ChatSidebarProps {
   className?: string
@@ -30,6 +35,8 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
     deleteSession,
     deleteAllSessions,
   } = useChat()
+  const { user, loading: authLoading, signOut } = useAuth()
+  const router = useRouter()
 
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -119,10 +126,10 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
         <Button 
           onClick={handleReturnToHome}
           variant="ghost"
-          className="w-full h-10 justify-center gap-2 hover:bg-[hsl(var(--color-secondary)/0.6)] text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] transition-colors interactive"
+          className="w-full h-20 justify-center gap-2 hover:bg-[hsl(var(--color-secondary)/0.6)] text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] transition-colors interactive"
         >
-          <Sparkles className="w-5 h-5 text-[hsl(var(--color-accent))]" />
-          <span className="text-base font-semibold bg-gradient-to-r from-[hsl(var(--text-primary))] to-[hsl(var(--color-accent))] bg-clip-text text-transparent">Cryptrade</span>
+          {/* サイズ調整: 視認性向上のため高さを64pxに */}
+          <Image src="/logo.png" alt="Cryptrade" width={256} height={256} className="h-16 w-auto" />
         </Button>
         
         <Button 
@@ -381,6 +388,55 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
 
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-[hsl(var(--border))] p-3 bg-gradient-to-t from-[hsl(var(--color-base))] to-transparent space-y-1">
+        {/* Auth Section */}
+        {!authLoading && (
+          <>
+            {user ? (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard')}
+                  className="w-full justify-start gap-3 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.4)] h-10 font-medium interactive"
+                >
+                  <User className="w-4 h-4 text-[hsl(var(--text-disabled))]" />
+                  <span className="text-sm tracking-wide">ダッシュボード</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={signOut}
+                  className="w-full justify-start gap-3 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.4)] h-10 font-medium interactive"
+                >
+                  <LogOut className="w-4 h-4 text-[hsl(var(--text-disabled))]" />
+                  <span className="text-sm tracking-wide">ログアウト</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="w-full">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.4)] h-10 font-medium interactive"
+                  >
+                    <LogIn className="w-4 h-4 text-[hsl(var(--text-disabled))]" />
+                    <span className="text-sm tracking-wide">ログイン</span>
+                  </Button>
+                </Link>
+                <Link href="/signup" className="w-full">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.4)] h-10 font-medium interactive"
+                  >
+                    <UserPlus className="w-4 h-4 text-[hsl(var(--text-disabled))]" />
+                    <span className="text-sm tracking-wide">新規登録</span>
+                  </Button>
+                </Link>
+              </>
+            )}
+            
+            <div className="my-2 border-t border-[hsl(var(--border)/0.5)]" />
+          </>
+        )}
+        
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.4)] h-10 font-medium interactive"

@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  */
 export const GET = createSSEHandler({
   handler: {
-    onConnect({ stream }) {
+    onConnect({ stream }): void {
       const send = (payload: UIEventPayload) => {
         stream.write({ event: 'ui-event', data: payload });
       };
@@ -30,10 +30,14 @@ export const GET = createSSEHandler({
 
       uiEventBus.on('ui-event', send);
 
-      // Return cleanup function
-      return () => {
+      // Store cleanup function on stream for later use
+      (stream as any).cleanup = () => {
         uiEventBus.off('ui-event', send);
       };
+    },
+    onDisconnect({ reason }): void {
+      // Cleanup is handled by the SSE handler automatically
+      logger.info('UI event stream disconnected', { reason });
     }
   },
   cors: { origin: '*', credentials: true }

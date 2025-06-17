@@ -1,11 +1,16 @@
+'// 更新: ロゴを画像（/logo.png）に差し替え'
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Sparkles, TrendingUp, LineChart, MessageCircle } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, LineChart, MessageCircle, LogIn, UserPlus } from 'lucide-react'
 import { useChat } from '@/store/chat.store'
 import { useAIChat } from '@/hooks/use-ai-chat'
 import { FloatingSidebarToggle } from './FloatingSidebarToggle'
+import Image from 'next/image'
+import { useAuth } from '@/hooks/use-auth'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 interface HomeViewProps {
   onTransitionComplete?: () => void
@@ -25,6 +30,7 @@ export function HomeView({ onTransitionComplete }: HomeViewProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { createSession, setInputValue: setChatInput, currentSessionId } = useChat()
   const { send: sendAIMessage, isReady } = useAIChat()
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
     // Focus input on mount
@@ -124,6 +130,34 @@ export function HomeView({ onTransitionComplete }: HomeViewProps) {
         {/* Floating Sidebar Toggle */}
         <FloatingSidebarToggle {...(onTransitionComplete && { onTransitionToChat: onTransitionComplete })} />
         
+        {/* Auth Buttons - Top Right */}
+        {!authLoading && !user && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.4 }}
+            className="fixed top-6 right-6 flex items-center gap-3 z-20"
+          >
+            <Link href="/login">
+              <Button
+                variant="ghost"
+                className="px-4 py-2 text-sm font-medium text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--color-secondary)/0.3)] rounded-lg transition-all duration-200 flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                ログイン
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button
+                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-[hsl(var(--color-accent))] to-[hsl(var(--color-profit))] hover:from-[hsl(var(--color-profit))] hover:to-[hsl(var(--color-accent))] text-white rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg"
+              >
+                <UserPlus className="w-4 h-4" />
+                新規登録
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+        
         {/* Animated Background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--color-base))] via-[hsl(var(--color-base)/0.8)] to-[hsl(var(--color-base))]" />
@@ -165,20 +199,17 @@ export function HomeView({ onTransitionComplete }: HomeViewProps) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="text-center mb-12"
+            className="text-center mb-8"
           >
-            <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center justify-center mb-2">
               <motion.div
-                className="relative"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6 }}
               >
-                <Sparkles className="w-16 h-16 text-[hsl(var(--color-accent))]" />
+                <Image src="/logo.png" alt="Cryptrade" width={256} height={256} priority />
               </motion.div>
             </div>
-            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-[hsl(var(--text-primary))] to-[hsl(var(--color-accent))] bg-clip-text text-transparent">
-              Cryptrade
-            </h1>
             <p className="text-xl text-[hsl(var(--text-secondary))]">
               暗号通貨の分析、チャート描画、投資戦略をAIがサポート
             </p>
