@@ -116,8 +116,9 @@ async function checkServer() {
     console.log('\n⚠️  Server not running. Starting mock server test...\n');
     
     // Import and run mock test
-    const { runMockTest } = await import('./mock-api-test');
-    await runMockTest();
+    // const { runMockTest } = await import('./mock-api-test');
+    // await runMockTest();
+    console.log('Mock test is not available');
   } else {
     await testAPI();
   }

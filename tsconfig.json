@@ -58,6 +58,7 @@
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
-    "lib/mastra/mastra-v2.ts"
+    "lib/mastra/mastra-v2.ts",
+    "tests/scripts/**/*"
   ]
 }

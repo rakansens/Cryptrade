@@ -1,32 +1,36 @@
 // Jest is configured globally, no imports needed
 import type {
-  ProposalData,
-  ConfidenceFactors,
+  ConfidenceFactors as ProposalConfidenceFactors,
   ConfidenceResult,
   TrendlineCandidate
 } from '@/types/proposal-generator.types';
+import type { DrawingProposal, ConfidenceFactors, ProposalStatus, ProposalType } from '@/types/proposals';
 import type { DrawingPoint, DrawingStyle } from '@/types/ui-events.types';
 
 describe('proposal-generator.types', () => {
-  describe('ProposalData interface', () => {
-    it('should accept valid ProposalData with required fields', () => {
-      const proposal: ProposalData = {
+  describe('DrawingProposal interface (formerly ProposalData)', () => {
+    it('should accept valid DrawingProposal with required fields', () => {
+      const proposal: DrawingProposal = {
         id: 'proposal-1',
-        type: 'trendline',
+        type: ProposalType.TRENDLINE,
+        analysisType: 'trendline',
+        coordinates: {
+          start: { x: Date.now(), y: 100 },
+          end: { x: Date.now() + 1000, y: 110 }
+        },
+        confidence: 0.85,
+        reasoning: 'Strong upward trend detected',
+        priority: 'high',
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
         title: 'Bullish Trendline',
         description: 'Strong upward trend detected',
-        confidence: 0.85,
-        priority: 'high',
         drawingData: {
           type: 'trendline',
           points: [
             { time: Date.now(), value: 100 },
             { time: Date.now() + 1000, value: 110 }
           ]
-        },
-        analysis: {
-          direction: 'bullish',
-          strength: 0.9
         }
       };
 
@@ -35,14 +39,22 @@ describe('proposal-generator.types', () => {
       expect(proposal.confidence).toBeLessThanOrEqual(1);
     });
 
-    it('should accept ProposalData with all optional fields', () => {
-      const proposal: ProposalData = {
+    it('should accept DrawingProposal with all optional fields', () => {
+      const proposal: DrawingProposal = {
         id: 'proposal-2',
-        type: 'support-resistance',
+        type: ProposalType.SUPPORT_RESISTANCE,
+        analysisType: 'support',
+        coordinates: {
+          start: { x: Date.now(), y: 95 },
+          end: { x: Date.now() + 5000, y: 95 }
+        },
+        confidence: 0.75,
+        reasoning: 'Major support level identified',
+        priority: 'medium',
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
         title: 'Support Level',
         description: 'Major support level identified',
-        confidence: 0.75,
-        priority: 'medium',
         drawingData: {
           type: 'horizontal-line',
           points: [
@@ -158,9 +170,9 @@ describe('proposal-generator.types', () => {
     });
   });
 
-  describe('ConfidenceFactors interface', () => {
-    it('should accept valid ConfidenceFactors with baseFactor only', () => {
-      const factors: ConfidenceFactors = {
+  describe('ConfidenceFactors interface (from proposal-generator.types)', () => {
+    it('should accept valid ProposalConfidenceFactors with baseFactor only', () => {
+      const factors: ProposalConfidenceFactors = {
         baseFactor: 0.5
       };
 
@@ -168,8 +180,8 @@ describe('proposal-generator.types', () => {
       expect(factors.baseFactor).toBe(0.5);
     });
 
-    it('should accept ConfidenceFactors with all optional factors', () => {
-      const factors: ConfidenceFactors = {
+    it('should accept ProposalConfidenceFactors with all optional factors', () => {
+      const factors: ProposalConfidenceFactors = {
         baseFactor: 0.5,
         touchFactor: 0.8,
         lengthFactor: 0.7,
@@ -184,8 +196,8 @@ describe('proposal-generator.types', () => {
       expect(factors.timeFactor).toBe(0.6);
     });
 
-    it('should accept ConfidenceFactors with dynamic properties', () => {
-      const factors: ConfidenceFactors = {
+    it('should accept ProposalConfidenceFactors with dynamic properties', () => {
+      const factors: ProposalConfidenceFactors = {
         baseFactor: 0.5,
         customFactor1: 0.75,
         customFactor2: 0.85,
@@ -198,7 +210,7 @@ describe('proposal-generator.types', () => {
     });
 
     it('should handle undefined values for optional factors', () => {
-      const factors: ConfidenceFactors = {
+      const factors: ProposalConfidenceFactors = {
         baseFactor: 0.5,
         lengthFactor: 0.7
       };

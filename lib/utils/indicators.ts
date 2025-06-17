@@ -4,6 +4,7 @@
 // - ATR (14)
 // 今後追加実装を容易にするため、シンプルな実装に留める
 import { env } from '@/config/env'
+import { logger } from '@/lib/utils/logger'
 import type { ProcessedKline } from '@/types/market'
 
 function ema(values: number[], period: number): number[] {
