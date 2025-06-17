@@ -16,9 +16,9 @@
 const testType = process.env.TEST_TYPE || 'unit';
 
 const configMap = {
-  unit: './jest.config.unit.js',
-  integration: './jest.config.integration.js',
-  e2e: './jest.config.e2e.js',
+  unit: './config/jest/jest.config.unit.js',
+  integration: './config/jest/jest.config.integration.js',
+  e2e: './config/jest/jest.config.e2e.js',
 };
 
 const configPath = configMap[testType] || configMap.unit;
