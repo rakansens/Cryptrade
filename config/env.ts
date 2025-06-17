@@ -157,19 +157,8 @@ export function loadEnv(): Env {
     console.error('📚 See docs/ARCHITECTURE.md for environment setup guide.');
     
     // Fail-fast: exit immediately in non-test environments
-    if (process.env.NODE_ENV !== 'test') {
-      // Check if we're in browser environment
-      if (typeof window !== 'undefined') {
-        // Browser environment - throw error instead of process.exit
-        throw new Error('Environment validation failed in browser environment');
-      } else {
-        // Node.js environment - can safely use process.exit
-        process.exit(1);
-      }
-    } else {
-      // In test environment, throw error instead of exiting
-      throw new Error('Environment validation failed in test environment');
-    }
+    // Always throw error instead of using process.exit for Edge Runtime compatibility
+    throw new Error('Environment validation failed');
   }
 
   // Cache the validated environment

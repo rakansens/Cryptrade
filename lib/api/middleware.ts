@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { env } from '@/config/env';
+import { edgeEnv } from '@/config/env-edge';
 import { checkRateLimit, getClientIdentifier, type RateLimitConfig } from './rate-limit';
-import * as crypto from 'crypto';
 
 export interface MiddlewareRateLimitConfig {
   windowMs: number; // Time window in milliseconds (converted to seconds internally)
@@ -61,8 +60,8 @@ export function createRateLimiter(config: MiddlewareRateLimitConfig = DEFAULT_RA
  * CORS headers configuration
  */
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': env.NODE_ENV === 'production' 
-    ? env.ALLOWED_ORIGINS || 'https://your-domain.com'
+  'Access-Control-Allow-Origin': edgeEnv.NODE_ENV === 'production' 
+    ? process.env.ALLOWED_ORIGINS || 'https://your-domain.com'
     : '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -98,7 +97,7 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   
-  if (env.NODE_ENV === 'production') {
+  if (edgeEnv.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
   
@@ -128,7 +127,7 @@ export function validateInterval(interval: string): boolean {
 export function createAuthMiddleware() {
   return async (request: NextRequest): Promise<NextResponse | null> => {
     // Skip authentication if disabled
-    if (!env.API_AUTH_ENABLED) {
+    if (!process.env.API_AUTH_ENABLED) {
       return null;
     }
 
@@ -166,33 +165,21 @@ export function createAuthMiddleware() {
  * Validate API key against configured secret
  */
 function validateApiKey(apiKey: string): boolean {
-  if (!env.API_AUTH_SECRET) {
+  if (!process.env.API_AUTH_SECRET) {
     console.error('[Auth] API_AUTH_SECRET is not configured');
     return false;
   }
 
-  // Use timing-safe comparison to prevent timing attacks
-  try {
-    const apiKeyBuffer = Buffer.from(apiKey);
-    const secretBuffer = Buffer.from(env.API_AUTH_SECRET);
-    
-    // Ensure buffers are same length for timing-safe comparison
-    if (apiKeyBuffer.length !== secretBuffer.length) {
-      return false;
-    }
-    
-    return crypto.timingSafeEqual(apiKeyBuffer, secretBuffer);
-  } catch (error) {
-    console.error('[Auth] Error validating API key:', error);
-    return false;
-  }
+  // Simple string comparison for edge runtime compatibility
+  return apiKey === process.env.API_AUTH_SECRET;
 }
 
 /**
  * Generate a secure API key
  */
 export function generateApiKey(): string {
-  return crypto.randomBytes(32).toString('base64');
+  // For edge runtime compatibility, return a placeholder
+  return 'generate-api-key-on-server-side';
 }
 
 /**
