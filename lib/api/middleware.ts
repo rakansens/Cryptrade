@@ -61,7 +61,7 @@ export function createRateLimiter(config: MiddlewareRateLimitConfig = DEFAULT_RA
  */
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': edgeEnv.NODE_ENV === 'production' 
-    ? process.env.ALLOWED_ORIGINS || 'https://your-domain.com'
+    ? edgeEnv.ALLOWED_ORIGINS || 'https://your-domain.com'
     : '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -127,7 +127,7 @@ export function validateInterval(interval: string): boolean {
 export function createAuthMiddleware() {
   return async (request: NextRequest): Promise<NextResponse | null> => {
     // Skip authentication if disabled
-    if (!process.env.API_AUTH_ENABLED) {
+    if (!edgeEnv.API_AUTH_ENABLED) {
       return null;
     }
 
@@ -165,13 +165,13 @@ export function createAuthMiddleware() {
  * Validate API key against configured secret
  */
 function validateApiKey(apiKey: string): boolean {
-  if (!process.env.API_AUTH_SECRET) {
+  if (!edgeEnv.API_AUTH_SECRET) {
     console.error('[Auth] API_AUTH_SECRET is not configured');
     return false;
   }
 
   // Simple string comparison for edge runtime compatibility
-  return apiKey === process.env.API_AUTH_SECRET;
+  return apiKey === edgeEnv.API_AUTH_SECRET;
 }
 
 /**

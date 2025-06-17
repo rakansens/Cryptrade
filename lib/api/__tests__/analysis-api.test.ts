@@ -21,6 +21,16 @@ describe('AnalysisAPI', () => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
     (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
+    // Mock createKey to return expected cache keys
+    (createKey as jest.Mock).mockImplementation((prefix, params) => {
+      if (prefix === 'analysis_session' && params?.sessionId) {
+        return `analysis_session_${params.sessionId}`;
+      }
+      if (prefix === 'analysis_active' && params?.symbol) {
+        return `analysis_active_${params.symbol}`;
+      }
+      return `${prefix}_${JSON.stringify(params)}`;
+    });
   });
 
   describe('saveAnalysis', () => {
@@ -357,12 +367,10 @@ describe('AnalysisAPI', () => {
     });
 
     it('should return empty array in development when no cache available', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: 'development',
-        writable: true,
-        configurable: true
-      });
+      // Mock env.NODE_ENV
+      const envModule = require('@/config/env');
+      const originalEnv = envModule.env.NODE_ENV;
+      envModule.env.NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -372,20 +380,15 @@ describe('AnalysisAPI', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[AnalysisAPI] Returning empty array in development mode');
 
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: originalEnv,
-        writable: true,
-        configurable: true
-      });
+      // Restore
+      envModule.env.NODE_ENV = originalEnv;
     });
 
     it('should throw error in production when no cache available', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: 'production',
-        writable: true,
-        configurable: true
-      });
+      // Mock env.NODE_ENV
+      const envModule = require('@/config/env');
+      const originalEnv = envModule.env.NODE_ENV;
+      envModule.env.NODE_ENV = 'production';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -394,11 +397,8 @@ describe('AnalysisAPI', () => {
         'Failed to get session analyses for session-1: API Error'
       );
 
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: originalEnv,
-        writable: true,
-        configurable: true
-      });
+      // Restore
+      envModule.env.NODE_ENV = originalEnv;
     });
   });
 

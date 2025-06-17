@@ -49,5 +49,9 @@ export function getSupabaseAdmin(): SupabaseClient | null {
   return supabaseAdmin;
 }
 
+// Initialize clients
+const _supabase = getSupabase();
+const _supabaseAdmin = getSupabaseAdmin();
+
 // Export for backward compatibility (will be null if not configured)
-export { supabase, supabaseAdmin };
+export { _supabase as supabase, _supabaseAdmin as supabaseAdmin };
