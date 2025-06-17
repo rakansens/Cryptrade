@@ -30,17 +30,14 @@ export const GET = createSSEHandler({
 
       uiEventBus.on('ui-event', send);
 
-      off = () => uiEventBus.off('ui-event', send);
-    },
-    onDisconnect() {
-      off();
+      // Return cleanup function
+      return () => {
+        uiEventBus.off('ui-event', send);
+      };
     }
   },
   cors: { origin: '*', credentials: true }
 });
-
-// Holder for disconnect cleanup
-let off: () => void = () => {};
 
 export const OPTIONS = createSSEOptionsHandler({ origin: '*', credentials: true });
 

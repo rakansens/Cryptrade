@@ -1,4 +1,4 @@
-import { env } from '@/config/env';
+import { edgeEnv } from '@/config/env-edge';
 import { NextRequest } from 'next/server';
 // Production-ready rate limiting with persistent storage
 // Supports both Vercel KV and Upstash Redis
@@ -72,8 +72,8 @@ async function upstashRedisRateLimit(
     const { Redis } = redisModule;
     
     const redis = new Redis({
-      url: env.UPSTASH_REDIS_REST_URL!,
-      token: env.UPSTASH_REDIS_REST_TOKEN!,
+      url: edgeEnv.UPSTASH_REDIS_REST_URL!,
+      token: edgeEnv.UPSTASH_REDIS_REST_TOKEN!,
     });
     
     const now = Math.floor(Date.now() / 1000);
@@ -166,7 +166,7 @@ export async function checkRateLimit(
   const key = `api:${identifier}`;
   
   // Try Vercel KV first (if available)
-  if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
+  if (edgeEnv.KV_REST_API_URL && edgeEnv.KV_REST_API_TOKEN) {
     try {
       return await vercelKVRateLimit(key, config);
     } catch (error) {
@@ -175,7 +175,7 @@ export async function checkRateLimit(
   }
   
   // Try Upstash Redis second (if available)
-  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+  if (edgeEnv.UPSTASH_REDIS_REST_URL && edgeEnv.UPSTASH_REDIS_REST_TOKEN) {
     try {
       return await upstashRedisRateLimit(key, config);
     } catch (error) {
