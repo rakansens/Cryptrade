@@ -26,6 +26,32 @@ interface LegacyDrawingProposal {
 
 // Adapter to convert new DrawingProposal to legacy format expected by the component
 function adaptProposal(proposal: NewDrawingProposal): LegacyDrawingProposal {
+  // Check if the proposal has valid coordinates
+  if (!proposal.coordinates || !proposal.coordinates.start || !proposal.coordinates.end) {
+    console.error('[ProposalCard] Invalid proposal coordinates:', proposal);
+    // Return a minimal valid proposal
+    return {
+      id: proposal.id,
+      type: proposal.type,
+      title: proposal.title || 'Invalid Proposal',
+      description: proposal.description || 'Missing coordinate data',
+      reason: proposal.reason || proposal.reasoning || 'No coordinates available',
+      drawingData: {
+        type: 'trendline',
+        points: [],
+        style: {
+          color: '#3498db',
+          lineWidth: 2,
+          lineStyle: 'solid',
+          showLabels: false
+        }
+      },
+      confidence: 0,
+      priority: 'low',
+      createdAt: proposal.createdAt || Date.now(),
+    };
+  }
+
   // Convert coordinates to DrawingData format
   const drawingData: DrawingData = {
     type: proposal.analysisType as 'trendline' | 'fibonacci' | 'horizontal' | 'vertical' | 'pattern',
@@ -105,7 +131,15 @@ interface AdaptedProposalGroup extends Omit<DrawingProposalGroup, 'proposals'> {
 function adaptProposalGroup(group: DrawingProposalGroup): AdaptedProposalGroup {
   return {
     ...group,
-    proposals: group.proposals.map(p => adaptProposal(p as NewDrawingProposal))
+    proposals: group.proposals.map(p => {
+      // Check if this is already in legacy format
+      if ('drawingData' in p && p.drawingData) {
+        // Already in legacy format, just return it
+        return p as any as LegacyDrawingProposal;
+      }
+      // Otherwise adapt from new format
+      return adaptProposal(p as NewDrawingProposal);
+    })
   };
 }
 

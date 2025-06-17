@@ -1,7 +1,7 @@
 /**
  * Simple in-memory rate limiter for log spam prevention
  */
-class RateLimiter {
+export class RateLimiter {
   private counts = new Map<string, { count: number; lastReset: number }>();
   private cleanupInterval: NodeJS.Timeout | null = null;
 

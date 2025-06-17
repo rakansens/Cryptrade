@@ -10,7 +10,7 @@ import type { DrawingType } from '@/types/drawing';
 import { z } from 'zod';
 
 // 描画データスキーマ
-const DrawingDataSchema = z.object({
+export const DrawingDataSchema = z.object({
   type: z.string() as z.ZodType<DrawingType>,
   points: z.array(z.object({
     time: z.number().positive(),

@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
 
 // Client-side environment schema (only NEXT_PUBLIC_* variables)
-const ClientEnvSchema = z.object({
+export const ClientEnvSchema = z.object({
   // Public URLs
   NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),

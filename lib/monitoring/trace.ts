@@ -1,4 +1,5 @@
 import { generateCorrelationId } from '@/types/agent-payload';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Agent間通信の監視・トレース機能
@@ -27,7 +28,7 @@ export interface TraceMetrics {
 }
 
 // グローバルトレースマネージャー
-class TraceManager {
+export class TraceManager {
   private activeTraces = new Map<string, TraceContext>();
   
   startTrace(config: Omit<TraceContext, 'correlationId' | 'startTime'>): TraceContext {

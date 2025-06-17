@@ -11,7 +11,7 @@ export interface MetricValue {
   type?: 'counter' | 'gauge' | 'histogram';
 }
 
-class MetricsCollector {
+export class MetricsCollector {
   private metrics: Map<string, MetricValue> = new Map();
 
   constructor() {

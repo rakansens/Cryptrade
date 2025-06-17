@@ -15,7 +15,7 @@ export interface ProgressEvent {
 
 export type ProgressCallback = (event: ProgressEvent) => void;
 
-class ProgressEmitter {
+export class ProgressEmitter {
   private callbacks: Set<ProgressCallback> = new Set();
   
   /**
