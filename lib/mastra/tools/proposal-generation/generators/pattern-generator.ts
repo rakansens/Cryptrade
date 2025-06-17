@@ -7,8 +7,8 @@
 
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { ProposalData } from '@/types/proposal-generator.types';
-// DrawingProposal type is not used directly due to mismatch
+import type { DrawingProposal } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/proposals';
 import type { 
   IProposalGenerator, 
   GeneratorParams,
@@ -37,7 +37,7 @@ export class PatternGenerator implements IProposalGenerator {
       interval: params.interval,
     });
 
-    const proposals: ProposalData[] = [];
+    const proposals: DrawingProposal[] = [];
     
     // 各種パターンの検出
     const patterns: DetectedPattern[] = [
@@ -693,62 +693,54 @@ export class PatternGenerator implements IProposalGenerator {
     pattern: DetectedPattern,
     data: CandlestickData[],
     params: GeneratorParams
-  ): ProposalData | null {
+  ): DrawingProposal | null {
     const patternInfo = this.getPatternInfo(pattern.type);
     const now = Date.now();
     const reasonText = this.generateReason(pattern, data, params);
 
-    const proposal: ProposalData = {
-      id: generateProposalId(`pattern_${pattern.type}`),
+    const validated = validateDrawingData({
       type: 'pattern',
+      points: pattern.keyPoints,
+      style: {
+        color: COLOR_PALETTE.PATTERN[pattern.implication.toUpperCase() as keyof typeof COLOR_PALETTE.PATTERN],
+        lineWidth: 2,
+        lineStyle: 'solid',
+      },
+    });
+    
+    const proposal: DrawingProposal = {
+      id: generateProposalId(`pattern_${pattern.type}`),
+      type: ProposalType.PATTERN,
+      analysisType: 'pattern',
+      coordinates: {
+        start: pattern.keyPoints[0] ? { x: pattern.keyPoints[0].time, y: pattern.keyPoints[0].value } : { x: 0, y: 0 },
+        end: pattern.keyPoints[pattern.keyPoints.length - 1] ? { x: pattern.keyPoints[pattern.keyPoints.length - 1]!.time, y: pattern.keyPoints[pattern.keyPoints.length - 1]!.value } : { x: 0, y: 0 },
+        additionalPoints: pattern.keyPoints.slice(1, -1).map(p => ({ x: p.time, y: p.value })),
+      },
+      confidence: pattern.confidence,
+      reasoning: reasonText,
+      priority: this.calculatePriority(pattern),
+      status: ProposalStatus.PENDING,
+      createdAt: now,
       title: patternInfo.title,
       description: patternInfo.description,
-      drawingData: (() => {
-        const validated = validateDrawingData({
-          type: 'pattern',
-          points: pattern.keyPoints,
-          style: {
-            color: COLOR_PALETTE.PATTERN[pattern.implication.toUpperCase() as keyof typeof COLOR_PALETTE.PATTERN],
-            lineWidth: 2,
-            lineStyle: 'solid',
-          },
-        });
-        
-        // Create clean object without undefined values
-        const result: any = {
-          type: validated.type,
-          points: validated.points,
-        };
-        
-        if (validated.style) result.style = validated.style;
-        if ((validated as any).metadata) result.metadata = (validated as any).metadata;
-        
-        return result;
-      })(),
-      confidence: pattern.confidence,
-      priority: this.calculatePriority(pattern),
-      analysis: {
-        direction: pattern.implication === 'bullish' || pattern.implication === 'bearish' ? pattern.implication : 'neutral' as 'bullish' | 'bearish' | 'neutral',
-        strength: pattern.confidence,
+      reason: reasonText,
+      drawingData: {
+        type: validated.type,
+        points: validated.points,
+        style: validated.style,
+        metadata: (validated as any).metadata,
       },
       metadata: {
-        symbol: params.symbol,
-        interval: params.interval,
-        reason: reasonText,
-        patternType: pattern.type,
-        implication: pattern.implication,
-        keyPoints: pattern.keyPoints,
-        duration: pattern.endIndex - pattern.startIndex,
+        pattern: {
+          type: pattern.type,
+          confidence: pattern.confidence,
+          points: pattern.keyPoints.map(p => ({ x: p.time, y: p.value })),
+        },
       },
-      symbol: params.symbol,
-      interval: params.interval,
-      reasoning: reasonText,
-      createdAt: now,
-      reason: reasonText,
-      direction: pattern.implication === 'bullish' ? 'up' : pattern.implication === 'bearish' ? 'down' : 'neutral',
-    } as any;
+    };
 
-    return proposal as unknown as ProposalData;
+    return proposal;
   }
 
   /**

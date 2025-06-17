@@ -82,16 +82,19 @@ function confirmTrendOnTimeframe(
 
   // Calculate trend direction on both timeframes
   const currentTrend = calculateTrendDirection(currentData);
-  const higherTrend = calculateTrendDirection(
-    higherData.map(k => ({
-      time: 'time' in k ? k.time : Math.floor((k.openTime ?? 0) / 1000),
+  const mappedHigherData = higherData.map(k => {
+    const time = 'time' in k ? k.time : Math.floor((k.openTime ?? 0) / 1000);
+    return {
+      time: time || 0, // Ensure time is always a number
       open: parseFloat(String(k.open)),
       high: parseFloat(String(k.high)),
       low: parseFloat(String(k.low)),
       close: parseFloat(String(k.close)),
       volume: parseFloat(String(k.volume)),
-    }))
-  );
+    };
+  });
+  
+  const higherTrend = calculateTrendDirection(mappedHigherData);
 
   // Trends should align
   return currentTrend === higherTrend && currentTrend !== 'sideways';

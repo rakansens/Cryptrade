@@ -7,8 +7,8 @@
 
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { ProposalData } from '@/types/proposal-generator.types';
-// DrawingProposal type is not used directly due to mismatch
+import type { DrawingProposal } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/proposals';
 import type { 
   IProposalGenerator, 
   GeneratorParams,
@@ -45,7 +45,7 @@ export class FibonacciGenerator implements IProposalGenerator {
       interval: params.interval,
     });
 
-    const proposals: ProposalData[] = [];
+    const proposals: DrawingProposal[] = [];
     
     // 1. スイングポイントの検出
     const swingPoints = this.findSwingPoints(data);
@@ -334,7 +334,7 @@ export class FibonacciGenerator implements IProposalGenerator {
     },
     data: CandlestickData[],
     params: GeneratorParams
-  ): ProposalData | null {
+  ): DrawingProposal | null {
     const { start, end, direction } = pair;
     
     // 信頼度計算
@@ -360,65 +360,50 @@ export class FibonacciGenerator implements IProposalGenerator {
     const now = Date.now();
     const reasonText = this.generateReason(pair, data, currentRetracement, params);
 
-    const proposal: ProposalData = {
-      id: generateProposalId(`fib_${direction}`),
+    const validated = validateDrawingData({
       type: 'fibonacci',
+      points: [
+        { time: start.time, value: start.price },
+        { time: end.time, value: end.price },
+      ],
+      levels: ANALYSIS_PARAMS.FIBONACCI_LEVELS,
+      style: {
+        color: COLOR_PALETTE.FIBONACCI.RETRACEMENT,
+        lineWidth: 1,
+        lineStyle: 'dashed',
+        showLabels: true,
+      },
+    });
+    
+    const proposal: DrawingProposal = {
+      id: generateProposalId(`fib_${direction}`),
+      type: ProposalType.FIBONACCI,
+      analysisType: 'fibonacci',
+      coordinates: {
+        start: { x: start.time, y: start.price },
+        end: { x: end.time, y: end.price },
+      },
+      confidence,
+      reasoning: reasonText,
+      priority: this.calculatePriority(confidence, pair, currentRetracement),
+      status: ProposalStatus.PENDING,
+      createdAt: now,
       title: `${direction === 'up' ? '上昇' : '下降'}フィボナッチリトレースメント`,
       description: this.generateDescription(start, end, currentRetracement),
-      drawingData: (() => {
-        const validated = validateDrawingData({
-          type: 'fibonacci',
-          points: [
-            { time: start.time, value: start.price },
-            { time: end.time, value: end.price },
-          ],
-          levels: ANALYSIS_PARAMS.FIBONACCI_LEVELS,
-          style: {
-            color: COLOR_PALETTE.FIBONACCI.RETRACEMENT,
-            lineWidth: 1,
-            lineStyle: 'dashed',
-            showLabels: true,
-          },
-        });
-        
-        // Create clean object without undefined values
-        const result: any = {
-          type: validated.type,
-          points: validated.points,
-        };
-        
-        if (validated.style) result.style = validated.style;
-        if (validated.levels) result.levels = validated.levels;
-        
-        return result;
-      })(),
-      confidence,
-      priority: this.calculatePriority(confidence, pair, currentRetracement),
-      analysis: {
-        direction: direction === 'up' ? 'bullish' : 'bearish' as 'bullish' | 'bearish',
-        strength: confidence,
-        angle: Math.atan2(end.price - start.price, end.time - start.time) * 180 / Math.PI,
-        length: Math.abs(end.time - start.time),
+      reason: reasonText,
+      drawingData: {
+        type: validated.type,
+        points: validated.points,
+        style: validated.style,
+        levels: validated.levels,
       },
       metadata: {
-        symbol: params.symbol,
-        interval: params.interval,
-        reasoning: reasonText,
-        direction,
-        swingStrength: (start.strength + end.strength) / 2,
-        priceChange: calculatePriceChangePercent(start.price, end.price),
-        currentRetracement,
-        nearestLevel: this.findNearestFibLevel(currentRetracement),
+        angle: Math.atan2(end.price - start.price, end.time - start.time) * 180 / Math.PI,
+        strength: confidence,
       },
-      symbol: params.symbol,
-      interval: params.interval,
-      reasoning: reasonText,
-      createdAt: now,
-      reason: reasonText,
-      direction: direction === 'up' ? 'up' : 'down',
-    } as any;
+    };
 
-    return proposal as unknown as ProposalData;
+    return proposal;
   }
 
   /**

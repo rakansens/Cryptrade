@@ -7,8 +7,8 @@
 
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { ProposalData } from '@/types/proposal-generator.types';
-// DrawingProposal type is not used directly due to mismatch
+import type { DrawingProposal } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/proposals';
 import type { 
   IProposalGenerator, 
   GeneratorParams,
@@ -51,7 +51,7 @@ export class SupportResistanceGenerator implements IProposalGenerator {
       interval: params.interval,
     });
 
-    const proposals: ProposalData[] = [];
+    const proposals: DrawingProposal[] = [];
     
     // 1. 価格レベルの検出
     const priceLevels = this.detectPriceLevels(data);
@@ -293,7 +293,7 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     level: PriceLevel,
     data: CandlestickData[],
     params: GeneratorParams
-  ): ProposalData | null {
+  ): DrawingProposal | null {
     // 信頼度計算
     const confidence = calculateSupportResistanceConfidence(
       level.price,
@@ -317,9 +317,33 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     else if (level.strength > 0.5) strengthText = '強い';
     else if (level.strength > 0.3) strengthText = '中程度の';
 
-    const proposal: ProposalData = {
-      id: generateProposalId(`sr_${level.type}`),
+    const validated = validateDrawingData({
       type: 'horizontal',
+      price: level.price,
+      points: [{
+        time: data[0]?.time ?? 0,
+        value: level.price,
+      }],
+      style: {
+        color: this.getLineColor(level.type),
+        lineWidth: Math.min(3, 1 + level.strength * 2),
+        lineStyle: level.type === 'both' ? 'dashed' : 'solid',
+      },
+    });
+    
+    const proposal: DrawingProposal = {
+      id: generateProposalId(`sr_${level.type}`),
+      type: ProposalType.SUPPORT_RESISTANCE,
+      analysisType: level.type === 'support' ? 'support' : 'resistance',
+      coordinates: {
+        start: { x: data[0]?.time ?? 0, y: level.price },
+        end: { x: data[data.length - 1]?.time ?? 0, y: level.price },
+      },
+      confidence,
+      reasoning: this.generateReason(level, data, params),
+      priority: this.calculatePriority(confidence, level, isNearby),
+      status: ProposalStatus.PENDING,
+      createdAt: Date.now(),
       title: MESSAGE_TEMPLATES.SUPPORT_RESISTANCE.TITLE(
         level.type === 'both' ? 'support/resistance' : level.type,
         level.price
@@ -328,60 +352,22 @@ export class SupportResistanceGenerator implements IProposalGenerator {
         level.touches.length,
         strengthText
       ),
-      // reason: this.generateReason(level, data, params), // Not in ProposalData type
-      drawingData: (() => {
-        const validated = validateDrawingData({
-          type: 'horizontal',
-          price: level.price,
-          points: [{
-            time: data[0]?.time ?? 0,
-            value: level.price,
-          }],
-          style: {
-            color: this.getLineColor(level.type),
-            lineWidth: Math.min(3, 1 + level.strength * 2),
-            lineStyle: level.type === 'both' ? 'dashed' : 'solid',
-          },
-        });
-        
-        // Create clean object without undefined values
-        const result: any = {
-          type: validated.type,
-          points: validated.points,
-        };
-        
-        if (validated.style) result.style = validated.style;
-        if (validated.price !== undefined) result.price = validated.price;
-        if ((validated as any).metadata) result.metadata = (validated as any).metadata;
-        
-        return result;
-      })(),
-      confidence,
-      priority: this.calculatePriority(confidence, level, isNearby),
-      analysis: {
-        direction: 'neutral' as const,
-        strength: level.strength,
-        touches: level.touches.length,
+      reason: this.generateReason(level, data, params),
+      touches: level.touches.length,
+      drawingData: {
+        type: validated.type,
+        points: validated.points,
+        style: validated.style,
+        price: validated.price,
+        metadata: (validated as any).metadata,
       },
       metadata: {
-        symbol: params.symbol,
-        interval: params.interval,
-        reason: this.generateReason(level, data, params),
-        levelType: level.type,
-        touches: level.touches.length,
+        touchPoints: level.touches.length,
         strength: level.strength,
-        distanceFromPrice: distance,
-        volumeAnalysis: this.analyzeVolumeAtLevel(level, data),
       },
-      symbol: params.symbol,
-      interval: params.interval,
-      reasoning: this.generateReason(level, data, params),
-      createdAt: Date.now(),
-      reason: this.generateReason(level, data, params),
-      direction: 'neutral',
-    } as any;
+    };
 
-    return proposal as unknown as ProposalData;
+    return proposal;
   }
 
   /**
@@ -466,27 +452,27 @@ export class SupportResistanceGenerator implements IProposalGenerator {
     return 'low';
   }
 
-  /**
-   * レベルでのボリューム分析
-   */
-  private analyzeVolumeAtLevel(
-    level: PriceLevel,
-    data: CandlestickData[]
-  ): {
-    averageVolume: number;
-    volumeRatio: number;
-    highVolumeCount: number;
-  } {
-    const touchVolumes = level.touches.map(t => t.volume);
-    const avgTouchVolume = touchVolumes.reduce((sum, v) => sum + v, 0) / touchVolumes.length;
-    const overallAvgVolume = data.reduce((sum, d) => sum + d.volume, 0) / data.length;
+  // /**
+  //  * レベルでのボリューム分析
+  //  */
+  // private analyzeVolumeAtLevel(
+  //   level: PriceLevel,
+  //   data: CandlestickData[]
+  // ): {
+  //   averageVolume: number;
+  //   volumeRatio: number;
+  //   highVolumeCount: number;
+  // } {
+  //   const touchVolumes = level.touches.map(t => t.volume);
+  //   const avgTouchVolume = touchVolumes.reduce((sum, v) => sum + v, 0) / touchVolumes.length;
+  //   const overallAvgVolume = data.reduce((sum, d) => sum + d.volume, 0) / data.length;
     
-    const highVolumeCount = touchVolumes.filter(v => v > overallAvgVolume * 1.5).length;
+  //   const highVolumeCount = touchVolumes.filter(v => v > overallAvgVolume * 1.5).length;
     
-    return {
-      averageVolume: avgTouchVolume,
-      volumeRatio: avgTouchVolume / overallAvgVolume,
-      highVolumeCount,
-    };
-  }
+  //   return {
+  //     averageVolume: avgTouchVolume,
+  //     volumeRatio: avgTouchVolume / overallAvgVolume,
+  //     highVolumeCount,
+  //   };
+  // }
 }

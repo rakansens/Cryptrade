@@ -7,7 +7,8 @@
 
 import { logger } from '@/lib/utils/logger';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { ProposalData } from '@/types/proposal-generator.types';
+import type { DrawingProposal } from '@/types/proposals';
+import { ProposalStatus, ProposalType } from '@/types/proposals';
 import type { 
   IProposalGenerator, 
   GeneratorParams,
@@ -47,7 +48,7 @@ export class TrendlineGenerator implements IProposalGenerator {
     });
 
     try {
-      const proposals: ProposalData[] = [];
+      const proposals: DrawingProposal[] = [];
       
       // 動的な許容誤差の計算
       const priceRange = Math.max(...data.map(d => d.high)) - Math.min(...data.map(d => d.low));
@@ -94,7 +95,7 @@ export class TrendlineGenerator implements IProposalGenerator {
       downtrendCount: downtrendProposals.length,
     });
 
-    return sortedProposals as unknown as ProposalGroup['proposals'];
+    return sortedProposals as any;
     } catch (error) {
       logger.error('[TrendlineGenerator] Generation failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -165,8 +166,8 @@ export class TrendlineGenerator implements IProposalGenerator {
     troughs: PeakTroughPoint[],
     dynamicTolerance: number,
     params: GeneratorParams
-  ): ProposalData[] {
-    const proposals: ProposalData[] = [];
+  ): DrawingProposal[] {
+    const proposals: DrawingProposal[] = [];
 
     if (troughs.length < ANALYSIS_PARAMS.TRENDLINE_MIN_POINTS) {
       logger.warn('[TrendlineGenerator] Not enough troughs for uptrend lines', {
@@ -228,14 +229,36 @@ export class TrendlineGenerator implements IProposalGenerator {
       const enhancedConfidence = calculateEnhancedConfidence(factors);
 
       // 提案作成
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: generateProposalId('tl_up'),
-        type: 'trendline',
+        type: ProposalType.TRENDLINE,
+        analysisType: 'trendline',
+        coordinates: {
+          start: { x: startPoint.time, y: startPoint.low },
+          end: { x: endPoint.time, y: endPoint.low },
+        },
+        confidence: enhancedConfidence,
+        reasoning: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        priority: this.calculatePriority(enhancedConfidence, factors),
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
         title: MESSAGE_TEMPLATES.TRENDLINE.TITLE('uptrend'),
         description: MESSAGE_TEMPLATES.TRENDLINE.DESCRIPTION(
           confidenceResult.touches,
           enhancedConfidence
         ),
+        reason: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        touches: confidenceResult.touches,
         drawingData: {
           type: 'trendline',
           points: [
@@ -249,54 +272,22 @@ export class TrendlineGenerator implements IProposalGenerator {
             showLabels: true,
           },
         },
-        confidence: enhancedConfidence,
-        priority: this.calculatePriority(enhancedConfidence, factors),
-        analysis: {
-          direction: 'bullish',
-          strength: enhancedConfidence,
-          touches: confidenceResult.touches,
-          angle: Math.abs(regression.slope * 100),
-          length: candidate.end.index - candidate.start.index + 1,
-          r_squared: regression.r2,
-          duration_hours: this.calculateDurationHours(
-            startPoint.time,
-            endPoint.time,
-            params.interval
-          ),
-          price_change_percent: ((endPoint.low - startPoint.low) / startPoint.low) * 100,
-        },
         metadata: {
-          reason: this.generateReason(
-            candidate,
-            regression,
-            confidenceResult,
-            factors
-          ),
-          symbol: params.symbol,
-          interval: params.interval,
-          volumeAnalysis: confidenceResult.volumeAnalysis,
-          patterns: confidenceResult.patterns,
-          createdAt: Date.now(),
+          angle: Math.abs(regression.slope * 100),
+          strength: enhancedConfidence,
+          pattern: {
+            type: 'trendline',
+            confidence: enhancedConfidence,
+            points: [
+              { x: startPoint.time, y: startPoint.low },
+              { x: endPoint.time, y: endPoint.low },
+            ],
+          },
+          // volumeAnalysis: confidenceResult.volumeAnalysis, // 型の不一致のため一時的にコメントアウト
         },
-        symbol: params.symbol,
-        interval: params.interval,
-        reasoning: this.generateReason(
-          candidate,
-          regression,
-          confidenceResult,
-          factors
-        ),
-        createdAt: Date.now(),
-        reason: this.generateReason(
-          candidate,
-          regression,
-          confidenceResult,
-          factors
-        ),
-        direction: 'up',
-      } as any;
+      };
 
-      proposals.push(proposal as unknown as ProposalData);
+      proposals.push(proposal);
     }
 
     return proposals;
@@ -310,8 +301,8 @@ export class TrendlineGenerator implements IProposalGenerator {
     peaks: PeakTroughPoint[],
     dynamicTolerance: number,
     params: GeneratorParams
-  ): ProposalData[] {
-    const proposals: ProposalData[] = [];
+  ): DrawingProposal[] {
+    const proposals: DrawingProposal[] = [];
 
     if (peaks.length < ANALYSIS_PARAMS.TRENDLINE_MIN_POINTS) {
       logger.warn('[TrendlineGenerator] Not enough peaks for downtrend lines', {
@@ -373,14 +364,36 @@ export class TrendlineGenerator implements IProposalGenerator {
       const enhancedConfidence = calculateEnhancedConfidence(factors);
 
       // 提案作成
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: generateProposalId('tl_down'),
-        type: 'trendline',
+        type: ProposalType.TRENDLINE,
+        analysisType: 'trendline',
+        coordinates: {
+          start: { x: startPoint.time, y: startPoint.high },
+          end: { x: endPoint.time, y: endPoint.high },
+        },
+        confidence: enhancedConfidence,
+        reasoning: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        priority: this.calculatePriority(enhancedConfidence, factors),
+        status: ProposalStatus.PENDING,
+        createdAt: Date.now(),
         title: MESSAGE_TEMPLATES.TRENDLINE.TITLE('downtrend'),
         description: MESSAGE_TEMPLATES.TRENDLINE.DESCRIPTION(
           confidenceResult.touches,
           enhancedConfidence
         ),
+        reason: this.generateReason(
+          candidate,
+          regression,
+          confidenceResult,
+          factors
+        ),
+        touches: confidenceResult.touches,
         drawingData: {
           type: 'trendline',
           points: [
@@ -394,54 +407,22 @@ export class TrendlineGenerator implements IProposalGenerator {
             showLabels: true,
           },
         },
-        confidence: enhancedConfidence,
-        priority: this.calculatePriority(enhancedConfidence, factors),
-        analysis: {
-          direction: 'bearish',
-          strength: enhancedConfidence,
-          touches: confidenceResult.touches,
-          angle: Math.abs(regression.slope * 100),
-          length: candidate.end.index - candidate.start.index + 1,
-          r_squared: regression.r2,
-          duration_hours: this.calculateDurationHours(
-            startPoint.time,
-            endPoint.time,
-            params.interval
-          ),
-          price_change_percent: ((endPoint.high - startPoint.high) / startPoint.high) * 100,
-        },
         metadata: {
-          reason: this.generateReason(
-            candidate,
-            regression,
-            confidenceResult,
-            factors
-          ),
-          symbol: params.symbol,
-          interval: params.interval,
-          volumeAnalysis: confidenceResult.volumeAnalysis,
-          patterns: confidenceResult.patterns,
-          createdAt: Date.now(),
+          angle: Math.abs(regression.slope * 100),
+          strength: enhancedConfidence,
+          pattern: {
+            type: 'trendline',
+            confidence: enhancedConfidence,
+            points: [
+              { x: startPoint.time, y: startPoint.high },
+              { x: endPoint.time, y: endPoint.high },
+            ],
+          },
+          // volumeAnalysis: confidenceResult.volumeAnalysis, // 型の不一致のため一時的にコメントアウト
         },
-        symbol: params.symbol,
-        interval: params.interval,
-        reasoning: this.generateReason(
-          candidate,
-          regression,
-          confidenceResult,
-          factors
-        ),
-        createdAt: Date.now(),
-        reason: this.generateReason(
-          candidate,
-          regression,
-          confidenceResult,
-          factors
-        ),
-        direction: 'down',
-      } as any;
+      };
 
-      proposals.push(proposal as unknown as ProposalData);
+      proposals.push(proposal);
     }
 
     return proposals;
@@ -639,16 +620,16 @@ export class TrendlineGenerator implements IProposalGenerator {
     return 'low';
   }
 
-  /**
-   * 時間計算
-   */
-  private calculateDurationHours(
-    startTime: number,
-    endTime: number,
-    interval: string
-  ): number {
-    const minutes = TIME_CONSTANTS.INTERVAL_TO_MINUTES[interval as keyof typeof TIME_CONSTANTS.INTERVAL_TO_MINUTES] ?? 60;
-    const bars = Math.abs(endTime - startTime) / (minutes * 60);
-    return bars * (minutes / 60);
-  }
+  // /**
+  //  * 時間計算
+  //  */
+  // private calculateDurationHours(
+  //   startTime: number,
+  //   endTime: number,
+  //   interval: string
+  // ): number {
+  //   const minutes = TIME_CONSTANTS.INTERVAL_TO_MINUTES[interval as keyof typeof TIME_CONSTANTS.INTERVAL_TO_MINUTES] ?? 60;
+  //   const bars = Math.abs(endTime - startTime) / (minutes * 60);
+  //   return bars * (minutes / 60);
+  // }
 }
