@@ -16,7 +16,7 @@ export interface BroadcastPayload {
 }
 
 // Broadcast channel for all event subscribers
-export const eventBroadcast = new SSEBroadcast();
+const eventBroadcast = new SSEBroadcast();
 
 export const GET = createSSEHandler({
   handler: {
@@ -29,15 +29,3 @@ export const GET = createSSEHandler({
 });
 
 export const OPTIONS = createSSEOptionsHandler({ origin: '*' });
-
-/**
- * イベント配信ヘルパー関数
- */
-export function broadcastEvent(event: BroadcastPayload) {
-  eventBroadcast.broadcast({
-    data: {
-      ...event,
-      timestamp: event.timestamp || Date.now()
-    }
-  });
-}
