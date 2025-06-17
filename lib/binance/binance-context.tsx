@@ -16,7 +16,7 @@ interface BinanceAPIContextValue {
 
 const BinanceAPIContext = createContext<BinanceAPIContextValue | undefined>(undefined);
 
-interface BinanceAPIProviderProps {
+export interface BinanceAPIProviderProps {
   children: React.ReactNode;
   // テスト用にサービスインスタンスを注入可能
   service?: BinanceAPIService;

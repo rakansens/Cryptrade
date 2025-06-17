@@ -18,8 +18,7 @@ export const compose = (middlewares: ApiMiddleware[]) =>
  * Creates a final middleware that actually executes the HTTP request.
  * This is typically added as the last middleware in the chain.
  * 
- * @param {RequestCtx} ctx - The request context
- * @returns {Promise<RequestCtx>} Promise resolving to the updated context with response
+ * @returns {ApiMiddleware} A middleware function that executes the HTTP request
  */
 export const createFinalMiddleware = (): ApiMiddleware =>
   async (ctx: RequestCtx): Promise<RequestCtx> => {

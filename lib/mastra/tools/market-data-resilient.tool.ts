@@ -23,7 +23,7 @@ const MarketDataInput = z.object({
     .transform(s => s.toUpperCase()),
 });
 
-const MarketDataOutput = z.object({
+export const MarketDataOutput = z.object({
   symbol: z.string(),
   currentPrice: z.number(),
   priceChange24h: z.number(),

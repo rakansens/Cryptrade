@@ -1,6 +1,18 @@
 {
-  "entryPoints": ["lib"],
+  "entryPoints": ["lib", "types"],
   "entryPointStrategy": "expand",
+  "exclude": [
+    "**/node_modules/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/components/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/websocket-mock.ts"
+  ],
   "out": "docs/api",
   "name": "Cryptrade API Documentation",
   "skipErrorChecking": true,
@@ -45,7 +57,8 @@
     "@param",
     "@returns",
     "@throws",
-    "@module"
+    "@module",
+    "@generated"
   ],
   "modifierTags": [
     "@alpha",

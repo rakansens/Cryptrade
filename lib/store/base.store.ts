@@ -21,20 +21,22 @@ export interface StoreConfig<T> {
   defaultState: T;
 }
 
+export type Store<State extends BaseState, Actions extends BaseActions> = State & Actions;
+
 export function createBaseStore<State extends BaseState, Actions extends BaseActions>(
   config: StoreConfig<State>,
   actionsFactory: (set: any, get: any, debug: (action: string) => void) => Omit<Actions, keyof BaseActions>
 ) {
   const debug = createStoreDebugger(config.name);
   
-  type Store = State & Actions;
+  type StoreType = State & Actions;
   
-  return create<Store>()(
-    subscribeWithSelector<Store>((set, get) => {
+  return create<StoreType>()(
+    subscribeWithSelector<StoreType>((set, get) => {
       const baseActions: BaseActions = {
         setError: (error) => {
           debug('setError');
-          set({ error, lastUpdateTime: Date.now() } as Partial<Store>);
+          set({ error, lastUpdateTime: Date.now() } as Partial<StoreType>);
           if (error) {
             logger.error(`[${config.name}] Error set`, { error });
           }
@@ -42,7 +44,7 @@ export function createBaseStore<State extends BaseState, Actions extends BaseAct
         
         setLoading: (loading) => {
           debug('setLoading');
-          set({ isLoading: loading } as Partial<Store>);
+          set({ isLoading: loading } as Partial<StoreType>);
         },
         
         reset: () => {
@@ -50,7 +52,7 @@ export function createBaseStore<State extends BaseState, Actions extends BaseAct
           set({ 
             ...config.defaultState, 
             lastUpdateTime: Date.now() 
-          } as Store);
+          } as StoreType);
           logger.info(`[${config.name}] Store reset`);
         },
       };
@@ -61,7 +63,7 @@ export function createBaseStore<State extends BaseState, Actions extends BaseAct
         ...config.initialState,
         ...baseActions,
         ...customActions,
-      } as Store;
+      } as StoreType;
     })
   );
 }
