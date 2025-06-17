@@ -30,7 +30,7 @@ export function AnimatedChatTransition({}: AnimatedChatTransitionProps) {
         delete (window as Window & { __returnToHome?: () => void }).__returnToHome
       }
     }
-  }, [])
+  }, [handleReturnToHome])
 
   // Prevent hydration mismatch by showing loading state until client is ready
   if (!isClient) {

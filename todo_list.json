@@ -1,0 +1,140 @@
+{
+  "tasks": [
+    {
+      "id": "endpoint_tester",
+      "role": "API Endpoint Tester",
+      "input": "POST /api/ai/chat, POST /api/ai/stream, GET /api/ai/stream endpoints",
+      "output": "trace.log with request/response pairs for all orchestrator entry points",
+      "priority": "high",
+      "details": "Test main orchestrator endpoints with various intents (price_inquiry, ui_control, trading_analysis, conversational, proposal_request)"
+    },
+    {
+      "id": "intent_analyzer",
+      "role": "Intent Analysis Validator",
+      "input": "lib/mastra/utils/intent.ts analyzeIntent function branches",
+      "output": "intent_coverage.json with all intent patterns and test cases",
+      "priority": "high",
+      "details": "Validate all 9 intent types: price_inquiry, ui_control, trading_analysis, conversational, proposal_request, market_chat, small_talk, greeting, help_request"
+    },
+    {
+      "id": "a2a_flow_tester",
+      "role": "A2A Communication Tester",
+      "input": "AgentNetwork message routing flows in lib/mastra/network/message-router.ts",
+      "output": "a2a_trace.log with agent-to-agent message flow validation",
+      "priority": "high",
+      "details": "Test orchestratorAgent -> tradingAgent, orchestratorAgent -> priceInquiryAgent, orchestratorAgent -> uiControlAgent flows"
+    },
+    {
+      "id": "tool_integration_validator",
+      "role": "Tool Integration Validator",
+      "input": "All tools in lib/mastra/tools/ directory",
+      "output": "tool_validation_report.json with tool execution results",
+      "priority": "high",
+      "details": "Validate proposalGenerationTool, entryProposalGenerationTool, marketDataResilientTool, chartDataAnalysisTool, enhancedLineAnalysisTool"
+    },
+    {
+      "id": "branch_coverage_analyzer",
+      "role": "Branch Coverage Analyzer",
+      "input": "orchestrator.agent.ts and trading.agent.ts conditional branches",
+      "output": "branch_coverage_report.json with uncovered paths",
+      "priority": "medium",
+      "details": "Analyze dynamic model selection, dynamic instructions, conversation handling branches, proposal mode detection"
+    },
+    {
+      "id": "error_boundary_tester",
+      "role": "Error Boundary Tester",
+      "input": "Error handling in executeImprovedOrchestrator and AgentNetwork.sendMessage",
+      "output": "error_scenarios.log with failure modes and recovery paths",
+      "priority": "high",
+      "details": "Test agent not found, tool execution failure, timeout scenarios, A2A message routing failures"
+    },
+    {
+      "id": "rate_limit_validator",
+      "role": "Rate Limit Validator",
+      "input": "Rate limit configuration in /api/ai/chat (20 requests/minute)",
+      "output": "rate_limit_test.json with threshold validation results",
+      "priority": "medium",
+      "details": "Validate rate limiting works correctly for chat endpoint"
+    },
+    {
+      "id": "security_header_checker",
+      "role": "Security Header Validator",
+      "input": "CORS and security headers in API routes",
+      "output": "security_audit.json with header compliance report",
+      "priority": "medium",
+      "details": "Check CORS configuration, CSP headers, auth headers for all endpoints"
+    },
+    {
+      "id": "performance_benchmarker",
+      "role": "Performance Benchmarker",
+      "input": "Orchestrator execution paths with different complexity levels",
+      "output": "performance_metrics.json with latency and throughput data",
+      "priority": "medium",
+      "details": "Benchmark simple queries vs complex analysis vs proposal generation"
+    },
+    {
+      "id": "proposal_evaluator",
+      "role": "Proposal Quality Evaluator",
+      "input": "proposalGenerationTool and entryProposalGenerationTool outputs",
+      "output": "proposal_quality_report.json comparing expected vs actual proposals",
+      "priority": "high",
+      "details": "Evaluate trendline, support-resistance, pattern, fibonacci, and entry proposals"
+    },
+    {
+      "id": "memory_context_validator",
+      "role": "Memory Context Validator",
+      "input": "Enhanced conversation memory store integration",
+      "output": "memory_validation.json with context preservation tests",
+      "priority": "medium",
+      "details": "Validate session context, memory processors, token limits"
+    },
+    {
+      "id": "streaming_response_tester",
+      "role": "Streaming Response Tester",
+      "input": "SSE endpoints /api/ai/stream and /api/ai/analysis-stream",
+      "output": "streaming_test.log with chunk validation results",
+      "priority": "medium",
+      "details": "Test streaming for tradingAgent, priceInquiryAgent, uiControlAgent"
+    },
+    {
+      "id": "workflow_validator",
+      "role": "Workflow Validator",
+      "input": "trading-analysis-a2a.ts workflow implementation",
+      "output": "workflow_trace.json with step-by-step execution validation",
+      "priority": "high",
+      "details": "Validate market data fetch -> technical analysis -> recommendations flow"
+    },
+    {
+      "id": "agent_registry_tester",
+      "role": "Agent Registry Tester",
+      "input": "Agent registration and health check mechanisms",
+      "output": "registry_health.json with agent availability status",
+      "priority": "low",
+      "details": "Test registerAllAgents, health checks, agent activation/deactivation"
+    },
+    {
+      "id": "fallback_handler_validator",
+      "role": "Fallback Handler Validator",
+      "input": "Fallback mechanisms in orchestrator and network routing",
+      "output": "fallback_scenarios.json with recovery path validation",
+      "priority": "medium",
+      "details": "Test pattern-based fallbacks, error recovery, default agent selection"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-01-17T10:00:00Z",
+    "total_tasks": 15,
+    "priority_breakdown": {
+      "high": 7,
+      "medium": 7,
+      "low": 1
+    },
+    "estimated_coverage": {
+      "endpoints": 3,
+      "agents": 4,
+      "tools": 11,
+      "workflows": 1,
+      "intents": 9
+    }
+  }
+}

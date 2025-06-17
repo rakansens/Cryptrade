@@ -133,7 +133,14 @@ export function loadEnv(): Env {
       NODE_ENV: process.env.NODE_ENV || 'development',
       OPENAI_API_KEY: 'browser-env-not-available',
       PORT: 3000,
-      LOG_TRANSPORT: 'console'
+      LOG_TRANSPORT: 'console',
+      // Include NEXT_PUBLIC_ variables which are available in browser
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+      NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: process.env.NEXT_PUBLIC_FEATURE_DRAWING_RENDERER === 'true',
+      NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: process.env.NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER === 'true',
+      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     } as Env;
     return _env;
   }

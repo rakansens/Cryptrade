@@ -24,11 +24,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase] = useState(() => {
     if (typeof window === 'undefined') return null;
     
+    // env設定から安全に取得（型チェック付き）
     const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase environment variables not configured');
+      console.warn('Supabase environment variables not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file.');
       return null;
     }
     
@@ -37,6 +38,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    async function checkUser() {
+      try {
+        if (!supabase || !supabase.auth) {
+          console.warn('Supabase client not initialized - this is expected in development without Supabase setup');
+          setLoading(false);
+          return;
+        }
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Error checking user session:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     // 初回のセッションチェック
     checkUser();
 
@@ -49,6 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       });
       subscription = data.subscription;
+    } else {
+      // Supabaseが初期化されていない場合は、loadingをfalseに設定
+      setLoading(false);
     }
 
     return () => {
@@ -56,24 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscription.unsubscribe();
       }
     };
-  }, []);
-
-  async function checkUser() {
-    try {
-      if (!supabase || !supabase.auth) {
-        console.error('Supabase client not initialized');
-        setLoading(false);
-        return;
-      }
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    } catch (error) {
-      console.error('Error checking user session:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [supabase])
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) {
