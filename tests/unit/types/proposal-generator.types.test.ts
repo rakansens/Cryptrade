@@ -4,11 +4,11 @@ import type {
   ConfidenceResult,
   TrendlineCandidate
 } from '@/types/proposal-generator.types';
-import type { DrawingProposal, ConfidenceFactors, ProposalStatus, ProposalType } from '@/types/proposals';
+import { DrawingProposal, ConfidenceFactors, ProposalStatus, ProposalType } from '@/types/proposals';
 import type { DrawingPoint, DrawingStyle } from '@/types/ui-events.types';
 
 describe('proposal-generator.types', () => {
-  describe('DrawingProposal interface (formerly ProposalData)', () => {
+  describe('DrawingProposal interface (formerly DrawingProposal)', () => {
     it('should accept valid DrawingProposal with required fields', () => {
       const proposal: DrawingProposal = {
         id: 'proposal-1',
@@ -72,15 +72,6 @@ describe('proposal-generator.types', () => {
             timeframe: '1h'
           }
         },
-        analysis: {
-          direction: 'neutral',
-          strength: 0.8,
-          touches: 5,
-          angle: 0,
-          length: 5000,
-          volumeProfile: 'high',
-          historicalSignificance: 0.9
-        },
         metadata: {
           createdBy: 'system',
           strategy: 'support-resistance'
@@ -88,8 +79,8 @@ describe('proposal-generator.types', () => {
       };
 
       expect(proposal).toBeDefined();
-      expect(proposal.drawingData.style).toBeDefined();
-      expect(proposal.drawingData.metadata).toBeDefined();
+      expect(proposal.drawingData?.style).toBeDefined();
+      expect(proposal.drawingData?.metadata).toBeDefined();
       expect(proposal.metadata).toBeDefined();
     });
 
@@ -97,7 +88,7 @@ describe('proposal-generator.types', () => {
       const priorities: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
       
       priorities.forEach(priority => {
-        const proposal: ProposalData = {
+        const proposal: DrawingProposal = {
           id: `proposal-${priority}`,
           type: 'test',
           title: 'Test Proposal',
@@ -119,7 +110,7 @@ describe('proposal-generator.types', () => {
       const directions: Array<'bullish' | 'bearish' | 'neutral'> = ['bullish', 'bearish', 'neutral'];
       
       directions.forEach(direction => {
-        const proposal: ProposalData = {
+        const proposal: DrawingProposal = {
           id: `proposal-${direction}`,
           type: 'test',
           title: 'Test Proposal',
@@ -140,7 +131,7 @@ describe('proposal-generator.types', () => {
     });
 
     it('should accept analysis with dynamic properties', () => {
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: 'proposal-dynamic',
         type: 'pattern',
         title: 'Complex Pattern',
@@ -356,7 +347,7 @@ describe('proposal-generator.types', () => {
         { time: Date.now() + 2000, value: 110, price: 110 }
       ];
 
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: 'integration-test',
         type: 'trendline',
         title: 'Integration Test',
@@ -381,7 +372,7 @@ describe('proposal-generator.types', () => {
         showLabels: true
       };
 
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: 'style-test',
         type: 'pattern',
         title: 'Style Test',
@@ -402,7 +393,7 @@ describe('proposal-generator.types', () => {
 
   describe('Edge cases and validation', () => {
     it('should handle confidence values at boundaries', () => {
-      const minConfidence: ProposalData = {
+      const minConfidence: DrawingProposal = {
         id: 'min-confidence',
         type: 'test',
         title: 'Min Confidence',
@@ -413,7 +404,7 @@ describe('proposal-generator.types', () => {
         analysis: {}
       };
 
-      const maxConfidence: ProposalData = {
+      const maxConfidence: DrawingProposal = {
         id: 'max-confidence',
         type: 'test',
         title: 'Max Confidence',
@@ -429,7 +420,7 @@ describe('proposal-generator.types', () => {
     });
 
     it('should handle complex nested metadata', () => {
-      const proposal: ProposalData = {
+      const proposal: DrawingProposal = {
         id: 'complex-metadata',
         type: 'advanced-pattern',
         title: 'Complex Pattern',

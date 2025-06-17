@@ -1,12 +1,14 @@
 // Setup test environment before any imports
-import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
+process.env['NODE_ENV'] = 'test';
+process.env['OPENAI_API_KEY'] = 'test-key';
+process.env['ENABLE_SENTRY'] = 'false';
+process.env['TELEMETRY_ENDPOINT'] = '';
+process.env['TELEMETRY_API_KEY'] = '';
 
-const restoreEnv = mockTestEnv({
-  ENABLE_SENTRY: 'false',
-  TELEMETRY_ENDPOINT: '',
-  TELEMETRY_API_KEY: ''
-});
+// Clear module cache to ensure clean environment load
+jest.resetModules();
 
+// Now import modules after environment is set
 import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
 import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/errors/base-error';
 import { logger } from '@/lib/utils/logger';
@@ -39,7 +41,12 @@ describe('ErrorTracker', () => {
   });
 
   afterAll(() => {
-    restoreEnv();
+    // Restore environment
+    delete process.env['NODE_ENV'];
+    delete process.env['OPENAI_API_KEY'];
+    delete process.env['ENABLE_SENTRY'];
+    delete process.env['TELEMETRY_ENDPOINT'];
+    delete process.env['TELEMETRY_API_KEY'];
   });
 
   describe('getInstance', () => {

@@ -30,45 +30,43 @@ describe('enhancedProposalGeneration', () => {
     { time: 1735862400000, open: 108500, high: 110000, low: 108000, close: 109500, volume: 3200 },
   ];
 
-  const mockPatternDetectorResponse = {
-    patterns: [
-      {
-        type: 'head_and_shoulders',
-        description: 'ヘッドアンドショルダーパターンが検出されました',
-        confidence: 0.85,
-        visualization: {
-          keyPoints: [
-            { time: 1735830000000, value: 101000 },
-            { time: 1735837200000, value: 103000 },
-            { time: 1735844400000, value: 105000 },
-          ],
-        },
-        metrics: {
-          leftShoulderHeight: 101000,
-          headHeight: 105000,
-          rightShoulderHeight: 103000,
-          necklineLevel: 100000,
-        },
-        trading_implication: 'ベアリッシュ反転の可能性',
+  const mockPatternDetectorResponse = [
+    {
+      type: 'head_and_shoulders',
+      description: 'ヘッドアンドショルダーパターンが検出されました',
+      confidence: 0.85,
+      visualization: {
+        keyPoints: [
+          { time: 1735830000000, value: 101000 },
+          { time: 1735837200000, value: 103000 },
+          { time: 1735844400000, value: 105000 },
+        ],
       },
-      {
-        type: 'triangle',
-        description: '上昇三角形パターンが形成されています',
-        confidence: 0.78,
-        visualization: {
-          keyPoints: [
-            { time: 1735833600000, value: 102000 },
-            { time: 1735840800000, value: 104000 },
-          ],
-        },
-        metrics: {
-          upperBound: 104000,
-          lowerBound: 102000,
-        },
-        trading_implication: 'ブレイクアウトの可能性',
+      metrics: {
+        leftShoulderHeight: 101000,
+        headHeight: 105000,
+        rightShoulderHeight: 103000,
+        necklineLevel: 100000,
       },
-    ],
-  };
+      trading_implication: 'ベアリッシュ反転の可能性',
+    },
+    {
+      type: 'triangle',
+      description: '上昇三角形パターンが形成されています',
+      confidence: 0.78,
+      visualization: {
+        keyPoints: [
+          { time: 1735833600000, value: 102000 },
+          { time: 1735840800000, value: 104000 },
+        ],
+      },
+      metrics: {
+        upperBound: 104000,
+        lowerBound: 102000,
+      },
+      trading_implication: 'ブレイクアウトの可能性',
+    },
+  ];
 
   const mockMLPrediction = {
     successProbability: 0.82,

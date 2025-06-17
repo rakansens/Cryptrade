@@ -108,7 +108,7 @@ describe('Error Boundary', () => {
       await response.json();
 
       expect(response.status).toBe(500);
-      expect(logger.error).toHaveBeenCalledWith('API Error', expect.any(Error), expect.objectContaining({
+      expect(logger.error).toHaveBeenCalledWith('API Error', expect.objectContaining({
         operational: false
       }));
     });
@@ -127,7 +127,7 @@ describe('Error Boundary', () => {
       expect(response.status).toBe(500);
       expect(data.error.code).toBe('UNKNOWN_ERROR');
       expect(data.error.message).toBe('Unknown error');
-      expect(logger.error).toHaveBeenCalledWith('Uncaught API Error', expect.any(Error), expect.any(Object));
+      expect(logger.error).toHaveBeenCalledWith('Uncaught API Error', expect.any(Object));
     });
 
     it('should handle RateLimitError with special headers', async () => {

@@ -8,7 +8,7 @@ import { logger } from '@/lib/utils/logger';
 // Mock dependencies
 jest.mock('@mastra/core');
 jest.mock('ai');
-jest.mock('@/lib/mastra/chart-data-analysis.tool');
+jest.mock('@/lib/mastra/tools/chart-data-analysis.tool');
 jest.mock('@/lib/monitoring/metrics');
 jest.mock('@/lib/utils/logger', () => ({
   logger: {

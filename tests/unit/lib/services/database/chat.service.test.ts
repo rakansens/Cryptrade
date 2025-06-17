@@ -30,9 +30,9 @@ jest.mock('@/lib/db/prisma', () => ({
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/db/health-check');
 jest.mock('@/lib/utils/db-connection');
-jest.mock('../chat.validation');
-jest.mock('../rate-limiter');
-jest.mock('../chat-cache');
+jest.mock('@/lib/services/database/chat.validation');
+jest.mock('@/lib/services/database/rate-limiter');
+jest.mock('@/lib/services/database/chat-cache');
 
 describe('ChatDatabaseService', () => {
   beforeEach(() => {

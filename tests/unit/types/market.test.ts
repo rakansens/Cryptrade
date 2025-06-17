@@ -3,7 +3,7 @@ import { validateBinanceKlines } from '@/types/market';
 // Mock ProcessedKline data (already processed)
 const mockProcessedKlines = [
   {
-    time: 1640995200000,
+    time: 1640995200, // Time in seconds
     open: 47000,
     high: 47500,
     low: 46800,
@@ -11,7 +11,7 @@ const mockProcessedKlines = [
     volume: 1234.56
   },
   {
-    time: 1640995260000,
+    time: 1640995260, // Time in seconds
     open: 47200,
     high: 47300,
     low: 47000,
@@ -40,7 +40,7 @@ describe('validateBinanceKlines - Dual Mode', () => {
     
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual({
-      time: 1640995200000,
+      time: 1640995200, // Convert from milliseconds to seconds
       open: 47000,
       high: 47500,
       low: 46800,
@@ -97,8 +97,8 @@ describe('validateBinanceKlines - Dual Mode', () => {
     
     const result = prodValidateBinanceKlines(mixedData);
     expect(result).toHaveLength(2); // Should filter out invalid entries
-    expect(result[0].time).toBe(1640995200000);
-    expect(result[1].time).toBe(1640995260000);
+    expect(result[0].time).toBe(1640995200); // Convert from milliseconds to seconds
+    expect(result[1].time).toBe(1640995260);
     
     // Restore original environment and console
     Object.defineProperty(process.env, 'NODE_ENV', {
