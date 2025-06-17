@@ -116,6 +116,8 @@ public/debug-*.html
 performance-report.md
 mutation-report.html
 snapshot-*.json
+docs/reports/
+docs/analysis/
 
 # Dead code cleanup artifacts
 scan_report.json
@@ -164,3 +166,12 @@ directory_schema.json
 
 # Claude specific files
 .claude/
+
+# Benchmark and performance files
+scripts/benchmarks/
+perf_*.json
+metrics_*.csv
+metrics_*.json
+
+# Patch files for refactoring
+patches/refactoring/

@@ -110,3 +110,11 @@ export const showToast = (message: string, type: ToastProps['type'], duration?: 
     })
   );
 };
+
+// Toast helper object with methods
+export const toast = {
+  success: (message: string, duration?: number) => showToast(message, 'success', duration),
+  error: (message: string, duration?: number) => showToast(message, 'error', duration),
+  warning: (message: string, duration?: number) => showToast(message, 'warning', duration),
+  info: (message: string, duration?: number) => showToast(message, 'info', duration),
+};
