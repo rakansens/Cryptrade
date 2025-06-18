@@ -49,7 +49,24 @@ export class ApiClient {
   }
 
   async execute<T>(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<ApiResponse<T>> {
-    const fullUrl = url.startsWith('http') ? url : `${this.config.baseUrl}${url}`;
+    let fullUrl: string;
+    if (url.startsWith('http')) {
+      // Already an absolute URL
+      fullUrl = url;
+    } else {
+      // Construct URL from baseUrl and path
+      if (this.config.baseUrl.startsWith('http')) {
+        // baseUrl is absolute
+        fullUrl = `${this.config.baseUrl}${url}`;
+      } else {
+        // baseUrl is relative, construct absolute URL
+        // In browser context, use window.location.origin, otherwise use a default
+        const origin = typeof window !== 'undefined' 
+          ? window.location.origin 
+          : 'http://localhost:3000';
+        fullUrl = `${origin}${this.config.baseUrl}${url}`;
+      }
+    }
     
     const ctx: RequestCtx = {
       request: { 

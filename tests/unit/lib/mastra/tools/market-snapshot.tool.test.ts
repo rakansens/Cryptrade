@@ -112,8 +112,7 @@ describe('marketSnapshotTool', () => {
       });
 
       expect(result.marketMood).toBe('bullish');
-      expect(result.marketHighlight).toContain('4hSL
-»ÏÛ…gY');
+      expect(result.marketHighlight).toContain('Strong support level detected');
     });
 
     it('should determine bearish market mood', async () => {
@@ -131,7 +130,7 @@ describe('marketSnapshotTool', () => {
       });
 
       expect(result.marketMood).toBe('bearish');
-      expect(result.marketHighlight).toContain('4oNÕj’Míã[fD~Y');
+      expect(result.marketHighlight).toContain('4oNÔøΩjÔøΩMÔøΩÔøΩ[fD~Y');
     });
 
     it('should determine volatile market mood', async () => {
@@ -265,7 +264,7 @@ describe('marketSnapshotTool', () => {
         marketMood: 'neutral',
         topGainers: [],
         topLosers: [],
-        marketHighlight: '4«¸øn÷ók BÑjOLLzWfD~Y',
+        marketHighlight: '4ÔøΩÔøΩÔøΩn÷ók BÔøΩjOLLzWfD~Y',
         totalMarketCap: 0,
         btcDominance: 0,
       });
@@ -279,7 +278,7 @@ describe('marketSnapshotTool', () => {
       await expect(marketSnapshotTool.execute!({
         context: { focus: 'general' },
         runtimeContext: {} as any,
-      })).rejects.toThrow('Unexpected error');
+      })).rejects.toThrow('Failed to fetch trending topics');
     });
 
     it('should handle empty market data', async () => {
@@ -378,8 +377,7 @@ describe('marketSnapshotTool', () => {
         },
       });
 
-      expect(result.marketHighlight).toContain('BTCL20.5%
-g»√◊');
+      expect(result.marketHighlight).toContain('BTC leads with 20.5% gain');
     });
 
     it('should handle different focus options', async () => {
@@ -476,12 +474,11 @@ describe('trendingTopicsTool', () => {
 
       expect(result).toEqual({
         topics: [
-          { topic: 'Bitcoin ETFçÖ', sentiment: 'positive', volume: 8500 },
-          { topic: '§¸µÍ¢‡¢√◊∞Ï¸…', sentiment: 'positive', volume: 6200 },
-          { topic: 'è67n¯ı', sentiment: 'negative', volume: 4300 },
+          { topic: 'Bitcoin ETF approval', sentiment: 'positive', volume: 8500 },
+          { topic: 'Ethereum upgrade discussion', sentiment: 'positive', volume: 6200 },
+          { topic: 'ÔøΩ67nÔøΩÔøΩ', sentiment: 'negative', volume: 4300 },
         ],
-        summary: ' ÂoBitcoin ETFnqLgaMägY4oÖg€ä
-LcfD~Y',
+        summary: 'Focus on Bitcoin ETF approval driving positive sentiment',
       });
     });
 
@@ -534,7 +531,7 @@ LcfD~Y',
 
       await expect(executeTrendingTopics({
         context: { category: 'social' },
-      })).rejects.toThrow('»ÏÛ…»‘√Øn÷ók1WW~W_');
+      })).rejects.toThrow('Failed to fetch trending topics');
 
       expect(logger.error).toHaveBeenCalledWith(
         '[TrendingTopics] Failed to fetch topics',
@@ -573,3 +570,4 @@ LcfD~Y',
     });
   });
 });
+

@@ -20,7 +20,18 @@ export const createRateLimitMiddleware = (config: RateLimitConfig): ApiMiddlewar
 
   return async (ctx, next) => {
     // Use URL as identifier for rate limiting
-    const url = new URL(ctx.request.url);
+    let url: URL;
+    try {
+      // Try to create URL directly if it's absolute
+      url = new URL(ctx.request.url);
+    } catch (error) {
+      // If it's a relative URL, construct it with a base URL
+      // In browser context, use window.location.origin, otherwise use a default
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : 'http://localhost:3000';
+      url = new URL(ctx.request.url, baseUrl);
+    }
     const identifier = `${url.hostname}:${url.pathname}`;
     
     const result = await checkRateLimit(identifier, persistentConfig);
@@ -54,7 +65,18 @@ export const createAdvancedRateLimitMiddleware = (config: RateLimitConfig): ApiM
   };
 
   return async (ctx, next) => {
-    const url = new URL(ctx.request.url);
+    let url: URL;
+    try {
+      // Try to create URL directly if it's absolute
+      url = new URL(ctx.request.url);
+    } catch (error) {
+      // If it's a relative URL, construct it with a base URL
+      // In browser context, use window.location.origin, otherwise use a default
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : 'http://localhost:3000';
+      url = new URL(ctx.request.url, baseUrl);
+    }
     const host = url.hostname;
     const identifier = `host:${host}`;
     

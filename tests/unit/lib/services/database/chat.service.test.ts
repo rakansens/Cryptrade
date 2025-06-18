@@ -623,3 +623,22 @@ describe('ChatDatabaseService', () => {
       const dbSession: ConversationSession = {
         id: 'session-1',
         userId: 'user-123',
+        title: 'Test Session',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-02'),
+        messages: []
+      };
+
+      const result = ChatService.convertToChatSession(dbSession);
+
+      expect(result).toEqual({
+        id: 'session-1',
+        userId: 'user-123',
+        title: 'Test Session',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-02'),
+        messages: []
+      });
+    });
+  });
+});
