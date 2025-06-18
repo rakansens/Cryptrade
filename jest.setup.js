@@ -54,8 +54,16 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost:3000';
 
 // Mock fetch for Node.js environment
-if (typeof fetch === 'undefined') {
-  global.fetch = jest.fn();
+if (typeof global.fetch === 'undefined') {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve(''),
+      status: 200,
+      statusText: 'OK',
+    })
+  );
 }
 
 // Mock browser APIs only if window is defined (jsdom environment)

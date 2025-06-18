@@ -282,3 +282,8 @@ describe('AnalysisService', () => {
         }
       });
 
+
+      expect(result).toEqual(mockActiveAnalyses);
+    });
+  });
+});

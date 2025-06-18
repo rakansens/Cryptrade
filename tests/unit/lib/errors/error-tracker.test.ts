@@ -16,8 +16,18 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+// Ensure fetch is properly mocked before any tests
+beforeAll(() => {
+  global.fetch = jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+      text: () => Promise.resolve('OK'),
+      status: 200,
+      statusText: 'OK',
+    })
+  );
+});
 
 describe('ErrorTracker', () => {
   let tracker: ErrorTracker;
@@ -30,7 +40,20 @@ describe('ErrorTracker', () => {
     (ErrorTracker as any).instance = undefined;
     tracker = ErrorTracker.getInstance();
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockReset();
+    
+    // Reset and setup fetch mock
+    if (global.fetch) {
+      (global.fetch as jest.Mock).mockClear();
+      (global.fetch as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+          text: () => Promise.resolve('OK'),
+          status: 200,
+          statusText: 'OK',
+        })
+      );
+    }
   });
 
   afterEach(() => {

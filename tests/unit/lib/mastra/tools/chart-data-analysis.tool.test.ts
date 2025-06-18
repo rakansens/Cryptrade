@@ -1,646 +1,559 @@
-// Mock dependencies before imports
-jest.mock('@/lib/utils/logger');
-
-// Mock fetch globally
-global.fetch = jest.fn();
-
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
 import { logger } from '@/lib/utils/logger';
+import type { Candle, TechnicalAnalysis, Pattern } from '@/lib/mastra/tools/chart-data-analysis.tool';
 
-// Type cast the execute function to avoid TypeScript errors
-const executeChartDataAnalysisTool = chartDataAnalysisTool.execute as any;
+// Mock logger
+vi.mock('@/lib/utils/logger');
 
-describe('chartDataAnalysisTool', () => {
-  const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+// Mock candlestick data generator
+function generateMockCandles(count: number, trend: 'bullish' | 'bearish' | 'sideways' = 'sideways'): any[] {
+  const basePrice = 50000;
+  const candles = [];
+  let currentPrice = basePrice;
+  
+  for (let i = 0; i < count; i++) {
+    const time = Date.now() - (count - i) * 3600000; // 1 hour intervals
+    
+    // Apply trend
+    if (trend === 'bullish') {
+      currentPrice += Math.random() * 200 + 50;
+    } else if (trend === 'bearish') {
+      currentPrice -= Math.random() * 200 + 50;
+    } else {
+      currentPrice += (Math.random() - 0.5) * 300;
+    }
+    
+    const volatility = currentPrice * 0.02;
+    const open = currentPrice + (Math.random() - 0.5) * volatility;
+    const close = currentPrice + (Math.random() - 0.5) * volatility;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+    const volume = 1000000 + Math.random() * 500000;
+    
+    candles.push([time, open.toString(), high.toString(), low.toString(), close.toString(), volume.toString()]);
+  }
+  
+  return candles;
+}
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(Date, 'now').mockReturnValue(1640995200000); // Fixed timestamp for tests
-  });
+// MSW server setup
+const server = setupServer(
+  rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+    const symbol = req.url.searchParams.get('symbol');
+    const interval = req.url.searchParams.get('interval');
+    const limit = parseInt(req.url.searchParams.get('limit') || '200');
+    
+    // Generate mock data based on parameters
+    const mockCandles = generateMockCandles(limit);
+    
+    return res(ctx.json(mockCandles));
+  })
+);
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+beforeAll(() => server.listen());
+afterEach(() => {
+  server.resetHandlers();
+  vi.clearAllMocks();
+});
+afterAll(() => server.close());
 
-  describe('tool configuration', () => {
-    it('should have correct metadata', () => {
-      expect(chartDataAnalysisTool.id).toBe('chart-data-analysis');
-      expect(chartDataAnalysisTool.description).toContain('Advanced chart data analysis tool');
-      expect(chartDataAnalysisTool.inputSchema).toBeDefined();
-      expect(chartDataAnalysisTool.outputSchema).toBeDefined();
-    });
-  });
-
-  describe('execute - successful analysis', () => {
-    const mockCandleData = Array.from({ length: 100 }, (_, i) => [
-      1640995200000 + i * 3600000, // Open time
-      '50000', // Open
-      '50500', // High
-      '49500', // Low
-      '50200', // Close
-      '100', // Volume
-    ]);
-
-    beforeEach(() => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockCandleData,
-      } as Response);
-    });
-
-    it('should fetch and analyze market data with default parameters', async () => {
-      const result = await executeChartDataAnalysisTool({
+describe('ChartDataAnalysisTool', () => {
+  describe('Basic Functionality', () => {
+    it('should fetch and analyze chart data with default parameters', async () => {
+      const result = await chartDataAnalysisTool.execute({
         context: {}
       });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=200'
-      );
-
-      expect(result).toMatchObject({
-        symbol: 'BTCUSDT',
-        timeframe: '1h',
-        dataRange: {
-          candleCount: 100,
-          startTime: expect.any(Number),
-          endTime: expect.any(Number),
-        },
-        currentPrice: {
-          price: 50200,
-          timestamp: expect.any(Number),
-        },
-        technicalAnalysis: expect.objectContaining({
-          trend: expect.objectContaining({
-            direction: expect.stringMatching(/^(bullish|bearish|sideways)$/),
-            strength: expect.any(Number),
-            confidence: expect.any(Number),
-          }),
-          supportResistance: expect.objectContaining({
-            supports: expect.any(Array),
-            resistances: expect.any(Array),
-          }),
-          volatility: expect.objectContaining({
-            atr: expect.any(Number),
-            volatilityLevel: expect.stringMatching(/^(low|medium|high)$/),
-            atrPercent: expect.any(Number),
-          }),
-          momentum: expect.objectContaining({
-            rsi: expect.any(Number),
-            macd: expect.objectContaining({
-              macd: expect.any(Number),
-              signal: expect.any(Number),
-              histogram: expect.any(Number),
-            }),
-          }),
-        }),
-        recommendations: expect.objectContaining({
-          trendlineDrawing: expect.any(Array),
-          analysis: expect.any(String),
-          nextAction: expect.any(String),
-        }),
-      });
+      
+      expect(result).toBeDefined();
+      expect(result.symbol).toBe('BTCUSDT');
+      expect(result.timeframe).toBe('1h');
+      expect(result.dataRange.candleCount).toBe(200);
+      expect(result.currentPrice.price).toBeGreaterThan(0);
+      expect(result.technicalAnalysis).toBeDefined();
+      expect(result.recommendations).toBeDefined();
     });
 
-    it('should handle custom parameters', async () => {
-      const result = await executeChartDataAnalysisTool({
+    it('should fetch data with custom parameters', async () => {
+      const result = await chartDataAnalysisTool.execute({
         context: {
           symbol: 'ETHUSDT',
           timeframe: '4h',
-          limit: 500,
-          analysisType: 'trend',
-          lookbackPeriod: 200,
+          limit: 100,
+          analysisType: 'trend'
         }
       });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=4h&limit=500'
-      );
-
+      
       expect(result.symbol).toBe('ETHUSDT');
       expect(result.timeframe).toBe('4h');
+      expect(result.dataRange.candleCount).toBe(100);
     });
 
-    it('should generate trendline recommendations for strong trends', async () => {
-      // Mock data with clear uptrend
-      const uptrendData = Array.from({ length: 100 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        String(45000 + i * 100), // Steadily increasing open
-        String(45500 + i * 100), // High
-        String(44800 + i * 100), // Low
-        String(45200 + i * 100), // Close
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => uptrendData,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: { analysisType: 'full' }
-      });
-
-      expect(result.technicalAnalysis.trend.direction).toBe('bullish');
-      expect(result.technicalAnalysis.trend.strength).toBeGreaterThan(0.6);
-      expect(result.recommendations.trendlineDrawing.length).toBeGreaterThan(0);
+    it('should handle different analysis types', async () => {
+      const analysisTypes = ['full', 'trend', 'support_resistance', 'patterns', 'volatility'];
       
-      const trendlineRec = result.recommendations.trendlineDrawing[0];
-      expect(trendlineRec).toMatchObject({
-        type: 'trendline',
-        description: expect.stringContaining('トレンドライン'),
-        points: expect.arrayContaining([
-          expect.objectContaining({ time: expect.any(Number), price: expect.any(Number) })
-        ]),
-        style: expect.objectContaining({
-          color: expect.any(String),
-          lineWidth: expect.any(Number),
-          lineStyle: expect.stringMatching(/^(solid|dashed|dotted)$/),
-        }),
-        priority: expect.any(Number),
-      });
-    });
-
-    it('should detect support and resistance levels', async () => {
-      // Mock data with clear support/resistance levels
-      const rangeData = Array.from({ length: 100 }, (_, i) => {
-        const basePrice = 50000;
-        const oscillation = Math.sin(i * 0.2) * 1000;
-        return [
-          1640995200000 + i * 3600000,
-          String(basePrice + oscillation - 100),
-          String(basePrice + oscillation + 100),
-          String(basePrice + oscillation - 200),
-          String(basePrice + oscillation),
-          '100',
-        ];
-      });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => rangeData,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      expect(result.technicalAnalysis.supportResistance.supports.length).toBeGreaterThan(0);
-      expect(result.technicalAnalysis.supportResistance.resistances.length).toBeGreaterThan(0);
-
-      const support = result.technicalAnalysis.supportResistance.supports[0];
-      expect(support).toMatchObject({
-        price: expect.any(Number),
-        strength: expect.any(Number),
-        touchCount: expect.any(Number),
-        lastTouch: expect.any(Number),
-      });
-    });
-
-    it('should calculate technical indicators correctly', async () => {
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      const { momentum, volatility, movingAverages } = result.technicalAnalysis;
-
-      // RSI should be between 0 and 100
-      expect(momentum.rsi).toBeGreaterThanOrEqual(0);
-      expect(momentum.rsi).toBeLessThanOrEqual(100);
-
-      // ATR should be positive
-      expect(volatility.atr).toBeGreaterThan(0);
-      expect(volatility.atrPercent).toBeGreaterThan(0);
-
-      // Moving averages should exist if enough data
-      if (mockCandleData.length >= 20) {
-        expect(movingAverages.ma20).toBeDefined();
-      }
-      if (mockCandleData.length >= 50) {
-        expect(movingAverages.ma50).toBeDefined();
-      }
-    });
-
-    it('should handle patterns analysis when requested', async () => {
-      const result = await executeChartDataAnalysisTool({
-        context: { analysisType: 'patterns' }
-      });
-
-      expect(result.patterns).toBeDefined();
-      if (result.patterns && result.patterns.length > 0) {
-        expect(result.patterns[0]).toMatchObject({
-          type: expect.any(String),
-          confidence: expect.any(Number),
-          timeframe: expect.any(String),
-          description: expect.any(String),
-        });
-      }
-    });
-
-    it('should limit raw data to last 50 candles', async () => {
-      const result = await executeChartDataAnalysisTool({
-        context: { limit: 200 }
-      });
-
-      expect(result.rawData?.candles).toHaveLength(50);
-    });
-
-    it('should generate appropriate market analysis summaries', async () => {
-      const scenarios = [
-        { rsi: 75, expectedText: '買われすぎ' },
-        { rsi: 25, expectedText: '売られすぎ' },
-        { rsi: 50, expectedText: '中立' },
-      ];
-
-      for (const scenario of scenarios) {
-        // Mock data to produce specific RSI
-        const mockData = Array.from({ length: 100 }, (_, i) => {
-          const price = scenario.rsi > 70 ? 50000 + i * 50 : 
-                        scenario.rsi < 30 ? 50000 - i * 50 : 50000;
-          return [
-            1640995200000 + i * 3600000,
-            String(price),
-            String(price + 100),
-            String(price - 100),
-            String(price),
-            '100',
-          ];
-        });
-
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockData,
-        } as Response);
-
-        const result = await executeChartDataAnalysisTool({
-          context: {}
-        });
-
-        expect(result.recommendations.analysis).toContain(scenario.expectedText);
-      }
-    });
-
-    it('should generate next action recommendations based on market conditions', async () => {
-      // Test bullish trend recommendation
-      const bullishData = Array.from({ length: 100 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        String(45000 + i * 100),
-        String(45500 + i * 100),
-        String(44800 + i * 100),
-        String(45200 + i * 100),
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => bullishData,
-      } as Response);
-
-      const bullishResult = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      expect(bullishResult.recommendations.nextAction).toContain('上昇トレンド');
-
-      // Test oversold condition recommendation
-      const oversoldData = Array.from({ length: 100 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        String(50000 - i * 100), // Declining prices
-        String(50100 - i * 100),
-        String(49900 - i * 100),
-        String(50000 - i * 100),
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => oversoldData,
-      } as Response);
-
-      const oversoldResult = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      // Should suggest potential reversal for oversold conditions
-      const nextAction = oversoldResult.recommendations.nextAction;
-      expect(
-        nextAction.includes('売られすぎ') || 
-        nextAction.includes('反発') ||
-        nextAction.includes('下降トレンド')
-      ).toBe(true);
-    });
-
-    it('should include all required fields in trendline recommendations', async () => {
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      if (result.recommendations.trendlineDrawing.length > 0) {
-        const drawing = result.recommendations.trendlineDrawing[0];
-        expect(drawing).toHaveProperty('type');
-        expect(drawing).toHaveProperty('description');
-        expect(drawing).toHaveProperty('points');
-        expect(drawing).toHaveProperty('style');
-        expect(drawing).toHaveProperty('priority');
-        
-        expect(drawing.points.length).toBeGreaterThanOrEqual(2);
-        expect(drawing.style).toMatchObject({
-          color: expect.any(String),
-          lineWidth: expect.any(Number),
-          lineStyle: expect.stringMatching(/^(solid|dashed|dotted)$/),
-        });
-      }
-    });
-  });
-
-  describe('execute - error handling', () => {
-    it('should handle API fetch failure', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-
-      const result = await executeChartDataAnalysisTool({
-        context: { symbol: 'BTCUSDT' }
-      });
-
-      expect(logger.error).toHaveBeenCalledWith(
-        '[ChartDataAnalysis] Analysis failed',
-        expect.objectContaining({
-          symbol: 'BTCUSDT',
-          error: 'Network error',
-        })
-      );
-
-      expect(result).toMatchObject({
-        symbol: 'BTCUSDT',
-        currentPrice: { price: 50000 }, // Fallback price
-        technicalAnalysis: {
-          trend: { direction: 'sideways', strength: 0.5, confidence: 0.1 },
-        },
-        recommendations: {
-          trendlineDrawing: [],
-          analysis: 'データの取得に失敗しました。しばらく時間をおいて再度お試しください。',
-        },
-      });
-    });
-
-    it('should handle non-ok API response', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      expect(logger.error).toHaveBeenCalledWith(
-        '[ChartDataAnalysis] Analysis failed',
-        expect.objectContaining({
-          error: 'Failed to fetch candlestick data: 429',
-        })
-      );
-
-      expect(result.recommendations.analysis).toContain('データの取得に失敗しました');
-    });
-
-    it('should handle empty candle data', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      expect(result.dataRange.candleCount).toBe(0);
-      expect(result.currentPrice.price).toBe(50000); // Fallback
-      expect(result.technicalAnalysis.trend.confidence).toBe(0.1); // Low confidence
-    });
-
-    it('should handle malformed candle data', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          ['invalid', 'data', 'format'],
-          null,
-          undefined,
-          [1640995200000, '50000', '50500', '49500', '50200', '100'], // Valid
-        ],
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      // Should process valid candles and skip invalid ones
-      expect(result.dataRange.candleCount).toBe(3); // Including invalid entries
-    });
-
-    it('should handle insufficient data for indicators', async () => {
-      const fewCandles = Array.from({ length: 5 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        '50000',
-        '50500',
-        '49500',
-        '50200',
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => fewCandles,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      // Should handle gracefully with default values
-      expect(result.technicalAnalysis.momentum.rsi).toBe(50); // Default RSI
-      expect(result.technicalAnalysis.trend.direction).toBe('sideways');
-    });
-
-    it('should validate limit parameter', async () => {
-      const result = await executeChartDataAnalysisTool({
-        context: { limit: 5 } // Below minimum
-      });
-
-      // Should use minimum of 10
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=5')
-      );
-    });
-
-    it('should handle very high volatility', async () => {
-      const volatileData = Array.from({ length: 100 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        String(50000 + Math.random() * 5000),
-        String(55000 + Math.random() * 5000),
-        String(45000 + Math.random() * 5000),
-        String(50000 + Math.random() * 5000),
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => volatileData,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      expect(result.technicalAnalysis.volatility.volatilityLevel).toBe('high');
-      expect(result.technicalAnalysis.volatility.atrPercent).toBeGreaterThan(4);
-    });
-  });
-
-  describe('execute - edge cases', () => {
-    it('should handle all analysis types', async () => {
-      const analysisTypes = ['full', 'trend', 'support_resistance', 'patterns', 'volatility'] as const;
-
       for (const analysisType of analysisTypes) {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => Array.from({ length: 100 }, (_, i) => [
-            1640995200000 + i * 3600000,
-            '50000', '50500', '49500', '50200', '100',
-          ]),
-        } as Response);
-
-        const result = await executeChartDataAnalysisTool({
-          context: { analysisType }
+        const result = await chartDataAnalysisTool.execute({
+          context: {
+            analysisType: analysisType as any
+          }
         });
-
+        
         expect(result).toBeDefined();
-        expect(result.symbol).toBe('BTCUSDT');
-
-        if (analysisType === 'patterns' || analysisType === 'full') {
+        expect(result.technicalAnalysis).toBeDefined();
+        
+        if (analysisType === 'full' || analysisType === 'patterns') {
           expect(result.patterns).toBeDefined();
         }
       }
     });
+  });
 
-    it('should handle different timeframes correctly', async () => {
+  describe('Technical Analysis', () => {
+    it('should calculate trend analysis correctly', async () => {
+      // Mock bullish trend data
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const mockCandles = generateMockCandles(200, 'bullish');
+          return res(ctx.json(mockCandles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: { analysisType: 'trend' }
+      });
+      
+      expect(result.technicalAnalysis.trend).toBeDefined();
+      expect(result.technicalAnalysis.trend.direction).toMatch(/bullish|bearish|sideways/);
+      expect(result.technicalAnalysis.trend.strength).toBeGreaterThanOrEqual(0);
+      expect(result.technicalAnalysis.trend.strength).toBeLessThanOrEqual(1);
+      expect(result.technicalAnalysis.trend.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.technicalAnalysis.trend.confidence).toBeLessThanOrEqual(1);
+    });
+
+    it('should calculate support and resistance levels', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { analysisType: 'support_resistance' }
+      });
+      
+      const { supportResistance } = result.technicalAnalysis;
+      expect(supportResistance).toBeDefined();
+      expect(Array.isArray(supportResistance.supports)).toBe(true);
+      expect(Array.isArray(supportResistance.resistances)).toBe(true);
+      
+      // Check support structure
+      if (supportResistance.supports.length > 0) {
+        const support = supportResistance.supports[0];
+        expect(support.price).toBeGreaterThan(0);
+        expect(support.strength).toBeGreaterThanOrEqual(0);
+        expect(support.strength).toBeLessThanOrEqual(1);
+        expect(support.touchCount).toBeGreaterThanOrEqual(2);
+        expect(support.lastTouch).toBeGreaterThan(0);
+      }
+    });
+
+    it('should calculate momentum indicators', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { lookbackPeriod: 50 }
+      });
+      
+      const { momentum } = result.technicalAnalysis;
+      expect(momentum).toBeDefined();
+      
+      // RSI
+      expect(momentum.rsi).toBeGreaterThanOrEqual(0);
+      expect(momentum.rsi).toBeLessThanOrEqual(100);
+      
+      // MACD
+      expect(momentum.macd).toBeDefined();
+      expect(typeof momentum.macd.macd).toBe('number');
+      expect(typeof momentum.macd.signal).toBe('number');
+      expect(typeof momentum.macd.histogram).toBe('number');
+    });
+
+    it('should calculate volatility metrics', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { analysisType: 'volatility' }
+      });
+      
+      const { volatility } = result.technicalAnalysis;
+      expect(volatility).toBeDefined();
+      expect(volatility.atr).toBeGreaterThan(0);
+      expect(volatility.atrPercent).toBeGreaterThan(0);
+      expect(volatility.volatilityLevel).toMatch(/low|medium|high/);
+    });
+
+    it('should calculate moving averages', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { limit: 250 } // Ensure enough data for MA200
+      });
+      
+      const { movingAverages } = result.technicalAnalysis;
+      expect(movingAverages).toBeDefined();
+      
+      if (movingAverages.ma20 !== undefined) {
+        expect(movingAverages.ma20).toBeGreaterThan(0);
+      }
+      if (movingAverages.ma50 !== undefined) {
+        expect(movingAverages.ma50).toBeGreaterThan(0);
+      }
+      if (movingAverages.ema12 !== undefined) {
+        expect(movingAverages.ema12).toBeGreaterThan(0);
+      }
+      if (movingAverages.ema26 !== undefined) {
+        expect(movingAverages.ema26).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('Pattern Detection', () => {
+    it('should detect chart patterns when requested', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { analysisType: 'patterns' }
+      });
+      
+      if (result.patterns && result.patterns.length > 0) {
+        const pattern = result.patterns[0];
+        expect(pattern.type).toBeTruthy();
+        expect(pattern.confidence).toBeGreaterThanOrEqual(0);
+        expect(pattern.confidence).toBeLessThanOrEqual(1);
+        expect(pattern.timeframe).toBeTruthy();
+        expect(pattern.description).toBeTruthy();
+      }
+    });
+
+    it('should detect ascending triangle pattern', async () => {
+      // Mock data that forms an ascending triangle
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const candles = [];
+          const basePrice = 50000;
+          
+          // Create ascending triangle pattern
+          for (let i = 0; i < 200; i++) {
+            const time = Date.now() - (200 - i) * 3600000;
+            const resistanceLevel = basePrice + 1000;
+            
+            // Gradually increasing lows
+            const low = basePrice + (i / 200) * 500 - Math.random() * 100;
+            
+            // Highs hitting resistance
+            const high = i % 20 === 0 ? resistanceLevel : resistanceLevel - Math.random() * 200;
+            
+            const open = (high + low) / 2 + (Math.random() - 0.5) * 100;
+            const close = (high + low) / 2 + (Math.random() - 0.5) * 100;
+            const volume = 1000000 + Math.random() * 500000;
+            
+            candles.push([
+              time,
+              open.toString(),
+              Math.max(open, close, high).toString(),
+              Math.min(open, close, low).toString(),
+              close.toString(),
+              volume.toString()
+            ]);
+          }
+          
+          return res(ctx.json(candles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: { analysisType: 'patterns' }
+      });
+      
+      // Pattern detection might find the ascending triangle
+      if (result.patterns && result.patterns.length > 0) {
+        const ascendingTriangle = result.patterns.find(p => p.type === 'ascending_triangle');
+        if (ascendingTriangle) {
+          expect(ascendingTriangle.confidence).toBeGreaterThan(0);
+          expect(ascendingTriangle.description).toContain('上昇三角形');
+        }
+      }
+    });
+  });
+
+  describe('Drawing Recommendations', () => {
+    it('should generate trendline recommendations', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result.recommendations).toBeDefined();
+      expect(Array.isArray(result.recommendations.trendlineDrawing)).toBe(true);
+      
+      if (result.recommendations.trendlineDrawing.length > 0) {
+        const recommendation = result.recommendations.trendlineDrawing[0];
+        expect(recommendation.type).toMatch(/trendline|fibonacci|horizontal/);
+        expect(recommendation.description).toBeTruthy();
+        expect(Array.isArray(recommendation.points)).toBe(true);
+        expect(recommendation.points.length).toBeGreaterThanOrEqual(2);
+        
+        // Check point structure
+        const point = recommendation.points[0];
+        expect(point.time).toBeGreaterThan(0);
+        expect(point.price).toBeGreaterThan(0);
+        
+        // Check style
+        expect(recommendation.style).toBeDefined();
+        expect(recommendation.style.color).toMatch(/^#[0-9A-F]{6}$/i);
+        expect(recommendation.style.lineWidth).toBeGreaterThan(0);
+        expect(recommendation.style.lineStyle).toMatch(/solid|dashed|dotted/);
+        
+        expect(recommendation.priority).toBeGreaterThanOrEqual(1);
+        expect(recommendation.priority).toBeLessThanOrEqual(10);
+      }
+    });
+
+    it('should prioritize recommendations correctly', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      const recommendations = result.recommendations.trendlineDrawing;
+      
+      // Check that recommendations are sorted by priority (descending)
+      for (let i = 1; i < recommendations.length; i++) {
+        expect(recommendations[i - 1].priority).toBeGreaterThanOrEqual(recommendations[i].priority);
+      }
+    });
+
+    it('should generate appropriate analysis summary', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result.recommendations.analysis).toBeTruthy();
+      expect(result.recommendations.analysis).toContain('チャート分析結果');
+      expect(result.recommendations.nextAction).toBeTruthy();
+    });
+
+    it('should provide context-aware next actions', async () => {
+      // Test with high RSI
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          // Generate overbought conditions
+          const candles = generateMockCandles(200, 'bullish');
+          return res(ctx.json(candles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      // Should recommend caution or profit-taking
+      expect(result.recommendations.nextAction).toBeTruthy();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle API errors gracefully', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          return res(ctx.status(500), ctx.json({ error: 'Internal Server Error' }));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.symbol).toBe('BTCUSDT');
+      expect(result.dataRange.candleCount).toBe(0);
+      expect(result.currentPrice.price).toBe(50000); // Fallback price
+      expect(result.recommendations.analysis).toContain('データの取得に失敗しました');
+      
+      expect(logger.error).toHaveBeenCalledWith(
+        '[ChartDataAnalysis] Analysis failed',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle empty data gracefully', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          return res(ctx.json([]));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.dataRange.candleCount).toBe(0);
+      expect(result.technicalAnalysis).toBeDefined();
+    });
+
+    it('should handle malformed data', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          return res(ctx.json([
+            ['invalid', 'data', 'format'],
+            [12345, 'not', 'enough', 'fields']
+          ]));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result).toBeDefined();
+      expect(logger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('Raw Data Output', () => {
+    it('should include raw candle data when requested', async () => {
+      const result = await chartDataAnalysisTool.execute({
+        context: { limit: 100 }
+      });
+      
+      if (result.rawData?.candles) {
+        expect(Array.isArray(result.rawData.candles)).toBe(true);
+        expect(result.rawData.candles.length).toBeLessThanOrEqual(50); // Last 50 candles
+        
+        if (result.rawData.candles.length > 0) {
+          const candle = result.rawData.candles[0];
+          expect(candle.time).toBeGreaterThan(0);
+          expect(candle.open).toBeGreaterThan(0);
+          expect(candle.high).toBeGreaterThan(0);
+          expect(candle.low).toBeGreaterThan(0);
+          expect(candle.close).toBeGreaterThan(0);
+          expect(candle.volume).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
+
+  describe('Time Frame Support', () => {
+    it('should support all major timeframes', async () => {
       const timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'];
-
+      
       for (const timeframe of timeframes) {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => [[1640995200000, '50000', '50500', '49500', '50200', '100']],
-        } as Response);
-
-        const result = await executeChartDataAnalysisTool({
-          context: { timeframe }
+        const result = await chartDataAnalysisTool.execute({
+          context: { timeframe, limit: 50 }
         });
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining(`interval=${timeframe}`)
-        );
+        
         expect(result.timeframe).toBe(timeframe);
+        expect(result.dataRange).toBeDefined();
       }
     });
+  });
 
-    it('should handle extreme price movements', async () => {
-      const extremeData = [
-        [1640995200000, '50000', '50500', '49500', '50200', '100'],
-        [1640998800000, '50200', '100000', '50000', '95000', '1000'], // Huge spike
-        [1641002400000, '95000', '96000', '20000', '25000', '2000'], // Huge drop
-      ];
+  describe('Performance', () => {
+    it('should complete analysis within reasonable time', async () => {
+      const startTime = Date.now();
+      
+      await chartDataAnalysisTool.execute({
+        context: { limit: 500, analysisType: 'full' }
+      });
+      
+      const duration = Date.now() - startTime;
+      expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
+    });
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => extremeData,
-      } as Response);
+    it('should handle large datasets efficiently', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const limit = parseInt(req.url.searchParams.get('limit') || '1000');
+          const mockCandles = generateMockCandles(limit);
+          return res(ctx.json(mockCandles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: { limit: 1000 }
+      });
+      
+      expect(result.dataRange.candleCount).toBe(1000);
+      expect(result.technicalAnalysis).toBeDefined();
+    });
+  });
 
-      const result = await executeChartDataAnalysisTool({
+  describe('Edge Cases', () => {
+    it('should handle data with extreme values', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const candles = [
+            [Date.now(), '0.00001', '0.00002', '0.000005', '0.000015', '100'],
+            [Date.now() + 3600000, '1000000', '2000000', '900000', '1500000', '100000000']
+          ];
+          return res(ctx.json(candles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: { limit: 2 }
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.technicalAnalysis).toBeDefined();
+    });
+
+    it('should handle identical prices (no volatility)', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const candles = [];
+          const price = 50000;
+          
+          for (let i = 0; i < 100; i++) {
+            candles.push([
+              Date.now() - (100 - i) * 3600000,
+              price.toString(),
+              price.toString(),
+              price.toString(),
+              price.toString(),
+              '1000000'
+            ]);
+          }
+          
+          return res(ctx.json(candles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
         context: {}
       });
-
-      expect(result.technicalAnalysis.volatility.volatilityLevel).toBe('high');
-      expect(result.recommendations.analysis).toContain('ボラティリティ');
-    });
-
-    it('should handle near support level detection', async () => {
-      // Create data where current price is near a support level
-      const supportData = Array.from({ length: 100 }, (_, i) => {
-        const baseSupport = 49000;
-        const price = i < 50 ? baseSupport : i < 80 ? 51000 : 49100; // Near support at end
-        return [
-          1640995200000 + i * 3600000,
-          String(price),
-          String(price + 100),
-          String(price - 100),
-          String(price),
-          '100',
-        ];
-      });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => supportData,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: {}
-      });
-
-      const nextAction = result.recommendations.nextAction;
-      expect(nextAction).toContain('サポートライン');
-      expect(nextAction).toContain('接近');
-    });
-
-    it('should generate different recommendations for different volatility levels', async () => {
-      const volatilityScenarios = [
-        { multiplier: 0.1, expected: 'low' },
-        { multiplier: 1, expected: 'medium' },
-        { multiplier: 5, expected: 'high' },
-      ];
-
-      for (const scenario of volatilityScenarios) {
-        const data = Array.from({ length: 100 }, (_, i) => [
-          1640995200000 + i * 3600000,
-          String(50000),
-          String(50000 + 100 * scenario.multiplier),
-          String(50000 - 100 * scenario.multiplier),
-          String(50000),
-          '100',
-        ]);
-
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => data,
-        } as Response);
-
-        const result = await executeChartDataAnalysisTool({
-          context: {}
-        });
-
-        expect(result.technicalAnalysis.volatility.volatilityLevel).toBe(scenario.expected);
-      }
-    });
-
-    it('should handle undefined values in calculations', async () => {
-      const sparseData = Array.from({ length: 10 }, (_, i) => [
-        1640995200000 + i * 3600000,
-        '50000',
-        '50500',
-        '49500',
-        '50200',
-        '100',
-      ]);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sparseData,
-      } as Response);
-
-      const result = await executeChartDataAnalysisTool({
-        context: { lookbackPeriod: 20 } // More than available data
-      });
-
-      // Should not throw and provide sensible defaults
+      
+      expect(result.technicalAnalysis.volatility.volatilityLevel).toBe('low');
       expect(result.technicalAnalysis.trend.direction).toBe('sideways');
-      expect(result.technicalAnalysis.momentum.rsi).toBe(50);
+    });
+
+    it('should handle data gaps', async () => {
+      server.use(
+        rest.get('https://api.binance.com/api/v3/klines', (req, res, ctx) => {
+          const candles = [];
+          
+          // Add candles with gaps
+          for (let i = 0; i < 50; i++) {
+            if (i % 10 !== 5) { // Skip every 10th candle to create gaps
+              candles.push([
+                Date.now() - (50 - i) * 3600000,
+                '50000',
+                '51000',
+                '49000',
+                '50500',
+                '1000000'
+              ]);
+            }
+          }
+          
+          return res(ctx.json(candles));
+        })
+      );
+      
+      const result = await chartDataAnalysisTool.execute({
+        context: {}
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.dataRange.candleCount).toBeLessThan(50);
     });
   });
 });

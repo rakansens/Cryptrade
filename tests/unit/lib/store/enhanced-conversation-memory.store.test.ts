@@ -1,436 +1,772 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import { 
-  useEnhancedConversationMemory, 
+  useEnhancedConversationMemory,
   createEnhancedSession,
   addToolCallMessage,
-  type EnhancedConversationMemoryState 
+  MAX_MESSAGES_IN_MEMORY,
+  type ConversationSession,
+  type EnhancedConversationMemoryState
 } from '@/lib/store/enhanced-conversation-memory.store';
-import { TokenLimiter, ToolCallFilter, MessageDeduplication, ContextWindowManager } from '@/lib/store/processors';
+import { TokenLimiter, ToolCallFilter } from '@/lib/store/processors';
+import { ChatDatabaseService } from '@/lib/services/database/chat.service';
+import { prisma } from '@/lib/db/prisma';
+import { logger } from '@/lib/utils/logger';
 import type { ConversationMessage } from '@/types/conversation-memory';
 
-// Mock database services
-let sessionCounter = 0;
-jest.mock('@/lib/services/database/chat.service', () => ({
-  ChatDatabaseService: {
-    createSession: jest.fn().mockImplementation(() => {
-      sessionCounter++;
-      return Promise.resolve({
-        id: `db-session-${sessionCounter}`,
-        createdAt: new Date(),
-        lastActiveAt: new Date(),
-        userId: null,
-        summary: null,
-      });
-    }),
-    getUserSessions: jest.fn().mockResolvedValue([]),
-    getSessionWithMessages: jest.fn().mockResolvedValue(null),
-  },
-}));
-
-jest.mock('@/lib/db/prisma', () => ({
+// Mock dependencies
+vi.mock('@/lib/services/database/chat.service');
+vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     conversationSession: {
-      update: jest.fn().mockResolvedValue({}),
-      upsert: jest.fn().mockResolvedValue({}),
-      findUnique: jest.fn().mockResolvedValue(null),
+      update: vi.fn(),
+      upsert: vi.fn(),
+      findUnique: vi.fn(),
     },
     conversationMessage: {
-      create: jest.fn().mockResolvedValue({
-        id: 'db-msg-123',
-        sessionId: 'db-session-123',
-        role: 'user',
-        content: 'Test message',
-        timestamp: new Date(),
-        metadata: {},
-      }),
-      update: jest.fn().mockResolvedValue({}),
-      findMany: jest.fn().mockResolvedValue([]),
-      findUnique: jest.fn().mockResolvedValue(null),
+      create: vi.fn(),
+      update: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
+vi.mock('@/lib/utils/logger');
 
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
+// MSW server setup
+const server = setupServer(
+  rest.get('/api/sessions', (req, res, ctx) => {
+    return res(ctx.json([]));
+  })
+);
 
-describe('Enhanced Conversation Memory Store', () => {
-  beforeEach(() => {
-    // Reset session counter
-    sessionCounter = 0;
-    
-    // Clear store before each test
-    useEnhancedConversationMemory.setState({
-      sessions: {},
-      currentSessionId: null,
-      defaultProcessors: [
-        new TokenLimiter(127000),
-        new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] }),
-      ],
-      isDbEnabled: true,
-      isSyncing: false,
-    });
-    
-    // Clear all mocks
-    jest.clearAllMocks();
+beforeAll(() => server.listen());
+afterEach(() => {
+  server.resetHandlers();
+  vi.clearAllMocks();
+  // Reset store state
+  act(() => {
+    useEnhancedConversationMemory.getState().clearSession('test-session');
   });
+});
+afterAll(() => server.close());
 
+describe('EnhancedConversationMemoryStore', () => {
   describe('Session Management', () => {
-    it('should create a new session with database integration', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
+    it('should create a session with default processors', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      expect(sessionId).toBe('db-session-1');
-      
-      const state = useEnhancedConversationMemory.getState();
-      expect(state.sessions[sessionId]).toBeDefined();
-      expect(state.currentSessionId).toBe(sessionId);
-      expect(state.sessions[sessionId].processors).toHaveLength(2);
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        expect(sessionId).toBeTruthy();
+        expect(result.current.sessions[sessionId]).toBeDefined();
+        expect(result.current.sessions[sessionId].processors).toHaveLength(2);
+        expect(result.current.currentSessionId).toBe(sessionId);
+      });
     });
 
-    it('should create session with custom processors', async () => {
-      const customProcessors = [
-        new TokenLimiter(50000),
-        new ToolCallFilter({ includeAll: true }),
-      ];
+    it('should create a session with custom processors', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      const customProcessors = [new TokenLimiter(50000)];
       
-      const sessionId = await useEnhancedConversationMemory.getState().createSession(undefined, customProcessors);
-      
-      const state = useEnhancedConversationMemory.getState();
-      expect(state.sessions[sessionId].processors).toHaveLength(2);
-      expect(state.sessions[sessionId].processors[0].getName()).toBe('TokenLimiter(50000)');
+      await act(async () => {
+        const sessionId = await result.current.createSession('custom-session', customProcessors);
+        expect(result.current.sessions[sessionId]).toBeDefined();
+        expect(result.current.sessions[sessionId].processors).toHaveLength(1);
+        expect(result.current.sessions[sessionId].processors[0].getName()).toBe('TokenLimiter(50000)');
+      });
     });
 
-    it('should fallback to local creation when DB fails', async () => {
-      // Mock DB failure
-      const { ChatDatabaseService } = require('@/lib/services/database/chat.service');
-      ChatDatabaseService.createSession.mockRejectedValueOnce(new Error('DB Error'));
+    it('should create session in database when DB is enabled', async () => {
+      const mockDbSession = {
+        id: 'db-session-123',
+        createdAt: new Date(),
+        lastActiveAt: new Date(),
+        summary: 'Test session',
+      };
       
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
+      vi.mocked(ChatDatabaseService.createSession).mockResolvedValue(mockDbSession as any);
+      vi.mocked(prisma.conversationSession.update).mockResolvedValue({} as any);
       
-      expect(sessionId).toMatch(/^session-\d+$/);
-      expect(useEnhancedConversationMemory.getState().sessions[sessionId]).toBeDefined();
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        expect(ChatDatabaseService.createSession).toHaveBeenCalled();
+        expect(prisma.conversationSession.update).toHaveBeenCalledWith({
+          where: { id: mockDbSession.id },
+          data: expect.objectContaining({
+            metadata: expect.any(Object),
+          }),
+        });
+        expect(sessionId).toBe(mockDbSession.id);
+      });
+    });
+
+    it('should fallback to local storage when DB creation fails', async () => {
+      vi.mocked(ChatDatabaseService.createSession).mockRejectedValue(new Error('DB Error'));
+      
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        expect(sessionId).toMatch(/^session-\d+$/);
+        expect(result.current.sessions[sessionId]).toBeDefined();
+        expect(logger.error).toHaveBeenCalledWith(
+          '[EnhancedConversationMemory] Failed to create session in DB',
+          expect.any(Object)
+        );
+      });
+    });
+
+    it('should clear session messages', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Test message',
+        });
+        
+        expect(result.current.sessions[sessionId].messages).toHaveLength(1);
+        
+        result.current.clearSession(sessionId);
+        expect(result.current.sessions[sessionId].messages).toHaveLength(0);
+      });
     });
   });
 
   describe('Message Management', () => {
-    it('should add messages with automatic session creation', async () => {
-      const testSessionId = 'test-session-123';
+    it('should add a message to session', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId: testSessionId,
-        role: 'user',
-        content: 'What is the price of BTC?',
-      });
-      
-      const state = useEnhancedConversationMemory.getState();
-      expect(state.sessions[testSessionId]).toBeDefined();
-      expect(state.sessions[testSessionId].messages).toHaveLength(1);
-      expect(state.sessions[testSessionId].messages[0].content).toBe('What is the price of BTC?');
-    });
-
-    it('should process messages and update token usage', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
-      
-      // Add multiple messages
-      for (let i = 0; i < 5; i++) {
-        await useEnhancedConversationMemory.getState().addMessage({
-          sessionId,
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          content: `Message ${i}`,
-        });
-      }
-      
-      // Check processed messages
-      const processedMessages = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      expect(processedMessages.length).toBeLessThanOrEqual(5);
-      
-      // Check token usage
-      const state = useEnhancedConversationMemory.getState();
-      const session = state.sessions[sessionId];
-      expect(session.tokenUsage?.total).toBeGreaterThan(0);
-      expect(session.tokenUsage?.input).toBeGreaterThan(0);
-      expect(session.tokenUsage?.output).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Memory Processing', () => {
-    it('should get processed messages with caching', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
-      
-      // Add messages
-      for (let i = 0; i < 10; i++) {
-        await useEnhancedConversationMemory.getState().addMessage({
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
           sessionId,
           role: 'user',
-          content: `Message ${i}`,
+          content: 'Hello, world!',
+          metadata: { topics: ['greeting'] },
         });
-      }
-      
-      // First call should process
-      const processed1 = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId, 5);
-      expect(processed1).toHaveLength(5);
-      
-      // Second call should use cache
-      const processed2 = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId, 5);
-      expect(processed2).toEqual(processed1);
+        
+        const session = result.current.sessions[sessionId];
+        expect(session.messages).toHaveLength(1);
+        expect(session.messages[0].content).toBe('Hello, world!');
+        expect(session.messages[0].role).toBe('user');
+        expect(session.messages[0].metadata?.topics).toContain('greeting');
+      });
     });
 
-    it('should build session context correctly', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
+    it('should estimate token count for messages', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId,
-        role: 'user',
-        content: 'What is BTC price?',
-      });
-      
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId,
-        role: 'assistant',
-        content: 'BTC is trading at $45,000',
-      });
-      
-      await useEnhancedConversationMemory.getState().summarizeSession(sessionId);
-      
-      const context = useEnhancedConversationMemory.getState().getSessionContext(sessionId);
-      expect(context).toContain('Session Summary:');
-      expect(context).toContain('User: What is BTC price?');
-      expect(context).toContain('Assistant: BTC is trading at $45,000');
-    });
-  });
-
-  describe('Helper Functions', () => {
-    it('should create enhanced session and add tool call messages', async () => {
-      // Test createEnhancedSession with custom options
-      const sessionId = await createEnhancedSession(undefined, {
-        maxTokens: 50000,
-        excludeTools: ['customTool'],
-      });
-      
-      const state = useEnhancedConversationMemory.getState();
-      const session = state.sessions[sessionId];
-      expect(session.processors[0].getName()).toBe('TokenLimiter(50000)');
-      
-      // Test addToolCallMessage
-      await addToolCallMessage(
-        sessionId,
-        'marketDataTool',
-        'Fetching BTC price...',
-        { price: 45000 }
-      );
-      
-      // Get fresh state after adding message
-      const updatedState = useEnhancedConversationMemory.getState();
-      const messages = updatedState.sessions[sessionId].messages;
-      expect(messages).toHaveLength(1);
-      expect(messages[0].metadata?.isToolCall).toBe(true);
-      expect(messages[0].metadata?.toolName).toBe('marketDataTool');
-    });
-  });
-
-  describe('Advanced Session Management', () => {
-    it('should handle multiple concurrent sessions', async () => {
-      const sessions = await Promise.all([
-        useEnhancedConversationMemory.getState().createSession(),
-        useEnhancedConversationMemory.getState().createSession(),
-        useEnhancedConversationMemory.getState().createSession(),
-      ]);
-      
-      expect(new Set(sessions).size).toBe(3); // All unique
-      
-      const state = useEnhancedConversationMemory.getState();
-      expect(Object.keys(state.sessions)).toHaveLength(3);
-    });
-
-    it('should switch between sessions correctly', async () => {
-      const session1 = await useEnhancedConversationMemory.getState().createSession();
-      const session2 = await useEnhancedConversationMemory.getState().createSession();
-      
-      // Add messages to different sessions
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId: session1,
-        role: 'user',
-        content: 'Session 1 message',
-      });
-      
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId: session2,
-        role: 'user',
-        content: 'Session 2 message',
-      });
-      
-      // Set current session
-      useEnhancedConversationMemory.setState({ currentSessionId: session1 });
-      expect(useEnhancedConversationMemory.getState().currentSessionId).toBe(session1);
-      
-      const state = useEnhancedConversationMemory.getState();
-      const messages1 = state.sessions[session1].messages;
-      expect(messages1[0].content).toBe('Session 1 message');
-    });
-
-    it.skip('should clear old sessions based on age', async () => {
-      // TODO: Implement automatic session cleanup feature
-      const oldSession = await useEnhancedConversationMemory.getState().createSession();
-      
-      // Mock old timestamp
-      const state = useEnhancedConversationMemory.getState();
-      state.sessions[oldSession].lastActiveAt = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25 hours ago
-      
-      // Create new session to trigger cleanup
-      await useEnhancedConversationMemory.getState().createSession();
-      
-      // Old session should be removed
-      expect(state.sessions[oldSession]).toBeUndefined();
-    });
-  });
-
-  describe('Advanced Memory Processing', () => {
-    it('should handle token overflow gracefully', async () => {
-      const sessionId = await createEnhancedSession(undefined, {
-        maxTokens: 100, // Very small limit
-      });
-      
-      // Add messages that exceed token limit
-      for (let i = 0; i < 20; i++) {
-        await useEnhancedConversationMemory.getState().addMessage({
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
           sessionId,
           role: 'user',
-          content: 'This is a long message that will consume many tokens when processed',
+          content: 'This is a test message with approximately 20 characters',
         });
-      }
-      
-      const processed = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      const stats = useEnhancedConversationMemory.getState().getMemoryStats(sessionId);
-      
-      // With 100 token limit and messages of ~18 tokens each, should fit about 5-6 messages
-      expect(stats.estimatedTokens).toBeGreaterThanOrEqual(0);
-      expect(processed.length).toBeGreaterThan(0);
-      expect(processed.length).toBeLessThan(20);
-    });
-
-    it('should cache processed messages efficiently', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
-      
-      // Add messages
-      for (let i = 0; i < 10; i++) {
-        await useEnhancedConversationMemory.getState().addMessage({
-          sessionId,
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          content: `Message ${i}`,
-        });
-      }
-      
-      // First call processes
-      const processed1 = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      
-      // Check that cache is populated
-      const state1 = useEnhancedConversationMemory.getState();
-      const session1 = state1.sessions[sessionId];
-      expect(session1.processedMessages).toBeDefined();
-      expect(session1.processedMessages).toHaveLength(processed1.length);
-      
-      // Second call should use cache
-      const processed2 = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      
-      expect(processed1).toEqual(processed2);
-      // Arrays are sliced, so they won't be the same reference, but content should match
-      expect(processed1.length).toBe(processed2.length);
-      
-      // Add new message to invalidate cache
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId,
-        role: 'user',
-        content: 'New message',
+        
+        const session = result.current.sessions[sessionId];
+        const message = session.messages[0];
+        expect(message.metadata?.tokenCount).toBeGreaterThan(0);
+        expect(session.tokenUsage?.total).toBeGreaterThan(0);
+        expect(session.tokenUsage?.input).toBeGreaterThan(0);
       });
-      
-      const processed3 = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      expect(processed3.length).toBe(processed1.length + 1);
     });
-  });
 
-  describe('Tool Call Integration', () => {
-    it('should handle tool calls with metadata', async () => {
-      const sessionId = await createEnhancedSession();
+    it('should archive old messages when exceeding limit', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      // Add tool call message
-      await addToolCallMessage(
-        sessionId,
-        'marketDataTool',
-        'Fetching BTC price data...',
-        {
-          symbol: 'BTCUSDT',
-          price: 45000,
-          volume: 1234567,
-          timestamp: Date.now(),
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add messages beyond the limit
+        for (let i = 0; i < MAX_MESSAGES_IN_MEMORY + 5; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: `Message ${i}`,
+          });
         }
-      );
-      
-      const state = useEnhancedConversationMemory.getState();
-      const messages = state.sessions[sessionId].messages;
-      const toolMessage = messages[0];
-      
-      expect(toolMessage.metadata?.isToolCall).toBe(true);
-      expect(toolMessage.metadata?.toolName).toBe('marketDataTool');
-      expect(toolMessage.metadata?.toolResult).toMatchObject({
-        symbol: 'BTCUSDT',
-        price: 45000,
+        
+        const session = result.current.sessions[sessionId];
+        expect(session.messages).toHaveLength(MAX_MESSAGES_IN_MEMORY);
+        expect(session.messages[0].content).toBe(`Message 5`);
       });
     });
 
-    it('should filter tool calls based on configuration', async () => {
-      const sessionId = await createEnhancedSession(undefined, {
-        excludeTools: ['debugTool', 'internalTool'],
+    it('should save message to database when enabled', async () => {
+      const mockDbMessage = {
+        id: 'msg-db-123',
+        sessionId: 'test-session',
+        role: 'user',
+        content: 'Test',
+      };
+      
+      vi.mocked(prisma.conversationSession.upsert).mockResolvedValue({} as any);
+      vi.mocked(prisma.conversationMessage.create).mockResolvedValue(mockDbMessage as any);
+      
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Test',
+        });
+        
+        expect(prisma.conversationMessage.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            sessionId,
+            role: 'user',
+            content: 'Test',
+          }),
+        });
       });
+    });
+
+    it('should update message metadata', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      // Add various tool calls
-      await addToolCallMessage(sessionId, 'marketDataTool', 'Market data', {});
-      await addToolCallMessage(sessionId, 'debugTool', 'Debug info', {});
-      await addToolCallMessage(sessionId, 'chartTool', 'Chart update', {});
-      await addToolCallMessage(sessionId, 'internalTool', 'Internal process', {});
-      
-      const processed = useEnhancedConversationMemory.getState().getProcessedMessages(sessionId);
-      
-      // Should exclude debug and internal tools
-      expect(processed.some(m => m.metadata?.toolName === 'debugTool')).toBe(false);
-      expect(processed.some(m => m.metadata?.toolName === 'internalTool')).toBe(false);
-      expect(processed.some(m => m.metadata?.toolName === 'marketDataTool')).toBe(true);
-      expect(processed.some(m => m.metadata?.toolName === 'chartTool')).toBe(true);
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Test',
+        });
+        
+        const messageId = result.current.sessions[sessionId].messages[0].id;
+        await result.current.updateMessageMetadata(messageId, {
+          topics: ['updated'],
+          symbols: ['BTC'],
+        });
+        
+        const updatedMessage = result.current.sessions[sessionId].messages[0];
+        expect(updatedMessage.metadata?.topics).toContain('updated');
+        expect(updatedMessage.metadata?.symbols).toContain('BTC');
+      });
     });
   });
 
-  describe('Memory Statistics', () => {
-    it('should track detailed memory statistics', async () => {
-      const sessionId = await useEnhancedConversationMemory.getState().createSession();
+  describe('Message Processing', () => {
+    it('should apply processors to messages', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      // Add various message types
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId,
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add multiple messages
+        for (let i = 0; i < 10; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: i % 2 === 0 ? 'user' : 'assistant',
+            content: `Message ${i}`,
+            metadata: {
+              isToolCall: i === 5,
+              toolName: i === 5 ? 'marketDataTool' : undefined,
+            },
+          });
+        }
+        
+        const processedMessages = result.current.getProcessedMessages(sessionId);
+        
+        // Should filter out tool calls
+        const toolMessages = processedMessages.filter(m => m.metadata?.isToolCall);
+        expect(toolMessages).toHaveLength(0);
+      });
+    });
+
+    it('should cache processed messages', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add messages
+        for (let i = 0; i < 5; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: `Message ${i}`,
+          });
+        }
+        
+        // First call processes messages
+        const processed1 = result.current.getProcessedMessages(sessionId);
+        
+        // Second call should use cache
+        const processed2 = result.current.getProcessedMessages(sessionId);
+        
+        expect(processed1).toEqual(processed2);
+        expect(result.current.sessions[sessionId].processedMessages).toBeDefined();
+      });
+    });
+
+    it('should invalidate cache when messages change', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Message 1',
+        });
+        
+        const processed1 = result.current.getProcessedMessages(sessionId);
+        expect(processed1).toHaveLength(1);
+        
+        // Add many more messages
+        for (let i = 0; i < 10; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: `Message ${i + 2}`,
+          });
+        }
+        
+        const processed2 = result.current.getProcessedMessages(sessionId);
+        expect(processed2.length).toBeGreaterThan(processed1.length);
+      });
+    });
+
+    it('should get session context with summary', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add messages
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'What is Bitcoin?',
+        });
+        await result.current.addMessage({
+          sessionId,
+          role: 'assistant',
+          content: 'Bitcoin is a cryptocurrency.',
+        });
+        
+        // Add summary
+        await result.current.summarizeSession(sessionId);
+        
+        const context = result.current.getSessionContext(sessionId);
+        expect(context).toContain('Session Summary:');
+        expect(context).toContain('User: What is Bitcoin?');
+        expect(context).toContain('Assistant: Bitcoin is a cryptocurrency.');
+      });
+    });
+  });
+
+  describe('Processor Management', () => {
+    it('should add and remove processors', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        const session = result.current.sessions[sessionId];
+        
+        // Initial processors
+        expect(session.processors).toHaveLength(2);
+        
+        // Add a new processor
+        const newProcessor = new TokenLimiter(10000);
+        result.current.addProcessor(sessionId, newProcessor);
+        expect(result.current.sessions[sessionId].processors).toHaveLength(3);
+        
+        // Remove a processor
+        result.current.removeProcessor(sessionId, 'TokenLimiter(10000)');
+        expect(result.current.sessions[sessionId].processors).toHaveLength(2);
+      });
+    });
+
+    it('should update default processors', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const newProcessors = [new TokenLimiter(5000)];
+        result.current.setDefaultProcessors(newProcessors);
+        
+        const sessionId = await result.current.createSession();
+        expect(result.current.sessions[sessionId].processors).toHaveLength(1);
+        expect(result.current.sessions[sessionId].processors[0].getName()).toBe('TokenLimiter(5000)');
+      });
+    });
+
+    it('should get memory statistics', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add messages
+        for (let i = 0; i < 5; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: 'Test message',
+          });
+        }
+        
+        const stats = result.current.getMemoryStats(sessionId);
+        expect(stats.totalMessages).toBe(5);
+        expect(stats.processedMessages).toBeLessThanOrEqual(5);
+        expect(stats.estimatedTokens).toBeGreaterThan(0);
+        expect(stats.processors).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('Search and Filter', () => {
+    it('should search messages by content', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Tell me about Bitcoin',
+        });
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'What is Ethereum?',
+        });
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Bitcoin price today',
+        });
+        
+        const results = result.current.searchMessages('Bitcoin');
+        expect(results).toHaveLength(2);
+        expect(results.every(m => m.content.toLowerCase().includes('bitcoin'))).toBe(true);
+      });
+    });
+
+    it('should search messages by metadata', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Analyze crypto',
+          metadata: {
+            topics: ['analysis'],
+            symbols: ['BTC', 'ETH'],
+          },
+        });
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Market update',
+          metadata: {
+            topics: ['market'],
+            symbols: ['BTC'],
+          },
+        });
+        
+        const results = result.current.searchMessages('BTC');
+        expect(results).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('Database Sync', () => {
+    it('should enable database sync', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        result.current.disableDbSync();
+        expect(result.current.isDbEnabled).toBe(false);
+        
+        await result.current.enableDbSync('test-session-id');
+        expect(result.current.isDbEnabled).toBe(true);
+        expect(result.current.currentSessionId).toBe('test-session-id');
+      });
+    });
+
+    it('should sync unsynced records to database', async () => {
+      vi.mocked(ChatDatabaseService.createSession).mockResolvedValue({
+        id: 'db-session',
+        createdAt: new Date(),
+        lastActiveAt: new Date(),
+      } as any);
+      
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        // Disable DB sync initially
+        result.current.disableDbSync();
+        
+        // Create session and add messages
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Test message',
+        });
+        
+        // Enable DB sync
+        await result.current.enableDbSync();
+        
+        expect(ChatDatabaseService.createSession).toHaveBeenCalled();
+        expect(prisma.conversationMessage.create).toHaveBeenCalled();
+      });
+    });
+
+    it('should load sessions from database', async () => {
+      const mockSessions = [{
+        id: 'db-session-1',
+        createdAt: new Date(),
+        lastActiveAt: new Date(),
+        summary: 'Test session',
+      }];
+      
+      const mockMessages = [{
+        id: 'msg-1',
+        sessionId: 'db-session-1',
         role: 'user',
-        content: 'Hello',
+        content: 'Hello from DB',
+        timestamp: new Date(),
+      }];
+      
+      vi.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
+      vi.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+        ...mockSessions[0],
+        messages: mockMessages,
+      } as any);
+      
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        await result.current.loadFromDatabase();
+        
+        expect(result.current.sessions['db-session-1']).toBeDefined();
+        expect(result.current.sessions['db-session-1'].messages).toHaveLength(1);
+        expect(result.current.sessions['db-session-1'].messages[0].content).toBe('Hello from DB');
       });
+    });
+
+    it('should handle database errors gracefully', async () => {
+      vi.mocked(ChatDatabaseService.getUserSessions).mockRejectedValue(new Error('DB Error'));
       
-      await addToolCallMessage(sessionId, 'testTool', 'Tool execution', { result: 'data' });
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      await useEnhancedConversationMemory.getState().addMessage({
-        sessionId,
-        role: 'assistant',
-        content: 'Hi there! How can I help you today?',
+      await act(async () => {
+        await result.current.loadFromDatabase();
+        
+        expect(logger.error).toHaveBeenCalledWith(
+          '[EnhancedConversationMemory] Failed to load from database',
+          expect.any(Object)
+        );
       });
+    });
+  });
+
+  describe('Archive Functions', () => {
+    it('should archive old messages', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
       
-      const stats = useEnhancedConversationMemory.getState().getMemoryStats(sessionId);
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add many messages
+        for (let i = 0; i < MAX_MESSAGES_IN_MEMORY + 10; i++) {
+          await result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: `Message ${i}`,
+          });
+        }
+        
+        // Archive old messages
+        await result.current.archiveOldMessages!(sessionId);
+        
+        const session = result.current.sessions[sessionId];
+        expect(session.messages.length).toBeLessThanOrEqual(MAX_MESSAGES_IN_MEMORY);
+      });
+    });
+
+    it('should retrieve archived messages from database', async () => {
+      const mockArchivedMessages = [
+        {
+          id: 'archived-1',
+          sessionId: 'test-session',
+          role: 'user',
+          content: 'Archived message 1',
+          timestamp: new Date(),
+        },
+        {
+          id: 'archived-2',
+          sessionId: 'test-session',
+          role: 'assistant',
+          content: 'Archived message 2',
+          timestamp: new Date(),
+        },
+      ];
       
-      expect(stats.totalMessages).toBe(3);
-      expect(stats.processedMessages).toBeGreaterThan(0);
-      // estimatedTokens might be 0 if tokenCount is not in metadata
-      expect(stats.estimatedTokens).toBeGreaterThanOrEqual(0);
-      expect(stats.processors).toHaveLength(2);
-      expect(stats.processors).toContain('TokenLimiter(127000)');
-      expect(stats.processors[1]).toMatch(/^ToolCallFilter/);
+      vi.mocked(prisma.conversationMessage.findMany).mockResolvedValue(mockArchivedMessages as any);
+      
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const messages = await result.current.getArchivedMessages!('test-session');
+        expect(messages).toHaveLength(2);
+        expect(messages[0].content).toBe('Archived message 1');
+      });
+    });
+
+    it('should fallback to memory when DB is disabled', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        result.current.disableDbSync();
+        
+        const sessionId = await result.current.createSession();
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Memory message',
+        });
+        
+        const messages = await result.current.getArchivedMessages!(sessionId);
+        expect(messages).toHaveLength(1);
+        expect(messages[0].content).toBe('Memory message');
+      });
+    });
+  });
+
+  describe('Utility Functions', () => {
+    it('should create enhanced session with custom options', async () => {
+      await act(async () => {
+        const sessionId = await createEnhancedSession('custom-id', {
+          maxTokens: 50000,
+          excludeTools: ['debugTool'],
+          includeAllTools: false,
+        });
+        
+        const state = useEnhancedConversationMemory.getState();
+        const session = state.sessions[sessionId];
+        
+        expect(session).toBeDefined();
+        expect(session.processors).toHaveLength(2);
+        expect(session.processors[0].getName()).toBe('TokenLimiter(50000)');
+      });
+    });
+
+    it('should add tool call message', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        await addToolCallMessage(
+          sessionId,
+          'marketDataTool',
+          'Fetching BTC price...',
+          { price: 50000 }
+        );
+        
+        const session = result.current.sessions[sessionId];
+        expect(session.messages).toHaveLength(1);
+        expect(session.messages[0].metadata?.isToolCall).toBe(true);
+        expect(session.messages[0].metadata?.toolName).toBe('marketDataTool');
+        expect(session.messages[0].metadata?.toolResult).toEqual({ price: 50000 });
+      });
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle non-existent session gracefully', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const messages = result.current.getProcessedMessages('non-existent');
+        expect(messages).toEqual([]);
+        
+        const context = result.current.getSessionContext('non-existent');
+        expect(context).toBe('No previous context available.');
+        
+        const stats = result.current.getMemoryStats('non-existent');
+        expect(stats.totalMessages).toBe(0);
+      });
+    });
+
+    it('should handle invalid processor gracefully', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add a processor that throws
+        const faultyProcessor = {
+          getName: () => 'FaultyProcessor',
+          process: () => {
+            throw new Error('Processing failed');
+          },
+        };
+        
+        result.current.addProcessor(sessionId, faultyProcessor as any);
+        
+        // Should still return messages despite processor error
+        await result.current.addMessage({
+          sessionId,
+          role: 'user',
+          content: 'Test',
+        });
+        
+        const processed = result.current.getProcessedMessages(sessionId);
+        expect(processed.length).toBeGreaterThan(0);
+        expect(logger.error).toHaveBeenCalledWith(
+          '[EnhancedConversationMemory] Processor failed',
+          expect.any(Object)
+        );
+      });
+    });
+
+    it('should handle concurrent message additions', async () => {
+      const { result } = renderHook(() => useEnhancedConversationMemory());
+      
+      await act(async () => {
+        const sessionId = await result.current.createSession();
+        
+        // Add messages concurrently
+        await Promise.all([
+          result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: 'Message 1',
+          }),
+          result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: 'Message 2',
+          }),
+          result.current.addMessage({
+            sessionId,
+            role: 'user',
+            content: 'Message 3',
+          }),
+        ]);
+        
+        const session = result.current.sessions[sessionId];
+        expect(session.messages).toHaveLength(3);
+      });
     });
   });
 });
