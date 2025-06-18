@@ -2,25 +2,25 @@
  * @jest-environment jsdom
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAIChat } from '@/hooks/use-ai-chat';
-import { useChat } from '@/store/chat.store';
-import { useIsClient } from '@/hooks/use-is-client';
-import { logger } from '@/lib/utils/logger';
-import { safeParseOrWarn } from '@/lib/utils/validation';
-import { streamToLines } from '@/lib/utils/stream-utils';
+import { .* } from '../../../hooks/use-ai-chat';
+import { .* } from '../../../store/chat.store';
+import { .* } from '../../../hooks/use-is-client';
+import { .* } from '../../../lib/utils/logger';
+import { .* } from '../../../lib/utils/validation';
+import { .* } from '../../../lib/utils/stream-utils';
 
 // Mock dependencies
-jest.mock('@/store/chat.store');
-jest.mock('@/hooks/use-is-client');
-jest.mock('@/lib/utils/logger', () => ({
+jest.mock('../../../store/chat.store');
+jest.mock('../../../hooks/use-is-client');
+jest.mock('../../../lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
   },
 }));
-jest.mock('@/lib/utils/validation');
-jest.mock('@/lib/utils/stream-utils');
+jest.mock('../../../lib/utils/validation');
+jest.mock('../../../lib/utils/stream-utils');
 
 // Mock fetch
 global.fetch = jest.fn();

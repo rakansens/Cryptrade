@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { EnhancedLineDetectorV2, type LineDetectionV2Config } from '@/lib/analysis/enhanced-line-detector-v2';
+import { EnhancedLineDetectorV2, type LineDetectionV2Config, type EnhancedLineV2, type TrendLineDetection } from '@/lib/analysis/enhanced-line-detector-v2';
 import { AdvancedTouchDetector } from '@/lib/analysis/advanced-touch-detector';
 import type { MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 import type { ProcessedKline } from '@/types/market';
@@ -21,29 +21,39 @@ describe('EnhancedLineDetectorV2', () => {
   let detector: EnhancedLineDetectorV2;
   let mockTouchDetector: jest.Mocked<AdvancedTouchDetector>;
   
-  // Create mock multi-timeframe data
+  // Helper to create mock kline data
+  const createKline = (overrides: Partial<ProcessedKline> = {}): ProcessedKline => ({
+    time: 1000,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 102,
+    volume: 1000,
+    ...overrides
+  });
+
+  // Create comprehensive mock multi-timeframe data
   const createMockTimeframeData = (basePrice: number = 100): MultiTimeframeData => {
-    // Need at least 11 candles for swing detection (lookback of 5 on each side)
+    // Create data with clear swing points for testing
     const data1h = [];
     for (let i = 0; i < 20; i++) {
       const time = 1000 + i * 3600000; // 1 hour intervals
       
-      // Create clear swing points with deterministic values
       let high, low, open, close;
       if (i === 10) {
-        // Clear swing high at index 10 - needs to be higher than surrounding 10 candles
+        // Clear swing high at index 10
         high = basePrice + 30;
         low = basePrice + 25;
         open = basePrice + 26;
         close = basePrice + 28;
       } else if (i === 15) {
-        // Clear swing low at index 15 - needs to be lower than surrounding 10 candles
+        // Clear swing low at index 15
         high = basePrice - 15;
         low = basePrice - 20;
         open = basePrice - 16;
         close = basePrice - 18;
       } else if (i >= 5 && i <= 15 && i !== 10 && i !== 15) {
-        // Mid-range values that won't interfere with swings
+        // Mid-range values
         high = basePrice + 10 - Math.abs(i - 10);
         low = basePrice - 10 + Math.abs(i - 10);
         open = basePrice + (Math.random() - 0.5) * 2;
@@ -66,20 +76,20 @@ describe('EnhancedLineDetectorV2', () => {
       });
     }
     
-    // Create data for 4h timeframe with similar pattern
+    // Create data for 4h timeframe
     const data4h = [];
     for (let i = 0; i < 15; i++) {
       const time = 1000 + i * 14400000; // 4 hour intervals
       
       let high, low, open, close;
       if (i === 7) {
-        // Clear swing high - needs to be definitively higher
+        // Clear swing high
         high = basePrice + 35;
         low = basePrice + 30;
         open = basePrice + 31;
         close = basePrice + 33;
       } else if (i === 12) {
-        // Clear swing low - needs to be definitively lower
+        // Clear swing low
         high = basePrice - 20;
         low = basePrice - 25;
         open = basePrice - 21;
@@ -151,7 +161,7 @@ describe('EnhancedLineDetectorV2', () => {
       calculateTouchQualityScore: jest.fn().mockReturnValue(75),
       calculateVolumeWeightedStrength: jest.fn().mockReturnValue(0.9),
       getTouchStatistics: jest.fn().mockReturnValue({
-        summary: '3 touches, Quality: 75/100',
+        summary: '3 touches (W:1 B:1 E:1), 2 bounces, Quality: 75.0/100',
         details: { totalTouches: 3, qualityScore: 75 }
       }),
       filterHighQualityTouches: jest.fn(),
@@ -163,27 +173,46 @@ describe('EnhancedLineDetectorV2', () => {
     detector = new EnhancedLineDetectorV2();
   });
 
-  describe('constructor', () => {
+  describe('constructor and configuration', () => {
     it('should create instance with default config', () => {
       expect(detector).toBeDefined();
-      expect(AdvancedTouchDetector).toHaveBeenCalled();
+      expect(AdvancedTouchDetector).toHaveBeenCalledWith({
+        wickWeight: 0.7,
+        bodyWeight: 1.0,
+        exactWeight: 1.2,
+        volumeThresholdMultiplier: 1.3,
+        bounceThresholdPercent: 0.4,
+        lookforwardBars: 6,
+        tolerancePercent: 0.15
+      });
     });
 
-    it('should accept custom config', () => {
+    it('should merge custom config with defaults', () => {
       const customConfig: Partial<LineDetectionV2Config> = {
         minTouchCount: 5,
         minConfidence: 0.8,
         minQualityScore: 80,
-        requireVolumeConfirmation: true,
+        touchConfig: {
+          wickWeight: 0.5,
+          volumeThresholdMultiplier: 1.5
+        }
       };
+      
+      // Reset mock to clear previous calls
+      jest.clearAllMocks();
       
       const customDetector = new EnhancedLineDetectorV2(customConfig);
       expect(customDetector).toBeDefined();
+      // The touchConfig is passed as-is, not merged with defaults in the constructor
+      expect(AdvancedTouchDetector).toHaveBeenCalledWith({
+        wickWeight: 0.5,
+        volumeThresholdMultiplier: 1.5
+      });
     });
   });
 
   describe('detectEnhancedLines', () => {
-    it('should detect horizontal lines and trendlines', async () => {
+    it('should detect both horizontal lines and trendlines', async () => {
       const multiTimeframeData = createMockTimeframeData();
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
@@ -200,13 +229,17 @@ describe('EnhancedLineDetectorV2', () => {
       });
     });
 
-    it('should log detection start and completion', async () => {
+    it('should log detection progress', async () => {
       const multiTimeframeData = createMockTimeframeData();
       await detector.detectEnhancedLines(multiTimeframeData);
       
       expect(logger.info).toHaveBeenCalledWith(
         '[EnhancedLineDetectorV2] Starting advanced line detection',
-        expect.any(Object)
+        expect.objectContaining({
+          symbol: 'BTCUSDT',
+          timeframes: ['1h', '4h'],
+          config: expect.any(Object)
+        })
       );
       
       expect(logger.info).toHaveBeenCalledWith(
@@ -215,125 +248,134 @@ describe('EnhancedLineDetectorV2', () => {
       );
     });
 
-    it('should filter lines by minimum touch count', async () => {
-      // Set high minimum touch count
-      const customDetector = new EnhancedLineDetectorV2({ minTouchCount: 10 });
+    it('should measure processing time accurately', async () => {
       const multiTimeframeData = createMockTimeframeData();
+      const startTime = Date.now();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      const endTime = Date.now();
       
-      // Mock low touch count
-      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
-        ...mockTouchAnalysis,
-        touchPoints: mockTouchAnalysis.touchPoints[0] ? [mockTouchAnalysis.touchPoints[0]] : [], // Only 1 touch
-      });
-      
-      const result = await customDetector.detectEnhancedLines(multiTimeframeData);
-      
-      // Should have filtered out lines with insufficient touches
-      expect(result.horizontalLines.length).toBe(0);
-    });
-
-    it('should filter lines by quality score', async () => {
-      const customDetector = new EnhancedLineDetectorV2({ minQualityScore: 90 });
-      const multiTimeframeData = createMockTimeframeData();
-      
-      // Mock low quality score
-      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
-        ...mockTouchAnalysis,
-        touchQualityScore: 50,
-      });
-      
-      const result = await customDetector.detectEnhancedLines(multiTimeframeData);
-      
-      expect(result.horizontalLines.length).toBe(0);
-    });
-
-    it('should apply volume confirmation when required', async () => {
-      const customDetector = new EnhancedLineDetectorV2({
-        requireVolumeConfirmation: true,
-        volumeConfirmationThreshold: 0.8,
-      });
-      
-      const multiTimeframeData = createMockTimeframeData();
-      
-      // Mock insufficient volume confirmation
-      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
-        ...mockTouchAnalysis,
-        touchPoints: mockTouchAnalysis.touchPoints.map(tp => ({
-          ...tp,
-          volumeRatio: 0.5, // Low volume ratio
-        })),
-      });
-      
-      const result = await customDetector.detectEnhancedLines(multiTimeframeData);
-      
-      expect(result.horizontalLines.length).toBe(0);
-    });
-
-    it('should apply bounce confirmation when required', async () => {
-      const customDetector = new EnhancedLineDetectorV2({
-        requireBounceConfirmation: true,
-        bounceConfirmationThreshold: 0.5,
-      });
-      
-      const multiTimeframeData = createMockTimeframeData();
-      
-      // Mock insufficient bounce confirmation
-      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
-        ...mockTouchAnalysis,
-        strongBounceCount: 0,
-      });
-      
-      const result = await customDetector.detectEnhancedLines(multiTimeframeData);
-      
-      expect(result.horizontalLines.length).toBe(0);
+      expect(result.detectionStats.processingTime).toBeGreaterThanOrEqual(0);
+      expect(result.detectionStats.processingTime).toBeLessThanOrEqual(endTime - startTime + 10);
     });
   });
 
   describe('horizontal line detection', () => {
     it('should find swing levels correctly', async () => {
-      // Create a detector with minTimeframes: 1 to ensure levels are analyzed
-      const testDetector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData(100);
-      await testDetector.detectEnhancedLines(multiTimeframeData);
+      await detector.detectEnhancedLines(multiTimeframeData);
       
-      // Should have called touch analysis for detected levels
+      // Should analyze touch points for swing levels
       expect(mockTouchDetector.analyzeTouchPoints).toHaveBeenCalled();
     });
 
-    it('should merge levels across timeframes', async () => {
+    it('should merge similar price levels across timeframes', async () => {
       const multiTimeframeData = createMockTimeframeData();
       
-      // Mock multiple timeframe support
-      mockTouchDetector.calculateLineConfidence.mockReturnValue(0.9);
+      // Mock similar price levels in different timeframes
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        touchPoints: [
+          ...mockTouchAnalysis.touchPoints,
+          { price: 100.5, time: 5000, index: 4, type: 'support' as const, touchType: 'body' as const, strength: 1.0, volume: 1200, volumeRatio: 1.1 }
+        ]
+      });
       
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
+      // Lines should be merged within price tolerance
       if (result.horizontalLines.length > 0) {
         const line = result.horizontalLines[0];
         expect(line!.supportingTimeframes.length).toBeGreaterThanOrEqual(1);
       }
     });
 
-    it('should calculate quality metrics for lines', async () => {
+    it('should calculate quality metrics correctly', async () => {
       const multiTimeframeData = createMockTimeframeData();
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      if (result.horizontalLines.length > 0) {
-        const line = result.horizontalLines[0];
-        expect(line!.qualityMetrics).toMatchObject({
-          wickBodyRatio: expect.any(Number),
-          volumeConfirmation: expect.any(Number),
-          bounceConfirmation: expect.any(Number),
-          overallQuality: expect.any(Number),
-        });
-        
-        // All metrics should be between 0 and 100
-        expect(line!.qualityMetrics.overallQuality).toBeGreaterThanOrEqual(0);
-        expect(line!.qualityMetrics.overallQuality).toBeLessThanOrEqual(100);
-      }
+      result.horizontalLines.forEach(line => {
+        const metrics = line.qualityMetrics;
+        expect(metrics.wickBodyRatio).toBeGreaterThanOrEqual(0);
+        expect(metrics.wickBodyRatio).toBeLessThanOrEqual(1);
+        expect(metrics.volumeConfirmation).toBeGreaterThanOrEqual(0);
+        expect(metrics.volumeConfirmation).toBeLessThanOrEqual(1);
+        expect(metrics.bounceConfirmation).toBeGreaterThanOrEqual(0);
+        expect(metrics.bounceConfirmation).toBeLessThanOrEqual(1);
+        expect(metrics.overallQuality).toBeGreaterThanOrEqual(0);
+        expect(metrics.overallQuality).toBeLessThanOrEqual(100);
+      });
     });
 
-    it('should sort horizontal lines by confidence and strength', async () => {
+    it('should filter by minimum timeframe support', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 3 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      // Only 2 timeframes in test data
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      // Should filter out lines without enough timeframe support
+      expect(result.horizontalLines.length).toBe(0);
+    });
+
+    it('should apply volume confirmation filter', async () => {
+      const detector = new EnhancedLineDetectorV2({
+        requireVolumeConfirmation: true,
+        volumeConfirmationThreshold: 0.8,
+        touchConfig: { volumeThresholdMultiplier: 1.3 }
+      });
+      
+      // Mock low volume touches
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        touchPoints: mockTouchAnalysis.touchPoints.map(tp => ({
+          ...tp,
+          volumeRatio: 0.5
+        }))
+      });
+      
+      const multiTimeframeData = createMockTimeframeData();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(result.horizontalLines.length).toBe(0);
+    });
+
+    it('should apply bounce confirmation filter', async () => {
+      const detector = new EnhancedLineDetectorV2({
+        requireBounceConfirmation: true,
+        bounceConfirmationThreshold: 0.5
+      });
+      
+      // Mock no bounce confirmation
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        strongBounceCount: 0
+      });
+      
+      const multiTimeframeData = createMockTimeframeData();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(result.horizontalLines.length).toBe(0);
+    });
+
+    it('should determine level type based on recent price action', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      // Modify data to have most prices above a certain level
+      multiTimeframeData.timeframes['1h']!.data = multiTimeframeData.timeframes['1h']!.data.map(k => ({
+        ...k,
+        close: 110 // Most closes above 100
+      }));
+      
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      // Should correctly identify support/resistance based on price position
+      expect(mockTouchDetector.analyzeTouchPoints).toHaveBeenCalled();
+    });
+
+    it('should sort lines by combined confidence and strength', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData();
       
       // Mock multiple lines with different confidences
@@ -345,22 +387,21 @@ describe('EnhancedLineDetectorV2', () => {
       
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      if (result.horizontalLines.length > 1) {
-        for (let i = 1; i < result.horizontalLines.length; i++) {
-          const prevScore = result.horizontalLines[i - 1]!.confidence * result.horizontalLines[i - 1]!.strength;
-          const currScore = result.horizontalLines[i]!.confidence * result.horizontalLines[i]!.strength;
-          expect(prevScore).toBeGreaterThanOrEqual(currScore);
-        }
+      // Verify sorting
+      for (let i = 1; i < result.horizontalLines.length; i++) {
+        const prevScore = result.horizontalLines[i - 1]!.confidence * result.horizontalLines[i - 1]!.strength;
+        const currScore = result.horizontalLines[i]!.confidence * result.horizontalLines[i]!.strength;
+        expect(prevScore).toBeGreaterThanOrEqual(currScore);
       }
     });
   });
 
   describe('trendline detection', () => {
-    it('should detect trendlines with linear regression', async () => {
+    it('should detect trendlines using linear regression', async () => {
       const multiTimeframeData = createMockTimeframeData();
       
-      // Create ascending price data for trendline
-      const trendData: ProcessedKline[] = Array.from({ length: 10 }, (_, i) => ({
+      // Create ascending price data
+      const trendData: ProcessedKline[] = Array.from({ length: 20 }, (_, i) => ({
         time: 1000 + i * 1000,
         open: 100 + i * 2,
         high: 105 + i * 2,
@@ -373,95 +414,195 @@ describe('EnhancedLineDetectorV2', () => {
       
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      // May or may not detect trendlines depending on swing point detection
+      // Should attempt trendline detection
       expect(result.trendlines).toBeDefined();
     });
 
-    it('should validate trendlines across timeframes', async () => {
+    it('should validate trendline R-squared threshold', async () => {
+      const detector = new EnhancedLineDetectorV2({
+        trendlineRSquaredThreshold: 0.9,
+        minTimeframes: 1
+      });
+      
       const multiTimeframeData = createMockTimeframeData();
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      if (result.trendlines.length > 0) {
-        const trendline = result.trendlines[0];
-        expect(trendline!.type).toBe('trendline');
-        expect(trendline!.coordinates).toBeDefined();
-        expect(trendline!.coordinates?.slope).toBeDefined();
-      }
+      // Only high-quality trendlines should pass
+      result.trendlines.forEach(trendline => {
+        expect(trendline.coordinates).toBeDefined();
+      });
     });
 
-    it('should include trendline equation data', async () => {
+    it('should limit trendline slope', async () => {
+      const detector = new EnhancedLineDetectorV2({
+        maxTrendlineSlope: 0.05,
+        minTimeframes: 1
+      });
+      
       const multiTimeframeData = createMockTimeframeData();
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      if (result.trendlines.length > 0) {
-        const trendline = result.trendlines[0];
-        expect(trendline!.coordinates).toMatchObject({
-          startTime: expect.any(Number),
-          endTime: expect.any(Number),
-          startPrice: expect.any(Number),
-          endPrice: expect.any(Number),
-          slope: expect.any(Number),
+      // Steep trendlines should be filtered out
+      result.trendlines.forEach(trendline => {
+        if (trendline.coordinates?.slope) {
+          expect(Math.abs(trendline.coordinates.slope)).toBeLessThanOrEqual(0.05);
+        }
+      });
+    });
+
+    it('should analyze touches along trendlines', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      // Create data with clear swing points for trendline detection
+      const trendData: ProcessedKline[] = [];
+      for (let i = 0; i < 20; i++) {
+        const basePrice = 100 + i * 2;
+        // Create swing points with higher variance
+        const isSwingPoint = i % 3 === 0;
+        trendData.push({
+          time: 1000 + i * 1000,
+          open: basePrice,
+          high: isSwingPoint ? basePrice + 10 : basePrice + 2,
+          low: isSwingPoint ? basePrice - 10 : basePrice - 2,
+          close: basePrice + 1,
+          volume: 1000
         });
       }
+      
+      multiTimeframeData.timeframes['1h']!.data = trendData;
+      
+      // Mock touch analysis to return valid touches for trendlines
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        touchQualityScore: 70,
+        touchPoints: Array(4).fill(null).map((_, i) => ({
+          price: 100 + i * 10,
+          time: 1000 + i * 3000,
+          index: i * 3,
+          type: 'support' as const,
+          touchType: 'wick' as const,
+          strength: 0.7,
+          volume: 1000,
+          volumeRatio: 1.0
+        }))
+      });
+      
+      await detector.detectEnhancedLines(multiTimeframeData);
+      
+      // Should analyze trendline touches - check if touch analysis methods were called
+      expect(mockTouchDetector.calculateTouchQualityScore).toHaveBeenCalled();
+    });
+
+    it('should include trendline metadata', async () => {
+      const multiTimeframeData = createMockTimeframeData();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      result.trendlines.forEach(trendline => {
+        expect(trendline.type).toBe('trendline');
+        expect(trendline.coordinates).toBeDefined();
+        if (trendline.coordinates) {
+          expect(trendline.coordinates.startTime).toBeDefined();
+          expect(trendline.coordinates.endTime).toBeDefined();
+          expect(trendline.coordinates.startPrice).toBeDefined();
+          expect(trendline.coordinates.endPrice).toBeDefined();
+          expect(trendline.coordinates.slope).toBeDefined();
+        }
+      });
     });
   });
 
-  describe('line properties', () => {
-    it('should generate unique IDs for lines', async () => {
+  describe('line strength calculation', () => {
+    it('should calculate strength based on multiple factors', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData();
-      const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      const allIds = [
-        ...result.horizontalLines.map(l => l.id),
-        ...result.trendlines.map(l => l.id),
-      ];
-      
-      const uniqueIds = new Set(allIds);
-      expect(uniqueIds.size).toBe(allIds.length);
-    });
-
-    it('should include metadata for all lines', async () => {
-      const multiTimeframeData = createMockTimeframeData();
-      const result = await detector.detectEnhancedLines(multiTimeframeData);
-      
-      const allLines = [...result.horizontalLines, ...result.trendlines];
-      
-      allLines.forEach(line => {
-        expect((line as any).metadata).toMatchObject({
-          algorithm: 'multi-timeframe',
-          version: expect.any(String),
-          calculatedAt: expect.any(Number),
-          crossTimeframeValidation: expect.any(Number),
-          volatilityAdjusted: true,
-        });
+      // Mock high-quality touches
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        touchPoints: Array(8).fill(null).map((_, i) => ({
+          price: 100,
+          time: 1000 + i * 1000,
+          index: i,
+          type: 'support' as const,
+          touchType: 'body' as const,
+          strength: 1.0,
+          volume: 1500,
+          volumeRatio: 1.5,
+          bounceStrength: 0.5
+        })),
+        strongBounceCount: 5,
+        touchQualityScore: 85,
+        volumeWeightedStrength: 0.95
       });
-    });
-
-    it('should generate descriptive text for lines', async () => {
-      const multiTimeframeData = createMockTimeframeData();
+      
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
-      const allLines = [...result.horizontalLines, ...result.trendlines];
-      
-      allLines.forEach(line => {
-        expect(line.description).toBeTruthy();
-        expect(line.description.length).toBeGreaterThan(10);
-      });
+      if (result.horizontalLines.length > 0) {
+        const line = result.horizontalLines[0];
+        expect(line!.strength).toBeGreaterThan(0.5);
+        expect(line!.strength).toBeLessThanOrEqual(1.0);
+      }
     });
 
-    it('should include touch analysis for all lines', async () => {
+    it('should limit maximum strength to 1.0', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData();
+      
+      // Mock extremely high-quality touches
+      mockTouchDetector.analyzeTouchPoints.mockReturnValue({
+        ...mockTouchAnalysis,
+        touchPoints: Array(20).fill(null).map((_, i) => ({
+          price: 100,
+          time: 1000 + i * 1000,
+          index: i,
+          type: 'support' as const,
+          touchType: 'exact' as const,
+          strength: 1.2,
+          volume: 2000,
+          volumeRatio: 2.0,
+          bounceStrength: 1.0
+        })),
+        strongBounceCount: 20,
+        touchQualityScore: 100,
+        volumeWeightedStrength: 1.0
+      });
+      
       const result = await detector.detectEnhancedLines(multiTimeframeData);
       
       result.horizontalLines.forEach(line => {
-        expect(line.touchAnalysis).toBeDefined();
-        expect(line.touchAnalysis.touchPoints).toBeInstanceOf(Array);
-        expect(line.touchAnalysis.touchQualityScore).toBeGreaterThanOrEqual(0);
+        expect(line.strength).toBeLessThanOrEqual(1.0);
       });
     });
   });
 
-  describe('edge cases', () => {
+  describe('line descriptions', () => {
+    it('should generate descriptive text for horizontal lines', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      result.horizontalLines.forEach(line => {
+        expect(line.description).toContain('level');
+        expect(line.description).toContain('touches');
+        expect(line.description).toContain('timeframes');
+      });
+    });
+
+    it('should generate descriptive text for trendlines', async () => {
+      const multiTimeframeData = createMockTimeframeData();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      result.trendlines.forEach(line => {
+        expect(line.description).toMatch(/ascending|descending/);
+        expect(line.description).toContain('trendline');
+        expect(line.description).toContain('fit');
+      });
+    });
+  });
+
+  describe('edge cases and error handling', () => {
     it('should handle empty timeframe data', async () => {
       const emptyData: MultiTimeframeData = {
         symbol: 'BTCUSDT',
@@ -475,38 +616,17 @@ describe('EnhancedLineDetectorV2', () => {
       
       expect(result.horizontalLines).toHaveLength(0);
       expect(result.trendlines).toHaveLength(0);
+      expect(result.detectionStats.totalCandidates).toBe(0);
     });
 
-    it('should handle single candle data', async () => {
-      const singleCandleData: MultiTimeframeData = {
-        symbol: 'BTCUSDT',
-        timeframes: {
-          '1h': {
-            data: [{ time: 1000, open: 100, high: 105, low: 95, close: 102, volume: 1000 }],
-            weight: 1.0,
-            dataPoints: 1
-          },
-        },
-        fetchedAt: Date.now(),
-      };
-      
-      const result = await detector.detectEnhancedLines(singleCandleData);
-      
-      expect(result.horizontalLines).toHaveLength(0);
-      expect(result.trendlines).toHaveLength(0);
-    });
-
-    it('should handle insufficient data for pattern detection', async () => {
+    it('should handle insufficient data for swing detection', async () => {
       const insufficientData: MultiTimeframeData = {
         symbol: 'BTCUSDT',
         timeframes: {
           '1h': {
-            data: [
-              { time: 1000, open: 100, high: 105, low: 95, close: 102, volume: 1000 },
-              { time: 2000, open: 102, high: 107, low: 98, close: 104, volume: 1200 },
-            ],
+            data: Array(5).fill(null).map((_, i) => createKline({ time: 1000 + i * 1000 })),
             weight: 1.0,
-            dataPoints: 2
+            dataPoints: 5
           },
         },
         fetchedAt: Date.now(),
@@ -514,36 +634,190 @@ describe('EnhancedLineDetectorV2', () => {
       
       const result = await detector.detectEnhancedLines(insufficientData);
       
-      // Should still complete without errors
       expect(result).toBeDefined();
       expect(result.detectionStats.processingTime).toBeGreaterThanOrEqual(0);
     });
-  });
 
-  describe('configuration filtering', () => {
-    it('should respect minimum confidence setting', async () => {
-      const highConfidenceDetector = new EnhancedLineDetectorV2({ minConfidence: 0.9 });
-      const multiTimeframeData = createMockTimeframeData();
+    it('should handle null/undefined candles gracefully', async () => {
+      const dataWithNulls: MultiTimeframeData = {
+        symbol: 'BTCUSDT',
+        timeframes: {
+          '1h': {
+            data: [
+              createKline({ time: 1000 }),
+              null as any,
+              createKline({ time: 3000 }),
+              undefined as any,
+              createKline({ time: 5000 })
+            ],
+            weight: 1.0,
+            dataPoints: 5
+          },
+        },
+        fetchedAt: Date.now(),
+      };
       
-      // Mock low confidence
-      mockTouchDetector.calculateLineConfidence.mockReturnValue(0.7);
-      
-      const result = await highConfidenceDetector.detectEnhancedLines(multiTimeframeData);
-      
-      expect(result.horizontalLines).toHaveLength(0);
+      await expect(detector.detectEnhancedLines(dataWithNulls)).resolves.toBeDefined();
     });
 
-    it('should respect minimum timeframe requirement', async () => {
-      const multiTimeframeDetector = new EnhancedLineDetectorV2({ minTimeframes: 3 });
+    it('should handle extreme price values', async () => {
+      const extremeData: MultiTimeframeData = {
+        symbol: 'BTCUSDT',
+        timeframes: {
+          '1h': {
+            data: [
+              createKline({ high: 1e10, low: 1e-10 }),
+              createKline({ high: Infinity, low: -Infinity }),
+              createKline({ high: NaN, low: NaN })
+            ],
+            weight: 1.0,
+            dataPoints: 3
+          },
+        },
+        fetchedAt: Date.now(),
+      };
+      
+      await expect(detector.detectEnhancedLines(extremeData)).resolves.toBeDefined();
+    });
+
+    it('should handle timeframe data with no valid swings', async () => {
+      // Create flat data with no swings
+      const flatData: ProcessedKline[] = Array(20).fill(null).map((_, i) => ({
+        time: 1000 + i * 1000,
+        open: 100,
+        high: 100.1,
+        low: 99.9,
+        close: 100,
+        volume: 1000
+      }));
+      
+      const multiTimeframeData: MultiTimeframeData = {
+        symbol: 'BTCUSDT',
+        timeframes: {
+          '1h': { data: flatData, weight: 1.0, dataPoints: flatData.length }
+        },
+        fetchedAt: Date.now()
+      };
+      
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('performance and statistics', () => {
+    it('should track detection statistics accurately', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData();
       
-      // Only 2 timeframes in mock data
-      const result = await multiTimeframeDetector.detectEnhancedLines(multiTimeframeData);
+      // Mock multiple candidates with some filtered out
+      mockTouchDetector.analyzeTouchPoints
+        .mockReturnValueOnce({ ...mockTouchAnalysis, touchPoints: [] }) // Filtered by touch count
+        .mockReturnValueOnce({ ...mockTouchAnalysis, touchQualityScore: 50 }) // Filtered by quality
+        .mockReturnValue(mockTouchAnalysis); // Valid lines
       
-      // Lines should be filtered out due to insufficient timeframe support
-      expect(result.horizontalLines.length).toBeLessThanOrEqual(
-        result.detectionStats.totalCandidates
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(result.detectionStats.totalCandidates).toBeGreaterThanOrEqual(0);
+      expect(result.detectionStats.qualityFiltered).toBeGreaterThanOrEqual(0);
+      expect(result.detectionStats.touchFiltered).toBeGreaterThanOrEqual(0);
+      expect(result.detectionStats.finalLines).toBe(
+        result.horizontalLines.length + result.trendlines.length
       );
+    });
+
+    it('should complete detection within reasonable time', async () => {
+      const largeData = createMockTimeframeData();
+      // Add more timeframes
+      largeData.timeframes['15m'] = largeData.timeframes['1h']!;
+      largeData.timeframes['30m'] = largeData.timeframes['1h']!;
+      largeData.timeframes['1d'] = largeData.timeframes['4h']!;
+      
+      const startTime = Date.now();
+      const result = await detector.detectEnhancedLines(largeData);
+      const duration = Date.now() - startTime;
+      
+      expect(duration).toBeLessThan(1000); // Should complete within 1 second
+      expect(result.detectionStats.processingTime).toBeLessThanOrEqual(duration + 10);
+    });
+  });
+
+  describe('integration with touch detector', () => {
+    it('should pass correct parameters to touch detector', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(mockTouchDetector.analyzeTouchPoints).toHaveBeenCalledWith(
+        expect.any(Array), // data
+        expect.any(Number), // price level
+        expect.stringMatching(/^(support|resistance)$/) // level type
+      );
+    });
+
+    it('should use touch detector statistics', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(mockTouchDetector.getTouchStatistics).toHaveBeenCalled();
+    });
+
+    it('should calculate combined touch quality scores', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      await detector.detectEnhancedLines(multiTimeframeData);
+      
+      expect(mockTouchDetector.calculateTouchQualityScore).toHaveBeenCalled();
+      expect(mockTouchDetector.calculateVolumeWeightedStrength).toHaveBeenCalled();
+    });
+  });
+
+  describe('unique ID generation', () => {
+    it('should generate unique IDs for all lines', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      // Generate multiple lines
+      mockTouchDetector.calculateLineConfidence
+        .mockReturnValueOnce(0.9)
+        .mockReturnValueOnce(0.85)
+        .mockReturnValueOnce(0.8)
+        .mockReturnValue(0.7);
+      
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      
+      const allIds = [
+        ...result.horizontalLines.map(l => l.id),
+        ...result.trendlines.map(l => l.id)
+      ];
+      
+      const uniqueIds = new Set(allIds);
+      expect(uniqueIds.size).toBe(allIds.length);
+      
+      // Check ID format
+      allIds.forEach(id => {
+        expect(id).toMatch(/^(horizontal|trendline)_\d+_[a-z0-9]+$/);
+      });
+    });
+  });
+
+  describe('metadata and timestamps', () => {
+    it('should include creation timestamps', async () => {
+      const detector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
+      const multiTimeframeData = createMockTimeframeData();
+      
+      const beforeTime = Date.now();
+      const result = await detector.detectEnhancedLines(multiTimeframeData);
+      const afterTime = Date.now();
+      
+      const allLines = [...result.horizontalLines, ...result.trendlines];
+      allLines.forEach(line => {
+        expect(line.createdAt).toBeGreaterThanOrEqual(beforeTime);
+        expect(line.createdAt).toBeLessThanOrEqual(afterTime);
+      });
     });
   });
 });

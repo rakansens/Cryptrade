@@ -20,8 +20,8 @@ const execAsync = promisify(exec);
 // Configuration
 const ENVIRONMENTS = {
   local: 'http://localhost:3000',
-  staging: process.env.STAGING_URL || 'https://cryptrade-staging.vercel.app',
-  production: process.env.PRODUCTION_URL || 'https://cryptrade.vercel.app'
+  staging: process.env['STAGING_URL'] || 'https://cryptrade-staging.vercel.app',
+  production: process.env['PRODUCTION_URL'] || 'https://cryptrade.vercel.app'
 };
 
 // Test scenarios

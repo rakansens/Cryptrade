@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { renderHook } from '@testing-library/react';
-import { useIsClient } from '@/hooks/use-is-client';
+import { .* } from '../../../hooks/use-is-client';
 
 describe('useIsClient', () => {
   it('should return true after initial render in jsdom', () => {

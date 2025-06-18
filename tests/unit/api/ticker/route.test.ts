@@ -31,26 +31,26 @@ describe('Binance Ticker API Route', () => {
 
   describe('GET /api/binance/ticker', () => {
     const mockSingleTicker: BinanceTicker24hr = {
-      symbol: "BTCUSDT",
-      priceChange: "-1234.56",
-      priceChangePercent: "-1.23",
-      weightedAvgPrice: "108234.56",
-      prevClosePrice: "109876.54",
-      lastPrice: "108641.98",
-      lastQty: "0.00123",
-      bidPrice: "108640.00",
-      bidQty: "1.23456",
-      askPrice: "108642.00",
-      askQty: "2.34567",
-      openPrice: "109876.54",
-      highPrice: "110234.56",
-      lowPrice: "107890.12",
-      volume: "12345.67890",
-      quoteVolume: "1338456789.12",
+      symbol: 'BTCUSDT',
+      priceChange: '1200.00',
+      priceChangePercent: '2.5',
+      weightedAvgPrice: '48000.00',
+      prevClosePrice: '47000.00',
+      lastPrice: '48200.00',
+      lastQty: '0.1',
+      bidPrice: '48190.00',
+      bidQty: '1.5',
+      askPrice: '48210.00',
+      askQty: '2.0',
+      openPrice: '47000.00',
+      highPrice: '48800.00',
+      lowPrice: '46500.00',
+      volume: '5000.0',
+      quoteVolume: '240000000.00',
       openTime: 1640995200000,
       closeTime: 1641081599999,
-      firstId: 100000000,
-      lastId: 100100000,
+      firstId: 100000,
+      lastId: 200000,
       count: 100000
     };
 
@@ -59,8 +59,8 @@ describe('Binance Ticker API Route', () => {
       {
         ...mockSingleTicker,
         symbol: "ETHUSDT",
-        lastPrice: "3856.78",
-        priceChangePercent: "2.45"
+        lastPrice: "3200.00",
+        priceChangePercent: "2.5"
       }
     ];
 

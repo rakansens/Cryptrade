@@ -9,7 +9,7 @@
 import { createServer } from 'http';
 import chalk from 'chalk';
 
-const PORT = process.env.CSP_MONITOR_PORT || 3001;
+const PORT = process.env['CSP_MONITOR_PORT'] || 3001;
 
 interface ViolationReport {
   timestamp: string;

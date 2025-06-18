@@ -7,10 +7,18 @@
 import type { PriceData } from '@/types/market';
 import type { MarketContext } from '@/types/trading';
 import { logger } from '@/lib/utils/logger';
+import { analyzeMultipleTimeframes, analyzeMarketCondition } from '@/lib/mastra/tools/proposal-generation/analyzers/market-analyzer';
+import { TIME_CONSTANTS } from '@/lib/mastra/tools/proposal-generation/utils/constants';
+
+interface MultiTimeframeOptions {
+  currentInterval: string;
+  getHigherTimeframeData: (symbol: string, interval: string) => Promise<PriceData[]>;
+}
 
 export async function analyzeMarketContext(
   marketData: PriceData[],
-  symbol: string
+  symbol: string,
+  multiTimeframeOptions?: MultiTimeframeOptions
 ): Promise<MarketContext> {
   const currentCandle = marketData[marketData.length - 1];
   const currentPrice = currentCandle?.close ?? 0;
@@ -27,6 +35,50 @@ export async function analyzeMarketContext(
   // キーレベルの特定
   const keyLevels = identifyKeyLevels(marketData);
 
+  // マルチタイムフレーム分析（オプション）
+  let multiTimeframeAnalysis;
+  if (multiTimeframeOptions) {
+    try {
+      const higherInterval = TIME_CONSTANTS.HIGHER_TIMEFRAMES[
+        multiTimeframeOptions.currentInterval as keyof typeof TIME_CONSTANTS.HIGHER_TIMEFRAMES
+      ] || '1h';
+      
+      const higherTimeframeData = await multiTimeframeOptions.getHigherTimeframeData(symbol, higherInterval);
+      
+      // 現在と上位時間軸の市場状態を分析
+      const currentCondition = analyzeMarketCondition(marketData);
+      const higherCondition = analyzeMarketCondition(higherTimeframeData);
+      
+      // アライメントと矛盾の検出
+      const alignment = 
+        currentCondition.type === 'trending' &&
+        higherCondition.type === 'trending' &&
+        currentCondition.direction === higherCondition.direction;
+      
+      const conflictingSignals = 
+        currentCondition.type === 'trending' &&
+        higherCondition.type === 'trending' &&
+        currentCondition.direction !== higherCondition.direction;
+      
+      multiTimeframeAnalysis = {
+        higherTimeframe: {
+          trend: higherCondition.direction || 'neutral' as 'bullish' | 'bearish' | 'neutral',
+          interval: higherInterval,
+          condition: higherCondition,
+        },
+        currentTimeframe: {
+          trend: currentCondition.direction || 'neutral' as 'bullish' | 'bearish' | 'neutral',
+          interval: multiTimeframeOptions.currentInterval,
+          condition: currentCondition,
+        },
+        alignment,
+        conflictingSignals,
+      };
+    } catch (error) {
+      logger.error('[MarketContextAnalyzer] Multi-timeframe analysis failed', { error });
+    }
+  }
+
   logger.debug('[MarketContextAnalyzer] Analysis complete', {
     symbol,
     currentPrice,
@@ -34,6 +86,7 @@ export async function analyzeMarketContext(
     volatility,
     volume,
     keyLevels,
+    multiTimeframeAnalysis,
   });
 
   return {
@@ -42,6 +95,7 @@ export async function analyzeMarketContext(
     volatility,
     volume,
     keyLevels,
+    ...(multiTimeframeAnalysis && { multiTimeframeAnalysis }),
   };
 }
 

@@ -21,6 +21,11 @@ export async function raceWithCleanup<T>(
     onCleanup?: (error: Error) => void;
   }
 ): Promise<T> {
+  // Handle empty promise array
+  if (promises.length === 0) {
+    return Promise.resolve(undefined as any);
+  }
+
   const controllers: AbortController[] = [];
   const wrappedPromises: Promise<T>[] = [];
 
@@ -178,11 +183,16 @@ export function createDebouncedAsync<TArgs extends unknown[], TResult>(
 } {
   let timeoutId: NodeJS.Timeout | null = null;
   let currentController: AbortController | null = null;
+  let currentReject: ((reason: Error) => void) | null = null;
 
   const execute = async (...args: TArgs): Promise<TResult> => {
     // Cancel previous execution
     if (currentController) {
       currentController.abort();
+      if (currentReject) {
+        currentReject(new Error('Operation cancelled'));
+        currentReject = null;
+      }
     }
     
     // Clear previous timeout
@@ -195,11 +205,17 @@ export function createDebouncedAsync<TArgs extends unknown[], TResult>(
     const signal = currentController.signal;
 
     return new Promise((resolve, reject) => {
+      currentReject = reject;
+      
+      // Handle abort immediately
+      signal.addEventListener('abort', () => {
+        reject(new Error('Operation cancelled'));
+      });
+      
       timeoutId = setTimeout(async () => {
         try {
           // Check if cancelled
           if (signal.aborted) {
-            reject(new Error('Operation cancelled'));
             return;
           }
 
@@ -207,13 +223,14 @@ export function createDebouncedAsync<TArgs extends unknown[], TResult>(
           
           // Check again after async operation
           if (signal.aborted) {
-            reject(new Error('Operation cancelled'));
             return;
           }
 
           resolve(result);
+          currentReject = null;
         } catch (error) {
           reject(error);
+          currentReject = null;
         }
       }, delay);
     });
@@ -227,6 +244,10 @@ export function createDebouncedAsync<TArgs extends unknown[], TResult>(
     if (currentController) {
       currentController.abort();
       currentController = null;
+    }
+    if (currentReject) {
+      currentReject(new Error('Operation cancelled'));
+      currentReject = null;
     }
   };
 

@@ -5,35 +5,24 @@
  * Automatically selects Node.js crypto or Web Crypto API based on runtime
  */
 
-// Detect if we're in Edge Runtime
-const isEdgeRuntime = typeof globalThis !== 'undefined' && 
-  (globalThis as any).EdgeRuntime !== undefined ||
-  (typeof globalThis !== 'undefined' && !(globalThis as any).process?.versions?.node);
+// Node.js implementation
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { env } from '@/config/env';
 
-// For Edge Runtime, use the Web Crypto API version
-if (isEdgeRuntime) {
-  module.exports = require('./api-key-encryption.edge');
-} else {
-  // Node.js implementation
-  const { createCipheriv, createDecipheriv, randomBytes, scryptSync } = require('crypto');
-  const { env } = require('@/config/env');
+// Encryption configuration
+const ALGORITHM = 'aes-256-gcm';
+const SALT_LENGTH = 32;
+const IV_LENGTH = 16;
+const KEY_LENGTH = 32;
 
-  // Encryption configuration
-  const ALGORITHM = 'aes-256-gcm';
-  const SALT_LENGTH = 32;
-  const IV_LENGTH = 16;
-  const TAG_LENGTH = 16;
-  const KEY_LENGTH = 32;
-  const ITERATIONS = 100000;
+export interface EncryptedData {
+  encrypted: string;
+  salt: string;
+  iv: string;
+  tag: string;
+}
 
-  interface EncryptedData {
-    encrypted: string;
-    salt: string;
-    iv: string;
-    tag: string;
-  }
-
-  class ApiKeyEncryption {
+export class ApiKeyEncryption {
     private static instance: ApiKeyEncryption;
     private masterKey: Buffer | null = null;
 
@@ -177,11 +166,4 @@ if (isEdgeRuntime) {
   }
 
   // Export singleton instance
-  const apiKeyEncryption = ApiKeyEncryption.getInstance();
-
-  module.exports = {
-    ApiKeyEncryption,
-    apiKeyEncryption,
-    EncryptedData
-  };
-}
+export const apiKeyEncryption = ApiKeyEncryption.getInstance();

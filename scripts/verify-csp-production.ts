@@ -11,8 +11,8 @@ import https from 'https';
 import { URL } from 'url';
 
 // Configuration
-const PRODUCTION_URL = process.env.PRODUCTION_URL || 'https://your-app.vercel.app';
-const STAGING_URL = process.env.STAGING_URL || 'https://your-app-staging.vercel.app';
+const PRODUCTION_URL = process.env['PRODUCTION_URL'] || 'https://your-app.vercel.app';
+const STAGING_URL = process.env['STAGING_URL'] || 'https://your-app-staging.vercel.app';
 
 // Expected security headers
 const REQUIRED_HEADERS = {

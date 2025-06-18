@@ -57,6 +57,30 @@ export const EntryConditionsSchema = z.object({
   timeframeAlignment: z.string().optional().describe('エントリー時間枠（例: 4h, 1d）'),
 });
 
+// Multi-timeframe analysis
+export const MultiTimeframeAnalysisSchema = z.object({
+  higherTimeframe: z.object({
+    trend: z.enum(['bullish', 'bearish', 'neutral']),
+    interval: z.string(),
+    condition: z.object({
+      type: z.enum(['trending', 'ranging', 'volatile']),
+      strength: z.number().min(0).max(1),
+      direction: z.enum(['bullish', 'bearish']).optional(),
+    }),
+  }),
+  currentTimeframe: z.object({
+    trend: z.enum(['bullish', 'bearish', 'neutral']),
+    interval: z.string(),
+    condition: z.object({
+      type: z.enum(['trending', 'ranging', 'volatile']),
+      strength: z.number().min(0).max(1),
+      direction: z.enum(['bullish', 'bearish']).optional(),
+    }),
+  }),
+  alignment: z.boolean().describe('トレンドが一致しているか'),
+  conflictingSignals: z.boolean().describe('矛盾するシグナルがあるか'),
+});
+
 // Market context for entry
 export const MarketContextSchema = z.object({
   currentPrice: z.number().positive(),
@@ -69,6 +93,7 @@ export const MarketContextSchema = z.object({
     dailyHigh: z.number().positive().optional(),
     dailyLow: z.number().positive().optional(),
   }),
+  multiTimeframeAnalysis: MultiTimeframeAnalysisSchema.optional(),
 });
 
 // Entry reasoning
@@ -176,6 +201,7 @@ export type TradingDirection = z.infer<typeof TradingDirectionSchema>;
 export type RiskParameters = z.infer<typeof RiskParametersSchema>;
 export type EntryConditions = z.infer<typeof EntryConditionsSchema>;
 export type MarketContext = z.infer<typeof MarketContextSchema>;
+export type MultiTimeframeAnalysis = z.infer<typeof MultiTimeframeAnalysisSchema>;
 export type EntryReasoning = z.infer<typeof EntryReasoningSchema>;
 export type EntryProposal = z.infer<typeof EntryProposalSchema>;
 export type TradeSetup = z.infer<typeof TradeSetupSchema>;

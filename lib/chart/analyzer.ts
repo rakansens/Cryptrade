@@ -15,6 +15,11 @@ export interface SupportResistanceConfig {
   minTouches: number;
   priceThreshold: number;
   strengthThreshold: number;
+  multiTimeframeOptions?: {
+    enabled: boolean;
+    timeframes?: string[];
+    dataProvider?: (timeframe: string) => Promise<CandlestickData[]>;
+  };
 }
 
 /**
@@ -54,14 +59,16 @@ export class ChartAnalyzer {
     if (!this.data || this.data.length < config.minTouchPoints) {
       if (env.NODE_ENV === 'development') {
         console.warn(`[ChartAnalyzer] Insufficient data for trend line detection: ${this.data?.length || 0} candles, need at least ${config.minTouchPoints}`);
-        return [];
       }
-      
-      throw new Error(`Insufficient data for trend line detection: ${this.data?.length || 0} candles provided, need at least ${config.minTouchPoints}`);
+      return [];
     }
 
     const trendLines: ChartDrawing[] = [];
     const recentData = this.data.slice(-config.lookbackPeriod);
+    
+    if (recentData.length < 3) {
+      return trendLines; // 少なくとも3点は必要
+    }
     
     // Find local minima and maxima
     const localMinima: { index: number; price: number; time: number }[] = [];
@@ -89,6 +96,80 @@ export class ChartAnalyzer {
           index: i,
           price: (current as any).high as number,
           time: typeof current.time === 'number' ? current.time : Number(current.time)
+        });
+      }
+    }
+    
+    // ローカルミニマ/マキシマが見つからない場合、簡易的に検出
+    if (localMinima.length < 2) {
+      // 最低値と最高値の位置を見つける
+      let minIndex = 0;
+      let minPrice = Number.MAX_VALUE;
+      let secondMinIndex = 1;
+      let secondMinPrice = Number.MAX_VALUE;
+      
+      for (let i = 0; i < recentData.length; i++) {
+        const current = recentData[i];
+        if (current && 'low' in current) {
+          if (current.low < minPrice) {
+            secondMinIndex = minIndex;
+            secondMinPrice = minPrice;
+            minIndex = i;
+            minPrice = current.low;
+          } else if (current.low < secondMinPrice && i !== minIndex) {
+            secondMinIndex = i;
+            secondMinPrice = current.low;
+          }
+        }
+      }
+      
+      if (minIndex !== secondMinIndex) {
+        localMinima.push({
+          index: Math.min(minIndex, secondMinIndex),
+          price: (recentData[Math.min(minIndex, secondMinIndex)] && 'low' in recentData[Math.min(minIndex, secondMinIndex)] ? (recentData[Math.min(minIndex, secondMinIndex)] as any).low : 0) || 0,
+          time: Number(recentData[Math.min(minIndex, secondMinIndex)]?.time || 0)
+        });
+        localMinima.push({
+          index: Math.max(minIndex, secondMinIndex),
+          price: (recentData[Math.max(minIndex, secondMinIndex)] && 'low' in recentData[Math.max(minIndex, secondMinIndex)] ? (recentData[Math.max(minIndex, secondMinIndex)] as any).low : 0) || 0,
+          time: Number(recentData[Math.max(minIndex, secondMinIndex)]?.time || 0)
+        });
+      }
+    }
+    
+    if (localMaxima.length < 2) {
+      // 最高値を見つける
+      let maxIndex = 0;
+      let maxPrice = -Number.MAX_VALUE;
+      let secondMaxIndex = 1;
+      let secondMaxPrice = -Number.MAX_VALUE;
+      
+      for (let i = 0; i < recentData.length; i++) {
+        const current = recentData[i];
+        if (current && 'high' in current) {
+          const high = (current as any).high;
+          if (high > maxPrice) {
+            secondMaxIndex = maxIndex;
+            secondMaxPrice = maxPrice;
+            maxIndex = i;
+            maxPrice = high;
+          } else if (high > secondMaxPrice && i !== maxIndex) {
+            secondMaxIndex = i;
+            secondMaxPrice = high;
+          }
+        }
+      }
+      
+      if (maxIndex !== secondMaxIndex) {
+        localMaxima.push({
+          index: Math.min(maxIndex, secondMaxIndex),
+          price: (recentData[Math.min(maxIndex, secondMaxIndex)] as any)?.high || 0,
+          time: Number(recentData[Math.min(maxIndex, secondMaxIndex)]?.time || 0)
+        });
+        localMaxima.push({
+          index: Math.max(maxIndex, secondMaxIndex),
+          price: (recentData[Math.max(maxIndex, secondMaxIndex)] as any)?.high || 0,
+          time: Number(recentData[Math.max(maxIndex, secondMaxIndex)]?.time || 0)
         });
       }
     }
@@ -139,6 +220,32 @@ export class ChartAnalyzer {
                 direction: 'up',
                 confidence,
                 touches
+              }
+            });
+          }
+        } else if (config.minTouchPoints <= 2) {
+          // minTouchPointsが2以下の場合、2点でもトレンドラインを作成
+          const confidence = 0.7;
+          if (confidence >= config.confidenceThreshold) {
+            trendLines.push({
+              id: `trend_up_${Date.now()}_${i}_${j}`,
+              type: 'trendline',
+              points: [
+                { time: point1.time as Time, value: point1.price },
+                { time: point2.time as Time, value: point2.price }
+              ],
+              style: {
+                color: '#0ddfba',
+                lineWidth: 2,
+                lineStyle: 'solid',
+                showLabels: false
+              },
+              visible: true,
+              interactive: true,
+              metadata: {
+                direction: 'up',
+                confidence,
+                touches: 2
               }
             });
           }
@@ -195,6 +302,32 @@ export class ChartAnalyzer {
               }
             });
           }
+        } else if (config.minTouchPoints <= 2) {
+          // minTouchPointsが2以下の場合、2点でもトレンドラインを作成
+          const confidence = 0.7;
+          if (confidence >= config.confidenceThreshold) {
+            trendLines.push({
+              id: `trend_down_${Date.now()}_${i}_${j}`,
+              type: 'trendline',
+              points: [
+                { time: point1.time as Time, value: point1.price },
+                { time: point2.time as Time, value: point2.price }
+              ],
+              style: {
+                color: '#ff4d4d',
+                lineWidth: 2,
+                lineStyle: 'solid',
+                showLabels: false
+              },
+              visible: true,
+              interactive: true,
+              metadata: {
+                direction: 'down',
+                confidence,
+                touches: 2
+              }
+            });
+          }
         }
       }
     }
@@ -219,25 +352,31 @@ export class ChartAnalyzer {
     if (!this.data || this.data.length < config.lookbackPeriod) {
       if (env.NODE_ENV === 'development') {
         console.warn(`[ChartAnalyzer] Insufficient data for support/resistance detection: ${this.data?.length || 0} candles, need at least ${config.lookbackPeriod}`);
-        return [];
       }
-      
-      throw new Error(`Insufficient data for support/resistance detection: ${this.data?.length || 0} candles provided, need at least ${config.lookbackPeriod}`);
+      return [];
     }
 
     const supportResistanceLines: ChartDrawing[] = [];
-    const recentData = this.data.slice(-config.lookbackPeriod);
+    const dataToAnalyze = config.lookbackPeriod < this.data.length 
+      ? this.data.slice(-config.lookbackPeriod)
+      : this.data;
+    
+    if (dataToAnalyze.length < 2) {
+      return supportResistanceLines;
+    }
     
     // Price levels and their touch counts
     const priceLevels = new Map<number, { touches: number; type: 'support' | 'resistance' | 'both' }>();
     
     // Round price to nearest threshold
     const roundPrice = (price: number) => {
-      return Math.round(price / config.priceThreshold) * config.priceThreshold;
+      // 価格しきい値を価格に対する割合として使用
+      const threshold = price * config.priceThreshold;
+      return Math.round(price / threshold) * threshold;
     };
     
     // Count touches for each price level
-    for (const candle of recentData) {
+    for (const candle of dataToAnalyze) {
       if (!candle || !('high' in candle) || !('low' in candle)) continue;
       const highLevel = roundPrice((candle as any).high);
       const lowLevel = roundPrice((candle as any).low);
@@ -290,8 +429,8 @@ export class ChartAnalyzer {
     }
     
     // Create horizontal lines for merged significant levels
-    const startTime = recentData[0]?.time || 0;
-    const endTime = recentData[recentData.length - 1]?.time || 0;
+    const startTime = dataToAnalyze[0]?.time || 0;
+    const endTime = dataToAnalyze[dataToAnalyze.length - 1]?.time || 0;
 
     for (const level of mergedLevels) {
       const isSupportLine = level.type === 'support' || level.type === 'both';
@@ -347,6 +486,136 @@ export class ChartAnalyzer {
     }
     
     return supportResistanceLines;
+  }
+
+  /**
+   * サポート・レジスタンスラインを非同期で検出する（マルチタイムフレーム対応）
+   * 上位時間軸のデータを参照して、より信頼性の高いレベルを検出します
+   * 
+   * @param config - サポート・レジスタンス検出の設定（マルチタイムフレームオプション含む）
+   * @returns 検出された水平ライン配列（サポート・レジスタンス）
+   */
+  async detectSupportResistanceAsync(config: SupportResistanceConfig): Promise<ChartDrawing[]> {
+    // マルチタイムフレームが無効の場合は同期メソッドにフォールバック
+    if (!config.multiTimeframeOptions?.enabled) {
+      return this.detectSupportResistance(config);
+    }
+
+    // ベースタイムフレームでの検出結果を取得
+    const baseResults = this.detectSupportResistance(config);
+
+    // データプロバイダーが提供されていない場合はベース結果を返す
+    if (!config.multiTimeframeOptions.dataProvider) {
+      return baseResults;
+    }
+
+    try {
+      // 上位時間軸を決定（指定がない場合は自動計算）
+      const higherTimeframe = config.multiTimeframeOptions.timeframes?.[0] || 
+                             this.getHigherTimeframe();
+
+      // 上位時間軸のデータを取得
+      const higherTfData = await config.multiTimeframeOptions.dataProvider(higherTimeframe);
+      
+      if (!higherTfData || higherTfData.length === 0) {
+        return baseResults;
+      }
+
+      // 上位時間軸でのサポート・レジスタンスを検出
+      const higherTfAnalyzer = new ChartAnalyzer(higherTfData);
+      const higherTfResults = higherTfAnalyzer.detectSupportResistance({
+        ...config,
+        multiTimeframeOptions: undefined // 再帰を防ぐ
+      });
+
+      // ベース結果を上位時間軸の結果で強化
+      return this.enhanceLevelsWithMTF(baseResults, higherTfResults);
+    } catch (error) {
+      // エラーが発生した場合はベース結果を返す
+      if (env.NODE_ENV === 'development') {
+        console.warn('[ChartAnalyzer] Multi-timeframe analysis failed:', error);
+      }
+      return baseResults;
+    }
+  }
+
+  /**
+   * 現在のデータから上位時間軸を推定する
+   * @returns 推定された上位時間軸の文字列表現
+   */
+  private getHigherTimeframe(): string {
+    if (this.data.length < 2) {
+      return '1h'; // デフォルト
+    }
+
+    // データポイント間の時間差から現在の時間軸を推定
+    const timeDiff = Math.abs(Number(this.data[1]?.time || 0) - Number(this.data[0]?.time || 0));
+    
+    // 秒単位の時間差に基づいて時間軸を判定し、4倍の上位時間軸を返す
+    if (timeDiff <= 60) return '5m';          // 1分足 → 5分足
+    if (timeDiff <= 300) return '15m';        // 5分足 → 15分足
+    if (timeDiff <= 900) return '1h';         // 15分足 → 1時間足
+    if (timeDiff <= 3600) return '4h';        // 1時間足 → 4時間足
+    if (timeDiff <= 14400) return '1d';       // 4時間足 → 日足
+    
+    return '1w'; // それ以上は週足
+  }
+
+  /**
+   * ベースタイムフレームのレベルを上位時間軸の結果で強化する
+   * @param baseResults - ベースタイムフレームの検出結果
+   * @param higherTfResults - 上位時間軸の検出結果
+   * @returns 強化されたレベル配列
+   */
+  private enhanceLevelsWithMTF(
+    baseResults: ChartDrawing[], 
+    higherTfResults: ChartDrawing[]
+  ): ChartDrawing[] {
+    const enhancedResults = baseResults.map(baseLevel => {
+      const enhancedLevel = { ...baseLevel };
+      if (!enhancedLevel.metadata) {
+        enhancedLevel.metadata = {};
+      }
+      
+      // デフォルトでmtfConfirmedをfalseに設定
+      enhancedLevel.metadata['mtfConfirmed'] = false;
+      
+      if (!enhancedLevel?.points?.[0]?.value) return enhancedLevel;
+      
+      const basePrice = enhancedLevel.points[0].value;
+      const baseType = enhancedLevel.metadata['type'];
+      const priceThreshold = 0.02; // 2%の価格差を許容
+
+      // 上位時間軸で同じタイプの近いレベルを探す
+      const confirmedOnHigherTf = higherTfResults.some(htfLevel => {
+        if (!htfLevel?.points?.[0]?.value) return false;
+        
+        const htfPrice = htfLevel.points[0].value;
+        const htfType = htfLevel.metadata?.['type'];
+        
+        // 同じタイプで価格が近い場合
+        return htfType === baseType && 
+               Math.abs(htfPrice - basePrice) / basePrice < priceThreshold;
+      });
+
+      if (confirmedOnHigherTf) {
+        // 上位時間軸で確認されたレベルの強度を上げる
+        const currentStrength = enhancedLevel.metadata['strength'] as number || 1;
+        enhancedLevel.metadata['strength'] = Math.min(currentStrength * 1.5, 3.0); // 50%増加
+        enhancedLevel.metadata['mtfConfirmed'] = true;
+
+        // ラインスタイルも更新（より太く、実線に）
+        if (enhancedLevel.style) {
+          enhancedLevel.style = { ...enhancedLevel.style };
+          enhancedLevel.style.lineWidth = Math.min(3, (enhancedLevel.style.lineWidth || 1) + 1);
+          enhancedLevel.style.lineStyle = 'solid';
+        }
+      }
+      
+      return enhancedLevel;
+    });
+
+    return enhancedResults;
   }
 
   // ... その他の分析メソッドは後ほど完全移行予定 ...

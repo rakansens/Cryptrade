@@ -7,7 +7,7 @@
 import fetch from 'node-fetch';
 import chalk from 'chalk';
 
-const TEST_URL = process.env.TEST_URL || 'http://localhost:3000';
+const TEST_URL = process.env['TEST_URL'] || 'http://localhost:3000';
 
 interface SecurityHeader {
   name: string;

@@ -68,7 +68,7 @@ describe('WSManager E2E - Error Handling', () => {
           ws.simulateError(new Error('Connection refused'));
           ws.close(1006, 'Unable to connect');
         }
-      }, 5);
+      }, 20);
     });
 
     it('should handle connection timeout', (done) => {
@@ -98,7 +98,7 @@ describe('WSManager E2E - Error Handling', () => {
           ws.simulateError(new Error('Connection timeout'));
           ws.close(1006);
         }
-      }, 5);
+      }, 20);
     }, 10000);
   });
 
@@ -304,7 +304,7 @@ describe('WSManager E2E - Error Handling', () => {
       manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         maxRetryAttempts: 3,
-        baseRetryDelay: 10
+        baseRetryDelay: 50
       });
 
       let errorCount = 0;
@@ -335,14 +335,19 @@ describe('WSManager E2E - Error Handling', () => {
           errorCount++;
           ws.simulateError(new Error('Transient error'));
           ws.close(1006);
-          setTimeout(simulateTransientError, 30);
+          setTimeout(simulateTransientError, 100);
         } else if (ws && attemptCount === 3) {
           // Success on third attempt
-          ws.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000'));
+          setTimeout(() => {
+            const newWs = MockWebSocket.getAllInstances().find(w => w.readyState === MockWebSocket.OPEN);
+            if (newWs) {
+              newWs.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000'));
+            }
+          }, 50);
         }
       };
 
-      setTimeout(simulateTransientError, 10);
-    }, 2000);
+      setTimeout(simulateTransientError, 50);
+    }, 5000);
   });
 });

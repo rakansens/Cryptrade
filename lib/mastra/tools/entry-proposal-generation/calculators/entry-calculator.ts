@@ -81,6 +81,13 @@ export async function calculateEntryPoints(
   input: CalculateEntryPointsInput
 ): Promise<EntryPoint[]> {
   const { marketData, analysisResults, marketContext, strategyPreference } = input;
+  
+  // 空データチェック
+  if (!marketData || marketData.length === 0) {
+    logger.warn('[EntryCalculator] No market data provided');
+    return [];
+  }
+  
   const lastCandle = marketData[marketData.length - 1];
   if (!lastCandle) {
     logger.warn('[EntryCalculator] No market data available');
@@ -95,12 +102,6 @@ export async function calculateEntryPoints(
   const currentPrice = lastCandle.close;
   const entryPoints: EntryPoint[] = [];
 
-  logger.debug('[EntryCalculator] Starting calculation', {
-    currentPrice,
-    trend: marketContext.trend,
-    hasPatterns: !!analysisResults?.patterns?.length,
-    hasSR: !!analysisResults?.supportResistance?.length,
-  });
 
   // 1. パターンベースのエントリー
   if (analysisResults?.patterns && analysisResults.patterns.length > 0) {
@@ -126,10 +127,13 @@ export async function calculateEntryPoints(
     }
   }
 
-  // 4. 戦略に基づくフィルタリング
-  const filteredEntries = filterByStrategy(entryPoints, strategyPreference, marketContext);
+  // 4. マルチタイムフレーム分析による調整
+  const adjustedEntries = adjustEntriesWithMultiTimeframe(entryPoints, marketContext);
 
-  // 5. 信頼度でソート
+  // 5. 戦略に基づくフィルタリング
+  const filteredEntries = filterByStrategy(adjustedEntries, strategyPreference, marketContext);
+
+  // 6. 信頼度でソート
   return filteredEntries.sort((a, b) => b.confidence - a.confidence);
 }
 
@@ -202,6 +206,7 @@ function calculateSRBasedEntries(
   if (!levelPrice) return entries;
   
   const priceDistance = Math.abs(currentPrice - levelPrice) / currentPrice;
+  
 
   // レベルに近い場合（3%以内）
   if (priceDistance < 0.03) {
@@ -294,6 +299,7 @@ function calculateTrendlineBasedEntries(
   if (!trendlinePrice) return entries;
 
   const priceDistance = Math.abs(currentPrice - trendlinePrice) / currentPrice;
+  
 
   // トレンドラインに近い場合（2%以内）
   if (priceDistance < 0.02) {
@@ -398,6 +404,80 @@ function determineStrategyFromPattern(pattern: Pattern): TradingStrategyType {
   if (hours < 24) return 'dayTrading';
   if (hours < 168) return 'swingTrading'; // 1週間
   return 'position';
+}
+
+/**
+ * マルチタイムフレーム分析による調整
+ */
+function adjustEntriesWithMultiTimeframe(
+  entries: EntryPoint[],
+  marketContext: MarketContext
+): EntryPoint[] {
+  if (!marketContext.multiTimeframeAnalysis) {
+    return entries;
+  }
+
+  const { higherTimeframe, alignment, conflictingSignals } = marketContext.multiTimeframeAnalysis;
+
+  return entries.map(entry => {
+    let adjustedConfidence = entry.confidence;
+    const technicalFactors = [...entry.reasoning.technicalFactors];
+    const risks = [...entry.reasoning.risks];
+
+    // アライメントがある場合、信頼度を向上
+    if (alignment && 
+        ((entry.direction === 'long' && higherTimeframe.trend === 'bullish') ||
+         (entry.direction === 'short' && higherTimeframe.trend === 'bearish'))) {
+      adjustedConfidence *= 1.2;
+      technicalFactors.push({
+        factor: 'multiTimeframeAlignment',
+        weight: 0.15,
+        description: `上位時間軸（${higherTimeframe.interval}）も同じ${
+          higherTimeframe.trend === 'bullish' ? '上昇' : '下降'
+        }トレンド（強度: ${(higherTimeframe.condition.strength * 100).toFixed(0)}%）`,
+      });
+    }
+
+    // 矛盾するシグナルの場合、信頼度を低下
+    if (conflictingSignals) {
+      if ((entry.direction === 'long' && higherTimeframe.trend === 'bearish') ||
+          (entry.direction === 'short' && higherTimeframe.trend === 'bullish')) {
+        adjustedConfidence *= 0.7;
+        risks.push(
+          `上位時間軸（${higherTimeframe.interval}）は${
+            higherTimeframe.trend === 'bullish' ? '上昇' : '下降'
+          }トレンドで矛盾あり`
+        );
+      }
+    }
+
+    // 上位時間軸が強いトレンドの場合の追加調整
+    if (higherTimeframe.condition.type === 'trending' && 
+        higherTimeframe.condition.strength > 0.8) {
+      if ((entry.direction === 'long' && higherTimeframe.trend === 'bearish') ||
+          (entry.direction === 'short' && higherTimeframe.trend === 'bullish')) {
+        // 強い逆トレンドの場合はさらに信頼度を下げる
+        adjustedConfidence *= 0.8;
+      }
+    }
+
+    // 重みを再計算
+    const totalWeight = technicalFactors.reduce((sum, f) => sum + f.weight, 0);
+    const normalizedFactors = technicalFactors.map(f => ({
+      ...f,
+      weight: f.weight / totalWeight,
+    }));
+
+    return {
+      ...entry,
+      confidence: Math.min(Math.max(adjustedConfidence, 0.1), 0.95),
+      reasoning: {
+        ...entry.reasoning,
+        technicalFactors: normalizedFactors,
+        risks,
+      },
+    };
+  });
 }
 
 /**

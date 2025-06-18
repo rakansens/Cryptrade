@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { orchestratorAgent, type OrchestratorAgentContext, type IntentAnalysisResult } from '@/lib/mastra/agents/orchestrator.agent';
+import { 
+  orchestratorAgent, 
+  type OrchestratorAgentContext, 
+  type IntentAnalysisResult,
+  type OrchestratorExecutionResult,
+  type OrchestratorExecutionResponse,
+  type OrchestratorRuntimeContext,
+  executeImprovedOrchestrator,
+  analyzeUserIntent
+} from '@/lib/mastra/agents/orchestrator.agent';
 import { generateCorrelationId } from '@/types/agent-payload';
 import { traceManager } from '@/lib/monitoring/trace';
 import { logger } from '@/lib/utils/logger';
@@ -7,11 +16,14 @@ import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/stor
 import { registerAllAgents } from '@/lib/mastra/network/agent-registry';
 import { parallelOrchestrator } from '@/lib/mastra/agents/parallel-orchestrator';
 import { Message } from '@mastra/core';
+import { openai } from '@ai-sdk/openai';
+import { Agent } from '@mastra/core';
 
 // Mock dependencies
 vi.mock('@/types/agent-payload', () => ({
   generateCorrelationId: vi.fn(() => 'test-correlation-id')
 }));
+
 vi.mock('@/lib/monitoring/trace', () => ({
   traceManager: {
     startTrace: vi.fn(),
@@ -19,39 +31,93 @@ vi.mock('@/lib/monitoring/trace', () => ({
     addEvent: vi.fn()
   }
 }));
-vi.mock('@/lib/utils/logger');
+
+vi.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+}));
+
 vi.mock('@/lib/store/enhanced-conversation-memory.store', () => ({
   useEnhancedConversationMemory: {
     getState: vi.fn(() => ({
+      currentSessionId: 'test-session-id',
       createSession: vi.fn().mockResolvedValue('test-session-id'),
-      addMessage: vi.fn(),
+      addMessage: vi.fn().mockResolvedValue(undefined),
       getProcessedMessages: vi.fn(() => []),
-      getSessionContext: vi.fn(() => 'Previous context')
+      getSessionContext: vi.fn(() => 'Previous context'),
+      getMemoryStats: vi.fn(() => ({
+        totalMessages: 5,
+        processedMessages: 5,
+        estimatedTokens: 100,
+        processors: ['test-processor']
+      })),
+      getRecentMessages: vi.fn(() => [
+        { role: 'user', content: 'BTCの価格', metadata: {} },
+        { role: 'assistant', content: 'BTCは50000ドルです', metadata: {} }
+      ])
     }))
   },
   createEnhancedSession: vi.fn().mockResolvedValue('test-session-id')
 }));
+
 vi.mock('@/lib/mastra/network/agent-registry', () => ({
   registerAllAgents: vi.fn()
 }));
+
 vi.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
   parallelOrchestrator: {
     execute: vi.fn().mockResolvedValue({
-      results: [],
-      errors: []
+      analysis: {
+        intent: 'price_inquiry',
+        confidence: 0.9,
+        reasoning: 'Parallel processing',
+        analysisDepth: 'detailed'
+      },
+      executionResult: {
+        response: 'Parallel execution response',
+        data: {}
+      },
+      executionTime: 1500,
+      success: true
     })
   }
+}));
+
+vi.mock('@ai-sdk/openai', () => ({
+  openai: vi.fn(() => ({
+    id: 'mock-model',
+    provider: 'openai'
+  }))
+}));
+
+vi.mock('@mastra/core', () => ({
+  Agent: vi.fn().mockImplementation((config) => ({
+    ...config,
+    generate: vi.fn().mockResolvedValue({
+      text: 'こんにちは！暗号通貨取引についてお手伝いできることはありますか？',
+      metadata: {}
+    })
+  })),
+  Message: vi.fn()
 }));
 
 // Mock the tools
 vi.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
   agentSelectionTool: {
     execute: vi.fn().mockResolvedValue({
-      selectedAgent: 'price-agent',
-      result: { price: 50000, symbol: 'BTCUSDT' }
+      executionResult: {
+        response: 'BTCの現在価格は50,000ドルです。',
+        data: { price: 50000, symbol: 'BTCUSDT' }
+      },
+      message: 'Price retrieved successfully'
     })
   }
 }));
+
 vi.mock('@/lib/mastra/tools/memory-recall.tool', () => ({
   memoryRecallTool: {
     execute: vi.fn().mockResolvedValue({
@@ -60,6 +126,7 @@ vi.mock('@/lib/mastra/tools/memory-recall.tool', () => ({
     })
   }
 }));
+
 vi.mock('@/lib/mastra/tools/market-snapshot.tool', () => ({
   marketSnapshotTool: {
     execute: vi.fn().mockResolvedValue({
@@ -73,6 +140,7 @@ vi.mock('@/lib/mastra/tools/market-snapshot.tool', () => ({
     })
   }
 }));
+
 vi.mock('@/lib/mastra/tools/market-data-resilient.tool', () => ({
   marketDataResilientTool: {
     execute: vi.fn().mockResolvedValue({
@@ -83,9 +151,13 @@ vi.mock('@/lib/mastra/tools/market-data-resilient.tool', () => ({
   }
 }));
 
-describe('OrchestratorAgent', () => {
+describe('OrchestratorAgent Comprehensive Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Agent Configuration', () => {
@@ -95,231 +167,95 @@ describe('OrchestratorAgent', () => {
       expect(orchestratorAgent.tools).toHaveProperty('agentSelectionTool');
       expect(orchestratorAgent.tools).toHaveProperty('memoryRecallTool');
       expect(orchestratorAgent.tools).toHaveProperty('marketSnapshot');
-      expect(orchestratorAgent.tools).toHaveProperty('marketDataResilient');
+      expect(orchestratorAgent.tools).toHaveProperty('trendingTopics');
+      expect(orchestratorAgent.tools).toHaveProperty('quickPrice');
     });
 
-    it('should have dynamic model selection', () => {
+    it('should dynamically select model based on context', () => {
       const model = orchestratorAgent.model;
       expect(typeof model).toBe('function');
       
       // Test different contexts
       const contexts = [
-        { queryComplexity: 'simple', userTier: 'free', isProposalMode: false },
-        { queryComplexity: 'complex', userTier: 'free', isProposalMode: false },
-        { queryComplexity: 'simple', userTier: 'premium', isProposalMode: false },
-        { queryComplexity: 'simple', userTier: 'free', isProposalMode: true },
+        { queryComplexity: 'simple', userTier: 'free', isProposalMode: false, expected: 'gpt-3.5-turbo' },
+        { queryComplexity: 'complex', userTier: 'free', isProposalMode: false, expected: 'gpt-4o' },
+        { queryComplexity: 'simple', userTier: 'premium', isProposalMode: false, expected: 'gpt-4o-mini' },
+        { queryComplexity: 'simple', userTier: 'free', isProposalMode: true, expected: 'gpt-4o' },
       ];
       
-      contexts.forEach(context => {
+      contexts.forEach(({ expected, ...context }) => {
         const selectedModel = model(context);
         expect(selectedModel).toBeDefined();
+        expect(vi.mocked(openai)).toHaveBeenCalledWith(expected);
       });
     });
 
-    it('should have dynamic instructions based on context', () => {
+    it('should generate dynamic instructions based on context', () => {
       const instructions = orchestratorAgent.instructions;
       expect(typeof instructions).toBe('function');
       
-      // Test different user levels
-      const contexts = [
-        { userLevel: 'beginner', marketStatus: 'open' },
-        { userLevel: 'intermediate', marketStatus: 'open' },
-        { userLevel: 'expert', marketStatus: 'open' },
-        { userLevel: 'intermediate', marketStatus: 'closed' },
-      ];
-      
-      contexts.forEach(context => {
-        const instructionText = instructions(context);
-        expect(instructionText).toContain('意図分析専門エージェント');
-        
-        if (context.userLevel === 'beginner') {
-          expect(instructionText).toContain('初心者向け特別指示');
-        }
-        if (context.userLevel === 'expert') {
-          expect(instructionText).toContain('エキスパート向け特別指示');
-        }
-        if (context.marketStatus === 'closed') {
-          expect(instructionText).toContain('市場クローズ時の特別指示');
-        }
-      });
-    });
-  });
-
-  describe('Message Processing', () => {
-    it('should process simple price inquiry', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCの価格を教えて' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // The actual implementation would call tools and return formatted response
-    });
-
-    it('should handle greetings without agent selection', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'こんにちは！' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should respond directly without calling specialized agents
-    });
-
-    it('should process complex trading analysis request', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCの詳細な分析をして、買うべきか教えて' }
-      ];
-      
-      const context: OrchestratorAgentContext = {
-        queryComplexity: 'complex',
-        isProposalMode: false
+      // Test beginner level
+      const beginnerContext: OrchestratorAgentContext = { 
+        userLevel: 'beginner', 
+        marketStatus: 'open' 
       };
+      const beginnerInstructions = instructions(beginnerContext);
+      expect(beginnerInstructions).toContain('初心者向け特別指示');
+      expect(beginnerInstructions).toContain('専門用語は避けるか');
       
-      const result = await orchestratorAgent.generate(messages, { context });
-      
-      expect(result).toBeDefined();
-      // Should select trading analysis agent
-    });
-
-    it('should handle UI control requests', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'トレンドラインを引いて' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should select UI control agent
-    });
-
-    it('should process proposal requests', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'サポートとレジスタンスの提案をして' }
-      ];
-      
-      const context: OrchestratorAgentContext = {
-        isProposalMode: true
+      // Test expert level
+      const expertContext: OrchestratorAgentContext = { 
+        userLevel: 'expert', 
+        marketStatus: 'open' 
       };
+      const expertInstructions = instructions(expertContext);
+      expect(expertInstructions).toContain('エキスパート向け特別指示');
+      expect(expertInstructions).toContain('高度な分析機能を積極的に活用');
       
-      const result = await orchestratorAgent.generate(messages, { context });
-      
-      expect(result).toBeDefined();
-      // Should handle proposal mode
-    });
-  });
-
-  describe('Memory Integration', () => {
-    it('should recall previous messages when needed', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'さっき話したBTCについてもっと詳しく' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should use memory recall tool
-    });
-
-    it('should create new session when appropriate', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: '新しい分析を始めて' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should potentially create new session
-    });
-  });
-
-  describe('Market Context', () => {
-    it('should use market snapshot for general queries', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: '今の市場はどう？' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should use market snapshot tool
-    });
-
-    it('should handle trending topics requests', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: '今話題の仮想通貨は？' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should use trending topics tool
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle tool execution failures gracefully', async () => {
-      // Mock tool failure
-      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
-      vi.mocked(agentSelectionTool.execute).mockRejectedValueOnce(new Error('Tool execution failed'));
-      
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCの価格' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should handle error and provide fallback response
-    });
-
-    it('should handle memory recall failures', async () => {
-      const { memoryRecallTool } = await import('@/lib/mastra/tools/memory-recall.tool');
-      vi.mocked(memoryRecallTool.execute).mockRejectedValueOnce(new Error('Memory recall failed'));
-      
-      const messages: Message[] = [
-        { role: 'user', content: 'さっきの話の続き' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should continue without memory context
+      // Test closed market
+      const closedMarketContext: OrchestratorAgentContext = { 
+        userLevel: 'intermediate', 
+        marketStatus: 'closed' 
+      };
+      const closedInstructions = instructions(closedMarketContext);
+      expect(closedInstructions).toContain('市場クローズ時の特別指示');
+      expect(closedInstructions).toContain('履歴データを活用');
     });
   });
 
   describe('Intent Analysis', () => {
-    it('should correctly identify price inquiry intent', () => {
+    it('should correctly analyze price inquiry intent', () => {
       const testCases = [
-        'BTCの価格',
-        'ビットコインいくら？',
-        'ETH price',
-        '現在のBTC価格を教えて'
+        { query: 'BTCの価格を教えて', expectedSymbol: 'BTCUSDT' },
+        { query: 'ビットコインいくら？', expectedSymbol: 'BTCUSDT' },
+        { query: 'ETH price', expectedSymbol: 'ETHUSDT' },
+        { query: '現在のSOL価格は？', expectedSymbol: 'SOLUSDT' }
       ];
       
-      testCases.forEach(query => {
-        // Test intent analysis logic
-        expect(query).toBeTruthy();
+      testCases.forEach(({ query, expectedSymbol }) => {
+        const result = analyzeUserIntent(query);
+        expect(result.intent).toBe('price_inquiry');
+        expect(result.confidence).toBeGreaterThan(0.8);
+        expect(result.extractedSymbol).toBe(expectedSymbol);
       });
     });
 
-    it('should correctly identify UI control intent', () => {
+    it('should correctly analyze UI control intent', () => {
       const testCases = [
-        'トレンドラインを描いて',
-        'チャートをBTCに変更',
-        '移動平均線を表示',
-        'フィボナッチを引いて'
+        { query: 'トレンドラインを描いて', intent: 'proposal_request' },
+        { query: 'チャートをBTCに変更', intent: 'ui_control' },
+        { query: '移動平均線を表示', intent: 'ui_control' },
+        { query: 'フィボナッチを引いて', intent: 'proposal_request' }
       ];
       
-      testCases.forEach(query => {
-        // Test intent analysis logic
-        expect(query).toBeTruthy();
+      testCases.forEach(({ query, intent }) => {
+        const result = analyzeUserIntent(query);
+        expect(result.intent).toBe(intent);
+        expect(result.confidence).toBeGreaterThan(0.8);
       });
     });
 
-    it('should correctly identify trading analysis intent', () => {
+    it('should correctly analyze trading analysis intent', () => {
       const testCases = [
         'BTCを分析して',
         '買うべきか教えて',
@@ -328,243 +264,419 @@ describe('OrchestratorAgent', () => {
       ];
       
       testCases.forEach(query => {
-        // Test intent analysis logic
-        expect(query).toBeTruthy();
+        const result = analyzeUserIntent(query);
+        expect(result.intent).toBe('trading_analysis');
+        expect(result.confidence).toBeGreaterThan(0.8);
+        expect(result.analysisDepth).toBeDefined();
       });
     });
 
-    it('should correctly identify conversational intent', () => {
+    it('should correctly analyze conversational intents', () => {
       const testCases = [
-        'こんにちは',
-        'ありがとう',
-        '使い方を教えて',
-        'さようなら'
+        { query: 'こんにちは', intent: 'greeting' },
+        { query: 'ありがとう', intent: 'small_talk' },
+        { query: '使い方を教えて', intent: 'help_request' },
+        { query: '最近の市場はどう？', intent: 'market_chat' }
       ];
       
-      testCases.forEach(query => {
-        // Test intent analysis logic
-        expect(query).toBeTruthy();
+      testCases.forEach(({ query, intent }) => {
+        const result = analyzeUserIntent(query);
+        expect(result.intent).toBe(intent);
+        expect(result.confidence).toBeGreaterThan(0.7);
+      });
+    });
+
+    it('should handle proposal requests with different types', () => {
+      const testCases = [
+        { query: 'トレンドラインの提案をして', proposalType: 'trendline' },
+        { query: 'サポートとレジスタンスの候補を表示', proposalType: 'support-resistance' },
+        { query: 'フィボナッチの提案', proposalType: 'fibonacci' },
+        { query: 'エントリーポイントを提案して', proposalType: 'entry' }
+      ];
+      
+      testCases.forEach(({ query, proposalType }) => {
+        const result = analyzeUserIntent(query);
+        expect(result.intent).toBe('proposal_request');
+        expect(result.isProposalMode).toBe(true);
+        expect(result.proposalType).toBe(proposalType);
       });
     });
   });
 
-  describe('Parallel Execution', () => {
-    it('should handle parallel agent execution when needed', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCとETHの価格を比較して' }
-      ];
+  describe('Message Processing with executeImprovedOrchestrator', () => {
+    it('should process simple price inquiry', async () => {
+      const result = await executeImprovedOrchestrator('BTCの価格を教えて');
       
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should potentially use parallel orchestrator
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('price_inquiry');
+      expect(result.executionResult).toBeDefined();
+      expect(result.executionTime).toBeGreaterThan(0);
     });
 
-    it('should aggregate results from multiple agents', async () => {
-      vi.mocked(parallelOrchestrator.execute).mockResolvedValueOnce({
-        results: [
-          { agentId: 'price-agent', result: { price: 50000, symbol: 'BTCUSDT' } },
-          { agentId: 'price-agent', result: { price: 3000, symbol: 'ETHUSDT' } }
-        ],
-        errors: []
-      });
+    it('should handle greetings directly without agent delegation', async () => {
+      const result = await executeImprovedOrchestrator('こんにちは！');
       
-      const messages: Message[] = [
-        { role: 'user', content: '複数の通貨の状況を教えて' }
-      ];
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('greeting');
+      expect(vi.mocked(Agent)).toHaveBeenCalled();
+    });
+
+    it('should use parallel orchestrator for complex queries', async () => {
+      const complexQuery = 'BTCとETHの詳細な分析をして、どちらが買い時か教えて。' + 
+                          'さらに、サポートレジスタンスの提案もお願いします。';
       
-      const result = await orchestratorAgent.generate(messages);
+      await executeImprovedOrchestrator(complexQuery);
       
-      expect(result).toBeDefined();
-      // Should aggregate multiple results
+      expect(vi.mocked(parallelOrchestrator.execute)).toHaveBeenCalled();
+    });
+
+    it('should handle session management properly', async () => {
+      const sessionId = 'custom-session-id';
+      await executeImprovedOrchestrator('BTCの価格', sessionId);
+      
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      expect(memoryStore.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: expect.any(String),
+          role: 'user',
+          content: 'BTCの価格'
+        })
+      );
+    });
+
+    it('should process UI control requests', async () => {
+      const result = await executeImprovedOrchestrator('チャートをETHに変更して');
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('ui_control');
+    });
+
+    it('should handle trading analysis with proper context', async () => {
+      const context: OrchestratorRuntimeContext = {
+        queryComplexity: 'complex',
+        isProposalMode: false,
+        userLevel: 'expert'
+      };
+      
+      const result = await executeImprovedOrchestrator(
+        'BTCの詳細な分析をお願いします',
+        undefined,
+        context
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('trading_analysis');
+      expect(result.analysis.analysisDepth).toBe('detailed');
     });
   });
 
-  describe('Context Management', () => {
-    it('should maintain conversation context', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCについて教えて' },
-        { role: 'assistant', content: 'BTCは現在50000ドルです' },
-        { role: 'user', content: 'それは高い？' }
-      ];
+  describe('Error Handling and Fallbacks', () => {
+    it('should handle agent execution failures gracefully', async () => {
+      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
+      vi.mocked(agentSelectionTool.execute).mockRejectedValueOnce(new Error('Agent failed'));
       
-      const result = await orchestratorAgent.generate(messages);
+      const result = await executeImprovedOrchestrator('BTCの価格');
       
-      expect(result).toBeDefined();
-      // Should understand context from previous messages
+      expect(result.success).toBe(true);
+      expect(result.executionResult).toBeDefined();
+      expect(vi.mocked(logger.error)).toHaveBeenCalled();
     });
 
-    it('should handle context switches', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCについて教えて' },
-        { role: 'assistant', content: 'BTCは現在50000ドルです' },
-        { role: 'user', content: '話を変えて、ETHの分析をして' }
-      ];
+    it('should handle memory recall failures', async () => {
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      memoryStore.getSessionContext = vi.fn().mockImplementation(() => {
+        throw new Error('Memory error');
+      });
       
-      const result = await orchestratorAgent.generate(messages);
+      const result = await executeImprovedOrchestrator('さっきの話の続き');
+      
+      expect(result.success).toBe(false);
+      expect(result.analysis.intent).toBe('conversational');
+    });
+
+    it('should handle agent registration failures', async () => {
+      vi.mocked(registerAllAgents).mockImplementationOnce(() => {
+        throw new Error('Registration failed');
+      });
+      
+      const result = await executeImprovedOrchestrator('BTCの価格');
+      
+      expect(result.success).toBe(true);
+      expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+        expect.stringContaining('Agent registration failed'),
+        expect.any(Object)
+      );
+    });
+
+    it('should provide fallback response when agent returns no response', async () => {
+      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
+      vi.mocked(agentSelectionTool.execute).mockResolvedValueOnce({});
+      
+      const result = await executeImprovedOrchestrator('BTCの価格');
+      
+      expect(result.success).toBe(true);
+      expect(result.executionResult).toBeDefined();
+      expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+        expect.stringContaining('Agent returned no response'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('Tool Selection and Integration', () => {
+    it('should select appropriate tools based on intent', async () => {
+      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
+      
+      await executeImprovedOrchestrator('BTCの価格');
+      
+      expect(agentSelectionTool.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentType: 'price_inquiry',
+            query: 'BTCの価格'
+          })
+        })
+      );
+    });
+
+    it('should use memory recall tool for context-dependent queries', async () => {
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      memoryStore.getRecentMessages = vi.fn(() => [
+        { role: 'user', content: 'BTCについて教えて', metadata: {} },
+        { role: 'assistant', content: 'BTCは...', metadata: {} },
+      ]);
+      
+      await executeImprovedOrchestrator('それについてもっと詳しく');
+      
+      expect(memoryStore.getRecentMessages).toHaveBeenCalled();
+    });
+
+    it('should handle market snapshot requests', async () => {
+      const { marketSnapshotTool } = await import('@/lib/mastra/tools/market-snapshot.tool');
+      
+      // This would be called if the agent uses the tool
+      expect(marketSnapshotTool.execute).toBeDefined();
+    });
+  });
+
+  describe('Context and Memory Management', () => {
+    it('should maintain conversation context across messages', async () => {
+      const sessionId = 'test-session';
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      
+      await executeImprovedOrchestrator('BTCについて教えて', sessionId);
+      await executeImprovedOrchestrator('それは高い？', sessionId);
+      
+      expect(memoryStore.addMessage).toHaveBeenCalledTimes(2);
+      expect(memoryStore.getRecentMessages).toHaveBeenCalled();
+    });
+
+    it('should handle context switches properly', async () => {
+      const result = await executeImprovedOrchestrator('話を変えて、ETHの分析をして');
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('trading_analysis');
+      expect(result.analysis.extractedSymbol).toBe('ETHUSDT');
+    });
+
+    it('should extract metadata from queries', async () => {
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      
+      await executeImprovedOrchestrator('BTCとETHの価格分析をお願いします');
+      
+      expect(memoryStore.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            symbols: expect.arrayContaining(['BTC', 'ETH']),
+            topics: expect.arrayContaining(['price', 'analysis'])
+          })
+        })
+      );
+    });
+  });
+
+  describe('Performance and Edge Cases', () => {
+    it('should handle empty or malformed queries', async () => {
+      const testCases = ['', '   ', '...', '???', null, undefined];
+      
+      for (const query of testCases) {
+        const result = await executeImprovedOrchestrator(query || '');
+        expect(result).toBeDefined();
+        expect(result.success).toBeDefined();
+      }
+    });
+
+    it('should handle very long messages', async () => {
+      const longQuery = 'BTC' + '分析'.repeat(500);
+      const result = await executeImprovedOrchestrator(longQuery);
       
       expect(result).toBeDefined();
-      // Should recognize context switch
+      expect(result.success).toBeDefined();
+    });
+
+    it('should handle special characters and emojis', async () => {
+      const queries = [
+        'BTC 🚀 moon! 💎🙌',
+        'ビットコイン♪買い時？',
+        'ETH/USD $$$',
+        '!!!BTCの価格!!!'
+      ];
+      
+      for (const query of queries) {
+        const result = await executeImprovedOrchestrator(query);
+        expect(result).toBeDefined();
+        expect(result.success).toBeDefined();
+      }
+    });
+
+    it('should complete within reasonable time', async () => {
+      const startTime = Date.now();
+      const result = await executeImprovedOrchestrator('BTC価格');
+      const duration = Date.now() - startTime;
+      
+      expect(result).toBeDefined();
+      expect(duration).toBeLessThan(5000);
+      expect(result.executionTime).toBeLessThan(5000);
     });
   });
 
   describe('Language Support', () => {
-    it('should handle Japanese queries', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'ビットコインの今後の見通しは？' }
+    it('should handle Japanese queries properly', async () => {
+      const queries = [
+        'ビットコインの価格を教えてください',
+        'イーサリアムの分析をお願いします',
+        'リップルは買い時ですか？'
       ];
       
-      const context: OrchestratorAgentContext = {
-        language: 'ja'
-      };
-      
-      const result = await orchestratorAgent.generate(messages, { context });
-      
-      expect(result).toBeDefined();
-      // Should respond in Japanese
+      for (const query of queries) {
+        const result = await executeImprovedOrchestrator(query);
+        expect(result.success).toBe(true);
+        expect(result.analysis.extractedSymbol).toBeDefined();
+      }
     });
 
     it('should handle English queries', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'What is the current BTC price?' }
+      const queries = [
+        'What is the current BTC price?',
+        'Analyze Ethereum for me',
+        'Should I buy Solana?'
       ];
       
-      const context: OrchestratorAgentContext = {
-        language: 'en'
-      };
-      
-      const result = await orchestratorAgent.generate(messages, { context });
-      
-      expect(result).toBeDefined();
-      // Should respond in English
+      for (const query of queries) {
+        const result = await executeImprovedOrchestrator(query);
+        expect(result.success).toBe(true);
+        expect(result.analysis.intent).toBeDefined();
+      }
     });
 
     it('should handle mixed language queries', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCのpriceを教えて' }
-      ];
+      const result = await executeImprovedOrchestrator('BTCのpriceを分析して');
       
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-      // Should handle mixed language
+      expect(result.success).toBe(true);
+      expect(result.analysis.extractedSymbol).toBe('BTCUSDT');
     });
   });
 
-  describe('Performance', () => {
-    it('should complete simple queries quickly', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTC価格' }
-      ];
+  describe('Conversation Handling', () => {
+    it('should handle different conversation modes', async () => {
+      const greetingResult = await executeImprovedOrchestrator('おはようございます！');
+      expect(greetingResult.analysis.intent).toBe('greeting');
       
-      const startTime = Date.now();
-      const result = await orchestratorAgent.generate(messages);
-      const duration = Date.now() - startTime;
+      const marketChatResult = await executeImprovedOrchestrator('最近の市場はどうですか？');
+      expect(marketChatResult.analysis.intent).toBe('market_chat');
       
-      expect(result).toBeDefined();
-      expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
+      const smallTalkResult = await executeImprovedOrchestrator('ありがとう！');
+      expect(smallTalkResult.analysis.intent).toBe('small_talk');
     });
 
-    it('should handle multiple concurrent requests', async () => {
-      const requests = Array(5).fill(null).map((_, i) => ({
-        messages: [{ role: 'user' as const, content: `BTC価格 ${i}` }]
+    it('should adapt response based on relationship level', async () => {
+      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      
+      // New user (few messages)
+      memoryStore.getMemoryStats = vi.fn(() => ({
+        totalMessages: 2,
+        processedMessages: 2,
+        estimatedTokens: 50,
+        processors: []
       }));
       
-      const promises = requests.map(req => 
-        orchestratorAgent.generate(req.messages)
+      const newUserResult = await executeImprovedOrchestrator('こんにちは');
+      expect(vi.mocked(Agent)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instructions: expect.stringContaining('new:')
+        })
       );
       
-      const results = await Promise.all(promises);
+      // Regular user (many messages)
+      memoryStore.getMemoryStats = vi.fn(() => ({
+        totalMessages: 50,
+        processedMessages: 50,
+        estimatedTokens: 1000,
+        processors: []
+      }));
       
-      expect(results).toHaveLength(5);
-      results.forEach(result => {
-        expect(result).toBeDefined();
-      });
+      const regularUserResult = await executeImprovedOrchestrator('こんにちは');
+      expect(vi.mocked(Agent)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instructions: expect.stringContaining('regular:')
+        })
+      );
     });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle empty messages', async () => {
-      const messages: Message[] = [];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-    });
-
-    it('should handle very long messages', async () => {
-      const longContent = 'BTC' + '分析'.repeat(1000);
-      const messages: Message[] = [
-        { role: 'user', content: longContent }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-    });
-
-    it('should handle special characters and emojis', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: 'BTC 🚀 moon! 💎🙌' }
-      ];
-      
-      const result = await orchestratorAgent.generate(messages);
-      
-      expect(result).toBeDefined();
-    });
-
-    it('should handle malformed queries', async () => {
-      const messages: Message[] = [
-        { role: 'user', content: '...' },
-        { role: 'user', content: '???' },
-        { role: 'user', content: '   ' }
-      ];
-      
-      for (const message of messages) {
-        const result = await orchestratorAgent.generate([message]);
-        expect(result).toBeDefined();
-      }
-    });
-  });
-
-  describe('Tool Integration', () => {
-    it('should use agent selection tool correctly', async () => {
+  describe('Routing and Agent Selection', () => {
+    it('should route to correct agent based on intent', async () => {
       const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
       
-      const messages: Message[] = [
-        { role: 'user', content: 'BTCの価格' }
-      ];
+      // Price inquiry -> price_inquiry agent
+      await executeImprovedOrchestrator('BTCの価格');
+      expect(agentSelectionTool.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentType: 'price_inquiry'
+          })
+        })
+      );
       
-      await orchestratorAgent.generate(messages);
+      vi.clearAllMocks();
       
-      // Agent selection tool should be called
-      expect(agentSelectionTool.execute).toHaveBeenCalled();
+      // UI control -> ui_control agent
+      await executeImprovedOrchestrator('チャートをETHに変更');
+      expect(agentSelectionTool.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentType: 'ui_control'
+          })
+        })
+      );
+      
+      vi.clearAllMocks();
+      
+      // Trading analysis -> trading_analysis agent
+      await executeImprovedOrchestrator('BTCを詳しく分析して');
+      expect(agentSelectionTool.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentType: 'trading_analysis'
+          })
+        })
+      );
     });
 
-    it('should use memory recall tool when appropriate', async () => {
-      const { memoryRecallTool } = await import('@/lib/mastra/tools/memory-recall.tool');
+    it('should handle proposal requests as trading analysis', async () => {
+      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
       
-      const messages: Message[] = [
-        { role: 'user', content: 'さっきの話について' }
-      ];
+      await executeImprovedOrchestrator('トレンドラインの提案をして');
       
-      await orchestratorAgent.generate(messages);
-      
-      // Memory recall tool might be called
-      // expect(memoryRecallTool.execute).toHaveBeenCalled();
-    });
-
-    it('should use market snapshot for market overview', async () => {
-      const { marketSnapshotTool } = await import('@/lib/mastra/tools/market-snapshot.tool');
-      
-      const messages: Message[] = [
-        { role: 'user', content: '市場の概要を教えて' }
-      ];
-      
-      await orchestratorAgent.generate(messages);
-      
-      // Market snapshot tool might be called
-      // expect(marketSnapshotTool.execute).toHaveBeenCalled();
+      expect(agentSelectionTool.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentType: 'trading_analysis',
+            isProposalMode: true,
+            proposalType: 'trendline'
+          })
+        })
+      );
     });
   });
 });

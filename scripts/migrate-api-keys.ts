@@ -6,7 +6,8 @@
  * Migrates plaintext API keys from environment variables to secure encrypted storage
  */
 
-import { apiKeyManager, type ApiKeyProvider } from '@/lib/security/api-key-manager';
+import { apiKeyManager } from '@/lib/security/api-key-manager';
+import { type ApiKeyProvider } from '@/lib/security/secure-api-storage';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
 import * as readline from 'readline';

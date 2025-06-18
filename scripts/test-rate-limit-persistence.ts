@@ -75,7 +75,7 @@ async function runTest() {
     }
     
     // Check if SQLite database was created
-    const dbPath = process.env.RATE_LIMIT_DB_PATH || './data/rate-limit.db';
+    const dbPath = process.env['RATE_LIMIT_DB_PATH'] || './data/rate-limit.db';
     try {
       await fs.access(dbPath);
       console.log(`\n💾 SQLite database created at: ${dbPath}`);

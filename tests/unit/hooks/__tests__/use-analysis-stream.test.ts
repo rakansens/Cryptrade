@@ -2,15 +2,15 @@
  * @jest-environment jsdom
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAnalysisStream } from '@/hooks/use-analysis-stream';
-import { useStreaming } from '@/hooks/base/use-streaming';
-import { logger } from '@/lib/utils/logger';
-import { streamToLines } from '@/lib/utils/stream-utils';
+import { .* } from '../../../hooks/use-analysis-stream';
+import { .* } from '../../../hooks/base/use-streaming';
+import { .* } from '../../../lib/utils/logger';
+import { .* } from '../../../lib/utils/stream-utils';
 import type { AnalysisProgressEvent, AnalysisStep } from '@/types/analysis-progress';
 
 // Mock dependencies
-jest.mock('@/hooks/base/use-streaming');
-jest.mock('@/lib/utils/logger', () => ({
+jest.mock('../../../hooks/base/use-streaming');
+jest.mock('../../../lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
@@ -18,7 +18,7 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
-jest.mock('@/lib/utils/stream-utils');
+jest.mock('../../../lib/utils/stream-utils');
 
 // Mock fetch
 global.fetch = jest.fn();

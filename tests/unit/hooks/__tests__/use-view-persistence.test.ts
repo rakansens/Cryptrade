@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { useViewPersistence } from '@/hooks/use-view-persistence';
+import { .* } from '../../../hooks/use-view-persistence';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 // Mock Next.js navigation
