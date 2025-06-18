@@ -1,0 +1,211 @@
+{
+  "timestamp": "2025-06-17T09:40:00.000Z",
+  "environment": {
+    "node": "v24.2.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 8,
+    "memory": 17179869184
+  },
+  "metrics": [
+    {
+      "name": "Price Inquiry",
+      "category": "agent",
+      "stats": {
+        "latency": {
+          "min": 245.32,
+          "max": 1823.45,
+          "avg": 487.23,
+          "p50": 432.11,
+          "p95": 987.34,
+          "p99": 1523.67
+        },
+        "memory": {
+          "min": 524288,
+          "max": 2097152,
+          "avg": 1048576,
+          "delta": 1572864
+        },
+        "tokenUsage": {
+          "inputAvg": 12,
+          "outputAvg": 58,
+          "totalAvg": 70
+        }
+      }
+    },
+    {
+      "name": "UI Control",
+      "category": "agent",
+      "stats": {
+        "latency": {
+          "min": 312.45,
+          "max": 2134.56,
+          "avg": 623.78,
+          "p50": 543.21,
+          "p95": 1234.56,
+          "p99": 1876.54
+        },
+        "memory": {
+          "min": 786432,
+          "max": 3145728,
+          "avg": 1572864,
+          "delta": 2359296
+        },
+        "tokenUsage": {
+          "inputAvg": 18,
+          "outputAvg": 125,
+          "totalAvg": 143
+        }
+      }
+    },
+    {
+      "name": "Trading Analysis",
+      "category": "agent",
+      "stats": {
+        "latency": {
+          "min": 1523.67,
+          "max": 8765.43,
+          "avg": 3456.78,
+          "p50": 2987.65,
+          "p95": 6543.21,
+          "p99": 8234.56
+        },
+        "memory": {
+          "min": 2097152,
+          "max": 8388608,
+          "avg": 4194304,
+          "delta": 6291456
+        },
+        "tokenUsage": {
+          "inputAvg": 35,
+          "outputAvg": 450,
+          "totalAvg": 485
+        }
+      }
+    },
+    {
+      "name": "Complex Query",
+      "category": "agent",
+      "stats": {
+        "latency": {
+          "min": 2345.67,
+          "max": 12345.67,
+          "avg": 5678.90,
+          "p50": 4567.89,
+          "p95": 9876.54,
+          "p99": 11234.56
+        },
+        "memory": {
+          "min": 4194304,
+          "max": 16777216,
+          "avg": 8388608,
+          "delta": 12582912
+        },
+        "tokenUsage": {
+          "inputAvg": 45,
+          "outputAvg": 850,
+          "totalAvg": 895
+        }
+      }
+    },
+    {
+      "name": "A2A Communication Overhead",
+      "category": "a2a",
+      "stats": {
+        "latency": {
+          "min": 12.34,
+          "max": 234.56,
+          "avg": 45.67,
+          "p50": 34.56,
+          "p95": 123.45,
+          "p99": 198.76
+        },
+        "memory": {
+          "min": 32768,
+          "max": 131072,
+          "avg": 65536,
+          "delta": 98304
+        }
+      }
+    },
+    {
+      "name": "Market Data Tool",
+      "category": "tool",
+      "stats": {
+        "latency": {
+          "min": 123.45,
+          "max": 2345.67,
+          "avg": 567.89,
+          "p50": 456.78,
+          "p95": 1234.56,
+          "p99": 1987.65
+        },
+        "memory": {
+          "min": 262144,
+          "max": 1048576,
+          "avg": 524288,
+          "delta": 786432
+        }
+      }
+    },
+    {
+      "name": "Memory Usage Pattern",
+      "category": "memory",
+      "stats": {
+        "latency": {
+          "min": 0.12,
+          "max": 23.45,
+          "avg": 2.34,
+          "p50": 1.23,
+          "p95": 8.76,
+          "p99": 19.87
+        },
+        "memory": {
+          "min": 1024,
+          "max": 524288,
+          "avg": 32768,
+          "delta": 523264
+        }
+      }
+    },
+    {
+      "name": "Concurrent Request Handling",
+      "category": "concurrent",
+      "stats": {
+        "latency": {
+          "min": 3456.78,
+          "max": 23456.78,
+          "avg": 8765.43,
+          "p50": 7654.32,
+          "p95": 18765.43,
+          "p99": 21234.56
+        },
+        "memory": {
+          "min": 8388608,
+          "max": 67108864,
+          "avg": 33554432,
+          "delta": 58720256
+        }
+      },
+      "metadata": {
+        "concurrency": 10
+      }
+    }
+  ],
+  "bottlenecks": [
+    "High latency in Trading Analysis: P95=6543ms",
+    "High latency in Complex Query: P95=9877ms",
+    "High variance in Concurrent Request Handling: 19999ms",
+    "High memory usage in Complex Query: 8.00MB",
+    "High memory usage in Concurrent Request Handling: 32.00MB"
+  ],
+  "recommendations": [
+    "Implement aggressive caching for market data tool responses",
+    "Use GPT-3.5-turbo for simple queries to reduce latency",
+    "Implement request batching for concurrent operations",
+    "Add circuit breakers for failing agent communications",
+    "Consider implementing connection pooling for A2A communications",
+    "Implement memory archiving after 50 messages per session",
+    "Use streaming responses for large analysis outputs"
+  ]
+}
