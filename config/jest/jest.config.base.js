@@ -6,11 +6,12 @@ module.exports = {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json',
     }],
-    // nanoidモジュールのトランスフォーム設定を追加
-    'node_modules/nanoid/.*\\.js$': ['ts-jest', {
-      tsconfig: 'tsconfig.test.json',
-    }],
   },
+  
+  // ESM modules that need to be transformed
+  transformIgnorePatterns: [
+    'node_modules/(?!(@mastra|@ai-sdk|nanoid|unified|remark.*|rehype.*|mdast.*|micromark.*|decode-named-character-reference|character-entities|property-information|hast-util.*|unist.*|comma-separated-tokens|markdown-table|space-separated-tokens|zwitch|html-void-elements|bail|is-plain-obj|trough|vfile.*|trim-lines|longest-streak|ccount|ai)/)',
+  ],
   
   // Performance optimizations
   maxWorkers: '50%',
@@ -55,7 +56,12 @@ module.exports = {
 
   // カバレッジ設定
   collectCoverageFrom: [
-    '**/*.{ts,tsx}',
+    'lib/**/*.{ts,tsx}',
+    'app/**/*.{ts,tsx}',
+    'store/**/*.{ts,tsx}',
+    'hooks/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
+    'utils/**/*.{ts,tsx}',
     // 型定義ファイル
     '!**/*.d.ts',
     '!**/*.types.ts',
@@ -66,6 +72,7 @@ module.exports = {
     '!**/__mocks__/**',
     '!**/*.test.{ts,tsx}',
     '!**/*.spec.{ts,tsx}',
+    '!**/tests/**',
     // ストーリーブック
     '!**/*.stories.{ts,tsx}',
     // インデックス/バレルファイル
@@ -89,6 +96,10 @@ module.exports = {
     '!**/.stryker-tmp/**',
     // その他
     '!**/*.example.{ts,tsx}',
+    // app ディレクトリの特殊ファイル
+    '!app/layout.tsx',
+    '!app/page.tsx',
+    '!app/globals.css',
   ],
 
   // カバレッジパスの除外

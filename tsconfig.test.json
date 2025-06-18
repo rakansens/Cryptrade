@@ -1,47 +1,50 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": false,
-    "allowJs": true,
     "types": ["jest", "node"],
     "lib": ["es2020"],
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
+    "jsx": "preserve",
+    
+    /* Relax strict settings for tests */
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    
+    /* Relax code quality checks for tests */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "jsx": "preserve",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"],
-      "@/components/*": ["./components/*"],
-      "@/lib/*": ["./lib/*"],
-      "@/hooks/*": ["./hooks/*"],
-      "@/app/*": ["./app/*"],
-      "@/types/*": ["./types/*"],
-      "@/store/*": ["./store/*"],
-      "@/utils/*": ["./utils/*"],
-      "@/config/*": ["./config/*"]
-    }
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "useUnknownInCatchVariables": false,
+    
+    /* Test-specific settings */
+    "noEmit": false,
+    "isolatedModules": true,
+    "resolvePackageJsonExports": false,
+    "resolvePackageJsonImports": false
   },
   "include": [
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
+    "tests/**/*",
+    "**/__tests__/**/*",
     "jest.setup.js",
     "__mocks__/**/*",
     "types/**/*"

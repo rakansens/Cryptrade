@@ -63,6 +63,14 @@
   "exclude": [
     "node_modules",
     "lib/mastra/mastra-v2.ts",
-    "tests/scripts/**/*"
+    "tests/scripts/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "tests/**/*",
+    "**/__tests__/**/*",
+    "jest.setup.js",
+    "**/__mocks__/**/*"
   ]
 }
