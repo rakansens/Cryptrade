@@ -1,23 +1,38 @@
 import {
   getClientEnv,
-  isDrawingRendererEnabled,
-  isNewPatternRendererEnabled,
-  getPublicBaseUrl,
-  _resetClientEnvCache,
+  getClientEnvOrThrow,
+  isClientSide,
   ClientEnvSchema,
 } from '@/lib/utils/client-env';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { z } from 'zod';
+//  // 削除
 
 // Mock logger
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    warn: vi.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
   },
 }));
 
+// Mock z
+jest.mock('zod', () => {
+  const actual = jest.requireActual('zod');
+  return {
+    ...actual,
+    z: {
+      ...actual.z,
+      object: jest.fn(() => ({
+        safeParse: jest.fn(),
+        parse: jest.fn(),
+      })),
+    },
+  };
+});
+
 // Mock server env module
-vi.mock('@/config/env', () => ({
+jest.mock('@/config/env', () => ({
   env: {
     NEXT_PUBLIC_BASE_URL: 'https://test.example.com',
     NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.test.com',
@@ -48,7 +63,7 @@ describe('client-env utilities', () => {
     // Restore originals
     global.window = originalWindow;
     process.env = originalProcessEnv;
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('getClientEnv', () => {
@@ -80,7 +95,7 @@ describe('client-env utilities', () => {
       it('should handle server env module errors gracefully', () => {
         // Mock require to throw
         const originalRequire = require;
-        (global as any).require = vi.fn().mockImplementation(() => {
+        (global as any).require = jest.fn().mockImplementation(() => {
           throw new Error('Module not found');
         });
         

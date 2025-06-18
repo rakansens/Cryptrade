@@ -8,7 +8,7 @@
 
 import { apiKeyManager } from '@/lib/security/api-key-manager';
 import { type ApiKeyProvider } from '@/lib/security/secure-api-storage';
-import { logger } from '@/lib/utils/logger';
+// import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
 import * as readline from 'readline';
 
@@ -50,7 +50,7 @@ async function migrateApiKeys() {
 
   console.log('Found the following API keys in your environment:\n');
   
-  for (const { provider, envVar, currentValue } of providers) {
+  for (const { envVar, currentValue } of providers) {
     if (currentValue && currentValue !== 'browser-env-not-available') {
       console.log(`✓ ${envVar}: ${currentValue.substring(0, 8)}...${currentValue.substring(currentValue.length - 4)}`);
     } else {

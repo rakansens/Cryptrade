@@ -1,10 +1,5 @@
 import { RateLimiter, createRateLimitedLogger, type Logger } from '@/lib/utils/rate-limiter';
-// Using Jest globals instead of vitest
-const vi = {
-  fn: jest.fn,
-  clearAllMocks: jest.clearAllMocks,
-  clearAllTimers: jest.clearAllTimers
-};
+// Remove vi alias - use jest directly
 
 describe('RateLimiter', () => {
   let rateLimiter: RateLimiter;
@@ -132,10 +127,10 @@ describe('RateLimiter', () => {
 
   describe('auto-cleanup', () => {
     it('should set up auto-cleanup interval on server', () => {
-      vi.useFakeTimers();
+      jest.useFakeTimers();
       delete (global as any).window;
       
-      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+      const setIntervalSpy = jest.spyOn(global, 'setInterval');
       const newRateLimiter = new RateLimiter();
 
       expect(setIntervalSpy).toHaveBeenCalledWith(
@@ -144,13 +139,13 @@ describe('RateLimiter', () => {
       );
 
       newRateLimiter.destroy();
-      vi.useRealTimers();
+      jest.useRealTimers();
     });
 
     it('should not set up auto-cleanup in browser', () => {
       global.window = {} as Window & typeof globalThis;
       
-      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+      const setIntervalSpy = jest.spyOn(global, 'setInterval');
       const newRateLimiter = new RateLimiter();
 
       expect(setIntervalSpy).not.toHaveBeenCalled();
@@ -162,7 +157,7 @@ describe('RateLimiter', () => {
   describe('destroy', () => {
     it('should clear interval and counts', () => {
       delete (global as any).window;
-      const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
       
       const newRateLimiter = new RateLimiter();
       newRateLimiter.isAllowed('key1', 1, 1000);
@@ -183,16 +178,16 @@ describe('createRateLimitedLogger', () => {
 
   beforeEach(() => {
     mockLogger = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
     };
     rateLimitedLogger = createRateLimitedLogger(mockLogger);
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should preserve original logger methods', () => {

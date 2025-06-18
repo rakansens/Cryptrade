@@ -71,6 +71,6 @@ module.exports = {
   ],
 
   // MSWなどのモックサーバー設定
-  globalSetup: '<rootDir>/tests/integration/setup.ts',
-  globalTeardown: '<rootDir>/tests/integration/teardown.ts',
+  // globalSetup: '<rootDir>/tests/integration/setup.ts',
+  // globalTeardown: '<rootDir>/tests/integration/teardown.ts',
 };

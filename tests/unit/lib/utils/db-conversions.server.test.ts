@@ -5,7 +5,6 @@ import {
   prepareChartDrawingData,
   preparePatternAnalysisData,
 } from '@/lib/utils/db-conversions.server';
-import { describe, it, expect } from 'vitest';
 import { Decimal } from '@prisma/client/runtime/library';
 import type { AnalysisRecord as DbAnalysisRecord, TouchEvent as DbTouchEvent } from '@prisma/client';
 

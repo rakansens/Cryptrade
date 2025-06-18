@@ -16,17 +16,40 @@ jest.mock('@/hooks/use-ui-event-stream', () => ({
   }),
 }));
 
+import { resetAllStores } from '@/tests/setup/reset-stores';
+
 describe('UI Event Store', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Reset store
-    act(() => {
-      useUIEventStore.setState({ isInitialized: false });
-    });
+    resetAllStores();
+  });
   });
 
   describe('UIEventStore', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
     it('should have initial state', () => {
       const { result } = renderHook(() => useUIEventStore());
 

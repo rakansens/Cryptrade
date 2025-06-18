@@ -78,7 +78,7 @@ describe('ChatDatabaseService', () => {
 
     // Test removed - getOrCreateUser doesn't exist
     it('should create a new session', async () => {
-      const userId = 'user-123';
+      const userId = '550e8400-e29b-41d4-a716-446655440000'; // Valid UUID
       const sessionId = 'session-456';
       const title = 'Test Session';
       const metadata = { theme: 'dark' };
@@ -86,7 +86,7 @@ describe('ChatDatabaseService', () => {
       const newSession = {
         id: sessionId,
         userId,
-        title,
+        summary: title,
         metadata,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -99,10 +99,8 @@ describe('ChatDatabaseService', () => {
       expect(result).toEqual(newSession);
       expect(mockPrismaClient.conversationSession.create).toHaveBeenCalledWith({
         data: {
-          id: sessionId,
           userId,
-          title,
-          metadata,
+          summary: title,
         },
       });
     });
@@ -111,11 +109,11 @@ describe('ChatDatabaseService', () => {
       mockPrismaClient.conversationSession.create.mockRejectedValue(new Error('Creation failed'));
 
       await expect(
-        ChatDatabaseService.createSession('user-123', 'Test')
+        ChatDatabaseService.createSession('550e8400-e29b-41d4-a716-446655440000', 'Test')
       ).rejects.toThrow('Creation failed');
       
       expect(logger.error).toHaveBeenCalledWith(
-        'Failed to create session',
+        '[ChatDB] Failed to create session',
         expect.objectContaining({ error: expect.any(Error) })
       );
     });

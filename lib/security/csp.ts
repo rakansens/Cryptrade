@@ -153,7 +153,7 @@ export function buildCSPHeader(nonce: string, isDevelopment: boolean = false): s
         const existing = new Set(directives[directive]);
         sources.forEach(source => {
           if (!existing.has(source)) {
-            directives[directive].push(source);
+            directives[directive]!.push(source);
           }
         });
       }

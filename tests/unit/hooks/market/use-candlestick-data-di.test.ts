@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-candlestick-data-di';
+import { useCandlestickDataDi } from '../../../../hooks/use-candlestick-data-di';
 
 describe('useCandlestickData', () => {
   it('should initialize with default values', () => {

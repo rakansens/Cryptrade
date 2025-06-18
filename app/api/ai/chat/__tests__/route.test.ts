@@ -9,6 +9,10 @@ import { registerAgentsSafely } from '@/lib/api/helpers/request-validator';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 
+// Import types for mocking
+import type { OrchestratorExecutionResponse } from '@/lib/mastra/agents/orchestrator.agent';
+import type { ChatResponse } from '@/lib/api/helpers/response-builder';
+
 // Mock dependencies
 jest.mock('@/lib/mastra/agents/orchestrator.agent');
 jest.mock('@/lib/utils/logger');
@@ -22,6 +26,16 @@ jest.mock('@/lib/api/middleware', () => ({
   withAuth: jest.fn((handler) => handler),
   withValidation: jest.fn(() => (handler: any) => handler)
 }));
+
+// Type the mocks
+const mockedExecuteImprovedOrchestrator = executeImprovedOrchestrator as jest.MockedFunction<typeof executeImprovedOrchestrator>;
+const mockedProcessOrchestratorResult = processOrchestratorResult as jest.MockedFunction<typeof processOrchestratorResult>;
+const mockedBuildChatResponse = buildChatResponse as jest.MockedFunction<typeof buildChatResponse>;
+const mockedCreateOrchestratorErrorResponse = createOrchestratorErrorResponse as jest.MockedFunction<typeof createOrchestratorErrorResponse>;
+const mockedRegisterAgentsSafely = registerAgentsSafely as jest.MockedFunction<typeof registerAgentsSafely>;
+const mockedExtractProposalGroup = extractProposalGroup as jest.MockedFunction<typeof extractProposalGroup>;
+const mockedDebugProposalGroupStructure = debugProposalGroupStructure as jest.MockedFunction<typeof debugProposalGroupStructure>;
+const mockedLogger = logger as jest.Mocked<typeof logger>;
 
 // Define the schema exactly as in the route
 const ChatRequestSchema = z.object({
@@ -41,12 +55,12 @@ describe('AI Chat API Route', () => {
     jest.clearAllMocks();
     
     // Setup default mocks
-    (registerAgentsSafely as jest.Mock).mockImplementation(() => {});
-    (logger.info as jest.Mock).mockImplementation(() => {});
-    (logger.error as jest.Mock).mockImplementation(() => {});
+    mockedRegisterAgentsSafely.mockImplementation(() => {});
+    mockedLogger.info.mockImplementation(() => {});
+    mockedLogger.error.mockImplementation(() => {});
     
     mockRequest = {
-      json: jest.fn(),
+      json: jest.fn() as jest.MockedFunction<() => Promise<any>>,
       headers: new Headers(),
       url: 'http://localhost:3000/api/ai/chat',
       method: 'POST'
@@ -193,19 +207,18 @@ describe('AI Chat API Route', () => {
         }
       };
 
-      const mockOrchestratorResponse = {
+      const mockOrchestratorResponse: OrchestratorExecutionResponse = {
         success: true,
         analysis: {
-          intent: 'market_analysis',
+          intent: 'trading_analysis' as const,
           confidence: 0.95,
           reasoning: 'User wants trend analysis for BTCUSDT',
-          analysisDepth: 'detailed',
+          analysisDepth: 'detailed' as const,
           isProposalMode: false
         },
         executionTime: 1234,
         executionResult: {
-          response: 'Market analysis complete',
-          success: true
+          response: 'Market analysis complete'
         }
       };
 
@@ -215,16 +228,34 @@ describe('AI Chat API Route', () => {
         entryProposalGroup: null
       };
 
-      const mockResponse = {
-        success: true,
+      const mockResponse: ChatResponse = {
         message: 'トレンド分析が完了しました',
-        sessionId: 'test-session-123'
+        selectedAgent: 'market-analyzer',
+        analysis: {
+          intent: 'trading_analysis',
+          confidence: 0.95,
+          reasoning: 'User wants trend analysis for BTCUSDT',
+          analysisDepth: 'detailed',
+          isProposalMode: false
+        },
+        execution: {
+          success: true,
+          executionTime: 1234,
+          memoryContext: ''
+        },
+        data: null,
+        metadata: {
+          sessionId: 'test-session-123',
+          timestamp: new Date().toISOString(),
+          a2aEnabled: true,
+          agentType: 'market-analyzer'
+        }
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue(mockProcessedResult);
-      (buildChatResponse as jest.Mock).mockReturnValue(mockResponse);
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue(mockProcessedResult);
+      mockedBuildChatResponse.mockReturnValue(mockResponse);
 
       const response = await POST(mockRequest as NextRequest);
       const responseData = await response.json();
@@ -279,17 +310,11 @@ describe('AI Chat API Route', () => {
 
       const mockProposalGroup = {
         id: 'proposal-123',
-        type: 'entry',
-        proposals: [
-          {
-            id: 'prop-1',
-            type: 'long',
-            symbol: 'BTCUSDT',
-            entry: 50000,
-            targets: [51000, 52000],
-            stopLoss: 49000
-          }
-        ]
+        title: 'Entry Proposals',
+        description: 'Generated entry proposals',
+        proposals: [],
+        groupType: 'analysis' as const,
+        createdAt: Date.now()
       };
 
       const mockProcessedResult = {
@@ -298,11 +323,36 @@ describe('AI Chat API Route', () => {
         entryProposalGroup: mockProposalGroup
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue(mockProcessedResult);
-      (extractProposalGroup as jest.Mock).mockReturnValue(mockProposalGroup);
-      (buildChatResponse as jest.Mock).mockReturnValue({ success: true });
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue(mockProcessedResult);
+      mockedExtractProposalGroup.mockReturnValue(mockProposalGroup);
+      const mockChatResponse: ChatResponse = {
+        message: 'エントリー提案を生成しました。',
+        selectedAgent: 'proposal-generator',
+        analysis: {
+          intent: 'proposal_request',
+          confidence: 0.9,
+          reasoning: 'User wants entry proposals',
+          analysisDepth: 'comprehensive',
+          isProposalMode: true,
+          proposalType: 'entry'
+        },
+        execution: {
+          success: true,
+          executionTime: 2345,
+          memoryContext: ''
+        },
+        data: null,
+        entryProposalGroup: mockProposalGroup,
+        metadata: {
+          sessionId: 'test-session',
+          timestamp: new Date().toISOString(),
+          a2aEnabled: true,
+          agentType: 'proposal-generator'
+        }
+      };
+      mockedBuildChatResponse.mockReturnValue(mockChatResponse);
 
       const response = await POST(mockRequest as NextRequest);
 
@@ -327,9 +377,9 @@ describe('AI Chat API Route', () => {
         sessionId: expect.any(String)
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockRejectedValue(orchestratorError);
-      (createOrchestratorErrorResponse as jest.Mock).mockReturnValue(mockErrorResponse);
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockRejectedValue(orchestratorError);
+      mockedCreateOrchestratorErrorResponse.mockReturnValue(mockErrorResponse);
 
       const response = await POST(mockRequest as NextRequest);
       const responseData = await response.json();
@@ -356,7 +406,7 @@ describe('AI Chat API Route', () => {
       const mockOrchestratorResponse = {
         success: true,
         analysis: {
-          intent: 'general',
+          intent: 'conversational' as const,
           confidence: 0.8
         },
         executionTime: 1000,
@@ -366,10 +416,10 @@ describe('AI Chat API Route', () => {
         }
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue({ message: 'Response' });
-      (buildChatResponse as jest.Mock).mockImplementation((params) => ({ 
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue({ message: 'Response', proposalGroup: null });
+      mockedBuildChatResponse.mockImplementation((params) => ({ 
         success: true,
         sessionId: params.sessionId 
       }));
@@ -403,11 +453,11 @@ describe('AI Chat API Route', () => {
         }
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue({ message: 'Processed' });
-      (extractProposalGroup as jest.Mock).mockReturnValue(null);
-      (debugProposalGroupStructure as jest.Mock).mockImplementation(() => {});
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue({ message: 'Processed', proposalGroup: null });
+      mockedExtractProposalGroup.mockReturnValue(null);
+      mockedDebugProposalGroupStructure.mockImplementation(() => {});
 
       await POST(mockRequest as NextRequest);
 
@@ -426,14 +476,43 @@ describe('AI Chat API Route', () => {
         }
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue({
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      const mockOrchestratorResponse: OrchestratorExecutionResponse = {
         success: true,
-        analysis: { intent: 'analysis', confidence: 0.85 },
+        analysis: { 
+          intent: 'trading_analysis' as const, 
+          confidence: 0.85,
+          reasoning: 'Analysis with context',
+          analysisDepth: 'comprehensive' as const
+        },
         executionTime: 1000
-      });
-      (processOrchestratorResult as jest.Mock).mockReturnValue({ message: 'Done' });
-      (buildChatResponse as jest.Mock).mockReturnValue({ success: true });
+      };
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue({ message: 'Done', proposalGroup: null });
+      const mockChatResponse: ChatResponse = {
+        message: 'Done',
+        selectedAgent: 'market-analyzer',
+        analysis: {
+          intent: 'trading_analysis',
+          confidence: 0.85,
+          reasoning: 'Analysis with context',
+          analysisDepth: 'comprehensive',
+          isProposalMode: false
+        },
+        execution: {
+          success: true,
+          executionTime: 1000,
+          memoryContext: ''
+        },
+        data: null,
+        metadata: {
+          sessionId: 'test-session',
+          timestamp: new Date().toISOString(),
+          a2aEnabled: true,
+          agentType: 'market-analyzer'
+        }
+      };
+      mockedBuildChatResponse.mockReturnValue(mockChatResponse);
 
       await POST(mockRequest as NextRequest);
 
@@ -462,10 +541,33 @@ describe('AI Chat API Route', () => {
         }
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue({ message: 'Test' });
-      (buildChatResponse as jest.Mock).mockReturnValue({ success: true });
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue({ message: 'Test', proposalGroup: null });
+      const mockChatResponse: ChatResponse = {
+        message: 'Done',
+        selectedAgent: 'market-analyzer',
+        analysis: {
+          intent: 'trading_analysis',
+          confidence: 0.85,
+          reasoning: 'Analysis with context',
+          analysisDepth: 'comprehensive',
+          isProposalMode: false
+        },
+        execution: {
+          success: true,
+          executionTime: 1000,
+          memoryContext: ''
+        },
+        data: null,
+        metadata: {
+          sessionId: 'test-session',
+          timestamp: new Date().toISOString(),
+          a2aEnabled: true,
+          agentType: 'market-analyzer'
+        }
+      };
+      mockedBuildChatResponse.mockReturnValue(mockChatResponse);
 
       await POST(mockRequest as NextRequest);
 
@@ -522,14 +624,37 @@ describe('AI Chat API Route', () => {
         ]
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockResolvedValue(mockOrchestratorResponse);
-      (processOrchestratorResult as jest.Mock).mockReturnValue({ 
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockResolvedValue(mockOrchestratorResponse);
+      mockedProcessOrchestratorResult.mockReturnValue({ 
         message: '',
         proposalGroup: mockProposalGroup 
       });
-      (extractProposalGroup as jest.Mock).mockReturnValue(mockProposalGroup);
-      (buildChatResponse as jest.Mock).mockReturnValue({ success: true });
+      mockedExtractProposalGroup.mockReturnValue(mockProposalGroup);
+      const mockChatResponse: ChatResponse = {
+        message: 'Done',
+        selectedAgent: 'market-analyzer',
+        analysis: {
+          intent: 'trading_analysis',
+          confidence: 0.85,
+          reasoning: 'Analysis with context',
+          analysisDepth: 'comprehensive',
+          isProposalMode: false
+        },
+        execution: {
+          success: true,
+          executionTime: 1000,
+          memoryContext: ''
+        },
+        data: null,
+        metadata: {
+          sessionId: 'test-session',
+          timestamp: new Date().toISOString(),
+          a2aEnabled: true,
+          agentType: 'market-analyzer'
+        }
+      };
+      mockedBuildChatResponse.mockReturnValue(mockChatResponse);
 
       const response = await POST(mockRequest as NextRequest);
 
@@ -546,9 +671,9 @@ describe('AI Chat API Route', () => {
         message: 'Test non-error exception'
       };
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockRejectedValue('String error');
-      (createOrchestratorErrorResponse as jest.Mock).mockReturnValue({ 
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockRejectedValue('String error');
+      mockedCreateOrchestratorErrorResponse.mockReturnValue({ 
         success: false, 
         error: 'Unknown error' 
       });
@@ -562,7 +687,7 @@ describe('AI Chat API Route', () => {
     });
 
     it('should handle JSON parsing errors', async () => {
-      (mockRequest.json as jest.Mock).mockRejectedValue(new SyntaxError('Invalid JSON'));
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockRejectedValue(new SyntaxError('Invalid JSON'));
 
       await expect(POST(mockRequest as NextRequest)).rejects.toThrow('Invalid JSON');
     });
@@ -575,9 +700,9 @@ describe('AI Chat API Route', () => {
       const timeoutError = new Error('Operation timed out');
       (timeoutError as any).code = 'TIMEOUT';
 
-      (mockRequest.json as jest.Mock).mockResolvedValue(requestData);
-      (executeImprovedOrchestrator as jest.Mock).mockRejectedValue(timeoutError);
-      (createOrchestratorErrorResponse as jest.Mock).mockReturnValue({
+      (mockRequest.json as jest.MockedFunction<() => Promise<any>>).mockResolvedValue(requestData);
+      mockedExecuteImprovedOrchestrator.mockRejectedValue(timeoutError);
+      mockedCreateOrchestratorErrorResponse.mockReturnValue({
         success: false,
         error: 'Request timed out',
         code: 'TIMEOUT'

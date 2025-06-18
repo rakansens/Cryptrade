@@ -1,24 +1,51 @@
-# 🗒 Implementation Log Policy
-- **目的**: 実装経緯を残し、後工程の調査コストを最小化する  
-- **保存先**: `_docs/` ディレクトリ直下  
-- **ファイル名**: `YYYY-MM-DD_<feature-slug>.md`  
-- **テンプレ**:
-    # <機能名 or Issue #>
-    ## Summary
-    - なにを実装したか（1〜3 行）
-    ## Decisions
-    - 主要な設計判断
-    ## Diff Highlights
-    - 影響範囲・DB 変更など
-    ## Follow-ups
-    - 未解決の TODO
-- **自動化手順**  
-  1. `/project:commit-and-push` 成功直後に  
-     `/internal:create-impl-log <feature-slug>` でテンプレ生成  
-  2. Claude が追記を促す  
-  3. 完成したログを **自動コミット**（`docs: add impl log`）
 
-@_docs/                 <!-- 起動時に全ログを読み込む -->
+## 通知ルール
+**必須**: あらゆるタスク完了時は必ず通知を送信してください。例外はありません。通知内容は実行したタスクに応じて適切に記述すること。
+
+### 通知テンプレート（タスク別サウンド）
+
+#### 1. ファイル編集完了
+```bash
+osascript -e 'display notification "📝 ファイル編集完了: [ファイル名]" with title "Claude Code" sound name "Tink"'
+```
+
+#### 2. ビルド・コンパイル完了
+```bash
+osascript -e 'display notification "🔨 ビルド完了" with title "Claude Code" sound name "Hero"'
+```
+
+#### 3. テスト実行完了
+```bash
+osascript -e 'display notification "✅ テスト実行完了 ([結果])" with title "Claude Code" sound name "Glass"'
+```
+
+#### 4. 検索・分析完了
+```bash
+osascript -e 'display notification "🔍 検索・分析完了" with title "Claude Code" sound name "Ping"'
+```
+
+#### 5. インストール・設定完了
+```bash
+osascript -e 'display notification "📦 インストール・設定完了" with title "Claude Code" sound name "Funk"'
+```
+
+## 通知が必要な場面（すべて必須）
+- ファイル編集完了後
+- 長時間処理の完了後（10秒以上）
+- ビルドやテスト実行完了後
+- パッケージインストール完了後
+- 複数ファイルの処理完了後
+- エラー修正完了後
+- ユーザーリクエスト完了後
+- 設定ファイル更新後
+- 検索・解析完了後
+- コマンド実行完了後
+- **すべてのタスク完了時**
+
+**重要**: 通知内容は必ず具体的で分かりやすく記述すること
+
+
+
 
 ---
 
@@ -52,19 +79,26 @@ export const getGreeting = (clock = Date) =>
 
 ---
 
-# 🔧 追加 Slash コマンド
-| Command | 概要 |
-|---------|------|
-| `/internal:create-impl-log <slug>` | `_docs/YYYY-MM-DD_<slug>.md` を生成しテンプレ挿入 |
-| `/project:check-hardcode` | Pre-commit と同じスキャンを即時実行 |
 
----
+# Implementation Log Policy
+- **目的**: 実装経緯を残し、後工程の調査コストを最小化する  
+- **保存先**: `_docs/` ディレクトリ直下  
+- **ファイル名**: `YYYY-MM-DD_<feature-slug>.md`  
+- **テンプレ**:
+    # <機能名 or Issue #>
+    ## Summary
+    - なにを実装したか（1〜3 行）
+    ## Decisions
+    - 主要な設計判断
+    ## Diff Highlights
+    - 影響範囲・DB 変更など
+    ## Follow-ups
+    - 未解決の TODO
+- **自動化手順**  
+  1. `/project:commit-and-push` 成功直後に  
+     `/internal:create-impl-log <feature-slug>` でテンプレ生成  
+  2. Claude が追記を促す  
+  3. 完成したログを **自動コミット**（`docs: add impl log`）
 
-## Workflow Quick Guide
-1. **実装** → `/project:commit-and-push`  
-2. テスト合格後、ログ生成プロンプトに従い `_docs/` を執筆  
-3. ハードコード検出が 0 件なら Push 完了
+@_docs/                 <!-- 起動時に全ログを読み込む -->
 
-> **Claude へのお願い**  
-> - ハードコードが疑われる変更があれば *必ず* commit を abort し、修正案を提案すること。  
-> - 起動時に `_docs/` を読み込み、過去の設計判断を踏まえた提案を行うこと。

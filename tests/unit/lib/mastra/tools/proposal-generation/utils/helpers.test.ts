@@ -17,18 +17,17 @@ import {
   mode,
   deepMerge,
 } from '@/lib/mastra/tools/proposal-generation/utils/helpers';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock logger
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    warn: vi.fn(),
+    warn: jest.fn(),
   },
 }));
 
 describe('proposal generation helpers', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('generateProposalId', () => {

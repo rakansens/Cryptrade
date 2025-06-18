@@ -22,7 +22,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { KeyPointRenderer } from '../KeyPointRenderer';
 import type { PluginContext, MarkerStyle } from '../interfaces';
 import type { PatternVisualization } from '@/types/pattern';
-import type { SeriesMarker, Time } from 'lightweight-charts';
+import type { Time } from 'lightweight-charts';
 import { PluginError } from '../interfaces';
 
 describe('KeyPointRenderer', () => {
@@ -128,7 +128,7 @@ describe('KeyPointRenderer', () => {
       renderer.setMarkerStyle(newStyle);
       
       const state = renderer.getDebugState();
-      expect(state.markerStyle).toMatchObject(newStyle);
+      expect(state.markerStyle).toMatchObject(newStyle as Record<string, unknown>);
     });
 
     it('should merge partial style updates', () => {
@@ -158,7 +158,7 @@ describe('KeyPointRenderer', () => {
       await renderer.render('pattern-1', mockData);
       
       expect(mockSetMarkers).toHaveBeenCalledTimes(1);
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers).toHaveLength(3);
       
       // Check first marker
@@ -213,7 +213,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', mockData);
       
-      const allMarkers = mockSetMarkers.mock.calls[0][0];
+      const allMarkers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(allMarkers).toHaveLength(4); // 1 existing + 3 new
       expect(allMarkers[0]).toEqual(existingMarkers[0]);
     });
@@ -229,7 +229,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', dataWithoutLabels);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[0].text).toBe('A');
       expect(markers[1].text).toBe('B');
     });
@@ -246,7 +246,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', dataWithKeywords);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[0].color).toBe('#E91E63'); // RESISTANCE
       expect(markers[1].color).toBe('#00BCD4'); // SUPPORT
       expect(markers[2].color).toBe('#FF9800'); // BREAK
@@ -263,7 +263,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', dataWithVariousTimestamps);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[0].time).toBe(1234567890);
       expect(markers[1].time).toBe(1234567890); // Converted from ms to s
     });
@@ -326,7 +326,7 @@ describe('KeyPointRenderer', () => {
     });
 
     it('should remove pattern markers', async () => {
-      const renderedMarkers = mockSetMarkers.mock.calls[0][0];
+      const renderedMarkers = mockSetMarkers.mock.calls[0]?.[0];
       mockGetMarkers.mockReturnValue(renderedMarkers);
       
       await renderer.remove('pattern-1');
@@ -361,7 +361,7 @@ describe('KeyPointRenderer', () => {
       await renderer.render('pattern-2', otherData);
       
       // Get all markers
-      const allMarkers = mockSetMarkers.mock.calls[1][0];
+      const allMarkers = mockSetMarkers.mock.calls[1]?.[0] as any[];
       mockGetMarkers.mockReturnValue(allMarkers);
       
       // Remove first pattern
@@ -461,7 +461,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', data);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[0].shape).toBe('arrowUp');
       expect(markers[1].shape).toBe('arrowDown');
       expect(markers[2].shape).toBe('square');
@@ -482,7 +482,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', data);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       // Colors from palette
       expect(markers[0].color).toBe('#4CAF50');
       expect(markers[1].color).toBe('#2196F3');
@@ -505,7 +505,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', data);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[8].text).toBe('P9'); // After H, use P notation
       expect(markers[9].text).toBe('P10');
     });
@@ -520,7 +520,7 @@ describe('KeyPointRenderer', () => {
       
       await renderer.render('pattern-1', data);
       
-      const markers = mockSetMarkers.mock.calls[0][0];
+      const markers = mockSetMarkers.mock.calls[0]?.[0] as any[];
       expect(markers[0].size).toBe(12);
     });
   });

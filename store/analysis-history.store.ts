@@ -775,3 +775,6 @@ export const useAnalysisActions = () => {
 };
 
 export default useAnalysisHistoryBase;
+
+// Export for testing purposes
+export { useAnalysisHistoryBase };

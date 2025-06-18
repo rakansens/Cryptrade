@@ -1,16 +1,4 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { LineQualityPredictor } from '@/lib/ml/line-predictor';
-import * as tf from '@tensorflow/tfjs';
-import { logger } from '@/lib/utils/logger';
-import type { 
-  LineFeatures, 
-  MLPrediction, 
-  MLReasoning,
-  FeatureImportance,
-  ModelMetrics 
-} from '@/lib/ml/line-validation-types';
-
-// Mock dependencies
+// Mock dependencies first
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -38,6 +26,18 @@ jest.mock('@tensorflow/tfjs', () => {
     })
   };
 });
+
+// Import after mocking
+import { LineQualityPredictor } from '@/lib/ml/line-predictor';
+import * as tf from '@tensorflow/tfjs';
+import { logger } from '@/lib/utils/logger';
+import type { 
+  LineFeatures, 
+  MLPrediction, 
+  MLReasoning,
+  FeatureImportance,
+  ModelMetrics 
+} from '@/lib/ml/line-validation-types';
 
 describe('LineQualityPredictor', () => {
   let predictor: LineQualityPredictor;

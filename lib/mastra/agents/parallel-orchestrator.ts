@@ -291,7 +291,7 @@ export class ParallelOrchestrator {
     sessionId: string,
     correlationId: string
   ): Promise<{ result: any; duration: number }> {
-    const start = Date.now();
+    // const start = Date.now();
     
     // For complex queries that require multiple agents
     if (this.isComplexQuery(analysis, userQuery)) {
@@ -551,7 +551,7 @@ export class ParallelOrchestrator {
     let proposalGroup: any = null;
     const toolResults: any[] = [];
     
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value) {
         const agentResult = result.value;
         successfulResults.push(agentResult);

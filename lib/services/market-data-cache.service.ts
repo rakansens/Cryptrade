@@ -3,7 +3,7 @@ import { logger } from '@/lib/utils/logger';
 import { incrementMetric } from '@/lib/monitoring/metrics';
 import { getRedisConnectionManager } from '@/lib/api/redis-connection-manager';
 import type { MarketStatsResult } from '@/lib/mastra/tools/market-data-resilient.tool';
-import type { BinanceTicker24hr } from '@/types/market';
+// import type { BinanceTicker24hr } from '@/types/market';
 
 /**
  * Market Data Cache Service
@@ -95,7 +95,7 @@ export class MarketDataCacheService {
       // Start cache warming if enabled
       if (this.config.enablePreloading) {
         this.warmupCache().catch(error => 
-          logger.error('[MarketDataCache] Warmup failed:', error)
+          logger.error('[MarketDataCache] Warmup failed:', { error })
         );
       }
       
@@ -103,7 +103,7 @@ export class MarketDataCacheService {
       this.startStatsReporting();
       
     } catch (error) {
-      logger.error('[MarketDataCache] Failed to initialize Redis, falling back to in-memory only:', error);
+      logger.error('[MarketDataCache] Failed to initialize Redis, falling back to in-memory only:', { error });
       // Continue with L1 cache only
     }
   }
@@ -157,7 +157,7 @@ export class MarketDataCacheService {
             };
           }
         } catch (error) {
-          logger.warn('[MarketDataCache] Redis get failed:', error);
+          logger.warn('[MarketDataCache] Redis get failed:', { error });
         }
       }
       
@@ -192,7 +192,7 @@ export class MarketDataCacheService {
       };
       
     } catch (error) {
-      logger.error('[MarketDataCache] Get operation failed:', error);
+      logger.error('[MarketDataCache] Get operation failed:', { error });
       throw error;
     }
   }
@@ -209,7 +209,7 @@ export class MarketDataCacheService {
       try {
         await this.setInRedis(key, entry);
       } catch (error) {
-        logger.warn('[MarketDataCache] Redis set failed:', error);
+        logger.warn('[MarketDataCache] Redis set failed:', { error });
       }
     }
   }
@@ -224,7 +224,7 @@ export class MarketDataCacheService {
       try {
         await this.redis.del(this.getRedisKey(key));
       } catch (error) {
-        logger.warn('[MarketDataCache] Redis delete failed:', error);
+        logger.warn('[MarketDataCache] Redis delete failed:', { error });
       }
     }
   }
@@ -242,7 +242,7 @@ export class MarketDataCacheService {
           await this.redis.del(...keys);
         }
       } catch (error) {
-        logger.warn('[MarketDataCache] Redis clear failed:', error);
+        logger.warn('[MarketDataCache] Redis clear failed:', { error });
       }
     }
     
@@ -284,7 +284,7 @@ export class MarketDataCacheService {
           invalidated += keys.length;
         }
       } catch (error) {
-        logger.warn('[MarketDataCache] Redis pattern invalidation failed:', error);
+        logger.warn('[MarketDataCache] Redis pattern invalidation failed:', { error });
       }
     }
     
@@ -365,7 +365,7 @@ export class MarketDataCacheService {
         await this.set(`market:${symbol}`, entry);
         
       } catch (error) {
-        logger.warn(`[MarketDataCache] Failed to warmup ${symbol}:`, error);
+        logger.warn(`[MarketDataCache] Failed to warmup ${symbol}:`, { error });
       }
     });
     
@@ -457,7 +457,7 @@ export class MarketDataCacheService {
       return null;
       
     } catch (error) {
-      logger.error('[MarketDataCache] Failed to parse Redis data:', error);
+      logger.error('[MarketDataCache] Failed to parse Redis data:', { error });
       return null;
     }
   }

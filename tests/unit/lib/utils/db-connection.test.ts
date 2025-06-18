@@ -5,20 +5,19 @@ import {
   checkDatabaseHealth,
   type TransactionOptions,
 } from '@/lib/utils/db-connection';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Prisma } from '@prisma/client';
 
 // Mock logger
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
 // Mock env
-vi.mock('@/config/env', () => ({
+jest.mock('@/config/env', () => ({
   env: {
     NODE_ENV: 'test',
   },
@@ -26,19 +25,19 @@ vi.mock('@/config/env', () => ({
 
 // Mock prisma
 const mockPrisma = {
-  $connect: vi.fn(),
-  $disconnect: vi.fn(),
-  $transaction: vi.fn(),
-  $queryRaw: vi.fn(),
+  $connect: jest.fn(),
+  $disconnect: jest.fn(),
+  $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 };
 
-vi.mock('@/lib/db/prisma', () => ({
+jest.mock('@/lib/db/prisma', () => ({
   prisma: mockPrisma,
 }));
 
 describe('DatabaseConnection', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     // Reset static state
     (DatabaseConnection as any).isConnected = false;
     (DatabaseConnection as any).connectionAttempts = 0;
@@ -60,7 +59,7 @@ describe('DatabaseConnection', () => {
       
       // First connection
       await DatabaseConnection.ensureConnection();
-      vi.clearAllMocks();
+      jest.clearAllMocks();
       
       // Second attempt should not call connect
       const result = await DatabaseConnection.ensureConnection();
@@ -92,7 +91,7 @@ describe('DatabaseConnection', () => {
     });
 
     it('should use exponential backoff for retries', async () => {
-      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
       
       mockPrisma.$connect
         .mockRejectedValueOnce(new Error('Failed'))
@@ -137,7 +136,7 @@ describe('DatabaseConnection', () => {
     });
 
     it('should execute transaction successfully', async () => {
-      const mockTx = { user: { create: vi.fn() } };
+      const mockTx = { user: { create: jest.fn() } };
       const expectedResult = { id: 1, name: 'Test' };
       
       mockPrisma.$transaction.mockImplementation(async (fn) => {
@@ -284,13 +283,13 @@ describe('DatabaseConnection', () => {
 
 describe('withDatabase', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     (DatabaseConnection as any).isConnected = false;
   });
 
   it('should execute operation with database connection', async () => {
     mockPrisma.$connect.mockResolvedValueOnce(undefined);
-    const operation = vi.fn().mockResolvedValue('result');
+    const operation = jest.fn().mockResolvedValue('result');
     
     const result = await withDatabase(operation);
     
@@ -300,10 +299,10 @@ describe('withDatabase', () => {
   });
 
   it('should use fallback on error in development', async () => {
-    const operation = vi.fn().mockRejectedValue(new Error('Operation failed'));
-    const fallback = vi.fn().mockResolvedValue('fallback result');
+    const operation = jest.fn().mockRejectedValue(new Error('Operation failed'));
+    const fallback = jest.fn().mockResolvedValue('fallback result');
     
-    vi.doMock('@/config/env', () => ({
+    jest.doMock('@/config/env', () => ({
       env: { NODE_ENV: 'development' },
     }));
     
@@ -314,7 +313,7 @@ describe('withDatabase', () => {
   });
 
   it('should throw enhanced error in production', async () => {
-    vi.doMock('@/config/env', () => ({
+    jest.doMock('@/config/env', () => ({
       env: { NODE_ENV: 'production' },
     }));
     
@@ -326,13 +325,13 @@ describe('withDatabase', () => {
       }
     );
     
-    const operation = vi.fn().mockRejectedValue(prismaError);
+    const operation = jest.fn().mockRejectedValue(prismaError);
     
     await expect(withDatabase(operation)).rejects.toThrow('Record not found');
   });
 
   it('should handle generic errors', async () => {
-    const operation = vi.fn().mockRejectedValue(new Error('Generic error'));
+    const operation = jest.fn().mockRejectedValue(new Error('Generic error'));
     
     await expect(withDatabase(operation)).rejects.toThrow(
       'Database operation failed: Generic error'
@@ -343,7 +342,7 @@ describe('withDatabase', () => {
 describe('batchOperation', () => {
   it('should process items in batches', async () => {
     const items = Array.from({ length: 25 }, (_, i) => i);
-    const operation = vi.fn().mockImplementation((item) => Promise.resolve(item * 2));
+    const operation = jest.fn().mockImplementation((item) => Promise.resolve(item * 2));
     
     const results = await batchOperation(items, operation, 10);
     
@@ -354,7 +353,7 @@ describe('batchOperation', () => {
 
   it('should respect batch size', async () => {
     const items = Array.from({ length: 15 }, (_, i) => i);
-    const operation = vi.fn().mockResolvedValue('result');
+    const operation = jest.fn().mockResolvedValue('result');
     
     // Track concurrent calls
     let maxConcurrent = 0;
@@ -374,7 +373,7 @@ describe('batchOperation', () => {
   });
 
   it('should handle empty array', async () => {
-    const operation = vi.fn();
+    const operation = jest.fn();
     
     const results = await batchOperation([], operation);
     
@@ -384,7 +383,7 @@ describe('batchOperation', () => {
 
   it('should handle operation errors', async () => {
     const items = [1, 2, 3];
-    const operation = vi.fn()
+    const operation = jest.fn()
       .mockResolvedValueOnce('success')
       .mockRejectedValueOnce(new Error('Failed'))
       .mockResolvedValueOnce('success');

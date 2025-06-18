@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   orchestratorAgent, 
   type OrchestratorAgentContext, 
@@ -20,57 +19,57 @@ import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core';
 
 // Mock dependencies
-vi.mock('@/types/agent-payload', () => ({
-  generateCorrelationId: vi.fn(() => 'test-correlation-id')
+jest.mock('@/types/agent-payload', () => ({
+  generateCorrelationId: jest.fn(() => 'test-correlation-id')
 }));
 
-vi.mock('@/lib/monitoring/trace', () => ({
+jest.mock('@/lib/monitoring/trace', () => ({
   traceManager: {
-    startTrace: vi.fn(),
-    endTrace: vi.fn(),
-    addEvent: vi.fn()
+    startTrace: jest.fn(),
+    endTrace: jest.fn(),
+    addEvent: jest.fn()
   }
 }));
 
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn()
   }
 }));
 
-vi.mock('@/lib/store/enhanced-conversation-memory.store', () => ({
+jest.mock('@/lib/store/enhanced-conversation-memory.store', () => ({
   useEnhancedConversationMemory: {
-    getState: vi.fn(() => ({
+    getState: jest.fn(() => ({
       currentSessionId: 'test-session-id',
-      createSession: vi.fn().mockResolvedValue('test-session-id'),
-      addMessage: vi.fn().mockResolvedValue(undefined),
-      getProcessedMessages: vi.fn(() => []),
-      getSessionContext: vi.fn(() => 'Previous context'),
-      getMemoryStats: vi.fn(() => ({
+      createSession: jest.fn().mockResolvedValue('test-session-id'),
+      addMessage: jest.fn().mockResolvedValue(undefined),
+      getProcessedMessages: jest.fn(() => []),
+      getSessionContext: jest.fn(() => 'Previous context'),
+      getMemoryStats: jest.fn(() => ({
         totalMessages: 5,
         processedMessages: 5,
         estimatedTokens: 100,
         processors: ['test-processor']
       })),
-      getRecentMessages: vi.fn(() => [
+      getRecentMessages: jest.fn(() => [
         { role: 'user', content: 'BTCの価格', metadata: {} },
         { role: 'assistant', content: 'BTCは50000ドルです', metadata: {} }
       ])
     }))
   },
-  createEnhancedSession: vi.fn().mockResolvedValue('test-session-id')
+  createEnhancedSession: jest.fn().mockResolvedValue('test-session-id')
 }));
 
-vi.mock('@/lib/mastra/network/agent-registry', () => ({
-  registerAllAgents: vi.fn()
+jest.mock('@/lib/mastra/network/agent-registry', () => ({
+  registerAllAgents: jest.fn()
 }));
 
-vi.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
+jest.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
   parallelOrchestrator: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       analysis: {
         intent: 'price_inquiry',
         confidence: 0.9,
@@ -87,28 +86,28 @@ vi.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
   }
 }));
 
-vi.mock('@ai-sdk/openai', () => ({
-  openai: vi.fn(() => ({
+jest.mock('@ai-sdk/openai', () => ({
+  openai: jest.fn(() => ({
     id: 'mock-model',
     provider: 'openai'
   }))
 }));
 
-vi.mock('@mastra/core', () => ({
-  Agent: vi.fn().mockImplementation((config) => ({
+jest.mock('@mastra/core', () => ({
+  Agent: jest.fn().mockImplementation((config) => ({
     ...config,
-    generate: vi.fn().mockResolvedValue({
+    generate: jest.fn().mockResolvedValue({
       text: 'こんにちは！暗号通貨取引についてお手伝いできることはありますか？',
       metadata: {}
     })
   })),
-  Message: vi.fn()
+  Message: jest.fn()
 }));
 
 // Mock the tools
-vi.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
+jest.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
   agentSelectionTool: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       executionResult: {
         response: 'BTCの現在価格は50,000ドルです。',
         data: { price: 50000, symbol: 'BTCUSDT' }
@@ -118,32 +117,32 @@ vi.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
   }
 }));
 
-vi.mock('@/lib/mastra/tools/memory-recall.tool', () => ({
+jest.mock('@/lib/mastra/tools/memory-recall.tool', () => ({
   memoryRecallTool: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       messages: [],
       context: 'No previous context'
     })
   }
 }));
 
-vi.mock('@/lib/mastra/tools/market-snapshot.tool', () => ({
+jest.mock('@/lib/mastra/tools/market-snapshot.tool', () => ({
   marketSnapshotTool: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       topMovers: [],
       marketSentiment: 'neutral'
     })
   },
   trendingTopicsTool: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       topics: ['Bitcoin', 'Ethereum']
     })
   }
 }));
 
-vi.mock('@/lib/mastra/tools/market-data-resilient.tool', () => ({
+jest.mock('@/lib/mastra/tools/market-data-resilient.tool', () => ({
   marketDataResilientTool: {
-    execute: vi.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue({
       symbol: 'BTCUSDT',
       price: 50000,
       change24h: 2.5
@@ -153,11 +152,11 @@ vi.mock('@/lib/mastra/tools/market-data-resilient.tool', () => ({
 
 describe('OrchestratorAgent Comprehensive Tests', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('Agent Configuration', () => {
@@ -186,7 +185,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       contexts.forEach(({ expected, ...context }) => {
         const selectedModel = model(context);
         expect(selectedModel).toBeDefined();
-        expect(vi.mocked(openai)).toHaveBeenCalledWith(expected);
+        expect(jest.mocked(openai)).toHaveBeenCalledWith(expected);
       });
     });
 
@@ -318,7 +317,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.analysis.intent).toBe('greeting');
-      expect(vi.mocked(Agent)).toHaveBeenCalled();
+      expect(jest.mocked(Agent)).toHaveBeenCalled();
     });
 
     it('should use parallel orchestrator for complex queries', async () => {
@@ -327,14 +326,14 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       await executeImprovedOrchestrator(complexQuery);
       
-      expect(vi.mocked(parallelOrchestrator.execute)).toHaveBeenCalled();
+      expect(jest.mocked(parallelOrchestrator.execute)).toHaveBeenCalled();
     });
 
     it('should handle session management properly', async () => {
       const sessionId = 'custom-session-id';
       await executeImprovedOrchestrator('BTCの価格', sessionId);
       
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
       expect(memoryStore.addMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: expect.any(String),
@@ -373,18 +372,18 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
   describe('Error Handling and Fallbacks', () => {
     it('should handle agent execution failures gracefully', async () => {
       const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
-      vi.mocked(agentSelectionTool.execute).mockRejectedValueOnce(new Error('Agent failed'));
+      jest.mocked(agentSelectionTool.execute).mockRejectedValueOnce(new Error('Agent failed'));
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
       expect(result.executionResult).toBeDefined();
-      expect(vi.mocked(logger.error)).toHaveBeenCalled();
+      expect(jest.mocked(logger.error)).toHaveBeenCalled();
     });
 
     it('should handle memory recall failures', async () => {
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
-      memoryStore.getSessionContext = vi.fn().mockImplementation(() => {
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      memoryStore.getSessionContext = jest.fn().mockImplementation(() => {
         throw new Error('Memory error');
       });
       
@@ -395,14 +394,14 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should handle agent registration failures', async () => {
-      vi.mocked(registerAllAgents).mockImplementationOnce(() => {
+      jest.mocked(registerAllAgents).mockImplementationOnce(() => {
         throw new Error('Registration failed');
       });
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
-      expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect(jest.mocked(logger.warn)).toHaveBeenCalledWith(
         expect.stringContaining('Agent registration failed'),
         expect.any(Object)
       );
@@ -410,13 +409,13 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
 
     it('should provide fallback response when agent returns no response', async () => {
       const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
-      vi.mocked(agentSelectionTool.execute).mockResolvedValueOnce({});
+      jest.mocked(agentSelectionTool.execute).mockResolvedValueOnce({});
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
       expect(result.executionResult).toBeDefined();
-      expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect(jest.mocked(logger.warn)).toHaveBeenCalledWith(
         expect.stringContaining('Agent returned no response'),
         expect.any(Object)
       );
@@ -440,8 +439,8 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should use memory recall tool for context-dependent queries', async () => {
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
-      memoryStore.getRecentMessages = vi.fn(() => [
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      memoryStore.getRecentMessages = jest.fn(() => [
         { role: 'user', content: 'BTCについて教えて', metadata: {} },
         { role: 'assistant', content: 'BTCは...', metadata: {} },
       ]);
@@ -462,7 +461,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
   describe('Context and Memory Management', () => {
     it('should maintain conversation context across messages', async () => {
       const sessionId = 'test-session';
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
       
       await executeImprovedOrchestrator('BTCについて教えて', sessionId);
       await executeImprovedOrchestrator('それは高い？', sessionId);
@@ -480,7 +479,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should extract metadata from queries', async () => {
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
       
       await executeImprovedOrchestrator('BTCとETHの価格分析をお願いします');
       
@@ -590,10 +589,10 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should adapt response based on relationship level', async () => {
-      const memoryStore = vi.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
       
       // New user (few messages)
-      memoryStore.getMemoryStats = vi.fn(() => ({
+      memoryStore.getMemoryStats = jest.fn(() => ({
         totalMessages: 2,
         processedMessages: 2,
         estimatedTokens: 50,
@@ -601,14 +600,14 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const newUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(vi.mocked(Agent)).toHaveBeenCalledWith(
+      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('new:')
         })
       );
       
       // Regular user (many messages)
-      memoryStore.getMemoryStats = vi.fn(() => ({
+      memoryStore.getMemoryStats = jest.fn(() => ({
         totalMessages: 50,
         processedMessages: 50,
         estimatedTokens: 1000,
@@ -616,7 +615,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const regularUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(vi.mocked(Agent)).toHaveBeenCalledWith(
+      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('regular:')
         })
@@ -638,7 +637,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
         })
       );
       
-      vi.clearAllMocks();
+      jest.clearAllMocks();
       
       // UI control -> ui_control agent
       await executeImprovedOrchestrator('チャートをETHに変更');
@@ -650,7 +649,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
         })
       );
       
-      vi.clearAllMocks();
+      jest.clearAllMocks();
       
       // Trading analysis -> trading_analysis agent
       await executeImprovedOrchestrator('BTCを詳しく分析して');

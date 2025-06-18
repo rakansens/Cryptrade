@@ -2,13 +2,12 @@ import { compose, createFinalMiddleware, composeWithFetch } from '@/lib/utils/co
 import type { ApiMiddleware, RequestCtx } from '@/types/api';
 
 // Mock fetch for testing
-global.fetch = jest.fn();
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
 describe('Middleware Composition', () => {
-  let mockFetch: jest.MockedFunction<typeof fetch>;
-
   beforeEach(() => {
-    mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+    // Override global fetch with our mock
+    global.fetch = mockFetch;
     jest.clearAllMocks();
   });
 

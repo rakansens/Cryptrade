@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import { .* } from '../../../../hooks/base/use-streaming';
-import { .* } from '../../../../lib/utils/logger';
+import { useStreaming } from '../../../../hooks/base/use-streaming';
+import { logger } from '../../../../lib/utils/logger';
 
 // Mock logger
 jest.mock('../../../../lib/utils/logger');

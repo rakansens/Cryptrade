@@ -7,7 +7,6 @@ import {
   disconnectAllClients,
   type SSEEvent,
 } from '@/lib/utils/sse';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('SSE utilities', () => {
   let originalGlobalThis: typeof globalThis;
@@ -18,17 +17,17 @@ describe('SSE utilities', () => {
     originalGlobalThis = globalThis;
     mockClientStreams = new Set<Function>();
     (globalThis as any).__clientStreams = mockClientStreams;
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     delete (globalThis as any).__clientStreams;
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('broadcastUIEvent', () => {
     it('should broadcast UI operation event', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const event = {
@@ -54,7 +53,7 @@ describe('SSE utilities', () => {
     });
 
     it('should use default source if not provided', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       broadcastUIEvent({
@@ -74,7 +73,7 @@ describe('SSE utilities', () => {
 
   describe('broadcastChartEvent', () => {
     it('should broadcast chart operations with client events', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const operations = [
@@ -124,7 +123,7 @@ describe('SSE utilities', () => {
     });
 
     it('should skip operations without client events', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const operations = [
@@ -153,7 +152,7 @@ describe('SSE utilities', () => {
 
   describe('broadcastMarketDataUpdate', () => {
     it('should broadcast market data update', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const data = {
@@ -179,7 +178,7 @@ describe('SSE utilities', () => {
     });
 
     it('should add timestamp if not provided', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const data = {
@@ -198,7 +197,7 @@ describe('SSE utilities', () => {
 
   describe('broadcastAgentStatus', () => {
     it('should broadcast agent status updates', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       const statuses = [
@@ -237,10 +236,10 @@ describe('SSE utilities', () => {
 
   describe('error handling', () => {
     it('should handle client stream errors gracefully', () => {
-      const errorClient = vi.fn().mockImplementation(() => {
+      const errorClient = jest.fn().mockImplementation(() => {
         throw new Error('Client disconnected');
       });
-      const workingClient = vi.fn();
+      const workingClient = jest.fn();
 
       mockClientStreams.add(errorClient);
       mockClientStreams.add(workingClient);
@@ -300,7 +299,7 @@ describe('SSE utilities', () => {
 
   describe('event structure', () => {
     it('should generate unique event IDs', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
 
       // Broadcast multiple events
@@ -318,7 +317,7 @@ describe('SSE utilities', () => {
     });
 
     it('should include timestamp in all events', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
       
       const beforeTime = Date.now();
@@ -336,7 +335,7 @@ describe('SSE utilities', () => {
     });
 
     it('should preserve custom timestamp if provided', () => {
-      const mockPushEvent = vi.fn();
+      const mockPushEvent = jest.fn();
       mockClientStreams.add(mockPushEvent);
       
       // This would require modifying the broadcastEvent function to accept custom timestamps
@@ -361,9 +360,9 @@ describe('SSE utilities', () => {
   describe('multiple client handling', () => {
     it('should broadcast to all connected clients', () => {
       const clients = [
-        vi.fn(),
-        vi.fn(),
-        vi.fn(),
+        jest.fn(),
+        jest.fn(),
+        jest.fn(),
       ];
 
       clients.forEach(client => mockClientStreams.add(client));
@@ -387,11 +386,11 @@ describe('SSE utilities', () => {
     });
 
     it('should continue broadcasting after client errors', () => {
-      const client1 = vi.fn();
-      const client2 = vi.fn().mockImplementation(() => {
+      const client1 = jest.fn();
+      const client2 = jest.fn().mockImplementation(() => {
         throw new Error('Client 2 error');
       });
-      const client3 = vi.fn();
+      const client3 = jest.fn();
 
       mockClientStreams.add(client1);
       mockClientStreams.add(client2);

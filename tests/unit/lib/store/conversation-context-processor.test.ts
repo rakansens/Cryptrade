@@ -1,4 +1,4 @@
-import * as utils from '@/lib/store/conversation-context-processor';
+import { ConversationContextProcessor, ConversationContext } from '@/lib/store/conversation-context-processor';
 
 describe('conversation-context-processor', () => {
 
@@ -16,8 +16,16 @@ describe('conversation-context-processor', () => {
   jest.mock('@/lib/utils/zustand-helpers', () => ({
     createStoreDebugger: () => jest.fn()
   }));
-  it('should export expected utilities', () => {
-    expect(utils).toBeDefined();
-    // Add checks for specific exports
+  
+  it('should export ConversationContextProcessor class', () => {
+    expect(ConversationContextProcessor).toBeDefined();
+    expect(typeof ConversationContextProcessor).toBe('function');
+  });
+
+  it('should create an instance of ConversationContextProcessor', () => {
+    const processor = new ConversationContextProcessor();
+    expect(processor).toBeInstanceOf(ConversationContextProcessor);
+    expect(processor.extractContext).toBeDefined();
+    expect(processor.adjustResponseStyle).toBeDefined();
   });
 });

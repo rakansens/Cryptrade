@@ -1,19 +1,20 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import type { Redis } from 'ioredis';
 import { MarketDataCacheService, CacheConfig, CacheEntry } from '@/lib/services/market-data-cache.service';
-import * as redisConnectionManager from '@/lib/api/redis-connection-manager';
-import * as logger from '@/lib/utils/logger';
-import * as metrics from '@/lib/monitoring/metrics';
 import type { MarketStatsResult } from '@/lib/mastra/tools/market-data-resilient.tool';
 
-// Mock dependencies
+// Mock dependencies first
 jest.mock('@/lib/api/redis-connection-manager');
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/monitoring/metrics');
 
+// Import mocked modules after mocking
+import { getRedisConnectionManager } from '@/lib/api/redis-connection-manager';
+import { logger } from '@/lib/utils/logger';
+import { metrics } from '@/lib/monitoring/metrics';
+
 describe('MarketDataCacheService', () => {
   let cacheService: MarketDataCacheService;
-  let mockRedis: jest.Mocked<Redis>;
+  let mockRedis: any;
   let mockConnectionManager: any;
 
   const mockMarketData: MarketStatsResult = {
@@ -49,8 +50,7 @@ describe('MarketDataCacheService', () => {
       getConnection: jest.fn().mockReturnValue(mockRedis)
     };
 
-    jest.spyOn(redisConnectionManager, 'getRedisConnectionManager')
-      .mockResolvedValue(mockConnectionManager);
+    (getRedisConnectionManager as jest.Mock).mockResolvedValue(mockConnectionManager);
 
     // Create cache service instance
     cacheService = new MarketDataCacheService({
@@ -72,7 +72,7 @@ describe('MarketDataCacheService', () => {
     it('should initialize with Redis connection', async () => {
       await cacheService.initialize();
 
-      expect(redisConnectionManager.getRedisConnectionManager).toHaveBeenCalled();
+      expect(getRedisConnectionManager).toHaveBeenCalled();
       expect(mockConnectionManager.getConnection).toHaveBeenCalled();
       expect(logger.logger.info).toHaveBeenCalledWith(
         '[MarketDataCache] Initialized with Redis connection'
@@ -80,8 +80,7 @@ describe('MarketDataCacheService', () => {
     });
 
     it('should handle Redis initialization failure gracefully', async () => {
-      jest.spyOn(redisConnectionManager, 'getRedisConnectionManager')
-        .mockRejectedValue(new Error('Connection failed'));
+      (getRedisConnectionManager as jest.Mock).mockRejectedValue(new Error('Connection failed'));
 
       await cacheService.initialize();
 

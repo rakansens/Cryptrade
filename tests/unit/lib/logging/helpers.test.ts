@@ -1,3 +1,20 @@
+// Mock the unified logger first
+const mockUnifiedLogger = {
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  critical: jest.fn(),
+  pushContext: jest.fn(),
+  popContext: jest.fn(),
+};
+
+jest.mock('@/lib/logging/unified-logger', () => ({
+  unifiedLogger: mockUnifiedLogger,
+  UnifiedLogger: jest.fn(),
+}));
+
+// Import after mocking
 import {
   createAgentLogger,
   createToolLogger,
@@ -10,28 +27,11 @@ import {
   conditionalLog,
   RateLimitedLogger,
 } from '@/lib/logging/helpers';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UnifiedLogger } from '@/lib/logging/unified-logger';
-
-// Mock the unified logger
-const mockUnifiedLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  critical: vi.fn(),
-  pushContext: vi.fn(),
-  popContext: vi.fn(),
-};
-
-vi.mock('@/lib/logging/unified-logger', () => ({
-  unifiedLogger: mockUnifiedLogger,
-  UnifiedLogger: vi.fn(),
-}));
 
 describe('logging helpers', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('createAgentLogger', () => {
@@ -69,11 +69,11 @@ describe('logging helpers', () => {
 
     it('should use custom logger if provided', () => {
       const customLogger = {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        critical: vi.fn(),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        critical: jest.fn(),
       };
 
       const agentLogger = createAgentLogger('CustomAgent', customLogger as any);
@@ -125,7 +125,7 @@ describe('logging helpers', () => {
     it('should log successful operations with timing', async () => {
       const operation = 'DataProcessing';
       const result = { processed: 100 };
-      const fn = vi.fn().mockResolvedValue(result);
+      const fn = jest.fn().mockResolvedValue(result);
 
       const output = await logPerformance(operation, fn);
 
@@ -143,7 +143,7 @@ describe('logging helpers', () => {
     it('should log failed operations and rethrow error', async () => {
       const operation = 'FailingOperation';
       const error = new Error('Operation failed');
-      const fn = vi.fn().mockRejectedValue(error);
+      const fn = jest.fn().mockRejectedValue(error);
 
       await expect(logPerformance(operation, fn)).rejects.toThrow('Operation failed');
 
@@ -160,8 +160,8 @@ describe('logging helpers', () => {
 
     it('should use custom logger', async () => {
       const customLogger = {
-        info: vi.fn(),
-        error: vi.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
       };
 
       await logPerformance('Test', () => Promise.resolve(), customLogger as any);
@@ -287,13 +287,13 @@ describe('logging helpers', () => {
 
     it('should use custom logger', async () => {
       const customLogger = {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        critical: vi.fn(),
-        pushContext: vi.fn(),
-        popContext: vi.fn(),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        critical: jest.fn(),
+        pushContext: jest.fn(),
+        popContext: jest.fn(),
       };
 
       const batchLogger = new BatchLogger(customLogger as any);
@@ -437,7 +437,7 @@ describe('logging helpers', () => {
     });
 
     it('should evaluate condition function', () => {
-      const condition = vi.fn().mockReturnValue(true);
+      const condition = jest.fn().mockReturnValue(true);
       conditionalLog(condition, 'error', 'Conditional error');
 
       expect(condition).toHaveBeenCalled();
@@ -461,11 +461,11 @@ describe('logging helpers', () => {
 
   describe('RateLimitedLogger', () => {
     beforeEach(() => {
-      vi.useFakeTimers();
+      jest.useFakeTimers();
     });
 
     afterEach(() => {
-      vi.useRealTimers();
+      jest.useRealTimers();
     });
 
     it('should allow logs within rate limit', () => {
@@ -495,7 +495,7 @@ describe('logging helpers', () => {
       expect(logger.warn('Warning')).toBe(true);
       expect(logger.warn('Warning')).toBe(false);
 
-      vi.advanceTimersByTime(1001);
+      jest.advanceTimersByTime(1001);
 
       expect(logger.warn('Warning')).toBe(true);
       expect(mockUnifiedLogger.warn).toHaveBeenCalledTimes(2);
@@ -530,7 +530,7 @@ describe('logging helpers', () => {
 
     it('should use custom logger', () => {
       const customLogger = {
-        info: vi.fn(),
+        info: jest.fn(),
       };
 
       const logger = new RateLimitedLogger(60000, 10, customLogger as any);

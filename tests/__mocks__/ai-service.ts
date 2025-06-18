@@ -6,7 +6,8 @@ import {
   mockTradingProposal, 
   mockDrawingProposal, 
   mockIndicatorAnalysis,
-  mockMarketSentiment 
+  mockMarketSentiment,
+  generateStreamingResponse
 } from '../__fixtures__/ai/proposal-responses';
 
 export class MockAIService {

@@ -2,15 +2,15 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/chat/use-approve-proposal';
-import { .* } from '../../../store/analysis-history.store';
-import { .* } from '../../../store/chat.store';
-import { .* } from '../../../store/proposal-approval.store';
-import { .* } from '../../../store/ui-event.store';
-import { .* } from '../../../../lib/notifications/toast';
-import { .* } from '../../../../lib/utils/logger';
-import { .* } from '../../../types/proposals';
-import { .* } from '../../../types/enums';
+import { useApproveProposal } from '../../../../hooks/chat/use-approve-proposal';
+import * as analysishistorystore from '../../../store/analysis-history.store';
+import * as chatstore from '../../../store/chat.store';
+import * as proposalapprovalstore from '../../../store/proposal-approval.store';
+import * as uieventstore from '../../../store/ui-event.store';
+import { toast } from '../../../../lib/notifications/toast';
+import { logger } from '../../../../lib/utils/logger';
+import { proposals } from '../../../types/proposals';
+import { enums } from '../../../types/enums';
 
 // Mock dependencies
 jest.mock('../../../../store/analysis-history.store');

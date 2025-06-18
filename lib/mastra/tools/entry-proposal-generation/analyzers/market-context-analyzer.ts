@@ -7,7 +7,7 @@
 import type { PriceData } from '@/types/market';
 import type { MarketContext } from '@/types/trading';
 import { logger } from '@/lib/utils/logger';
-import { analyzeMultipleTimeframes, analyzeMarketCondition } from '@/lib/mastra/tools/proposal-generation/analyzers/market-analyzer';
+import { analyzeMarketCondition } from '@/lib/mastra/tools/proposal-generation/analyzers/market-analyzer';
 import { TIME_CONSTANTS } from '@/lib/mastra/tools/proposal-generation/utils/constants';
 
 interface MultiTimeframeOptions {

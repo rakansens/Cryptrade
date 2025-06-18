@@ -42,7 +42,8 @@ if (typeof global.fetch === 'undefined') {
 require('./tests/setup/test-env');
 
 // Setup MSW for API mocking
-require('./tests/setup/msw-setup');
+// Temporarily disabled due to TypeScript compilation issues
+// require('./tests/setup/msw-setup');
 
 // Extend Jest matchers
 require('@testing-library/jest-dom');
@@ -85,6 +86,9 @@ jest.mock('next/navigation', () => ({
 
 // Environment variables are now set in tests/setup/test-env.ts
 // Additional test-specific environment variables can be set here if needed
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.OPENAI_API_KEY = 'test-openai-key';
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
@@ -156,6 +160,10 @@ jest.mock('@mastra/core', () => ({
   Agent: jest.fn().mockImplementation(() => ({
     runThread: jest.fn(),
     runWorkflow: jest.fn(),
+  })),
+  Tool: jest.fn().mockImplementation((config) => ({
+    ...config,
+    execute: config.execute || jest.fn(),
   })),
   createTool: jest.fn((config) => config),
   createWorkflow: jest.fn((config) => ({
@@ -381,7 +389,212 @@ jest.mock('@/lib/api/create-api-handler', () => {
       });
     });
   }),
+  };
 });
+
+// Mock Zustand
+const createZustandMock = () => {
+  const storeCache = new Map();
+  
+  const createStore = (stateCreator) => {
+    let currentState = {};
+    const listeners = new Set();
+    
+    const setState = jest.fn((updater) => {
+      const previousState = currentState;
+      
+      if (typeof updater === 'function') {
+        // Immer-style draft handling
+        const draft = { ...currentState };
+        const result = updater(draft);
+        // If the updater returns something, use it; otherwise use the mutated draft
+        currentState = result !== undefined ? result : draft;
+      } else {
+        currentState = { ...currentState, ...updater };
+      }
+      
+      // Notify listeners
+      listeners.forEach(listener => {
+        listener(currentState, previousState);
+      });
+    });
+    
+    const getState = jest.fn(() => currentState);
+    
+    const subscribe = jest.fn((listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    });
+    
+    const store = {
+      getState,
+      setState,
+      subscribe,
+      destroy: jest.fn(() => {
+        listeners.clear();
+      }),
+    };
+    
+    // Initialize state with proper function handling
+    if (typeof stateCreator === 'function') {
+      const initialState = stateCreator(setState, getState, store);
+      currentState = initialState;
+    }
+    
+    // Create a hook function that returns the current state
+    const useStore = jest.fn((selector) => {
+      if (selector) {
+        return selector(currentState);
+      }
+      return currentState;
+    });
+    
+    // Add store methods to the hook
+    useStore.getState = getState;
+    useStore.setState = setState;
+    useStore.subscribe = subscribe;
+    useStore.destroy = store.destroy;
+    
+    // Add reset method support
+    useStore.getInitialState = jest.fn(() => {
+      // Return a fresh initial state by re-running the state creator
+      if (typeof stateCreator === 'function') {
+        // Create a temporary store to get initial state
+        const tempSetState = jest.fn();
+        const tempGetState = jest.fn(() => ({}));
+        const tempStore = { getState: tempGetState, setState: tempSetState };
+        
+        const freshState = stateCreator(tempSetState, tempGetState, tempStore);
+        // Extract only the state properties (not actions)
+        const stateOnly = {};
+        for (const key in freshState) {
+          if (typeof freshState[key] !== 'function') {
+            stateOnly[key] = freshState[key];
+          }
+        }
+        return stateOnly;
+      }
+      return {};
+    });
+    
+    // Also expose them as properties for direct access
+    Object.defineProperty(useStore, 'getState', {
+      value: getState,
+      writable: false,
+      enumerable: true
+    });
+    Object.defineProperty(useStore, 'setState', {
+      value: setState,
+      writable: false,
+      enumerable: true
+    });
+    
+    return useStore;
+  };
+  
+  return {
+    create: jest.fn((stateCreatorOrConfig) => {
+      // Handle curried version of create (TypeScript style)
+      if (typeof stateCreatorOrConfig === 'undefined' || typeof stateCreatorOrConfig === 'object') {
+        // This is the curried version: create<T>()(...) or create(config)(...)
+        return (stateCreator) => {
+          if (!stateCreator) {
+            throw new Error('Zustand create called without state creator');
+          }
+          
+          // Return cached store if it exists (for singleton stores)
+          const creatorString = stateCreator.toString();
+          if (storeCache.has(creatorString)) {
+            return storeCache.get(creatorString);
+          }
+          
+          const store = createStore(stateCreator);
+          storeCache.set(creatorString, store);
+          return store;
+        };
+      }
+      
+      // Direct version: create(stateCreator)
+      if (!stateCreatorOrConfig) {
+        throw new Error('Zustand create called without state creator');
+      }
+      
+      // Return cached store if it exists (for singleton stores)
+      const creatorString = stateCreatorOrConfig.toString();
+      if (storeCache.has(creatorString)) {
+        return storeCache.get(creatorString);
+      }
+      
+      const store = createStore(stateCreatorOrConfig);
+      storeCache.set(creatorString, store);
+      return store;
+    }),
+  };
+};
+
+jest.mock('zustand', () => createZustandMock());
+
+jest.mock('zustand/middleware', () => ({
+  createJSONStorage: jest.fn(() => ({
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  })),
+  persist: jest.fn((stateCreator, options) => {
+    return (set, get, store) => {
+      const state = stateCreator(set, get, store);
+      // Mock persist functionality
+      const persistedState = {
+        ...state,
+        // Add persist-specific properties
+        persist: {
+          setOptions: jest.fn(),
+          clearStorage: jest.fn(),
+          rehydrate: jest.fn(),
+          hasHydrated: jest.fn(() => true),
+          onHydrate: jest.fn(),
+          onFinishHydration: jest.fn(),
+          getOptions: jest.fn(() => options),
+          ...(options || {})
+        }
+      };
+      return persistedState;
+    };
+  }),
+  subscribeWithSelector: jest.fn((stateCreator) => stateCreator),
+  devtools: jest.fn((stateCreator, options) => stateCreator),
+}));
+
+jest.mock('zustand/middleware/immer', () => ({
+  immer: jest.fn((stateCreator) => stateCreator),
+}));
+
+// Mock Prisma client before any imports use it
+jest.mock('@/lib/db/prisma', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    $on: jest.fn(),
+    $use: jest.fn(),
+    conversationSession: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    conversationMessage: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+  },
+  serializeBigInt: jest.fn((data) => data),
+  withTransaction: jest.fn(),
+}));
 
 // Mock utilities
 jest.mock('@/lib/utils/logger', () => ({

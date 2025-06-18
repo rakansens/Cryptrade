@@ -52,17 +52,71 @@ Object.defineProperty(window, 'localStorage', {
   writable: true
 });
 
+import { resetAllStores } from '@/tests/setup/reset-stores';
+
 describe('Store: ConfigStore', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
   beforeEach(() => {
     // Clear all mocks
     jest.clearAllMocks();
     mockLocalStorage.clear();
     
-    // Reset store to initial state
-    const { result } = renderHook(() => useConfigActions());
-    act(() => {
-      result.current.resetToDefaults();
-    });
+    // Reset store state using direct access
+    const store = useConfigStore;
+    if (store && store.setState) {
+      // Reset to initial state
+      store.setState({
+        theme: {
+          mode: 'dark',
+          accentColor: 'blue',
+          fontSize: 14,
+          fontFamily: 'Inter',
+        },
+        chart: {
+          showGrid: true,
+          showCrosshair: true,
+          showVolume: true,
+          showLegend: true,
+          candleColors: {
+            up: '#16a34a',
+            down: '#dc2626',
+          },
+        },
+        indicators: {
+          showAdvanced: false,
+          defaultEnabled: ['ma', 'volume'],
+          colors: {
+            ma: '#3b82f6',
+            ema: '#8b5cf6',
+            rsi: '#f59e0b',
+            macd: '#10b981',
+            bollinger: '#ec4899',
+          },
+        },
+        app: {
+          autoRefresh: true,
+          refreshInterval: 5000,
+          showNotifications: true,
+          language: 'en',
+        },
+        performance: {
+          enableGPU: true,
+          maxCandles: 1000,
+          updateThrottle: 100,
+        },
+      });
+    }
   });
 
   describe('Initial State', () => {

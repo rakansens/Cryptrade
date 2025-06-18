@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-cancel-drawing';
+import { useCancelDrawing } from '../../../../hooks/use-cancel-drawing';
 
 describe('useCancelDrawing', () => {
   it('should initialize with default values', () => {

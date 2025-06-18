@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-sse-stream';
+import { useSSEStream } from '../../../../hooks/use-sse-stream';
 
 describe('useSSEStream', () => {
   it('should initialize with default values', () => {

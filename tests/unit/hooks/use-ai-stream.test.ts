@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import { .* } from '../../../hooks/use-ai-stream';
-import { .* } from '../../../hooks/base/use-sse-stream';
-import { .* } from '../../../lib/utils/logger';
+import { useAIStream } from '../../../hooks/use-ai-stream';
+import { useSSEStream } from '../../../hooks/base/use-sse-stream';
+import { logger } from '../../../lib/utils/logger';
 
 // Mock dependencies
 jest.mock('../../../hooks/base/use-sse-stream');

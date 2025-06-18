@@ -1,29 +1,19 @@
 /** @type {import("jest").Config} */
 module.exports = {
   // TypeScript設定
-  preset: 'ts-jest',
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
+    '^.+\\.(ts|tsx|js|jsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json',
+      useESM: false,
     }],
   },
   
   // ESM modules that need to be transformed
   transformIgnorePatterns: [
-    'node_modules/(?!(@mastra|@ai-sdk|nanoid|unified|remark.*|rehype.*|mdast.*|micromark.*|decode-named-character-reference|character-entities|property-information|hast-util.*|unist.*|comma-separated-tokens|markdown-table|space-separated-tokens|zwitch|html-void-elements|bail|is-plain-obj|trough|vfile.*|trim-lines|longest-streak|ccount|ai)/)',
+    'node_modules/(?!(.*\\.mjs$|@.*/|msw))',
   ],
-  
-  // Performance optimizations
-  maxWorkers: '50%',
-  maxConcurrency: 10,
-  cache: true,
-  cacheDirectory: '<rootDir>/.jest-cache',
-  testTimeout: 5000,
-  bail: false,
-  detectOpenHandles: false,
-  forceExit: true,
 
-  // モジュール解決設定
+  // モジュール解決設定  
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     // Additional path mappings to match tsconfig.json
@@ -51,60 +41,59 @@ module.exports = {
     '/coverage/',
   ],
 
-  // セットアップファイル
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-
-  // カバレッジ設定
+  // カバレッジ設定を詳細に追加
   collectCoverageFrom: [
-    'lib/**/*.{ts,tsx}',
+    // すべてのソースファイルを含める
     'app/**/*.{ts,tsx}',
-    'store/**/*.{ts,tsx}',
+    'lib/**/*.{ts,tsx}',
     'hooks/**/*.{ts,tsx}',
     'components/**/*.{ts,tsx}',
-    'utils/**/*.{ts,tsx}',
-    // 型定義ファイル
-    '!**/*.d.ts',
-    '!**/*.types.ts',
-    '!**/*.interface.ts',
-    '!**/types/**',
-    // テスト関連
-    '!**/__tests__/**',
-    '!**/__mocks__/**',
+    'store/**/*.{ts,tsx}',
+    
+    // 除外パターン - テストファイルとその他
+    '!tests/**',
     '!**/*.test.{ts,tsx}',
     '!**/*.spec.{ts,tsx}',
-    '!**/tests/**',
-    // ストーリーブック
-    '!**/*.stories.{ts,tsx}',
-    // インデックス/バレルファイル
-    '!**/index.{ts,tsx}',
-    // 設定ファイル
-    '!**/*.config.{js,ts}',
-    '!**/jest.setup.js',
-    // 定数/スキーマファイル
-    '!**/*.constants.ts',
-    '!**/*.constant.ts',
-    '!**/*.schema.ts',
-    // 外部ディレクトリ
+    '!**/__tests__/**',
+    '!**/__mocks__/**',
     '!**/node_modules/**',
-    '!**/.next/**',
-    '!**/coverage/**',
     '!**/dist/**',
     '!**/build/**',
-    '!**/scripts/**',
-    '!**/e2e/**',
-    '!**/migrations/**',
-    '!**/.stryker-tmp/**',
-    // その他
-    '!**/*.example.{ts,tsx}',
-    // app ディレクトリの特殊ファイル
-    '!app/layout.tsx',
-    '!app/page.tsx',
-    '!app/globals.css',
+    '!**/*.d.ts',
+    '!**/types/**',
+    '!**/*.stories.{ts,tsx}',
+    '!**/middleware.ts',
+    '!**/layout.tsx',
+    '!**/page.tsx',
+    '!**/loading.tsx',
+    '!**/error.tsx',
+    '!**/not-found.tsx',
+    '!**/template.tsx',
+    '!**/default.tsx',
+    '!**/global-error.tsx',
+    '!app/api/**',
+    '!app/**/route.{ts,tsx}',
+    '!app/**/layout.{ts,tsx}',
+    '!app/**/page.{ts,tsx}',
+    '!app/**/loading.{ts,tsx}',
+    '!app/**/error.{ts,tsx}',
+    '!app/**/not-found.{ts,tsx}',
+    '!app/**/template.{ts,tsx}',
+    '!app/**/default.{ts,tsx}',
+    '!app/**/global-error.{ts,tsx}',
+    '!.next/**',
+    '!coverage/**',
+    '!jest.setup.js',
+    '!config/**',
+    '!scripts/**',
+    '!lib/mastra/mastra-config.ts',
+    '!lib/mastra/mastra.ts',
   ],
 
   // カバレッジパスの除外
   coveragePathIgnorePatterns: [
     '/node_modules/',
+    '/tests/',
     '/__tests__/',
     '/__mocks__/',
     '/coverage/',
@@ -120,20 +109,17 @@ module.exports = {
     'index\\.(ts|tsx)$',
   ],
 
-  // レポーター設定
-  coverageReporters: ['text', 'lcov', 'html', 'json-summary', 'cobertura'],
-  coverageDirectory: '<rootDir>/coverage',
+  // テストがないファイルも強制的にカバレッジに含める
+  forceCoverageMatch: [
+    '**/*.{ts,tsx}',
+  ],
 
-  // タイムアウト設定
-  testTimeout: 10000,
-
+  // Snapshot configuration
+  snapshotResolver: '<rootDir>/config/jest/snapshot-resolver.js',
 
   // モジュールファイル拡張子
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 
   // ルートディレクトリ
   roots: ['<rootDir>'],
-
-  // キャッシュ設定
-  cacheDirectory: '<rootDir>/.jest-cache',
 };

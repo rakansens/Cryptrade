@@ -2,7 +2,16 @@
  * Binance API モック
  */
 
-import { mockKlineData, mockTickerData, mockDepthData } from '../__fixtures__/binance/websocket-responses';
+import { 
+  mockKlineData, 
+  mockTickerData, 
+  mockDepthData,
+  mockTradeData,
+  mockAggTradeData,
+  mockMiniTickerData,
+  mockBookTickerData,
+  generateKlineStream
+} from '../__fixtures__/binance/websocket-responses';
 
 export class MockBinanceAPIService {
   private subscriptions = new Map<string, any>();

@@ -7,7 +7,6 @@ import {
   type DbAnalysisRecord,
   type DbTouchEvent,
 } from '@/lib/utils/db-conversions';
-import { describe, it, expect } from 'vitest';
 import type { AnalysisRecord } from '@/types/analysis-history';
 
 describe('db-conversions utilities', () => {

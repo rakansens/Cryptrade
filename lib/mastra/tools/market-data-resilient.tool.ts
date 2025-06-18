@@ -67,7 +67,7 @@ export interface CacheEntry {
   volatility?: number; // Store volatility for monitoring
 }
 
-const marketDataCache = new Map<string, CacheEntry>();
+// const marketDataCache = new Map<string, CacheEntry>();
 const DEFAULT_CACHE_TTL = 30000; // 30 seconds default
 const MIN_CACHE_TTL = 5000; // 5 seconds minimum
 const MAX_CACHE_TTL = 60000; // 60 seconds maximum
@@ -185,7 +185,7 @@ export const marketDataResilientTool = createTool({
         };
       }
     } catch (error) {
-      logger.debug(`[Market Data Resilient] Cache check failed for ${symbol}`, error);
+      logger.debug(`[Market Data Resilient] Cache check failed for ${symbol}`, { error });
     }
     
     incrementMetric('market_data_requests');

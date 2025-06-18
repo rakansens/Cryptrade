@@ -45,25 +45,22 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('Store Integration Tests', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorageMock.getItem.mockReturnValue(null);
-
-    // Reset all stores using their reset methods
-    act(() => {
-      useChartBaseStore.getState().reset();
-      useChatStoreBase.getState().reset();
-      useUIEventStore.getState().reset();
-      useProposalApprovalStore.getState().reset();
-      // Clear drawing and pattern stores manually
-      useDrawingStore.setState({ 
-        drawingMode: null,
-        drawings: [],
-        selectedDrawingId: null,
-        isDrawing: false,
-        undoStack: [],
-        redoStack: []
-      });
+    resetAllStores();
+  });
       usePatternStore.setState({ patterns: new Map() });
     });
   });
@@ -515,7 +512,9 @@ describe('Store Integration Tests', () => {
     });
   });
 
-  describe('Error Handling Across Stores', () => {
+  import { resetAllStores } from '@/tests/setup/reset-stores';
+
+describe('Error Handling Across Stores', () => {
     it('should propagate errors between stores', async () => {
       const { result: chatActions } = renderHook(() => useChatActions());
       const { result: chartStore } = renderHook(() => useChartStore(state => state));

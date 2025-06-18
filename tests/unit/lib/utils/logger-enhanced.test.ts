@@ -5,41 +5,40 @@ import {
   logPerformance,
   createSessionLogger,
 } from '@/lib/utils/logger-enhanced';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock dependencies
 const mockEnhancedLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  critical: vi.fn(),
-  withContext: vi.fn(),
-  pushContext: vi.fn(),
-  popContext: vi.fn(),
-  query: vi.fn(),
-  getStats: vi.fn(),
-  subscribe: vi.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  critical: jest.fn(),
+  withContext: jest.fn(),
+  pushContext: jest.fn(),
+  popContext: jest.fn(),
+  query: jest.fn(),
+  getStats: jest.fn(),
+  subscribe: jest.fn(),
 };
 
-vi.mock('@/lib/logging', () => ({
+jest.mock('@/lib/logging', () => ({
   enhancedLogger: mockEnhancedLogger,
 }));
 
 const mockOriginalLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
 };
 
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: mockOriginalLogger,
 }));
 
 describe('logger-enhanced', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('logger wrapper', () => {
@@ -92,7 +91,7 @@ describe('logger-enhanced', () => {
   describe('context management', () => {
     it('should support withContext', async () => {
       const context = { userId: '123', sessionId: 'abc' };
-      const fn = vi.fn().mockResolvedValue('result');
+      const fn = jest.fn().mockResolvedValue('result');
       
       mockEnhancedLogger.withContext.mockImplementation(async (ctx, callback) => {
         return callback();
@@ -144,8 +143,8 @@ describe('logger-enhanced', () => {
     });
 
     it('should expose subscribe method', () => {
-      const callback = vi.fn();
-      const unsubscribe = vi.fn();
+      const callback = jest.fn();
+      const unsubscribe = jest.fn();
       
       mockEnhancedLogger.subscribe.mockReturnValue(unsubscribe);
       
@@ -165,7 +164,7 @@ describe('logger-enhanced', () => {
 
 describe('createAgentLogger', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should create logger with agent name prefix', () => {
@@ -208,7 +207,7 @@ describe('createAgentLogger', () => {
 
 describe('createToolLogger', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should create logger with tool name prefix', () => {
@@ -240,13 +239,13 @@ describe('createToolLogger', () => {
 
 describe('logPerformance', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should log successful operations with duration', async () => {
     const operation = 'DataProcessing';
     const result = { processed: 100 };
-    const fn = vi.fn().mockResolvedValue(result);
+    const fn = jest.fn().mockResolvedValue(result);
     
     const output = await logPerformance(operation, fn);
     
@@ -265,7 +264,7 @@ describe('logPerformance', () => {
   it('should log failed operations with duration', async () => {
     const operation = 'FailingOperation';
     const error = new Error('Operation failed');
-    const fn = vi.fn().mockRejectedValue(error);
+    const fn = jest.fn().mockRejectedValue(error);
     
     await expect(logPerformance(operation, fn)).rejects.toThrow('Operation failed');
     
@@ -298,7 +297,7 @@ describe('logPerformance', () => {
 
 describe('createSessionLogger', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should push context with session info', () => {

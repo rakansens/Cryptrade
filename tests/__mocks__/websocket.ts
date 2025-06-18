@@ -2,6 +2,9 @@
  * WebSocket モックの実装
  */
 
+import { WebSocketSimulator } from './mock-helpers';
+import { mockWebSocketMessages } from '../__fixtures__/websocket/messages';
+
 export class MockWebSocket {
   url: string;
   readyState: number;
@@ -18,28 +21,55 @@ export class MockWebSocket {
   private messageQueue: any[] = [];
   private closeCode?: number;
   private closeReason?: string;
+  private _simulator?: WebSocketSimulator;
+  private autoRespond: boolean = false;
+  private responsePatterns: Map<string, (data: any) => any> = new Map();
 
-  constructor(url: string, _protocols?: string | string[]) {
+  constructor(url: string, protocols?: string | string[]) {
     this.url = url;
     this.readyState = MockWebSocket.CONNECTING;
     
-    // Simulate connection
+    // Store protocols if needed
+    this.protocols = Array.isArray(protocols) ? protocols : protocols ? [protocols] : [];
+    
+    // Simulate connection by default
     setTimeout(() => {
-      this.readyState = MockWebSocket.OPEN;
-      if (this.onopen) {
-        this.onopen(new Event('open'));
+      if (this.readyState === MockWebSocket.CONNECTING) {
+        this.mockOpen();
       }
     }, 10);
   }
 
-  send(_data: string | ArrayBuffer | Blob | ArrayBufferView): void {
+  protocols: string[];
+  binaryType: 'blob' | 'arraybuffer' = 'blob';
+  bufferedAmount: number = 0;
+  extensions: string = '';
+  protocol: string = '';
+
+  send(data: string | ArrayBuffer | Blob | ArrayBufferView): void {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open');
     }
-    // Mock echo or custom response handling can be added here
+    
+    // Convert data to string for processing
+    let message: string;
+    if (typeof data === 'string') {
+      message = data;
+    } else {
+      message = JSON.stringify(data);
+    }
+    
+    // Auto-respond if enabled
+    if (this.autoRespond) {
+      this.handleAutoResponse(message);
+    }
   }
 
   close(code?: number, reason?: string): void {
+    if (this.readyState === MockWebSocket.CLOSING || this.readyState === MockWebSocket.CLOSED) {
+      return;
+    }
+    
     this.readyState = MockWebSocket.CLOSING;
     this.closeCode = code ?? 1000;
     this.closeReason = reason ?? '';
@@ -50,7 +80,7 @@ export class MockWebSocket {
         const event = new CloseEvent('close', {
           code: this.closeCode || 1000,
           reason: this.closeReason || '',
-          wasClean: true
+          wasClean: this.closeCode === 1000
         });
         this.onclose(event);
       }
@@ -61,10 +91,14 @@ export class MockWebSocket {
   mockReceiveMessage(data: any): void {
     if (this.readyState === MockWebSocket.OPEN && this.onmessage) {
       const event = new MessageEvent('message', {
-        data: typeof data === 'string' ? data : JSON.stringify(data)
+        data: typeof data === 'string' ? data : JSON.stringify(data),
+        origin: new URL(this.url).origin,
+        lastEventId: '',
+        source: null,
+        ports: []
       });
       this.onmessage(event);
-    } else {
+    } else if (this.readyState === MockWebSocket.CONNECTING) {
       this.messageQueue.push(data);
     }
   }
@@ -72,16 +106,26 @@ export class MockWebSocket {
   mockError(error: any): void {
     if (this.onerror) {
       const event = new Event('error');
-      Object.assign(event, { error });
+      Object.assign(event, { error, message: error?.message || 'WebSocket error' });
       this.onerror(event);
+    }
+    
+    // Errors often lead to closure
+    if (this.readyState === MockWebSocket.OPEN || this.readyState === MockWebSocket.CONNECTING) {
+      this.close(1006, 'Connection error');
     }
   }
 
   mockOpen(): void {
+    if (this.readyState !== MockWebSocket.CONNECTING) {
+      return;
+    }
+    
     this.readyState = MockWebSocket.OPEN;
     if (this.onopen) {
       this.onopen(new Event('open'));
     }
+    
     // Process queued messages
     while (this.messageQueue.length > 0) {
       this.mockReceiveMessage(this.messageQueue.shift());
@@ -91,7 +135,121 @@ export class MockWebSocket {
   mockClose(code: number = 1000, reason: string = ''): void {
     this.close(code, reason);
   }
+
+  // Advanced test helpers
+  get simulator(): WebSocketSimulator {
+    if (!this._simulator) {
+      this._simulator = new WebSocketSimulator(this);
+    }
+    return this._simulator;
+  }
+
+  enableAutoRespond(enabled: boolean = true): void {
+    this.autoRespond = enabled;
+  }
+
+  setResponsePattern(pattern: string | RegExp, response: (data: any) => any): void {
+    this.responsePatterns.set(pattern.toString(), response);
+  }
+
+  private handleAutoResponse(message: string): void {
+    try {
+      const data = JSON.parse(message);
+      
+      // Check response patterns
+      for (const [pattern, handler] of this.responsePatterns) {
+        if (pattern instanceof RegExp && pattern.test(message)) {
+          const response = handler(data);
+          if (response) {
+            setTimeout(() => this.mockReceiveMessage(response), 50);
+          }
+          return;
+        } else if (typeof pattern === 'string' && message.includes(pattern)) {
+          const response = handler(data);
+          if (response) {
+            setTimeout(() => this.mockReceiveMessage(response), 50);
+          }
+          return;
+        }
+      }
+      
+      // Default auto-responses based on message type
+      if (data.type === 'ping') {
+        setTimeout(() => this.mockReceiveMessage(mockWebSocketMessages.heartbeat.pong), 10);
+      } else if (data.type === 'subscribe') {
+        setTimeout(() => this.mockReceiveMessage({
+          type: 'subscription',
+          status: 'subscribed',
+          channel: data.channel,
+          id: data.id || 'sub-' + Date.now()
+        }), 20);
+      }
+    } catch (e) {
+      // Not JSON, ignore
+    }
+  }
+
+  // Simulate various connection states
+  simulateNetworkError(): void {
+    this.mockError(new Error('Network error'));
+  }
+
+  simulateConnectionLost(): void {
+    if (this.readyState === MockWebSocket.OPEN) {
+      this.mockClose(1006, 'Connection lost');
+    }
+  }
+
+  simulateReconnect(): void {
+    if (this.readyState === MockWebSocket.CLOSED) {
+      this.readyState = MockWebSocket.CONNECTING;
+      setTimeout(() => this.mockOpen(), 100);
+    }
+  }
+
+  // Bulk message helpers
+  mockReceiveMessages(messages: any[], interval: number = 100): void {
+    messages.forEach((message, index) => {
+      setTimeout(() => this.mockReceiveMessage(message), index * interval);
+    });
+  }
+
+  mockStreamData(generator: Generator<any>, interval: number = 100): void {
+    const sendNext = () => {
+      const { value, done } = generator.next();
+      if (!done && this.readyState === MockWebSocket.OPEN) {
+        this.mockReceiveMessage(value);
+        setTimeout(sendNext, interval);
+      }
+    };
+    sendNext();
+  }
 }
+
+// Enhanced mock WebSocket factory
+export const createMockWebSocket = (options: {
+  url?: string;
+  autoOpen?: boolean;
+  autoRespond?: boolean;
+  connectionDelay?: number;
+} = {}): MockWebSocket => {
+  const ws = new MockWebSocket(options.url || 'ws://localhost:8080');
+  
+  if (options.autoRespond) {
+    ws.enableAutoRespond(true);
+  }
+  
+  if (options.autoOpen === false) {
+    // Prevent auto-open
+    ws.readyState = MockWebSocket.CONNECTING;
+  } else if (options.connectionDelay) {
+    // Delay connection
+    ws.readyState = MockWebSocket.CONNECTING;
+    setTimeout(() => ws.mockOpen(), options.connectionDelay);
+  }
+  
+  return ws;
+};
 
 // Global mock setup for tests
 if (typeof global !== 'undefined') {

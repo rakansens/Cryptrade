@@ -1,9 +1,9 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import { .* } from '../../../hooks/chart/usePatternEventHandlers';
-import { .* } from '../../../store/chart';
-import { .* } from '../../../lib/utils/logger';
+import { usePatternEventHandlers } from '../../../hooks/chart/usePatternEventHandlers';
+import { chart } from '../../../store/chart';
+import { logger } from '../../../lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
-import * as agentUtils from '@/lib/chart/agent-utils';
+import { agentUtils } from '@/lib/chart/agent-utils';
 
 // Mock dependencies
 jest.mock('../../../store/chart');

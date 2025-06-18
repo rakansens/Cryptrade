@@ -9,7 +9,7 @@
 
 import { checkRateLimit, cleanupRateLimiter } from '../lib/api/rate-limit-persistent';
 import * as fs from 'fs/promises';
-import * as path from 'path';
+// import * as path from 'path';
 
 // Test configuration
 const TEST_IDENTIFIER = 'test-user-123';

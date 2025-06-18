@@ -126,12 +126,12 @@ export class ChartAnalyzer {
       if (minIndex !== secondMinIndex) {
         localMinima.push({
           index: Math.min(minIndex, secondMinIndex),
-          price: (recentData[Math.min(minIndex, secondMinIndex)] && 'low' in recentData[Math.min(minIndex, secondMinIndex)] ? (recentData[Math.min(minIndex, secondMinIndex)] as any).low : 0) || 0,
+          price: (recentData[Math.min(minIndex, secondMinIndex)] && 'low' in recentData[Math.min(minIndex, secondMinIndex)]! ? (recentData[Math.min(minIndex, secondMinIndex)] as any).low : 0) || 0,
           time: Number(recentData[Math.min(minIndex, secondMinIndex)]?.time || 0)
         });
         localMinima.push({
           index: Math.max(minIndex, secondMinIndex),
-          price: (recentData[Math.max(minIndex, secondMinIndex)] && 'low' in recentData[Math.max(minIndex, secondMinIndex)] ? (recentData[Math.max(minIndex, secondMinIndex)] as any).low : 0) || 0,
+          price: (recentData[Math.max(minIndex, secondMinIndex)] && 'low' in recentData[Math.max(minIndex, secondMinIndex)]! ? (recentData[Math.max(minIndex, secondMinIndex)] as any).low : 0) || 0,
           time: Number(recentData[Math.max(minIndex, secondMinIndex)]?.time || 0)
         });
       }

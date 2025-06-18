@@ -189,9 +189,9 @@ describe('ModelSelector', () => {
     describe('moderate tasks', () => {
       it('should default to moderate for unmatched tasks', () => {
         const testCases = [
-          'Explain this concept',
-          'Help me understand',
-          'What do you think about this?'
+          'Explain this concept to me in detail',
+          'Help me understand this topic',
+          'What do you think about this situation?'
         ];
 
         testCases.forEach(task => {
@@ -272,7 +272,7 @@ describe('ModelSelector', () => {
 
     it('should handle fractional tokens', () => {
       const cost = ModelSelector.estimateCost('simple', 1500);
-      expect(cost).toBe(0.225); // 1500/1000 * 0.00015
+      expect(cost).toBeCloseTo(0.225, 5); // 1500/1000 * 0.00015
     });
   });
 

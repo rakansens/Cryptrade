@@ -20,13 +20,25 @@ import {
 // Import JSDOM setup for this test
 require('@/tests/setup/jsdom-environment');
 
+import { resetAllStores } from '@/tests/setup/reset-stores';
+
 describe('ProposalApprovalStore', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
   beforeEach(() => {
-    // Reset store state before each test
-    const { result } = renderHook(() => useProposalApprovalStore());
-    act(() => {
-      result.current.reset();
-    });
+    jest.clearAllMocks();
+    resetAllStores();
+  });
   });
 
   afterEach(() => {

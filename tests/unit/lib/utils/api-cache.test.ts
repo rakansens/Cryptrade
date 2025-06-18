@@ -1,13 +1,12 @@
 import { ApiCache, createKey } from '@/lib/utils/api-cache';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // Mock logger
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
@@ -22,12 +21,12 @@ describe('ApiCache', () => {
     // Mock localStorage for browser environment tests
     originalLocalStorage = global.localStorage;
     const localStorageMock = {
-      getItem: vi.fn(),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
+      getItem: jest.fn(),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
       length: 0,
-      key: vi.fn(),
+      key: jest.fn(),
     };
     Object.defineProperty(global, 'localStorage', {
       value: localStorageMock,
@@ -36,7 +35,7 @@ describe('ApiCache', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     Object.defineProperty(global, 'localStorage', {
       value: originalLocalStorage,
       writable: true,
@@ -139,7 +138,7 @@ describe('ApiCache', () => {
       // Mock localStorage with items
       const mockKeys = ['api_cache_old1', 'api_cache_old2', 'other_key'];
       Object.defineProperty(global.localStorage, 'length', { value: mockKeys.length });
-      (global as any).Object.keys = vi.fn().mockReturnValue(mockKeys);
+      (global as any).Object.keys = jest.fn().mockReturnValue(mockKeys);
       
       (global.localStorage.setItem as any).mockImplementationOnce(() => {
         throw new Error('QuotaExceededError');
@@ -185,7 +184,7 @@ describe('ApiCache', () => {
 
     it('should clear localStorage entries with prefix', () => {
       const mockKeys = ['api_cache_key1', 'api_cache_key2', 'other_key'];
-      (global as any).Object.keys = vi.fn().mockReturnValue(mockKeys);
+      (global as any).Object.keys = jest.fn().mockReturnValue(mockKeys);
       
       cache.clear();
       

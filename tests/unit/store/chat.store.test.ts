@@ -48,16 +48,25 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-describe('Chat Store', () => {
-  beforeEach(() => {
-    // Clear all mocks
-    jest.clearAllMocks();
-    localStorageMock.getItem.mockReturnValue(null);
+import { resetAllStores } from '@/tests/setup/reset-stores';
 
-    // Reset store
-    act(() => {
-      useChatStoreBase.getState().reset();
-    });
+describe('Chat Store', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetAllStores();
+  });
   });
 
   describe('Session Management', () => {

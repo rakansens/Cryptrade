@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../../hooks/useChartControlAgentEvents';
+import { useChartControlAgentEvents } from '../../../../../hooks/useChartControlAgentEvents';
 
 describe('useChartControlAgentEvents', () => {
   it('should initialize with default values', () => {

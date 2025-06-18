@@ -3,7 +3,7 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { useMarketStore, useMarketBatching, useMarketPriceActions } from '@/store/market.store';
+import { useMarketStore, useMarketStoreBase, useMarketBatching, useMarketPriceActions } from '@/store/market.store';
 import type { BinanceTradeMessage } from '@/types/market';
 
 // Import JSDOM setup for this test
@@ -25,14 +25,47 @@ global.requestAnimationFrame = jest.fn((callback) => {
   return 1;
 });
 
+import { resetAllStores } from '@/tests/setup/reset-stores';
+
 describe('Market Store Batching Tests', () => {
+  // Helper to get initial state
+  const getInitialState = (store) => {
+    const state = store.getState();
+    const initialState = {};
+    for (const key in state) {
+      if (typeof state[key] !== 'function') {
+        initialState[key] = state[key];
+      }
+    }
+    return initialState;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Reset store state before each test
-    const { result } = renderHook(() => useMarketStore(state => state.reset));
+    const initialState = {
+      currentPrices: {},
+      priceChanges: {},
+      tickers: {},
+      ohlcData: {},
+      isConnected: false,
+      isConnecting: false,
+      error: null,
+      isLoading: false,
+      lastUpdate: null,
+      config: {
+        updateInterval: 1000,
+        retryAttempts: 3,
+        retryDelay: 5000
+      },
+      pendingBatch: new Map(),
+      batchRAF: null,
+      isBatching: false
+    };
+    
     act(() => {
-      result.current();
+      useMarketStoreBase.setState(initialState);
     });
   });
 

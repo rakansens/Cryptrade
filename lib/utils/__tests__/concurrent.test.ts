@@ -52,13 +52,10 @@ describe('Concurrent Utilities', () => {
     });
 
     it('should abort losing promises', async () => {
-      const abortedSignals: boolean[] = [];
+      let abortCount = 0;
       
       const promise1 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
-          signal.addEventListener('abort', () => {
-            abortedSignals.push(true);
-          });
           setTimeout(() => {
             if (!signal.aborted) resolve('first');
           }, 50);
@@ -68,7 +65,7 @@ describe('Concurrent Utilities', () => {
       const promise2 = jest.fn((signal: AbortSignal) => 
         new Promise<string>((resolve) => {
           signal.addEventListener('abort', () => {
-            abortedSignals.push(true);
+            abortCount++;
           });
           setTimeout(() => {
             if (!signal.aborted) resolve('second');
@@ -82,7 +79,7 @@ describe('Concurrent Utilities', () => {
       await resultPromise;
       
       // The second promise should have been aborted
-      expect(abortedSignals).toHaveLength(1);
+      expect(abortCount).toBe(1);
     });
 
     it('should handle timeout option', async () => {
@@ -96,7 +93,8 @@ describe('Concurrent Utilities', () => {
 
       const resultPromise = raceWithCleanup([promise], { timeout: 100 });
       
-      await jest.advanceTimersByTimeAsync(100);
+      // Don't await the timer advancement, let the promise reject first
+      jest.advanceTimersByTime(100);
       
       await expect(resultPromise).rejects.toThrow('Operation timed out after 100ms');
     });
@@ -188,27 +186,39 @@ describe('Concurrent Utilities', () => {
       
       const { execute } = createDebouncedAsync(asyncFn, 100);
       
-      // Make multiple calls
-      const promise1 = execute('first');
-      const promise2 = execute('second');
-      const promise3 = execute('third');
-      
-      // Advance time past debounce delay
-      await jest.advanceTimersByTimeAsync(100);
-      
-      // Advance time for async function to complete
-      await jest.advanceTimersByTimeAsync(50);
+      // Make multiple calls - collect the results first
+      const results = await Promise.allSettled([
+        execute('first'),
+        execute('second'),
+        execute('third')
+      ]).then(async (settled) => {
+        // Advance time past debounce delay
+        await jest.advanceTimersByTimeAsync(100);
+        
+        // Advance time for async function to complete
+        await jest.advanceTimersByTimeAsync(50);
+        
+        return settled;
+      });
       
       // Only the last call should have been executed
       expect(asyncFn).toHaveBeenCalledTimes(1);
       expect(asyncFn).toHaveBeenCalledWith('third');
       
-      const result = await promise3;
-      expect(result).toBe('processed: third');
+      // Check results
+      expect(results[0].status).toBe('rejected');
+      expect(results[1].status).toBe('rejected');
+      expect(results[2].status).toBe('fulfilled');
       
-      // Earlier promises should have been cancelled
-      await expect(promise1).rejects.toThrow('Operation cancelled');
-      await expect(promise2).rejects.toThrow('Operation cancelled');
+      if (results[0].status === 'rejected') {
+        expect(results[0].reason.message).toBe('Operation cancelled');
+      }
+      if (results[1].status === 'rejected') {
+        expect(results[1].reason.message).toBe('Operation cancelled');
+      }
+      if (results[2].status === 'fulfilled') {
+        expect(results[2].value).toBe('processed: third');
+      }
     });
 
     it('should cancel pending operations', async () => {

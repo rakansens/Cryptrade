@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-price-stream';
+import { usePriceStream } from '../../../../hooks/use-price-stream';
 
 describe('usePriceStream', () => {
   it('should initialize with default values', () => {

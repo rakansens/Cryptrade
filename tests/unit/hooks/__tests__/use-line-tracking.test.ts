@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../hooks/use-line-tracking';
-import { .* } from '../../../store/analysis-history.store';
-import { .* } from '../../../lib/utils/logger';
+import { useLineTracking } from '../../../hooks/use-line-tracking';
+import * as analysishistorystore from '../../../store/analysis-history.store';
+import { logger } from '../../../lib/utils/logger';
 
 // Mock dependencies
 jest.mock('../../../store/analysis-history.store');

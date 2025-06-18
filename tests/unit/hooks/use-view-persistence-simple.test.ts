@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../hooks/use-view-persistence-simple';
+import { useViewPersistenceSimple } from '../../../hooks/use-view-persistence-simple';
 
 describe('useViewPersistence', () => {
   it('should initialize with default values', () => {

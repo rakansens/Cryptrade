@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, jest } from '@jest/globals';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { mswServer as server } from '@/tests/setup/msw-setup';
 import { 
   useEnhancedConversationMemory,
   createEnhancedSession,
@@ -37,16 +37,13 @@ jest.mock('@/lib/db/prisma', () => ({
 }));
 jest.mock('@/lib/utils/logger');
 
-// MSW server setup
-const server = setupServer(
-  http.get('/api/sessions', () => {
-    return HttpResponse.json([]);
-  })
-);
-
-beforeAll(() => server.listen());
-afterEach(() => {
-  server.resetHandlers();
+// MSW server handlers
+beforeEach(() => {
+  server.use(
+    http.get('/api/sessions', () => {
+      return HttpResponse.json([]);
+    })
+  );
   jest.clearAllMocks();
   // Reset store state
   const store = useEnhancedConversationMemory.getState();
@@ -61,7 +58,6 @@ afterEach(() => {
     defaultProcessors: [new TokenLimiter(127000), new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] })]
   });
 });
-afterAll(() => server.close());
 
 describe('EnhancedConversationMemoryStore', () => {
   describe('Session Management', () => {

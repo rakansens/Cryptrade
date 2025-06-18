@@ -1,16 +1,16 @@
-import { renderHook, act } from '@testing-library/react-hooks';
-import { .* } from '../../../hooks/chart/useDrawingEventHandlers';
-import { .* } from '../../../store/chart';
-import { .* } from '../../../hooks/chart/useCursor';
-import { .* } from '../../../lib/utils/logger';
+import { renderHook, act } from '@testing-library/react';
+import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
+import { useDrawingActions, useDrawingStore, useChartStore } from '@/store/chart';
+import { useCursor } from '@/hooks/chart/useCursor';
+import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
-import * as agentUtils from '@/lib/chart/agent-utils';
+import { agentUtils } from '@/lib/chart/agent-utils';
 
 // Mock dependencies
-jest.mock('../../../store/chart');
-jest.mock('../../../hooks/chart/useCursor');
-jest.mock('../../../lib/utils/logger');
-jest.mock('../../../lib/chart/agent-utils');
+jest.mock('@/store/chart');
+jest.mock('@/hooks/chart/useCursor');
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/chart/agent-utils');
 
 describe('useDrawingEventHandlers', () => {
   const mockHandlers: ChartEventHandlers = {

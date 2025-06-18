@@ -2,10 +2,10 @@
  * @jest-environment jsdom
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { .* } from '../../../hooks/use-analysis-stream';
-import { .* } from '../../../hooks/base/use-streaming';
-import { .* } from '../../../lib/utils/logger';
-import { .* } from '../../../lib/utils/stream-utils';
+import { useAnalysisStream } from '../../../hooks/use-analysis-stream';
+import { useStreaming } from '../../../hooks/base/use-streaming';
+import { logger } from '../../../lib/utils/logger';
+import { streamUtils } from '../../../lib/utils/stream-utils';
 import type { AnalysisProgressEvent, AnalysisStep } from '@/types/analysis-progress';
 
 // Mock dependencies

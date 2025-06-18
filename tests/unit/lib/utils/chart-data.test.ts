@@ -5,15 +5,18 @@ import {
   prepareLightweightChartsData,
   type TimeSeriesData,
 } from '@/lib/utils/chart-data';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('chart-data utilities', () => {
   let consoleWarnSpy: any;
   let consoleErrorSpy: any;
 
   beforeEach(() => {
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
   });
 
   describe('cleanTimeSeriesData', () => {
@@ -243,15 +246,18 @@ describe('chart-data utilities', () => {
         { time: 100, value: 20 }, // Will keep this
       ];
 
-      // Mock cleanTimeSeriesData to return duplicates
-      const originalClean = cleanTimeSeriesData;
-      vi.spyOn({ cleanTimeSeriesData }, 'cleanTimeSeriesData').mockImplementation(() => data);
+      // Import the module to spy on it
+      const chartDataModule = require('@/lib/utils/chart-data');
+      jest.spyOn(chartDataModule, 'cleanTimeSeriesData').mockImplementation(() => data);
 
       prepareLightweightChartsData(data);
       
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to create properly ordered time series data'
       );
+
+      // Restore the original implementation
+      chartDataModule.cleanTimeSeriesData.mockRestore();
     });
 
     it('should handle custom time key', () => {

@@ -1,9 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { RedisRateLimiter, createRedisRateLimitMiddleware } from '@/lib/api/redis-rate-limiter';
-import Redis from 'ioredis';
-import { logger } from '@/lib/logging';
-
-// Mock dependencies
+// Mock dependencies first
 jest.mock('ioredis');
 jest.mock('@/lib/logging');
 jest.mock('@/config/env', () => ({
@@ -16,9 +11,14 @@ jest.mock('@/config/env', () => ({
   },
 }));
 
+// Import after mocking
+import { RedisRateLimiter, createRedisRateLimitMiddleware } from '@/lib/api/redis-rate-limiter';
+import Redis from 'ioredis';
+import { logger } from '@/lib/logging';
+
 describe('Redis Rate Limiter', () => {
   let rateLimiter: RedisRateLimiter;
-  let mockRedis: jest.Mocked<Redis>;
+  let mockRedis: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,7 +43,7 @@ describe('Redis Rate Limiter', () => {
     } as any;
 
     // Mock Redis constructor
-    (Redis as jest.MockedClass<typeof Redis>).mockImplementation(() => mockRedis);
+    (Redis as any).mockImplementation(() => mockRedis);
     
     rateLimiter = new RedisRateLimiter();
   });
@@ -330,7 +330,8 @@ describe('Redis Rate Limiter', () => {
         }),
       };
       
-      jest.spyOn(require('@/lib/api/redis-rate-limiter'), 'getRedisRateLimiter')
+      const redisModule = require('@/lib/api/redis-rate-limiter');
+      jest.spyOn(redisModule, 'getRedisRateLimiter')
         .mockResolvedValue(mockRateLimiter);
       
       const result = await middleware('test-user');

@@ -6,13 +6,12 @@ import {
   type ChartUIEvent,
   type UIEvent,
 } from '@/lib/utils/ui-event-dispatcher';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock logger
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    debug: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
@@ -27,19 +26,19 @@ describe('UIEventDispatcher', () => {
     
     originalWindow = global.window;
     mockWindow = {
-      dispatchEvent: vi.fn(),
-      requestAnimationFrame: vi.fn((callback: Function) => {
+      dispatchEvent: jest.fn(),
+      requestAnimationFrame: jest.fn((callback: Function) => {
         callback();
         return 1;
       }),
-      removeEventListener: vi.fn(),
+      removeEventListener: jest.fn(),
     };
     global.window = mockWindow as any;
   });
 
   afterEach(() => {
     global.window = originalWindow;
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('singleton pattern', () => {
@@ -70,7 +69,7 @@ describe('UIEventDispatcher', () => {
     });
 
     it('should dispatch to internal listeners', () => {
-      const listener = vi.fn();
+      const listener = jest.fn();
       dispatcher.addEventListener('proposal:selected', listener);
 
       const event: ProposalUIEvent = {
@@ -84,10 +83,10 @@ describe('UIEventDispatcher', () => {
     });
 
     it('should handle listener errors gracefully', () => {
-      const errorListener = vi.fn().mockImplementation(() => {
+      const errorListener = jest.fn().mockImplementation(() => {
         throw new Error('Listener error');
       });
-      const goodListener = vi.fn();
+      const goodListener = jest.fn();
 
       dispatcher.addEventListener('proposal:error', errorListener);
       dispatcher.addEventListener('proposal:error', goodListener);
@@ -106,7 +105,7 @@ describe('UIEventDispatcher', () => {
     it('should work without window object', () => {
       delete (global as any).window;
 
-      const listener = vi.fn();
+      const listener = jest.fn();
       dispatcher.addEventListener('chart:clear', listener);
 
       const event: ChartUIEvent = {
@@ -135,8 +134,8 @@ describe('UIEventDispatcher', () => {
     });
 
     it('should dispatch to internal listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
+      const listener1 = jest.fn();
+      const listener2 = jest.fn();
       
       dispatcher.addEventListener('proposal:execute', listener1);
       dispatcher.addEventListener('chart:drawLine', listener2);
@@ -162,7 +161,7 @@ describe('UIEventDispatcher', () => {
     it('should dispatch immediately without browser environment', () => {
       delete (global as any).window;
 
-      const listener = vi.fn();
+      const listener = jest.fn();
       dispatcher.addEventListener('proposal:clear', listener);
 
       const events: UIEvent[] = [
@@ -177,7 +176,7 @@ describe('UIEventDispatcher', () => {
 
   describe('event listener management', () => {
     it('should add and remove event listeners', () => {
-      const listener = vi.fn();
+      const listener = jest.fn();
       dispatcher.addEventListener('proposal:checkExpiration', listener);
 
       const event: ProposalUIEvent = {
@@ -194,9 +193,9 @@ describe('UIEventDispatcher', () => {
     });
 
     it('should handle multiple listeners for same event', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
-      const listener3 = vi.fn();
+      const listener1 = jest.fn();
+      const listener2 = jest.fn();
+      const listener3 = jest.fn();
 
       dispatcher.addEventListener('proposal:entryZoneReached', listener1);
       dispatcher.addEventListener('proposal:entryZoneReached', listener2);
@@ -215,8 +214,8 @@ describe('UIEventDispatcher', () => {
     });
 
     it('should clear all listeners', () => {
-      const listener1 = vi.fn();
-      const listener2 = vi.fn();
+      const listener1 = jest.fn();
+      const listener2 = jest.fn();
 
       dispatcher.addEventListener('proposal:generated', listener1);
       dispatcher.addEventListener('chart:drawZone', listener2);
@@ -233,7 +232,7 @@ describe('UIEventDispatcher', () => {
 
   describe('destroy', () => {
     it('should clean up all resources', () => {
-      const listener = vi.fn();
+      const listener = jest.fn();
       dispatcher.addEventListener('proposal:generated', listener);
 
       dispatcher.destroy();
@@ -465,7 +464,7 @@ describe('UIEventDispatcher', () => {
 
   describe('legacy compatibility', () => {
     it('should warn when using deprecated dispatchTypedUIEvent', () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       dispatchTypedUIEvent({ event: 'test', data: {} });
 

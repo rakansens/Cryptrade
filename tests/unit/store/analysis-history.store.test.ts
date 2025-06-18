@@ -15,7 +15,14 @@ jest.mock('zustand/middleware', () => ({
 }));
 
 // Mock dependencies
-jest.mock('@/lib/api/analysis-api');
+jest.mock('@/lib/api/analysis-api', () => ({
+  AnalysisAPI: {
+    saveAnalysis: jest.fn(),
+    updateAnalysis: jest.fn(),
+    getSessionAnalyses: jest.fn(),
+    recordTouchEvent: jest.fn(),
+  }
+}));
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/utils/retry', () => ({
   withRetry: jest.fn((fn) => fn())
@@ -30,7 +37,22 @@ jest.mock('@/lib/utils/zustand-helpers', () => ({
 }));
 
 // Import store and dependencies after mocks are set up
-import useAnalysisHistoryBase, { useAnalysisHistory, useAnalysisRecords, useAnalysisMetrics, useAnalysisActions } from '@/store/analysis-history.store';
+import useAnalysisHistoryBase, { 
+  useAnalysisHistory, 
+  useAnalysisRecords, 
+  useAnalysisMetrics, 
+  useAnalysisActions 
+} from '@/store/analysis-history.store';
+
+// Create alias for consistency with test code
+const useAnalysisHistoryStore = useAnalysisHistoryBase;
+
+// Helper hook that combines store state and actions for tests
+const useAnalysisHistoryStoreWithActions = () => {
+  const store = useAnalysisHistoryBase();
+  const actions = useAnalysisActions();
+  return { ...store, ...actions };
+};
 import { AnalysisAPI } from '@/lib/api/analysis-api';
 import { logger } from '@/lib/utils/logger';
 
@@ -56,6 +78,8 @@ jest.mock('@/types/analysis-history', () => ({
   calculateAccuracy: jest.fn(() => 0.85)
 }));
 
+import { resetAllStores } from '@/tests/setup/reset-stores';
+
 describe('AnalysisHistoryStore', () => {
   const getInitialState = () => ({
     records: [],
@@ -72,17 +96,14 @@ describe('AnalysisHistoryStore', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset store state
-    act(() => {
-      useAnalysisHistoryBase.setState(getInitialState());
-    });
+    resetAllStores();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     // Clean up store state
     act(() => {
-      useAnalysisHistoryBase.setState(getInitialState());
+      useAnalysisHistoryStore.setState(getInitialState());
     });
   });
 
@@ -91,7 +112,7 @@ describe('AnalysisHistoryStore', () => {
       const mockDbId = 'db_record_123';
       (AnalysisAPI.saveAnalysis as jest.Mock).mockResolvedValue(mockDbId);
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordData = {
         symbol: 'BTC/USDT',
@@ -114,7 +135,7 @@ describe('AnalysisHistoryStore', () => {
         recordId = await result.current.addRecord(recordData);
       });
 
-      const records = useAnalysisHistoryBase.getState().records;
+      const records = useAnalysisHistoryStore.getState().records;
       expect(records).toHaveLength(1);
       expect(records[0]).toMatchObject({
         symbol: 'BTC/USDT',
@@ -128,7 +149,7 @@ describe('AnalysisHistoryStore', () => {
     it('should handle database save failure gracefully', async () => {
       (AnalysisAPI.saveAnalysis as jest.Mock).mockRejectedValue(new Error('DB Error'));
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordData = {
         symbol: 'ETH/USDT',
@@ -150,20 +171,23 @@ describe('AnalysisHistoryStore', () => {
         await result.current.addRecord(recordData);
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records).toHaveLength(1);
       expect(state.records[0].dbMeta?.synced).toBe(false);
       expect(logger.error).toHaveBeenCalled();
     });
 
     it('should update an existing record', async () => {
+      const mockDbId = 'db_record_123';
+      (AnalysisAPI.saveAnalysis as jest.Mock).mockResolvedValue(mockDbId);
       (AnalysisAPI.updateAnalysis as jest.Mock).mockResolvedValue(undefined);
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add a record first
+      let recordId: string;
       await act(async () => {
-        await result.current.addRecord({
+        recordId = await result.current.addRecord({
           symbol: 'BTC/USDT',
           interval: '1h' as const,
           type: 'support_resistance' as const,
@@ -172,13 +196,14 @@ describe('AnalysisHistoryStore', () => {
         });
       });
 
-      const recordId = useAnalysisHistoryBase.getState().records[0].id;
+      // Use the returned record ID (which should be the DB ID)
+      expect(recordId!).toBe(mockDbId);
 
       await act(async () => {
-        await result.current.updateRecord(recordId, {
+        await result.current.updateRecord(recordId!, {
           tracking: {
             status: 'completed' as const,
-            startTime: useAnalysisHistoryBase.getState().records[0].tracking.startTime,
+            startTime: useAnalysisHistoryStore.getState().records[0].tracking.startTime,
             endTime: Date.now(),
             touches: [],
             finalResult: 'success'
@@ -186,17 +211,17 @@ describe('AnalysisHistoryStore', () => {
         });
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records[0].tracking.status).toBe('completed');
-      expect(AnalysisAPI.updateAnalysis).toHaveBeenCalledWith(recordId, expect.any(Object));
+      expect(AnalysisAPI.updateAnalysis).toHaveBeenCalledWith(mockDbId, expect.any(Object));
     });
 
     it('should delete a record and clear selection if needed', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add records
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: 'record1', symbol: 'BTC/USDT' } as AnalysisRecord,
             { id: 'record2', symbol: 'ETH/USDT' } as AnalysisRecord
@@ -209,17 +234,17 @@ describe('AnalysisHistoryStore', () => {
         result.current.deleteRecord('record1');
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records).toHaveLength(1);
       expect(state.selectedRecord).toBeNull();
     });
 
     it('should get a record by ID', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const testRecord = { id: 'test123', symbol: 'BTC/USDT' } as AnalysisRecord;
       act(() => {
-        useAnalysisHistoryBase.setState({ records: [testRecord] });
+        useAnalysisHistoryStore.setState({ records: [testRecord] });
       });
 
       const record = result.current.getRecord('test123');
@@ -234,12 +259,12 @@ describe('AnalysisHistoryStore', () => {
     it('should add a touch event to a record', async () => {
       (AnalysisAPI.recordTouchEvent as jest.Mock).mockResolvedValue(undefined);
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add a record first
       const recordId = 'test_record';
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             symbol: 'BTC/USDT',
@@ -270,12 +295,12 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should update tracking status', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordId = 'test_record';
       const startTime = Date.now();
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             symbol: 'BTC/USDT',
@@ -299,12 +324,12 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should complete tracking with final result and calculate accuracy', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordId = 'test_record';
       const startTime = Date.now() - 60000; // 1 minute ago
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             symbol: 'BTC/USDT',
@@ -341,40 +366,13 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Filtering and Sorting', () => {
     beforeEach(() => {
-      const records: AnalysisRecord[] = [
-        {
-          id: '1',
-          symbol: 'BTC/USDT',
-          type: 'support_resistance',
-          timestamp: 1000,
-          tracking: { status: 'active' },
-          performance: { accuracy: 0.8 }
-        } as AnalysisRecord,
-        {
-          id: '2',
-          symbol: 'ETH/USDT',
-          type: 'trendline',
-          timestamp: 2000,
-          tracking: { status: 'completed', finalResult: 'success' },
-          performance: { accuracy: 0.9 }
-        } as AnalysisRecord,
-        {
-          id: '3',
-          symbol: 'BTC/USDT',
-          type: 'pattern',
-          timestamp: 3000,
-          tracking: { status: 'completed', finalResult: 'failure' },
-          performance: { accuracy: 0.5 }
-        } as AnalysisRecord
-      ];
-
-      act(() => {
-        useAnalysisHistoryBase.setState({ records });
-      });
+    jest.clearAllMocks();
+    resetAllStores();
+  });
     });
 
     it('should filter records by status', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
         result.current.setFilter('active');
@@ -402,7 +400,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should sort records by different criteria', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Sort by timestamp ascending
       act(() => {
@@ -433,23 +431,23 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should toggle sort order when sorting by same field', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
         result.current.setSorting('timestamp');
       });
-      expect(useAnalysisHistoryBase.getState().sortOrder).toBe('asc');
+      expect(useAnalysisHistoryStore.getState().sortOrder).toBe('asc');
 
       act(() => {
         result.current.setSorting('timestamp');
       });
-      expect(useAnalysisHistoryBase.getState().sortOrder).toBe('desc');
+      expect(useAnalysisHistoryStore.getState().sortOrder).toBe('desc');
     });
   });
 
   describe('Performance Analytics', () => {
     it('should calculate performance metrics', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       const metrics = result.current.getPerformanceMetrics();
       
@@ -462,7 +460,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should use cached metrics if recent', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // First call calculates metrics
       const metrics1 = result.current.getPerformanceMetrics();
@@ -471,29 +469,29 @@ describe('AnalysisHistoryStore', () => {
       const metrics2 = result.current.getPerformanceMetrics();
       
       expect(metrics1).toBe(metrics2);
-      expect(useAnalysisHistoryBase.getState().performanceMetrics).toBeDefined();
+      expect(useAnalysisHistoryStore.getState().performanceMetrics).toBeDefined();
     });
 
     it('should refresh metrics cache', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Calculate metrics
       result.current.getPerformanceMetrics();
-      expect(useAnalysisHistoryBase.getState().performanceMetrics).toBeDefined();
+      expect(useAnalysisHistoryStore.getState().performanceMetrics).toBeDefined();
 
       // Refresh cache
       act(() => {
         result.current.refreshMetrics();
       });
 
-      expect(useAnalysisHistoryBase.getState().performanceMetrics).toBeNull();
-      expect(useAnalysisHistoryBase.getState().lastCalculated).toBe(0);
+      expect(useAnalysisHistoryStore.getState().performanceMetrics).toBeNull();
+      expect(useAnalysisHistoryStore.getState().lastCalculated).toBe(0);
     });
   });
 
   describe('Export/Import Functionality', () => {
     it('should export data as JSON', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisActions());
       
       const records = [
         { id: '1', symbol: 'BTC/USDT' } as AnalysisRecord,
@@ -501,7 +499,7 @@ describe('AnalysisHistoryStore', () => {
       ];
       
       act(() => {
-        useAnalysisHistoryBase.setState({ records });
+        useAnalysisHistoryStore.setState({ records });
       });
 
       const exported = result.current.exportData();
@@ -513,7 +511,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should import data from JSON', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisActions());
       
       const importData = {
         records: [
@@ -528,7 +526,7 @@ describe('AnalysisHistoryStore', () => {
         result.current.importData(JSON.stringify(importData));
       });
 
-      expect(useAnalysisHistoryBase.getState().records).toHaveLength(2);
+      expect(useAnalysisHistoryStore.getState().records).toHaveLength(2);
       expect(logger.info).toHaveBeenCalledWith(
         '[AnalysisHistory] Data imported',
         { count: 2 }
@@ -536,7 +534,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle invalid import data', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       expect(() => {
         act(() => {
@@ -548,10 +546,10 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should clear history', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{ id: '1' } as AnalysisRecord],
           selectedRecord: '1',
           performanceMetrics: {} as any
@@ -562,7 +560,7 @@ describe('AnalysisHistoryStore', () => {
         result.current.clearHistory();
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records).toHaveLength(0);
       expect(state.selectedRecord).toBeNull();
       expect(state.performanceMetrics).toBeNull();
@@ -573,11 +571,11 @@ describe('AnalysisHistoryStore', () => {
     it('should enable database sync and migrate existing records', async () => {
       (AnalysisAPI.saveAnalysis as jest.Mock).mockResolvedValue('db_id');
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add unsynced records
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', symbol: 'BTC/USDT', dbMeta: { synced: false } } as AnalysisRecord,
             { id: '2', symbol: 'ETH/USDT', dbMeta: { synced: false } } as AnalysisRecord
@@ -590,7 +588,7 @@ describe('AnalysisHistoryStore', () => {
         await result.current.enableDbSync('session123');
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.isDbEnabled).toBe(true);
       expect(state.currentSessionId).toBe('session123');
       expect(AnalysisAPI.saveAnalysis).toHaveBeenCalledTimes(2);
@@ -598,10 +596,10 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should disable database sync', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           isDbEnabled: true,
           currentSessionId: 'session123'
         });
@@ -611,7 +609,7 @@ describe('AnalysisHistoryStore', () => {
         result.current.disableDbSync();
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.isDbEnabled).toBe(false);
       expect(state.currentSessionId).toBeNull();
     });
@@ -619,10 +617,10 @@ describe('AnalysisHistoryStore', () => {
     it('should sync unsynced records with database', async () => {
       (AnalysisAPI.saveAnalysis as jest.Mock).mockResolvedValue('db_id');
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', symbol: 'BTC/USDT', dbMeta: { synced: false } } as AnalysisRecord,
             { id: '2', symbol: 'ETH/USDT', dbMeta: { synced: true } } as AnalysisRecord,
@@ -636,7 +634,7 @@ describe('AnalysisHistoryStore', () => {
         await result.current.syncWithDatabase();
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(AnalysisAPI.saveAnalysis).toHaveBeenCalledTimes(2);
       expect(state.records.every(r => r.dbMeta?.synced)).toBe(true);
       expect(state.isSyncing).toBe(false);
@@ -650,23 +648,23 @@ describe('AnalysisHistoryStore', () => {
       
       (AnalysisAPI.getSessionAnalyses as jest.Mock).mockResolvedValue(dbRecords);
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       await act(async () => {
         await result.current.loadFromDatabase('session123');
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(AnalysisAPI.getSessionAnalyses).toHaveBeenCalledWith('session123');
       expect(state.records).toHaveLength(2);
       expect(state.records[0].id).toBe('db1');
     });
 
     it('should mark record for sync', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: '1',
             symbol: 'BTC/USDT',
@@ -679,15 +677,15 @@ describe('AnalysisHistoryStore', () => {
         result.current.markForSync('1');
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records[0].dbMeta?.synced).toBe(false);
     });
 
     it('should get unsynced records', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', dbMeta: { synced: false } } as AnalysisRecord,
             { id: '2', dbMeta: { synced: true } } as AnalysisRecord,
@@ -705,7 +703,7 @@ describe('AnalysisHistoryStore', () => {
   describe('Convenience Hooks', () => {
     it('should provide filtered records through useAnalysisRecords', () => {
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', tracking: { status: 'active' } } as AnalysisRecord,
             { id: '2', tracking: { status: 'completed' } } as AnalysisRecord
@@ -758,7 +756,7 @@ describe('AnalysisHistoryStore', () => {
       };
 
       // Access the persist config directly from the store
-      const persistConfig = (useAnalysisHistoryBase as any).persist;
+      const persistConfig = (useAnalysisHistoryStore as any).persist;
       if (persistConfig && persistConfig.partialize) {
         const partialState = persistConfig.partialize(state);
         
@@ -781,7 +779,7 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Edge Cases and Error Handling', () => {
     it('should handle adding record with validation errors', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Mock validation to throw error
       const validateAnalysisRecord = require('@/types/analysis-history').validateAnalysisRecord;
@@ -805,7 +803,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle updating non-existent record', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       await act(async () => {
         await result.current.updateRecord('non-existent', { 
@@ -820,7 +818,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle touch event with validation error', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Mock validation to throw error
       const validateTouchEvent = require('@/types/analysis-history').validateTouchEvent;
@@ -830,7 +828,7 @@ describe('AnalysisHistoryStore', () => {
 
       const recordId = 'test_record';
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             tracking: { touches: [] }
@@ -849,7 +847,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle touch event for non-existent record', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       await act(async () => {
         await result.current.addTouchEvent('non-existent', {
@@ -866,7 +864,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle completing tracking for non-existent record', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
         result.current.completeTracking('non-existent', 'success');
@@ -877,10 +875,10 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle empty records when calculating metrics', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({ records: [] });
+        useAnalysisHistoryStore.setState({ records: [] });
       });
 
       const metrics = result.current.getPerformanceMetrics();
@@ -889,7 +887,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle concurrent record additions', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordPromises = Array.from({ length: 5 }, (_, i) => 
         result.current.addRecord({
@@ -905,7 +903,7 @@ describe('AnalysisHistoryStore', () => {
         await Promise.all(recordPromises);
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.records).toHaveLength(5);
       expect(new Set(state.records.map(r => r.symbol)).size).toBe(5); // All unique
     });
@@ -913,84 +911,13 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Complex Filtering and Sorting', () => {
     beforeEach(() => {
-      const now = Date.now();
-      const records: AnalysisRecord[] = [
-        {
-          id: '1',
-          symbol: 'BTC/USDT',
-          type: 'support_resistance',
-          timestamp: now - 7200000, // 2 hours ago
-          tracking: { 
-            status: 'active',
-            startTime: now - 7200000,
-            touches: []
-          },
-          performance: { accuracy: 0.85 }
-        } as AnalysisRecord,
-        {
-          id: '2',
-          symbol: 'ETH/USDT',
-          type: 'trendline',
-          timestamp: now - 3600000, // 1 hour ago
-          tracking: { 
-            status: 'completed', 
-            finalResult: 'success',
-            startTime: now - 3600000,
-            endTime: now - 1800000,
-            touches: []
-          },
-          performance: { accuracy: 0.92 }
-        } as AnalysisRecord,
-        {
-          id: '3',
-          symbol: 'BTC/USDT',
-          type: 'pattern',
-          timestamp: now - 1800000, // 30 min ago
-          tracking: { 
-            status: 'completed', 
-            finalResult: 'failure',
-            startTime: now - 1800000,
-            endTime: now - 900000,
-            touches: []
-          },
-          performance: { accuracy: 0.45 }
-        } as AnalysisRecord,
-        {
-          id: '4',
-          symbol: 'XRP/USDT',
-          type: 'fibonacci',
-          timestamp: now - 900000, // 15 min ago
-          tracking: { 
-            status: 'completed', 
-            finalResult: 'partial',
-            startTime: now - 900000,
-            endTime: now - 300000,
-            touches: []
-          },
-          performance: { accuracy: 0.68 }
-        } as AnalysisRecord,
-        {
-          id: '5',
-          symbol: 'ETH/USDT',
-          type: 'support_resistance',
-          timestamp: now, // now
-          tracking: { 
-            status: 'expired',
-            startTime: now - 86400000, // 1 day ago
-            endTime: now,
-            touches: []
-          },
-          performance: { accuracy: 0.0 }
-        } as AnalysisRecord
-      ];
-
-      act(() => {
-        useAnalysisHistoryBase.setState({ records });
-      });
+    jest.clearAllMocks();
+    resetAllStores();
+  });
     });
 
     it('should filter by completed status', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
         result.current.setFilter('completed');
@@ -1002,11 +929,11 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle filtering with no matches', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Clear all records first
       act(() => {
-        useAnalysisHistoryBase.setState({ records: [] });
+        useAnalysisHistoryStore.setState({ records: [] });
       });
 
       act(() => {
@@ -1018,7 +945,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should sort by type alphabetically', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
         result.current.setSorting('type', 'asc');
@@ -1030,12 +957,12 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle sorting with undefined values', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Add record without performance
       act(() => {
-        const currentRecords = useAnalysisHistoryBase.getState().records;
-        useAnalysisHistoryBase.setState({
+        const currentRecords = useAnalysisHistoryStore.getState().records;
+        useAnalysisHistoryStore.setState({
           records: [
             ...currentRecords,
             {
@@ -1060,11 +987,11 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should maintain sort stability for equal values', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Add records with same symbol
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: 'a1', symbol: 'BTC/USDT', timestamp: 1000 } as AnalysisRecord,
             { id: 'a2', symbol: 'BTC/USDT', timestamp: 2000 } as AnalysisRecord,
@@ -1087,11 +1014,11 @@ describe('AnalysisHistoryStore', () => {
     it('should handle database sync failure during enable', async () => {
       (AnalysisAPI.saveAnalysis as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add unsynced records
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', symbol: 'BTC/USDT', dbMeta: { synced: false } } as AnalysisRecord
           ],
@@ -1103,7 +1030,7 @@ describe('AnalysisHistoryStore', () => {
         await result.current.enableDbSync('session123');
       });
 
-      const state = useAnalysisHistoryBase.getState();
+      const state = useAnalysisHistoryStore.getState();
       expect(state.isDbEnabled).toBe(true);
       expect(state.isSyncing).toBe(false);
       expect(logger.error).toHaveBeenCalledWith(
@@ -1113,7 +1040,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle empty session ID for database operations', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       await act(async () => {
         await result.current.loadFromDatabase('');
@@ -1123,10 +1050,10 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should skip sync when database is disabled', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({ isDbEnabled: false });
+        useAnalysisHistoryStore.setState({ isDbEnabled: false });
       });
 
       await act(async () => {
@@ -1146,10 +1073,10 @@ describe('AnalysisHistoryStore', () => {
         return Promise.resolve(`db_id_${callCount}`);
       });
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', symbol: 'BTC/USDT', dbMeta: { synced: false } } as AnalysisRecord,
             { id: '2', symbol: 'ETH/USDT', dbMeta: { synced: false } } as AnalysisRecord,
@@ -1170,26 +1097,26 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Performance Metrics Edge Cases', () => {
     it('should invalidate cache when records change', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Calculate metrics
       result.current.getPerformanceMetrics();
-      expect(useAnalysisHistoryBase.getState().performanceMetrics).toBeDefined();
+      expect(useAnalysisHistoryStore.getState().performanceMetrics).toBeDefined();
 
       // Add a record
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{ id: 'new' } as AnalysisRecord],
           performanceMetrics: null
         });
       });
 
       // Metrics should be null after state change
-      expect(useAnalysisHistoryBase.getState().performanceMetrics).toBeNull();
+      expect(useAnalysisHistoryStore.getState().performanceMetrics).toBeNull();
     });
 
     it('should handle cache expiration correctly', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       const originalDateNow = Date.now;
 
       // Mock Date.now to control time
@@ -1218,7 +1145,7 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Import/Export Edge Cases', () => {
     it('should handle malformed JSON during import', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       expect(() => {
         act(() => {
@@ -1228,7 +1155,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle import with missing records field', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
         result.current.importData(JSON.stringify({ 
@@ -1239,11 +1166,11 @@ describe('AnalysisHistoryStore', () => {
       });
 
       // Should not crash, but also not import anything
-      expect(useAnalysisHistoryBase.getState().records).toHaveLength(0);
+      expect(useAnalysisHistoryStore.getState().records).toHaveLength(0);
     });
 
     it('should handle import with invalid record data', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const validateAnalysisRecord = require('@/types/analysis-history').validateAnalysisRecord;
       validateAnalysisRecord.mockImplementationOnce(() => {
@@ -1260,11 +1187,11 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should preserve existing data when import fails', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const existingRecords = [{ id: 'existing' } as AnalysisRecord];
       act(() => {
-        useAnalysisHistoryBase.setState({ records: existingRecords });
+        useAnalysisHistoryStore.setState({ records: existingRecords });
       });
 
       expect(() => {
@@ -1274,7 +1201,7 @@ describe('AnalysisHistoryStore', () => {
       }).toThrow();
 
       // Existing data should remain
-      expect(useAnalysisHistoryBase.getState().records).toEqual(existingRecords);
+      expect(useAnalysisHistoryStore.getState().records).toEqual(existingRecords);
     });
   });
 
@@ -1287,7 +1214,7 @@ describe('AnalysisHistoryStore', () => {
         ]
       };
 
-      const persistConfig = (useAnalysisHistoryBase as any).persist;
+      const persistConfig = (useAnalysisHistoryStore as any).persist;
       if (persistConfig && persistConfig.migrate) {
         const migratedState = persistConfig.migrate(oldState, 0) as any;
         
@@ -1310,7 +1237,7 @@ describe('AnalysisHistoryStore', () => {
         sortBy: 'timestamp'
       };
 
-      const persistConfig = (useAnalysisHistoryBase as any).persist;
+      const persistConfig = (useAnalysisHistoryStore as any).persist;
       if (persistConfig && persistConfig.migrate) {
         const migratedState = persistConfig.migrate(v1State, 1) as any;
         
@@ -1324,7 +1251,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should handle migration with null state', () => {
-      const persistConfig = (useAnalysisHistoryBase as any).persist;
+      const persistConfig = (useAnalysisHistoryStore as any).persist;
       if (persistConfig && persistConfig.migrate) {
         const migratedState = persistConfig.migrate(null, 0);
         
@@ -1339,7 +1266,7 @@ describe('AnalysisHistoryStore', () => {
         currentSessionId: 'test'
       };
 
-      const persistConfig = (useAnalysisHistoryBase as any).persist;
+      const persistConfig = (useAnalysisHistoryStore as any).persist;
       if (persistConfig && persistConfig.migrate) {
         const migratedState = persistConfig.migrate(currentState, 2);
         
@@ -1350,10 +1277,10 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Selected Record Management', () => {
     it('should clear selected record when it is deleted', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: 'record1' } as AnalysisRecord,
             { id: 'record2' } as AnalysisRecord
@@ -1366,14 +1293,14 @@ describe('AnalysisHistoryStore', () => {
         result.current.deleteRecord('record1');
       });
 
-      expect(useAnalysisHistoryBase.getState().selectedRecord).toBeNull();
+      expect(useAnalysisHistoryStore.getState().selectedRecord).toBeNull();
     });
 
     it('should maintain selected record when different record is deleted', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: 'record1' } as AnalysisRecord,
             { id: 'record2' } as AnalysisRecord
@@ -1386,31 +1313,31 @@ describe('AnalysisHistoryStore', () => {
         result.current.deleteRecord('record1');
       });
 
-      expect(useAnalysisHistoryBase.getState().selectedRecord).toBe('record2');
+      expect(useAnalysisHistoryStore.getState().selectedRecord).toBe('record2');
     });
 
     it('should set selected record to null', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       act(() => {
-        useAnalysisHistoryBase.setState({ selectedRecord: 'record1' });
+        useAnalysisHistoryStore.setState({ selectedRecord: 'record1' });
       });
 
       act(() => {
         result.current.setSelectedRecord(null);
       });
 
-      expect(useAnalysisHistoryBase.getState().selectedRecord).toBeNull();
+      expect(useAnalysisHistoryStore.getState().selectedRecord).toBeNull();
     });
   });
 
   describe('Touch Event Edge Cases', () => {
     it('should handle adding touch event to record without tracking touches array', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       const recordId = 'test_record';
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             symbol: 'BTC/USDT',
@@ -1444,7 +1371,7 @@ describe('AnalysisHistoryStore', () => {
     });
 
     it('should calculate duration correctly when completing tracking', () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       const originalDateNow = Date.now;
       
       // Mock Date.now to control time
@@ -1455,7 +1382,7 @@ describe('AnalysisHistoryStore', () => {
       const startTime = currentTime;
       
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: recordId,
             symbol: 'BTC/USDT',
@@ -1490,7 +1417,7 @@ describe('AnalysisHistoryStore', () => {
   describe('Convenience Hooks Edge Cases', () => {
     it('should return empty array when no records match filter in useAnalysisRecords', () => {
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [
             { id: '1', tracking: { status: 'completed' } } as AnalysisRecord,
             { id: '2', tracking: { status: 'expired' } } as AnalysisRecord
@@ -1509,7 +1436,7 @@ describe('AnalysisHistoryStore', () => {
       expect(result.current).toBe(true); // Initial state
 
       act(() => {
-        useAnalysisHistoryBase.setState({ isDbEnabled: false });
+        useAnalysisHistoryStore.setState({ isDbEnabled: false });
       });
 
       expect(result.current).toBe(false);
@@ -1555,11 +1482,11 @@ describe('AnalysisHistoryStore', () => {
 
       (AnalysisAPI.updateAnalysis as jest.Mock).mockResolvedValue(undefined);
 
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Add a record
       act(() => {
-        useAnalysisHistoryBase.setState({
+        useAnalysisHistoryStore.setState({
           records: [{
             id: 'test123',
             symbol: 'BTC/USDT',
@@ -1584,7 +1511,7 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Record ID Generation', () => {
     it('should generate unique IDs for concurrent additions', async () => {
-      const { result } = renderHook(() => useAnalysisHistoryBase());
+      const { result } = renderHook(() => useAnalysisHistoryStore());
       
       // Mock saveAnalysis to return the temporary ID
       (AnalysisAPI.saveAnalysis as jest.Mock).mockImplementation(() => {
@@ -1592,7 +1519,7 @@ describe('AnalysisHistoryStore', () => {
       });
 
       act(() => {
-        useAnalysisHistoryBase.setState({ isDbEnabled: false });
+        useAnalysisHistoryStore.setState({ isDbEnabled: false });
       });
 
       const ids = new Set<string>();

@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../../hooks/useChartInstance';
+import { useChartInstance } from '../../../../../hooks/useChartInstance';
 
 describe('useChartInstance', () => {
   it('should initialize with default values', () => {

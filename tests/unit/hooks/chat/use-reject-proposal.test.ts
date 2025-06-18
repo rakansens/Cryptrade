@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-reject-proposal';
+import { useRejectProposal } from '../../../../hooks/use-reject-proposal';
 
 describe('useRejectProposal', () => {
   it('should initialize with default values', () => {

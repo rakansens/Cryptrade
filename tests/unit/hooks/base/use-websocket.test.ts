@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import { .* } from '../../../../hooks/base/use-websocket';
-import { .* } from '../../../../lib/utils/logger';
+import { useWebSocket } from '../../../../hooks/base/use-websocket';
+import { logger } from '../../../../lib/utils/logger';
 
 // Mock logger
 jest.mock('../../../../lib/utils/logger');

@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { .* } from '../../../../hooks/use-message-handling';
+import { useMessageHandling } from '../../../../hooks/use-message-handling';
 
 describe('useMessageHandling', () => {
   it('should initialize with default values', () => {

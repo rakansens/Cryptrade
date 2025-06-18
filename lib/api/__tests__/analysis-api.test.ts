@@ -1,5 +1,5 @@
 // Set NODE_ENV before any imports
-process.env.NODE_ENV = 'test';
+(process.env as any).NODE_ENV = 'test';
 
 // Mock dependencies before imports
 jest.mock('@/lib/utils/api-cache');
@@ -29,7 +29,7 @@ import type {
 describe('AnalysisAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.NODE_ENV = 'test';
+    (process.env as any).NODE_ENV = 'test';
     (global.fetch as jest.Mock).mockReset();
     (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
@@ -379,7 +379,7 @@ describe('AnalysisAPI', () => {
 
     it('should return empty array in development when no cache available', async () => {
       // Set NODE_ENV to development for this test
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -390,12 +390,12 @@ describe('AnalysisAPI', () => {
       expect(logger.warn).toHaveBeenCalledWith('[AnalysisAPI] Returning empty array in development mode');
 
       // Restore
-      process.env.NODE_ENV = 'test';
+      (process.env as any).NODE_ENV = 'test';
     });
 
     it('should throw error in production when no cache available', async () => {
       // Set NODE_ENV to production for this test
-      process.env.NODE_ENV = 'production';
+      (process.env as any).NODE_ENV = 'production';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -405,7 +405,7 @@ describe('AnalysisAPI', () => {
       );
 
       // Restore
-      process.env.NODE_ENV = 'test';
+      (process.env as any).NODE_ENV = 'test';
     });
   });
 
@@ -551,7 +551,7 @@ describe('AnalysisAPI', () => {
       mockApiCache.get.mockReturnValue(null);
 
       // Set NODE_ENV to development to avoid throwing error
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
 
       let attemptCount = 0;
       (withRetry as jest.Mock).mockImplementation(async (fn, options) => {

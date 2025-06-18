@@ -64,6 +64,7 @@
     "node_modules",
     "lib/mastra/mastra-v2.ts",
     "tests/scripts/**/*",
+    "scripts/**/*",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",

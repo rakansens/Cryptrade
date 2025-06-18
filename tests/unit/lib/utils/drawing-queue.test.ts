@@ -1,26 +1,25 @@
 import { DrawingOperationQueue, type QueuedOperation } from '@/lib/utils/drawing-queue';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock dependencies
-vi.mock('@/lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
 }));
 
-vi.mock('@/lib/utils/retry-wrapper');
-vi.mock('@/lib/monitoring/metrics', () => ({
-  incrementMetric: vi.fn(),
-  observeMetric: vi.fn(),
+jest.mock('@/lib/utils/retry-wrapper');
+jest.mock('@/lib/monitoring/metrics', () => ({
+  incrementMetric: jest.fn(),
+  observeMetric: jest.fn(),
 }));
 
-vi.mock('@/lib/monitoring/trace', () => ({
+jest.mock('@/lib/monitoring/trace', () => ({
   traceManager: {
-    startTrace: vi.fn(),
-    endTrace: vi.fn(),
+    startTrace: jest.fn(),
+    endTrace: jest.fn(),
   },
 }));
 
@@ -28,7 +27,7 @@ describe('DrawingOperationQueue', () => {
   let queue: DrawingOperationQueue;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     queue = new DrawingOperationQueue();
   });
 
@@ -238,7 +237,7 @@ describe('DrawingOperationQueue', () => {
       const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
       
       // Create a mock retry wrapper
-      const mockExecute = vi.fn()
+      const mockExecute = jest.fn()
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockRejectedValueOnce(new Error('Second attempt failed'))
         .mockResolvedValueOnce('Success');
@@ -249,7 +248,7 @@ describe('DrawingOperationQueue', () => {
       
       queue = new DrawingOperationQueue({ enableRetry: true });
       
-      const operation = vi.fn().mockResolvedValue('result');
+      const operation = jest.fn().mockResolvedValue('result');
       const result = await queue.enqueue(operation);
       
       expect(result).toBe('Success');
