@@ -156,6 +156,7 @@ describe('error-handler', () => {
           confidence: 0,
           reasoning: 'System error occurred',
           analysisDepth: 'basic',
+          isProposalMode: false
         },
         execution: {
           success: false,
@@ -183,6 +184,7 @@ describe('error-handler', () => {
           confidence: 0,
           reasoning: 'System error occurred',
           analysisDepth: 'basic',
+          isProposalMode: false
         },
         execution: {
           success: false,

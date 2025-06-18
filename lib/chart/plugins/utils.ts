@@ -212,7 +212,12 @@ export const ColorUtils = {
       '#795548', // Brown
     ];
     
-    return palette[index % palette.length] ?? '#000000';
+    // Handle negative indices properly
+    const normalizedIndex = index < 0 
+      ? palette.length - (Math.abs(index) % palette.length)
+      : index % palette.length;
+    
+    return palette[normalizedIndex] ?? '#000000';
   },
   
   /**

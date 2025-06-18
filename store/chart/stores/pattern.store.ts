@@ -16,6 +16,21 @@ import type {
 } from '../types';
 import type { PatternData } from '@/store/chart/types';
 
+// Edge Runtime compatible UUID generation
+function generateUUID(): string {
+  // Use Web Crypto API if available (Edge Runtime compatible)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback to manual UUID v4 generation
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 const debug = createStoreDebugger('PatternStore');
 
 // Define initial state for consistency
@@ -34,7 +49,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
       initializePatterns: async () => {
         try {
           const patternsArray = await chartPersistence.loadPatterns();
-          const patterns = new Map(patternsArray.map(p => [p.id || crypto.randomUUID(), p as any] as [string, PatternData]));
+          const patterns = new Map(patternsArray.map(p => [p.id || generateUUID(), p as any] as [string, PatternData]));
           set({ patterns });
           logger.info('[PatternStore] Patterns loaded', { count: patterns.size });
         } catch (error) {

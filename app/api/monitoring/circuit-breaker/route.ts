@@ -47,3 +47,6 @@ export const POST = createApiHandler({
 });
 
 export const OPTIONS = createOptionsHandler();
+
+// Run in Node.js runtime (not Edge Runtime) due to ioredis dependency
+export const runtime = 'nodejs';

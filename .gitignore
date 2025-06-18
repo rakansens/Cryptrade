@@ -175,3 +175,206 @@ metrics_*.json
 
 # Patch files for refactoring
 patches/refactoring/
+
+# Test reports and summaries
+*_TEST_RESULTS.md
+*_TEST_REPORT*.md
+*_test_summary.md
+test_*_summary*.md
+*_summary.txt
+*_report.json
+*_report.md
+coverage_*.json
+mut_report.md
+tool_implementation_report.json
+trading_analysis_test.json
+error_handling_test.json
+dynamic_instructions_test.json
+orchestrator_test.json
+model_selection_test.json
+security_audit_report.json
+
+# Temporary config files
+stryker.config.*.mjs
+*.example.tsx
+*.refactored.example.ts
+
+# Patch and diff files
+patch.diff
+snap_diff.zip
+
+# Test scripts and servers
+test-server.js
+test-trading-agent.ts
+e2e-test-patch.js
+
+# Sample data
+sample-proposals.json
+sample_proposals.json
+
+# HTML reports
+e2e.html
+final_coverage_report.html
+
+# Configuration files
+lint_rules.json
+performance_config.md
+test_policy.md
+test_tasks.json
+
+# Temporary JSON files
+todo_list.json
+
+# Test variants and comprehensive tests
+*.comprehensive.test.ts
+*.minimal.*
+*.simple.*
+
+# Ghost file analysis
+scripts/analyze-ghost-files.ts
+ghost_files_*.md
+ghost_files_*.json
+
+# Test coverage helpers
+scripts/fix-test-coverage.js
+scripts/test-coverage-report.js
+
+# Root level duplicates
+test_fixes_summary.md
+coverage_90_report.json
+
+# Config variants
+config/.eslintrc.drawing-persistence.js
+
+# Documentation summaries and guides
+/docs/*_summary*.md
+/docs/*_guide.md
+/docs/*_report.md
+/docs/new_test_files_*.txt
+
+# Test setup and mocks
+tests/setup/
+tests/unit/lib/services/cache/
+tests/unit/store/chart/
+tests/unit/app/api/
+
+# Test variants
+*.comprehensive.test.ts
+*.minimal.*
+*.simple.*
+
+# Ghost file analysis
+**/ghost_files_*
+scripts/analyze-ghost-files.ts
+
+# Test coverage utilities
+scripts/fix-test-coverage.js
+scripts/test-coverage-report.js
+
+# Root level test reports (should be in tests/reports/)
+/CSP_TEST_RESULTS.md
+/FINAL_TEST_REPORT_JP.md
+/FINAL_VALIDATION_REPORT_JP.md
+/INTEGRATION_TEST_REPORT.md
+/PROPOSAL_UI_VERIFICATION_REPORT.md
+/SECURITY_PATCH_SUMMARY_JP.md
+/TOOL_VALIDATION_SUMMARY.md
+/chart_plugins_test_summary.md
+/conversation_improvements_summary.md
+/conversation_test_summary.md
+/coverage_achievement.json
+/coverage_gap_analysis.json
+/dynamic_instructions_test.json
+/e2e-rerun-summary.txt
+/e2e-summary.txt
+/e2e_test_failure_summary.txt
+/e2e_test_fix_summary.txt
+/error_handling_test.json
+/fixture_improvements.md
+/integration_health_report.md
+/memory_system_validation_report.md
+/model_selection_test.json
+/orchestrator_test.json
+/patch_application_report.md
+/security_audit_report.json
+/test_coverage_summary.md
+/test_execution_report.json
+/test_fix_summary.md
+/test_fixes_summary_jp.md
+/test_fixes_summary.md
+/tool_implementation_report.json
+/trading_analysis_test.json
+/zero_coverage_tests_summary.md
+/parallel-processing-summary.md
+/performance_optimization_guide.md
+/coverage_90_report.json
+/debug_report.md
+/final_coverage_report.html
+
+# Config variants
+config/.eslintrc.*.js
+
+# Coverage summaries in docs
+docs/COVERAGE_90_SUMMARY_JP.md
+docs/coverage_visual_summary.md
+
+# Empty test directories
+tests/unit/app/api/
+tests/unit/lib/services/cache/
+tests/unit/store/chart/
+
+# New test file lists
+docs/new_test_files_*.txt
+
+# Documentation files that should be organized
+docs/SECURITY_PATCH_SUMMARY_JP.md
+docs/conversation_improvements_summary.md
+docs/csp_deployment_guide.md
+docs/csp_implementation_summary_ja.md
+docs/csp_production_deployment.md
+docs/fixture_improvements.md
+docs/parallel-processing-summary.md
+docs/performance_optimization_guide.md
+
+# Test setup files
+tests/setup/jest-testcontainers-setup.ts
+tests/setup/testcontainers.ts
+
+# Jest config variants
+config/jest/jest.config.db.js
+
+# Additional test files
+tests/unit/lib/analysis/advanced-touch-detector.test.ts
+tests/unit/lib/analysis/multi-timeframe-line-detector.test.ts
+tests/unit/lib/api/error-reporter.test.ts
+tests/unit/lib/api/helpers/market-data-service.test.ts
+tests/unit/lib/api/redis-connection-manager.test.ts
+tests/unit/lib/security/csp-header-generator.test.ts
+tests/unit/lib/services/database/db-store.test.ts
+tests/unit/lib/services/database/pattern.service.test.ts
+tests/unit/lib/services/semantic-embedding.service.secure.test.ts
+tests/unit/lib/store/market-data.store.test.ts
+tests/unit/lib/utils/format.test.ts
+tests/unit/lib/validation/enhanced-drawing-validation.test.ts
+
+# Test setup files (additional)
+tests/setup/global-db-setup.ts
+tests/setup/global-db-teardown.ts
+
+# Mock directories
+tests/mocks/
+
+# Test fixtures
+tests/fixtures/
+
+# Optimization reports
+optimization_applied.md
+
+# Test database directories
+tests/integration/db/
+
+# Test utilities
+tests/utils/db-test-utils.ts
+
+# Database migration test scripts
+scripts/test-db-migrate.ts

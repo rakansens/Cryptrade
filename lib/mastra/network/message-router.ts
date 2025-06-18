@@ -338,6 +338,26 @@ Respond with ONLY the agent ID, no explanation:`;
         ? (response as { text?: string }).text
         : String(response);
 
+      // Ensure we always have a response text
+      if (!responseText || responseText === 'undefined' || responseText === 'null') {
+        logger.warn('[AgentNetwork] No response text from agent, generating fallback', {
+          targetId,
+          hasToolExecution,
+          responseKeys: response ? Object.keys(response) : [],
+        });
+        
+        // Generate a basic response based on the target agent
+        if (targetId === 'priceInquiryAgent') {
+          responseText = '価格データを取得中です。もう一度お試しください。';
+        } else if (targetId === 'tradingAnalysisAgent') {
+          responseText = '分析を実行中です。もう一度お試しください。';
+        } else if (targetId === 'uiControlAgent') {
+          responseText = 'UI操作を処理中です。もう一度お試しください。';
+        } else {
+          responseText = 'リクエストを処理中です。もう一度お試しください。';
+        }
+      }
+
       if (targetId === 'priceInquiryAgent' && hasToolExecution && toolExecutionData) {
         const { symbol, currentPrice, priceChangePercent24h } = toolExecutionData as {
           symbol?: string;

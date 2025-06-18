@@ -1,8 +1,18 @@
+// Set NODE_ENV before any imports
+process.env.NODE_ENV = 'test';
+
 // Mock dependencies before imports
 jest.mock('@/lib/utils/api-cache');
 jest.mock('@/lib/utils/retry');
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/utils/db-conversions');
+
+// Mock env module
+jest.mock('@/config/env', () => ({
+  env: {
+    get NODE_ENV() { return process.env.NODE_ENV || 'test'; }
+  }
+}));
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -19,6 +29,7 @@ import type {
 describe('AnalysisAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.NODE_ENV = 'test';
     (global.fetch as jest.Mock).mockReset();
     (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
@@ -367,10 +378,8 @@ describe('AnalysisAPI', () => {
     });
 
     it('should return empty array in development when no cache available', async () => {
-      // Mock env.NODE_ENV
-      const envModule = require('@/config/env');
-      const originalEnv = envModule.env.NODE_ENV;
-      envModule.env.NODE_ENV = 'development';
+      // Set NODE_ENV to development for this test
+      process.env.NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -381,14 +390,12 @@ describe('AnalysisAPI', () => {
       expect(logger.warn).toHaveBeenCalledWith('[AnalysisAPI] Returning empty array in development mode');
 
       // Restore
-      envModule.env.NODE_ENV = originalEnv;
+      process.env.NODE_ENV = 'test';
     });
 
     it('should throw error in production when no cache available', async () => {
-      // Mock env.NODE_ENV
-      const envModule = require('@/config/env');
-      const originalEnv = envModule.env.NODE_ENV;
-      envModule.env.NODE_ENV = 'production';
+      // Set NODE_ENV to production for this test
+      process.env.NODE_ENV = 'production';
 
       mockApiCache.get.mockReturnValue(null);
       (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
@@ -398,7 +405,7 @@ describe('AnalysisAPI', () => {
       );
 
       // Restore
-      envModule.env.NODE_ENV = originalEnv;
+      process.env.NODE_ENV = 'test';
     });
   });
 
@@ -543,6 +550,9 @@ describe('AnalysisAPI', () => {
     it('should handle API failure with retry', async () => {
       mockApiCache.get.mockReturnValue(null);
 
+      // Set NODE_ENV to development to avoid throwing error
+      process.env.NODE_ENV = 'development';
+
       let attemptCount = 0;
       (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
         attemptCount++;
@@ -561,9 +571,10 @@ describe('AnalysisAPI', () => {
         json: async () => ({ records: [] }),
       });
 
-      await AnalysisAPI.getActiveAnalyses();
+      const result = await AnalysisAPI.getActiveAnalyses();
 
       expect(logger.warn).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([]);
     });
 
     it('should use stale cache on failure', async () => {

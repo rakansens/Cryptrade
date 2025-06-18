@@ -50,7 +50,16 @@
         "lib/utils/zustand-helpers.ts",
         "lib/ws/compat-shim.ts",
         "lib/ws/migration.ts",
-        "lib/utils/client-env.ts"
+        "lib/utils/client-env.ts",
+        "config/env.ts",
+        "config/env.edge.ts",
+        "config/env-edge.ts",
+        "lib/api/rate-limit-persistent.ts",
+        "lib/logging/unified-logger.ts",
+        "lib/security/index.ts",
+        "app/api/csp-report/route.ts",
+        "lib/api/redis-connection-manager.ts",
+        "lib/api/redis-rate-limiter.ts"
       ],
       "rules": {
         "no-restricted-syntax": "off"

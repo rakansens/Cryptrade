@@ -19,6 +19,7 @@ const configMap = {
   unit: './config/jest/jest.config.unit.js',
   integration: './config/jest/jest.config.integration.js',
   e2e: './config/jest/jest.config.e2e.js',
+  db: './config/jest/jest.config.db.js',
 };
 
 const configPath = configMap[testType] || configMap.unit;

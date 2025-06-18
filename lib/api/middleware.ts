@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { edgeEnv } from '@/config/env-edge';
-import { checkRateLimit, getClientIdentifier, type RateLimitConfig } from './rate-limit';
+import { checkRateLimit, getClientIdentifier } from './rate-limit-edge';
+import { env } from '@/config/env';
 
 export interface MiddlewareRateLimitConfig {
   windowMs: number; // Time window in milliseconds (converted to seconds internally)
@@ -20,7 +20,7 @@ export function createRateLimiter(config: MiddlewareRateLimitConfig = DEFAULT_RA
     const identifier = getClientIdentifier(request);
     
     // Convert milliseconds to seconds for rate-limit module
-    const rateLimitConfig: RateLimitConfig = {
+    const rateLimitConfig = {
       windowSec: Math.floor(config.windowMs / 1000),
       maxRequests: config.maxRequests,
     };
@@ -60,8 +60,8 @@ export function createRateLimiter(config: MiddlewareRateLimitConfig = DEFAULT_RA
  * CORS headers configuration
  */
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': edgeEnv.NODE_ENV === 'production' 
-    ? edgeEnv.ALLOWED_ORIGINS || 'https://your-domain.com'
+  'Access-Control-Allow-Origin': env.NODE_ENV === 'production' 
+    ? env.ALLOWED_ORIGINS || 'https://your-domain.com'
     : '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -97,7 +97,7 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   
-  if (edgeEnv.NODE_ENV === 'production') {
+  if (env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
   
@@ -127,7 +127,7 @@ export function validateInterval(interval: string): boolean {
 export function createAuthMiddleware() {
   return async (request: NextRequest): Promise<NextResponse | null> => {
     // Skip authentication if disabled
-    if (!edgeEnv.API_AUTH_ENABLED) {
+    if (!env.API_AUTH_ENABLED) {
       return null;
     }
 
@@ -165,13 +165,13 @@ export function createAuthMiddleware() {
  * Validate API key against configured secret
  */
 function validateApiKey(apiKey: string): boolean {
-  if (!edgeEnv.API_AUTH_SECRET) {
+  if (!env.API_AUTH_SECRET) {
     console.error('[Auth] API_AUTH_SECRET is not configured');
     return false;
   }
 
   // Simple string comparison for edge runtime compatibility
-  return apiKey === edgeEnv.API_AUTH_SECRET;
+  return apiKey === env.API_AUTH_SECRET;
 }
 
 /**

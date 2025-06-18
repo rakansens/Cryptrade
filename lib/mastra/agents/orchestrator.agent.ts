@@ -10,6 +10,7 @@ import { marketSnapshotTool, trendingTopicsTool } from '../tools/market-snapshot
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/store/enhanced-conversation-memory.store';
 import { registerAllAgents } from '../network/agent-registry';
+import { parallelOrchestrator } from './parallel-orchestrator';
 
 // Context type for orchestrator agent
 export interface OrchestratorAgentContext {
@@ -203,7 +204,7 @@ export const orchestratorAgent = new Agent({
 });
 
 // Import unified intent analysis
-import { analyzeIntent } from '../utils/intent';
+import { analyzeIntent, extractSymbol } from '../utils/intent';
 
 // Export for backward compatibility with tests
 export const analyzeUserIntent = analyzeIntent;
@@ -279,10 +280,26 @@ export interface ExecutionResult {
 export async function executeImprovedOrchestrator(
   userQuery: string, 
   sessionId?: string,
-  _runtimeContext?: OrchestratorRuntimeContext
+  runtimeContext?: OrchestratorRuntimeContext
 ): Promise<OrchestratorExecutionResponse> {
   const startTime = Date.now();
   const correlationId = generateCorrelationId();
+  
+  // Check if query is complex and should use parallel processing
+  const isComplexQuery = detectComplexQuery(userQuery);
+  
+  if (isComplexQuery) {
+    logger.info('[Improved Orchestrator] Detected complex query, using parallel processing', {
+      correlationId,
+      queryLength: userQuery.length,
+      queryPreview: userQuery.substring(0, 50),
+    });
+    
+    // Use parallel orchestrator for complex queries
+    return parallelOrchestrator.execute(userQuery, sessionId, runtimeContext);
+  }
+  
+  // Continue with sequential processing for simple queries
   const memoryStore = useEnhancedConversationMemory.getState();
   
   // Ensure session exists with enhanced processors
@@ -340,21 +357,42 @@ export async function executeImprovedOrchestrator(
       processors: memoryStats.processors,
     });
 
-    // Step 3: 統一された意図分析関数を使用
+    // Step 3: 統一された意図分析関数を使用（コンテキストを考慮）
     const unifiedAnalysis = analyzeIntent(userQuery);
     
+    // Consider conversation context for better intent classification
+    const recentMessages = memoryStore.getRecentMessages(activeSessionId, 3);
+    const hasRecentPriceQuery = recentMessages.some(msg => 
+      msg.content.toLowerCase().includes('価格') || 
+      msg.content.toLowerCase().includes('いくら')
+    );
+    
+    // Adjust intent based on conversation context
+    let adjustedIntent = unifiedAnalysis.intent;
+    if (unifiedAnalysis.intent === 'conversational' && hasRecentPriceQuery && 
+        (userQuery.toLowerCase().includes('それ') || userQuery.toLowerCase().includes('その'))) {
+      // User is referring to previous price query
+      adjustedIntent = 'price_inquiry';
+      unifiedAnalysis.extractedSymbol = recentMessages
+        .map(msg => extractSymbol(msg.content))
+        .find(symbol => symbol) || unifiedAnalysis.extractedSymbol;
+    }
+    
     // Debug logging for intent analysis
-    logger.debug('[Improved Orchestrator] Raw unified analysis', {
+    logger.debug('[Improved Orchestrator] Raw unified analysis with context', {
       correlationId,
       userQuery,
+      originalIntent: unifiedAnalysis.intent,
+      adjustedIntent,
+      recentMessagesCount: recentMessages.length,
       unifiedAnalysis: JSON.stringify(unifiedAnalysis, null, 2),
     });
     
     // Convert to IntentAnalysisResult format
     const analysis: IntentAnalysisResult = {
-      intent: unifiedAnalysis.intent,
+      intent: adjustedIntent,
       confidence: unifiedAnalysis.confidence,
-      reasoning: unifiedAnalysis.reasoning,
+      reasoning: unifiedAnalysis.reasoning + (adjustedIntent !== unifiedAnalysis.intent ? ' (コンテキスト調整済み)' : ''),
       analysisDepth: unifiedAnalysis.analysisDepth,
       ...(unifiedAnalysis.extractedSymbol !== undefined && { extractedSymbol: unifiedAnalysis.extractedSymbol }),
       ...(unifiedAnalysis.isProposalMode !== undefined && { isProposalMode: unifiedAnalysis.isProposalMode }),
@@ -426,38 +464,63 @@ export async function executeImprovedOrchestrator(
           targetAgent,
         });
         
-        const agentResult = await agentSelectionTool.execute({
-          context: {
-            agentType: targetAgent,
-            query: userQuery,
+        try {
+          const agentResult = await agentSelectionTool.execute({
             context: {
-              extractedSymbol: analysis.extractedSymbol || 'BTCUSDT',
-              analysisDepth: analysis.analysisDepth,
-              sessionId: activeSessionId,
-              memoryContext: memoryContext.substring(0, 1000), // Limit context size
-              isProposalMode: analysis.isProposalMode,
-              proposalType: analysis.proposalType,
-              isEntryProposal: (analysis as { isEntryProposal?: boolean }).isEntryProposal,
-              interval: '1h', // デフォルトの時間足
-              conversationMode: (unifiedAnalysis as { conversationMode?: string }).conversationMode,
-              emotionalTone: (unifiedAnalysis as { emotionalTone?: string }).emotionalTone,
-              relationshipLevel: memoryStats.totalMessages < 5 ? 'new' : 
-                              memoryStats.totalMessages < 20 ? 'familiar' : 'regular',
+              agentType: targetAgent,
+              query: userQuery,
+              context: {
+                extractedSymbol: analysis.extractedSymbol || 'BTCUSDT',
+                analysisDepth: analysis.analysisDepth,
+                sessionId: activeSessionId,
+                memoryContext: memoryContext.substring(0, 1000), // Limit context size
+                isProposalMode: analysis.isProposalMode,
+                proposalType: analysis.proposalType,
+                isEntryProposal: (analysis as { isEntryProposal?: boolean }).isEntryProposal,
+                interval: '1h', // デフォルトの時間足
+                conversationMode: (unifiedAnalysis as { conversationMode?: string }).conversationMode,
+                emotionalTone: (unifiedAnalysis as { emotionalTone?: string }).emotionalTone,
+                relationshipLevel: memoryStats.totalMessages < 5 ? 'new' : 
+                                memoryStats.totalMessages < 20 ? 'familiar' : 'regular',
+              },
+              correlationId,
             },
+          } as any);
+          
+          // Check if we got a valid response
+          if (!agentResult || (!agentResult.executionResult?.response && !agentResult.message)) {
+            logger.warn('[Improved Orchestrator] Agent returned no response, using fallback', {
+              correlationId,
+              targetAgent,
+              agentResult: JSON.stringify(agentResult).substring(0, 200),
+            });
+            
+            // Generate a fallback response based on intent
+            executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
+          } else {
+            // 専門エージェントの結果にメタデータを追加
+            executionResult = {
+              ...agentResult,
+              // Ensure we have a response
+              response: agentResult.executionResult?.response || agentResult.message || 'No response',
+              metadata: {
+                ...(agentResult as any).metadata,
+                processedBy: targetAgent,
+                intent: analysis.intent,
+                delegatedFrom: 'orchestrator',
+              },
+            };
+          }
+        } catch (agentError) {
+          logger.error('[Improved Orchestrator] Agent execution error, using fallback', {
             correlationId,
-          },
-        } as any);
-        
-        // 専門エージェントの結果にメタデータを追加
-        executionResult = {
-          ...agentResult,
-          metadata: {
-            ...(agentResult as any).metadata,
-            processedBy: targetAgent,
-            intent: analysis.intent,
-            delegatedFrom: 'orchestrator',
-          },
-        };
+            targetAgent,
+            error: String(agentError),
+          });
+          
+          // Generate a fallback response for the error case
+          executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
+        }
       }
       
       // Add assistant response to memory
@@ -693,4 +756,147 @@ ${intent === 'help_request' ? `
   }
 }
 
-// ランダム選択関数は削除 - すべてAI生成に置き換え
+/**
+ * Generate fallback response when agent execution fails
+ */
+async function generateFallbackResponse(
+  intent: string,
+  userQuery: string,
+  extractedSymbol?: string
+): Promise<unknown> {
+  try {
+    const fallbackAgent = new Agent({
+      name: 'fallback-response-generator',
+      model: openai('gpt-4o-mini'),
+      instructions: `
+あなたはCryptrade暗号通貨取引プラットフォームのアシスタントです。
+現在、システムの一時的な問題により詳細なデータを取得できませんが、
+ユーザーの質問に対して親切で有益な応答を提供してください。
+
+## 現在の状況:
+- ユーザーの意図: ${intent}
+- 言及された通貨: ${extractedSymbol || '不明'}
+
+## 応答ガイドライン:
+1. システムの制限を正直に伝える（技術的すぎない表現で）
+2. 代替案や一般的なアドバイスを提供
+3. 親しみやすく前向きなトーンを保つ
+4. 次のアクションを提案する
+
+## 意図別の応答方針:
+${intent === 'price_inquiry' ? `
+- 一時的に価格データが取得できないことを説明
+- 取引所の公式サイトなど代替の確認方法を提案
+- 一般的な市場動向についてコメント` : ''}
+${intent === 'trading_analysis' ? `
+- 詳細な分析ツールが一時的に使用できないことを説明
+- 基本的な投資原則やリスク管理について触れる
+- 市場分析の一般的なアプローチを提案` : ''}
+${intent === 'ui_control' ? `
+- UI操作が一時的にできないことを説明
+- 手動での操作方法を案内
+- ブラウザのリロードなど基本的な対処法を提案` : ''}
+
+重要: 技術的な詳細には触れず、ユーザーフレンドリーな説明を心がけてください。
+      `.trim(),
+    });
+    
+    const response = await fallbackAgent.generate([
+      { role: 'user' as const, content: userQuery },
+    ]);
+    
+    const responseText = response?.text || 
+      '申し訳ございません。現在システムに一時的な問題が発生しています。しばらくしてから再度お試しください。';
+    
+    return {
+      response: responseText,
+      metadata: {
+        processedBy: 'orchestrator-fallback',
+        intent,
+        extractedSymbol,
+        fallbackReason: 'agent-execution-failed',
+      },
+    };
+  } catch (error) {
+    logger.error('[generateFallbackResponse] Failed to generate fallback', {
+      intent,
+      error: String(error),
+    });
+    
+    // Ultimate fallback
+    const staticFallbacks: Record<string, string> = {
+      price_inquiry: `申し訳ございません。現在価格データの取得に問題が発生しています。${extractedSymbol ? extractedSymbol.replace('USDT', '') + 'の' : ''}最新価格については、取引所の公式サイトでご確認いただけますでしょうか。`,
+      trading_analysis: '申し訳ございません。分析システムが一時的に利用できません。市場の状況を把握するには、複数の情報源を確認することをお勧めします。',
+      ui_control: 'UI操作を実行できませんでした。ブラウザをリロードして、もう一度お試しください。',
+      conversational: '申し訳ございません。応答を生成できませんでした。もう一度お試しください。',
+    };
+    
+    return {
+      response: staticFallbacks[intent] || staticFallbacks['conversational'],
+      metadata: {
+        processedBy: 'orchestrator-static-fallback',
+        intent,
+        extractedSymbol,
+        fallbackReason: 'fallback-generation-failed',
+      },
+    };
+  }
+}
+
+/**
+ * Detect if a query is complex and requires parallel processing
+ */
+function detectComplexQuery(userQuery: string): boolean {
+  // Length-based detection
+  if (userQuery.length > 100) {
+    return true;
+  }
+  
+  // Multiple operations detection
+  const multipleOperations = 
+    (userQuery.includes('して') && (userQuery.match(/して/g) || []).length > 1) ||
+    (userQuery.includes('また') || userQuery.includes('そして') || userQuery.includes('さらに'));
+  
+  if (multipleOperations) {
+    return true;
+  }
+  
+  // Multiple symbols detection
+  const cryptoSymbols = userQuery.match(/[A-Z]{3,}(?:USDT)?/g) || [];
+  if (cryptoSymbols.length > 1) {
+    return true;
+  }
+  
+  // Complex intent keywords
+  const complexKeywords = [
+    '分析.*提案',
+    '価格.*分析',
+    '比較.*どちら',
+    'エントリー.*ポイント',
+    '詳細.*分析',
+    '包括的',
+    '全体的',
+  ];
+  
+  const hasComplexKeywords = complexKeywords.some(pattern => 
+    new RegExp(pattern, 'i').test(userQuery)
+  );
+  
+  if (hasComplexKeywords) {
+    return true;
+  }
+  
+  // Queries asking for multiple types of information
+  const multipleInfoTypes = [
+    ['価格', '分析'],
+    ['チャート', '分析'],
+    ['トレンド', '提案'],
+    ['表示', '分析'],
+  ];
+  
+  const requestsMultipleInfo = multipleInfoTypes.some(types => 
+    types.every(type => userQuery.includes(type))
+  );
+  
+  return requestsMultipleInfo;
+}

@@ -42,8 +42,11 @@ describe('proposal-extractor', () => {
       
       expect(result).toEqual(proposalGroup);
       expect(logger.info).toHaveBeenCalledWith(
-        '[ProposalExtractor] Found proposalGroup in JSON response',
-        { proposalCount: 2 }
+        '[ProposalExtractor] Found proposal group in JSON response',
+        {
+          type: 'proposalGroup',
+          proposalCount: 2
+        }
       );
     });
 
@@ -110,7 +113,11 @@ describe('proposal-extractor', () => {
       expect(result).toEqual(proposalGroup);
       expect(logger.info).toHaveBeenCalledWith(
         '[ProposalExtractor] Found proposalGroup in toolResults',
-        expect.any(Object)
+        {
+          toolName: undefined,
+          proposalCount: 3,
+          source: 'toolResults'
+        }
       );
     });
 
@@ -149,7 +156,12 @@ describe('proposal-extractor', () => {
       
       expect(result).toEqual(proposalGroup);
       expect(logger.info).toHaveBeenCalledWith(
-        '[ProposalExtractor] Found proposalGroup in direct location'
+        '[ProposalExtractor] Found proposalGroup in direct location',
+        {
+          hasProposals: true,
+          proposalCount: 1,
+          groupId: undefined
+        }
       );
     });
 

@@ -142,3 +142,6 @@ export const GET = createSSEHandler({
 });
 
 export const OPTIONS = createSSEOptionsHandler({ origin: '*' });
+
+// Run in Node.js runtime (not Edge Runtime) due to potential agent dependencies
+export const runtime = 'nodejs';

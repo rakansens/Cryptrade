@@ -4,6 +4,7 @@ import { BaseService } from '@/lib/api/base-service';
 import { incrementMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 import { CircuitBreaker } from '@/lib/utils/retry-with-circuit-breaker';
+import { getMarketDataCache } from '@/lib/services/market-data-cache.service';
 import type { BinanceTicker24hr } from '@/types/market';
 
 /**
@@ -156,33 +157,35 @@ export const marketDataResilientTool = createTool({
       timestamp: new Date().toISOString()
     });
     
-    // Check cache with dynamic TTL
-    const cached = marketDataCache.get(symbol);
-    if (cached) {
-      const age = Date.now() - cached.timestamp;
-      const isValid = age < cached.ttl;
+    // Use the new caching service
+    const cache = await getMarketDataCache();
+    const cacheKey = `market:${symbol}`;
+    
+    try {
+      // Try to get from cache first
+      const cachedResult = await cache.get<MarketStatsResult>(
+        cacheKey,
+        undefined, // No fetcher yet, just check cache
+        { skipL2: false } // Check both L1 and L2 cache
+      ).catch(() => null); // Ignore errors, proceed to fetch
       
-      if (isValid) {
+      if (cachedResult) {
         logger.info(`[Market Data Resilient] Cache hit for ${symbol}`, {
-          age: `${(age / 1000).toFixed(1)}s`,
-          ttl: `${(cached.ttl / 1000).toFixed(1)}s`,
-          remainingTtl: `${((cached.ttl - age) / 1000).toFixed(1)}s`,
-          volatility: cached.volatility ? `${cached.volatility.toFixed(2)}%` : 'unknown',
+          cacheLevel: cachedResult.metadata.cacheLevel,
+          latency: `${cachedResult.metadata.latency}ms`
         });
-        incrementMetric('market_data_cache_hits');
+        
         return {
-          ...cached.data,
+          ...cachedResult.data,
           metadata: {
+            ...cachedResult.data.metadata,
             fromCache: true,
             latency: Date.now() - startTime
-          } as { fromCache?: boolean; retryCount?: number; latency?: number }
+          }
         };
-      } else {
-        logger.debug(`[Market Data Resilient] Cache expired for ${symbol}`, {
-          age: `${(age / 1000).toFixed(1)}s`,
-          ttl: `${(cached.ttl / 1000).toFixed(1)}s`,
-        });
       }
+    } catch (error) {
+      logger.debug(`[Market Data Resilient] Cache check failed for ${symbol}`, error);
     }
     
     incrementMetric('market_data_requests');
@@ -193,11 +196,17 @@ export const marketDataResilientTool = createTool({
       incrementMetric('market_data_circuit_open');
       
       // Try to use stale cache if available
-      const staleCache = marketDataCache.get(symbol);
-      if (staleCache) {
+      const cache = await getMarketDataCache();
+      const staleCached = await cache.get<MarketStatsResult>(
+        cacheKey,
+        undefined,
+        { skipL2: false }
+      ).catch(() => null);
+      
+      if (staleCached) {
         logger.warn(`[Market Data Resilient] Using stale cache for ${symbol}`);
         return {
-          ...staleCache.data,
+          ...staleCached.data,
           metadata: {
             fromCache: true,
             latency: Date.now() - startTime,
@@ -256,12 +265,15 @@ export const marketDataResilientTool = createTool({
         }
       };
 
-      // Update cache with dynamic TTL
-      marketDataCache.set(symbol, {
+      // Update cache with dynamic TTL using new caching service
+      const cache = await getMarketDataCache();
+      await cache.set(cacheKey, {
         data: marketData,
         timestamp: Date.now(),
         ttl: dynamicTTL,
+        hits: 0,
         volatility,
+        source: 'api'
       });
       
       logger.info(`[Market Data Resilient] Cache updated with dynamic TTL`, {
@@ -304,16 +316,19 @@ export const marketDataResilientTool = createTool({
         incrementMetric('market_data_circuit_open');
         
         // Try to use stale cache if available
-        const staleCache = marketDataCache.get(symbol);
-        if (staleCache) {
-          const age = Date.now() - staleCache.timestamp;
+        const cache = await getMarketDataCache();
+        const staleCached = await cache.get<MarketStatsResult>(
+          cacheKey,
+          undefined,
+          { skipL2: false }
+        ).catch(() => null);
+        
+        if (staleCached) {
           logger.warn(`[Market Data Resilient] Using stale cache for ${symbol}`, {
-            age: `${(age / 1000).toFixed(1)}s`,
-            originalTtl: `${(staleCache.ttl / 1000).toFixed(1)}s`,
             reason: 'circuit-breaker-open',
           });
           return {
-            ...staleCache.data,
+            ...staleCached.data,
             metadata: {
               fromCache: true,
               latency: Date.now() - startTime
@@ -369,39 +384,18 @@ export function resetMarketDataCircuitBreaker() {
 /**
  * Clear market data cache
  */
-export function clearMarketDataCache() {
-  marketDataCache.clear();
+export async function clearMarketDataCache() {
+  const cache = await getMarketDataCache();
+  await cache.clear();
   logger.info('[Market Data Resilient] Cache cleared');
 }
 
 /**
  * Get cache statistics for monitoring
  */
-export function getCacheStats(): {
-  size: number;
-  entries: Array<{
-    symbol: string;
-    age: number;
-    ttl: number;
-    volatility?: number;
-    isExpired: boolean;
-  }>;
-} {
-  const entries = Array.from(marketDataCache.entries()).map(([symbol, entry]) => {
-    const age = Date.now() - entry.timestamp;
-    return {
-      symbol,
-      age,
-      ttl: entry.ttl,
-      ...(entry.volatility !== undefined && { volatility: entry.volatility }),
-      isExpired: age >= entry.ttl,
-    };
-  });
-  
-  return {
-    size: marketDataCache.size,
-    entries,
-  };
+export async function getCacheStats() {
+  const cache = await getMarketDataCache();
+  return cache.getStats();
 }
 
 /**

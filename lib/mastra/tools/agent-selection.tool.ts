@@ -284,9 +284,46 @@ async function executeWithA2ACommunication(
     }
 
     // 成功レスポンスを解析
-    const response = typeof a2aMessage.result === 'string' 
-      ? a2aMessage.result 
-      : String(a2aMessage.result);
+    let response = '';
+    
+    // Try to extract response from various possible locations
+    if (typeof a2aMessage.result === 'string' && a2aMessage.result) {
+      response = a2aMessage.result;
+    } else if (a2aMessage.content && typeof a2aMessage.content === 'string') {
+      response = a2aMessage.content;
+    } else if (a2aMessage.result && typeof a2aMessage.result === 'object') {
+      // Try to extract from nested response
+      const resultObj = a2aMessage.result as any;
+      if (resultObj.response) {
+        response = String(resultObj.response);
+      } else if (resultObj.text) {
+        response = String(resultObj.text);
+      } else if (resultObj.message) {
+        response = String(resultObj.message);
+      } else {
+        response = JSON.stringify(a2aMessage.result);
+      }
+    }
+    
+    // Ensure we have a valid response
+    if (!response || response === 'undefined' || response === 'null' || response === '{}') {
+      logger.warn('[agentSelectionTool] Invalid response from A2A, generating fallback', {
+        targetAgentId,
+        resultType: typeof a2aMessage.result,
+        resultKeys: a2aMessage.result && typeof a2aMessage.result === 'object' ? Object.keys(a2aMessage.result) : [],
+      });
+      
+      // Generate a contextual fallback based on agent type
+      if (targetAgentId === 'priceInquiryAgent') {
+        response = '価格情報を取得できませんでした。もう一度お試しください。';
+      } else if (targetAgentId === 'tradingAnalysisAgent') {
+        response = '分析結果を取得できませんでした。もう一度お試しください。';
+      } else if (targetAgentId === 'uiControlAgent') {
+        response = 'UI操作を実行できませんでした。もう一度お試しください。';
+      } else {
+        response = 'リクエストを処理できませんでした。もう一度お試しください。';
+      }
+    }
 
     logger.info('[agentSelectionTool] A2A communication successful', {
       sourceAgent: 'orchestratorAgent',

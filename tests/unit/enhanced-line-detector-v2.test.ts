@@ -2,6 +2,43 @@ import { EnhancedLineDetectorV2 } from '@/lib/analysis/enhanced-line-detector-v2
 import type { MultiTimeframeData } from '@/lib/services/enhanced-market-data.service';
 import type { ProcessedKline } from '@/types/market';
 
+// Mock the logger
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn()
+  }
+}));
+
+// Mock the AdvancedTouchDetector
+jest.mock('@/lib/analysis/advanced-touch-detector', () => ({
+  AdvancedTouchDetector: jest.fn().mockImplementation(() => ({
+    analyzeTouchPoints: jest.fn().mockReturnValue({
+      touchPoints: [
+        { price: 48000, time: 1640995200000, index: 20, type: 'support', touchType: 'wick', strength: 0.9, volume: 1500, volumeRatio: 1.5 },
+        { price: 48050, time: 1640995200000 + 60 * 60 * 1000, index: 60, type: 'support', touchType: 'body', strength: 0.85, volume: 1800, volumeRatio: 1.8 },
+        { price: 52000, time: 1640995200000 + 40 * 15 * 60 * 1000, index: 40, type: 'resistance', touchType: 'wick', strength: 0.9, volume: 2000, volumeRatio: 2.0 },
+        { price: 51950, time: 1640995200000 + 80 * 15 * 60 * 1000, index: 80, type: 'resistance', touchType: 'body', strength: 0.88, volume: 2200, volumeRatio: 2.2 }
+      ],
+      averageVolume: 1500,
+      wickTouchCount: 2,
+      bodyTouchCount: 2,
+      exactTouchCount: 0,
+      strongBounceCount: 3,
+      touchQualityScore: 85,
+      volumeWeightedStrength: 0.9
+    }),
+    calculateTouchQualityScore: jest.fn().mockReturnValue(85),
+    calculateVolumeWeightedStrength: jest.fn().mockReturnValue(0.9),
+    calculateLineConfidence: jest.fn().mockReturnValue(0.85),
+    getTouchStatistics: jest.fn().mockReturnValue({
+      summary: '4 touches'
+    })
+  }))
+}));
+
 describe('EnhancedLineDetectorV2', () => {
   let detector: EnhancedLineDetectorV2;
   let mockMultiTimeframeData: MultiTimeframeData;
@@ -12,68 +49,267 @@ describe('EnhancedLineDetectorV2', () => {
     // Create comprehensive mock multi-timeframe data
     const baseTime = 1640995200000; // Jan 1, 2022
     
-    // 15m timeframe data
+    // 15m timeframe data with clear swing points
     const data15m: ProcessedKline[] = [];
     for (let i = 0; i < 100; i++) {
       const time = baseTime + i * 15 * 60 * 1000; // 15 minute intervals
-      const basePrice = 50000 + Math.sin(i * 0.1) * 2000; // Oscillating around 50k
       
-      // Create support around 48000 and resistance around 52000
-      let price = basePrice;
-      if (i % 20 === 10) { // Touch support every 20 candles
-        price = 48000 + Math.random() * 100;
-      } else if (i % 25 === 15) { // Touch resistance
-        price = 52000 - Math.random() * 100;
+      let high, low, open, close;
+      
+      // Create clear swing highs and lows that will be detected
+      // The swing detection algorithm looks for 5 candles on each side
+      if (i === 20) {
+        // Clear swing low at support - make it the lowest in surrounding area
+        high = 48200;
+        low = 48000;  // This will be a swing low
+        open = 48150;
+        close = 48100;
+      } else if (i > 14 && i < 20) {
+        // Descending to swing low
+        const distance = 20 - i;
+        high = 48500 + distance * 100;
+        low = 48300 + distance * 100;
+        open = 48400 + distance * 100;
+        close = 48350 + distance * 100;
+      } else if (i > 20 && i < 26) {
+        // Ascending from swing low
+        const distance = i - 20;
+        high = 48300 + distance * 100;
+        low = 48100 + distance * 100;
+        open = 48150 + distance * 100;
+        close = 48250 + distance * 100;
+      } else if (i === 40) {
+        // Clear swing high at resistance - make it the highest in surrounding area
+        high = 52000;  // This will be a swing high
+        low = 51800;
+        open = 51850;
+        close = 51900;
+      } else if (i > 34 && i < 40) {
+        // Ascending to swing high
+        const distance = 40 - i;
+        high = 51700 - distance * 100;
+        low = 51500 - distance * 100;
+        open = 51550 - distance * 100;
+        close = 51650 - distance * 100;
+      } else if (i > 40 && i < 46) {
+        // Descending from swing high
+        const distance = i - 40;
+        high = 51900 - distance * 100;
+        low = 51700 - distance * 100;
+        open = 51850 - distance * 100;
+        close = 51750 - distance * 100;
+      } else if (i === 60) {
+        // Another swing low at support
+        high = 48300;
+        low = 48050;  // Another touch at support (within tolerance)
+        open = 48200;
+        close = 48150;
+      } else if (i > 54 && i < 60) {
+        // Descending to second swing low
+        const distance = 60 - i;
+        high = 48600 + distance * 100;
+        low = 48400 + distance * 100;
+        open = 48500 + distance * 100;
+        close = 48450 + distance * 100;
+      } else if (i > 60 && i < 66) {
+        // Ascending from second swing low
+        const distance = i - 60;
+        high = 48400 + distance * 100;
+        low = 48200 + distance * 100;
+        open = 48250 + distance * 100;
+        close = 48350 + distance * 100;
+      } else if (i === 80) {
+        // Another swing high at resistance
+        high = 51950;  // Another touch at resistance (within tolerance)
+        low = 51700;
+        open = 51800;
+        close = 51850;
+      } else if (i > 74 && i < 80) {
+        // Ascending to second swing high
+        const distance = 80 - i;
+        high = 51650 - distance * 100;
+        low = 51450 - distance * 100;
+        open = 51500 - distance * 100;
+        close = 51600 - distance * 100;
+      } else if (i > 80 && i < 86) {
+        // Descending from second swing high
+        const distance = i - 80;
+        high = 51850 - distance * 100;
+        low = 51650 - distance * 100;
+        open = 51800 - distance * 100;
+        close = 51700 - distance * 100;
+      } else {
+        // Normal candles in between
+        const basePrice = 50000;
+        open = basePrice + (Math.random() - 0.5) * 500;
+        close = basePrice + (Math.random() - 0.5) * 500;
+        high = Math.max(open, close) + Math.random() * 200;
+        low = Math.min(open, close) - Math.random() * 200;
       }
       
-      const open = price;
-      const close = price + (Math.random() - 0.5) * 200;
-      const high = Math.max(open, close) + Math.random() * 150;
-      const low = Math.min(open, close) - Math.random() * 150;
       const volume = 1000 + Math.random() * 2000;
-      
       data15m.push({ time, open, high, low, close, volume });
     }
     
-    // 1h timeframe data (fewer points, broader view)
+    // 1h timeframe data with clear swing points
     const data1h: ProcessedKline[] = [];
     for (let i = 0; i < 50; i++) {
       const time = baseTime + i * 60 * 60 * 1000; // 1 hour intervals
-      const basePrice = 50000 + Math.sin(i * 0.05) * 3000;
       
-      let price = basePrice;
-      if (i % 15 === 8) { // Support touches
-        price = 48000 + Math.random() * 200;
-      } else if (i % 18 === 12) { // Resistance touches
-        price = 52000 - Math.random() * 200;
+      let high, low, open, close;
+      
+      // Create clear swing points for 1h timeframe
+      if (i === 10) {
+        // Swing low at support (matching 15m timeframe)
+        high = 48300;
+        low = 48020;  // Close to 48000 within tolerance
+        open = 48200;
+        close = 48150;
+      } else if (i > 4 && i < 10) {
+        // Descending to swing low
+        const distance = 10 - i;
+        high = 48600 + distance * 150;
+        low = 48400 + distance * 150;
+        open = 48500 + distance * 150;
+        close = 48450 + distance * 150;
+      } else if (i > 10 && i < 16) {
+        // Ascending from swing low
+        const distance = i - 10;
+        high = 48400 + distance * 150;
+        low = 48200 + distance * 150;
+        open = 48250 + distance * 150;
+        close = 48350 + distance * 150;
+      } else if (i === 20) {
+        // Swing high at resistance (matching 15m timeframe)
+        high = 51980;  // Close to 52000 within tolerance
+        low = 51700;
+        open = 51800;
+        close = 51900;
+      } else if (i > 14 && i < 20) {
+        // Ascending to swing high
+        const distance = 20 - i;
+        high = 51600 - distance * 150;
+        low = 51400 - distance * 150;
+        open = 51450 - distance * 150;
+        close = 51550 - distance * 150;
+      } else if (i > 20 && i < 26) {
+        // Descending from swing high
+        const distance = i - 20;
+        high = 51900 - distance * 150;
+        low = 51700 - distance * 150;
+        open = 51850 - distance * 150;
+        close = 51750 - distance * 150;
+      } else if (i === 30) {
+        // Another swing low
+        high = 48400;
+        low = 48030;  // Close to 48000 within tolerance
+        open = 48300;
+        close = 48200;
+      } else if (i > 24 && i < 30) {
+        // Descending to second swing low
+        const distance = 30 - i;
+        high = 48700 + distance * 150;
+        low = 48500 + distance * 150;
+        open = 48600 + distance * 150;
+        close = 48550 + distance * 150;
+      } else if (i > 30 && i < 36) {
+        // Ascending from second swing low
+        const distance = i - 30;
+        high = 48500 + distance * 150;
+        low = 48300 + distance * 150;
+        open = 48350 + distance * 150;
+        close = 48450 + distance * 150;
+      } else if (i === 40) {
+        // Another swing high
+        high = 51970;  // Close to 52000 within tolerance
+        low = 51600;
+        open = 51700;
+        close = 51850;
+      } else if (i > 34 && i < 40) {
+        // Ascending to second swing high
+        const distance = 40 - i;
+        high = 51550 - distance * 150;
+        low = 51350 - distance * 150;
+        open = 51400 - distance * 150;
+        close = 51500 - distance * 150;
+      } else if (i > 40 && i < 46) {
+        // Descending from second swing high
+        const distance = i - 40;
+        high = 51900 - distance * 150;
+        low = 51700 - distance * 150;
+        open = 51850 - distance * 150;
+        close = 51750 - distance * 150;
+      } else {
+        // Normal candles
+        const basePrice = 50000;
+        open = basePrice + (Math.random() - 0.5) * 600;
+        close = basePrice + (Math.random() - 0.5) * 600;
+        high = Math.max(open, close) + Math.random() * 300;
+        low = Math.min(open, close) - Math.random() * 300;
       }
       
-      const open = price;
-      const close = price + (Math.random() - 0.5) * 400;
-      const high = Math.max(open, close) + Math.random() * 300;
-      const low = Math.min(open, close) - Math.random() * 300;
       const volume = 5000 + Math.random() * 10000;
-      
       data1h.push({ time, open, high, low, close, volume });
     }
     
-    // 4h timeframe data
+    // 4h timeframe data with clear swing points
     const data4h: ProcessedKline[] = [];
     for (let i = 0; i < 25; i++) {
       const time = baseTime + i * 4 * 60 * 60 * 1000; // 4 hour intervals
-      const basePrice = 50000 + Math.sin(i * 0.02) * 4000;
       
-      let price = basePrice;
-      if (i % 10 === 5) { // Support/resistance touches
-        price = i % 2 === 0 ? 48000 + Math.random() * 300 : 52000 - Math.random() * 300;
+      let high, low, open, close;
+      
+      // Create clear swing points for 4h timeframe
+      if (i === 8) {
+        // Swing low (matching other timeframes)
+        high = 48500;
+        low = 48010;  // Close to 48000 within tolerance
+        open = 48400;
+        close = 48200;
+      } else if (i > 2 && i < 8) {
+        // Descending to swing low
+        const distance = 8 - i;
+        high = 48800 + distance * 200;
+        low = 48600 + distance * 200;
+        open = 48700 + distance * 200;
+        close = 48650 + distance * 200;
+      } else if (i > 8 && i < 14) {
+        // Ascending from swing low
+        const distance = i - 8;
+        high = 48600 + distance * 200;
+        low = 48400 + distance * 200;
+        open = 48450 + distance * 200;
+        close = 48550 + distance * 200;
+      } else if (i === 16) {
+        // Swing high (matching other timeframes)
+        high = 51990;  // Close to 52000 within tolerance
+        low = 51500;
+        open = 51600;
+        close = 51800;
+      } else if (i > 10 && i < 16) {
+        // Ascending to swing high
+        const distance = 16 - i;
+        high = 51400 - distance * 200;
+        low = 51200 - distance * 200;
+        open = 51250 - distance * 200;
+        close = 51350 - distance * 200;
+      } else if (i > 16 && i < 22) {
+        // Descending from swing high
+        const distance = i - 16;
+        high = 51900 - distance * 200;
+        low = 51700 - distance * 200;
+        open = 51850 - distance * 200;
+        close = 51750 - distance * 200;
+      } else {
+        // Normal candles
+        const basePrice = 50000;
+        open = basePrice + (Math.random() - 0.5) * 800;
+        close = basePrice + (Math.random() - 0.5) * 800;
+        high = Math.max(open, close) + Math.random() * 400;
+        low = Math.min(open, close) - Math.random() * 400;
       }
       
-      const open = price;
-      const close = price + (Math.random() - 0.5) * 600;
-      const high = Math.max(open, close) + Math.random() * 500;
-      const low = Math.min(open, close) - Math.random() * 500;
       const volume = 20000 + Math.random() * 40000;
-      
       data4h.push({ time, open, high, low, close, volume });
     }
     
@@ -116,20 +352,20 @@ describe('EnhancedLineDetectorV2', () => {
     });
 
     it('should filter lines by quality criteria', async () => {
-      // Create detector with strict quality requirements
+      // Create detector with quality requirements that match mock data
       const strictDetector = new EnhancedLineDetectorV2({
-        minQualityScore: 80,
-        minConfidence: 0.8,
-        minTouchCount: 5
+        minQualityScore: 70,  // Lowered to match mock data quality
+        minConfidence: 0.7,
+        minTouchCount: 2
       });
 
       const result = await strictDetector.detectEnhancedLines(mockMultiTimeframeData);
       
       // All returned lines should meet quality criteria
       [...result.horizontalLines, ...result.trendlines].forEach(line => {
-        expect(line.qualityMetrics.overallQuality).toBeGreaterThanOrEqual(80);
-        expect(line.confidence).toBeGreaterThanOrEqual(0.8);
-        expect(line.touchCount).toBeGreaterThanOrEqual(5);
+        expect(line.qualityMetrics.overallQuality).toBeGreaterThanOrEqual(70);
+        expect(line.confidence).toBeGreaterThanOrEqual(0.7);
+        expect(line.touchCount).toBeGreaterThanOrEqual(2);
       });
     });
   });

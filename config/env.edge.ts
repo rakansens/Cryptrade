@@ -1,14 +1,12 @@
 /**
- * Updated: Environment Configuration - Edge Runtime Compatible
+ * Edge Runtime Compatible Environment Configuration
  * 
- * This file provides type-safe access to all environment variables used in the application.
- * It uses Zod for runtime validation and ensures fail-fast behavior when required variables are missing.
- * This version is fully compatible with Vercel Edge Runtime.
+ * This file provides type-safe access to environment variables in Edge Runtime.
+ * It uses runtime validation and is compatible with Vercel Edge Functions.
  * 
  * @generated Epic #5 - Environment Configuration Centralization (Edge Runtime)
  */
 
-/* eslint-disable no-restricted-syntax */
 import { z } from 'zod';
 
 // =============================================================================
@@ -62,10 +60,7 @@ const EnvSchema = z.object({
   
   // Telemetry configuration
   TELEMETRY_SAMPLING_RATE: z.coerce.number().min(0).max(1).default(0.001).optional(),
-  TELEMETRY_ENDPOINT: z.string().optional().refine(
-    (val) => !val || val === '' || z.string().url().safeParse(val).success,
-    { message: 'Must be a valid URL or empty' }
-  ),
+  TELEMETRY_ENDPOINT: z.string().url().optional(),
   TELEMETRY_API_KEY: z.string().optional(),
   
   // Sentry configuration
@@ -113,15 +108,13 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>;
 
-
 // =============================================================================
-// ENVIRONMENT LOADING & VALIDATION
+// EDGE RUNTIME COMPATIBLE ENVIRONMENT ACCESS
 // =============================================================================
-
-let _env: Env | null = null;
 
 /**
- * Get environment variables in an Edge Runtime compatible way
+ * Get environment variable value in Edge Runtime
+ * Uses the global process object when available, otherwise falls back to undefined
  */
 function getEnvVar(key: string): string | undefined {
   // In Edge Runtime, process might not be available
@@ -142,11 +135,17 @@ function getEnvVar(key: string): string | undefined {
   return undefined;
 }
 
+// =============================================================================
+// ENVIRONMENT LOADING & VALIDATION
+// =============================================================================
+
+let _env: Env | null = null;
+
 /**
- * Load and validate environment variables (singleton pattern)
+ * Load and validate environment variables (Edge Runtime compatible)
  * 
  * @returns Validated environment configuration
- * @throws Will throw error if validation fails
+ * @throws Error if validation fails
  */
 export function loadEnv(): Env {
   // Return cached environment if already loaded
@@ -187,22 +186,19 @@ export function loadEnv(): Env {
   const parseResult = EnvSchema.safeParse(envObject);
 
   if (!parseResult.success) {
-    // Edge Runtime compatible logging
-    if (typeof console !== 'undefined') {
-      console.error('🚨 [Environment] Validation failed!');
-      console.error('📋 Missing or invalid environment variables:');
-      
-      // Format error messages for better readability
-      parseResult.error.issues.forEach((issue) => {
-        const field = issue.path.join('.');
-        const message = issue.message;
-        console.error(`   ❌ ${field}: ${message}`);
-      });
+    console.error('🚨 [Environment] Validation failed!');
+    console.error('📋 Missing or invalid environment variables:');
+    
+    // Format error messages for better readability
+    parseResult.error.issues.forEach((issue) => {
+      const field = issue.path.join('.');
+      const message = issue.message;
+      console.error(`   ❌ ${field}: ${message}`);
+    });
 
-      console.error('');
-      console.error('💡 Please check your environment configuration and try again.');
-      console.error('📚 See docs/ARCHITECTURE.md for environment setup guide.');
-    }
+    console.error('');
+    console.error('💡 Please check your environment configuration and try again.');
+    console.error('📚 See docs/ARCHITECTURE.md for environment setup guide.');
     
     // Always throw error for Edge Runtime compatibility
     throw new Error('Environment validation failed');
@@ -212,7 +208,7 @@ export function loadEnv(): Env {
   _env = parseResult.data;
   
   // Log successful initialization (except in test)
-  if (getEnvVar('NODE_ENV') !== 'test' && typeof console !== 'undefined') {
+  if (getEnvVar('NODE_ENV') !== 'test') {
     console.log('✅ [Environment] Configuration loaded successfully');
     if (_env && _env.NODE_ENV === 'development') {
       console.log(`🔧 [Environment] Running in ${_env.NODE_ENV} mode`);
@@ -227,7 +223,7 @@ export function loadEnv(): Env {
 // =============================================================================
 
 /**
- * Type-safe environment configuration instance
+ * Type-safe environment configuration instance (Edge Runtime compatible)
  * 
  * This is the single source of truth for all environment variables.
  * Use this instead of direct process.env access throughout the application.

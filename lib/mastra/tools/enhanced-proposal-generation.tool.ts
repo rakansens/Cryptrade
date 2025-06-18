@@ -119,6 +119,12 @@ export async function enhancedProposalGeneration(
 
   try {
     const proposals: Proposal[] = [];
+    
+    // Validate price data
+    if (!input.priceData || input.priceData.length === 0) {
+      throw new Error('No market data available');
+    }
+    
     const currentPrice = input.priceData[input.priceData.length - 1]?.close || 0;
     
     // Initialize ML analyzer if enabled
@@ -173,30 +179,36 @@ export async function enhancedProposalGeneration(
             timeframe: input.interval
           };
 
-          // Run ML analysis (simplified for sync execution)
-          const generator = mlAnalyzer.analyzeLineWithProgress(
-            line,
-            input.priceData,
-            input.symbol,
-            currentPrice
-          );
-
-          // Consume the generator to get the final prediction
-          let finalPrediction: MLPrediction | undefined;
-          for await (const update of generator) {
-            if (update.stage === 'complete') {
-              // The prediction is returned at the end
-              const result = await generator.return(undefined);
-              if (result.value) {
-                finalPrediction = result.value;
+          try {
+            // Run ML analysis
+            let finalPrediction: MLPrediction | undefined;
+            
+            // Consume the generator and capture the return value
+            const generator = mlAnalyzer.analyzeLineWithProgress(
+              line,
+              input.priceData,
+              input.symbol,
+              currentPrice
+            );
+            
+            // Iterate through all values
+            let result;
+            while (true) {
+              result = await generator.next();
+              if (result.done) {
+                finalPrediction = result.value as MLPrediction;
+                break;
               }
             }
-          }
 
-          if (finalPrediction) {
-            mlPrediction = finalPrediction;
-            // Adjust confidence based on ML prediction
-            level.confidence = level.confidence * 0.4 + finalPrediction.successProbability * 0.6;
+            if (finalPrediction) {
+              mlPrediction = finalPrediction;
+              // Adjust confidence based on ML prediction
+              level.confidence = level.confidence * 0.4 + finalPrediction.successProbability * 0.6;
+            }
+          } catch (mlError) {
+            logger.warn('[EnhancedProposalGeneration] ML analysis failed for support/resistance', { error: mlError });
+            // Continue without ML prediction
           }
         }
 
@@ -249,27 +261,35 @@ export async function enhancedProposalGeneration(
             intercept: trendline.intercept
           };
 
-          // Run ML analysis
-          const generator = mlAnalyzer.analyzeLineWithProgress(
-            line,
-            input.priceData,
-            input.symbol,
-            currentPrice
-          );
-
-          let finalPrediction: MLPrediction | undefined;
-          for await (const update of generator) {
-            if (update.stage === 'complete') {
-              const result = await generator.return(undefined);
-              if (result.value) {
-                finalPrediction = result.value;
+          try {
+            // Run ML analysis
+            let finalPrediction: MLPrediction | undefined;
+            
+            // Consume the generator and capture the return value
+            const generator = mlAnalyzer.analyzeLineWithProgress(
+              line,
+              input.priceData,
+              input.symbol,
+              currentPrice
+            );
+            
+            // Iterate through all values
+            let result;
+            while (true) {
+              result = await generator.next();
+              if (result.done) {
+                finalPrediction = result.value as MLPrediction;
+                break;
               }
             }
-          }
 
-          if (finalPrediction) {
-            mlPrediction = finalPrediction;
-            trendline.confidence = trendline.confidence * 0.4 + finalPrediction.successProbability * 0.6;
+            if (finalPrediction) {
+              mlPrediction = finalPrediction;
+              trendline.confidence = trendline.confidence * 0.4 + finalPrediction.successProbability * 0.6;
+            }
+          } catch (mlError) {
+            logger.warn('[EnhancedProposalGeneration] ML analysis failed for trendline', { error: mlError });
+            // Continue without ML prediction
           }
         }
 

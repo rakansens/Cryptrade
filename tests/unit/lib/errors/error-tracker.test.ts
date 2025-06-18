@@ -1,14 +1,8 @@
-// Setup test environment before any imports
-process.env['NODE_ENV'] = 'test';
-process.env['OPENAI_API_KEY'] = 'test-key';
-process.env['ENABLE_SENTRY'] = 'false';
-process.env['TELEMETRY_ENDPOINT'] = '';
-process.env['TELEMETRY_API_KEY'] = '';
+// Import test environment setup first
+import '@/tests/setup/test-env';
+import { resetTestEnvironment } from '@/tests/setup/test-env';
 
-// Clear module cache to ensure clean environment load
-jest.resetModules();
-
-// Now import modules after environment is set
+// Import modules after environment is set
 import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
 import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/errors/base-error';
 import { logger } from '@/lib/utils/logger';
@@ -29,6 +23,9 @@ describe('ErrorTracker', () => {
   let tracker: ErrorTracker;
 
   beforeEach(() => {
+    // Reset environment to ensure clean state
+    resetTestEnvironment();
+    
     // Clear singleton instance
     (ErrorTracker as any).instance = undefined;
     tracker = ErrorTracker.getInstance();
@@ -41,12 +38,8 @@ describe('ErrorTracker', () => {
   });
 
   afterAll(() => {
-    // Restore environment
-    delete process.env['NODE_ENV'];
-    delete process.env['OPENAI_API_KEY'];
-    delete process.env['ENABLE_SENTRY'];
-    delete process.env['TELEMETRY_ENDPOINT'];
-    delete process.env['TELEMETRY_API_KEY'];
+    // Reset environment to clean state
+    resetTestEnvironment();
   });
 
   describe('getInstance', () => {
@@ -406,11 +399,26 @@ describe('ErrorTracker', () => {
       expect(logger.error).toHaveBeenCalledTimes(3);
       
       // Verify retry information is tracked
-      retryableErrors.forEach(error => {
-        expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
-          retryable: true,
-          retryAfter: error.retryAfter
-        }));
+      const calls = (logger.error as jest.Mock).mock.calls;
+      
+      // First error (ApiError 500) - should be retryable but no retryAfter
+      expect(calls[0][1]).toMatchObject({
+        retryable: true,
+        message: 'Server error'
+      });
+      
+      // Second error (RateLimitError) - should have retryAfter
+      expect(calls[1][1]).toMatchObject({
+        retryable: true,
+        retryAfter: 60000,
+        message: 'Rate limited'
+      });
+      
+      // Third error (MastraBaseError) - should have retryAfter
+      expect(calls[2][1]).toMatchObject({
+        retryable: true,
+        retryAfter: 5000,
+        message: 'Temporary failure'
       });
     });
 

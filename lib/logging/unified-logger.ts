@@ -5,7 +5,7 @@
  * consistent, and powerful logging system with backward compatibility.
  */
 
-import { env, isTest } from '@/config/env';
+import { env } from '@/config/env';
 
 // Unified Types (combining all existing types)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
@@ -646,7 +646,9 @@ export function createUnifiedLogger(config?: Partial<UnifiedLoggerConfig>): Unif
 export const unifiedLogger = createUnifiedLogger();
 
 // Auto-initialize in non-test environments
-if (!isTest()) {
+const isTestEnv = typeof process !== 'undefined' && process.env && 
+  (process.env['NODE_ENV'] === 'test' || process.env['JEST_WORKER_ID'] !== undefined);
+if (!isTestEnv) {
   unifiedLogger.init().catch(error => {
     console.error('[UnifiedLogger] Initialization failed:', error);
   });
