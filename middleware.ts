@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { createApiMiddleware } from '@/lib/api/middleware';
+import { generateNonce, applyCSPHeaders } from '@/lib/security/csp';
+import { env } from '@/config/env';
 
 // Create the API middleware instance
 const apiMiddleware = createApiMiddleware({
@@ -29,9 +31,16 @@ const isPublicRoute = (pathname: string) => {
 };
 
 export async function middleware(request: NextRequest) {
+  // Generate nonce for CSP
+  const nonce = generateNonce();
+  
+  // Create response with nonce in headers for use in the app
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
   
@@ -45,10 +54,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Create Supabase client
+  // Create Supabase client (Edge Runtime compatible)
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
   const supabase = createServerClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -60,7 +72,7 @@ export async function middleware(request: NextRequest) {
             value,
             ...options,
             sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
+            secure: env.NODE_ENV === 'production',
           });
         },
         remove(name: string, options: any) {
@@ -91,6 +103,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Apply CSP headers to the response
+  const isDevelopment = env.NODE_ENV === 'development';
+  response = applyCSPHeaders(response, nonce, isDevelopment);
+  
   return response;
 }
 
