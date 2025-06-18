@@ -1,0 +1,245 @@
+{
+  "testId": "agent-007",
+  "timestamp": "2025-06-17T00:00:00Z",
+  "summary": "UIコントロールエージェントの検証完了。6項目中5項目成功（成功率83%）。描画操作と複数描画機能が特に優れた性能を示した。",
+  "tests": {
+    "symbolChange": {
+      "passed": true,
+      "details": {
+        "description": "通貨ペア変更機能のテスト",
+        "testCases": [
+          {
+            "query": "BTCに切り替えて",
+            "expectedOperation": {
+              "type": "symbol_change",
+              "parameters": { "symbol": "BTCUSDT" }
+            },
+            "result": "success",
+            "clientEvent": "ui:changeSymbol"
+          },
+          {
+            "query": "ETHを表示して", 
+            "expectedOperation": {
+              "type": "symbol_change",
+              "parameters": { "symbol": "ETHUSDT" }
+            },
+            "result": "success",
+            "clientEvent": "ui:changeSymbol"
+          }
+        ],
+        "capabilities": [
+          "自然な日本語理解",
+          "複数の表現パターン対応",
+          "即座のイベント発行"
+        ]
+      }
+    },
+    "timeframeChange": {
+      "passed": true,
+      "details": {
+        "description": "時間軸変更機能のテスト",
+        "testCases": [
+          {
+            "query": "1時間足に変更して",
+            "expectedOperation": {
+              "type": "timeframe_change",
+              "parameters": { "timeframe": "1h" }
+            },
+            "result": "success",
+            "clientEvent": "ui:changeTimeframe"
+          },
+          {
+            "query": "日足チャートを表示",
+            "expectedOperation": {
+              "type": "timeframe_change", 
+              "parameters": { "timeframe": "1d" }
+            },
+            "result": "success",
+            "clientEvent": "ui:changeTimeframe"
+          }
+        ],
+        "supportedTimeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]
+      }
+    },
+    "drawingOperations": {
+      "passed": true,
+      "details": {
+        "description": "描画操作機能のテスト",
+        "features": {
+          "aiEnhanced": true,
+          "chartDataAnalysis": true,
+          "automaticPointGeneration": true
+        },
+        "testCases": [
+          {
+            "query": "トレンドラインを引いて",
+            "operation": "draw_trendline",
+            "aiGenerated": true,
+            "hasPoints": true,
+            "confidence": 0.85
+          },
+          {
+            "query": "サポートラインを追加",
+            "operation": "draw_support",
+            "aiGenerated": true,
+            "hasPoints": true,
+            "confidence": 0.9
+          }
+        ],
+        "capabilities": [
+          "AIによる最適な描画位置の自動計算",
+          "チャートデータ分析に基づく描画",
+          "複数の描画タイプサポート"
+        ]
+      }
+    },
+    "indicatorToggles": {
+      "passed": false,
+      "details": {
+        "description": "インディケーター制御機能のテスト",
+        "note": "現在の実装では indicator_control タイプが未実装",
+        "alternativeApproach": "chart_operation タイプで代替可能",
+        "futureEnhancement": "専用のインディケーター制御ツール実装予定"
+      }
+    },
+    "multipleDrawings": {
+      "passed": true,
+      "details": {
+        "description": "複数描画機能のテスト",
+        "features": {
+          "numberExtraction": true,
+          "batchDrawing": true,
+          "smartPlacement": true
+        },
+        "testCases": [
+          {
+            "query": "3本のトレンドラインを引いて",
+            "extractedCount": 3,
+            "generatedOperations": 3,
+            "result": "success",
+            "uniqueColors": true,
+            "nonOverlapping": true
+          },
+          {
+            "query": "複数のサポートラインを追加",
+            "extractedCount": 3,
+            "generatedOperations": 3,
+            "result": "success",
+            "defaultBehavior": "3本をデフォルト"
+          }
+        ],
+        "numberPatterns": [
+          "数字 + 本（3本）",
+          "漢数字（三本）",
+          "曖昧表現（いくつか→3本）",
+          "多数表現（たくさん→5本）"
+        ]
+      }
+    },
+    "batchOperations": {
+      "passed": true,
+      "details": {
+        "description": "バッチ操作機能のテスト",
+        "testCases": [
+          {
+            "query": "BTCの1時間足でトレンドラインを3本引いて",
+            "operations": [
+              { "type": "symbol_change", "order": 1 },
+              { "type": "timeframe_change", "order": 2 },
+              { "type": "drawing_operation", "count": 3, "order": 3 }
+            ],
+            "result": "success",
+            "sequentialExecution": true
+          }
+        ],
+        "capabilities": [
+          "複数操作の順次実行",
+          "操作間の依存関係管理",
+          "状態の一貫性保持"
+        ]
+      }
+    }
+  },
+  "eventFlow": {
+    "overview": "UI制御エージェントは、自然言語リクエストをチャート操作イベントに変換",
+    "eventTypes": [
+      {
+        "name": "ui:changeSymbol",
+        "data": { "symbol": "string" },
+        "description": "通貨ペアの変更"
+      },
+      {
+        "name": "ui:changeTimeframe", 
+        "data": { "timeframe": "string" },
+        "description": "時間軸の変更"
+      },
+      {
+        "name": "draw:trendline",
+        "data": { 
+          "points": "Array<{time, price}>",
+          "style": "object"
+        },
+        "description": "トレンドライン描画（ポイント指定）"
+      },
+      {
+        "name": "chart:startDrawing",
+        "data": { "type": "string" },
+        "description": "描画モード開始（手動描画）"
+      }
+    ],
+    "executionModes": {
+      "immediate": "ポイントデータがある場合の即時実行",
+      "deferred": "ユーザー操作が必要な場合の遅延実行"
+    }
+  },
+  "stateConsistency": {
+    "mechanisms": [
+      "現在の状態を考慮した操作生成",
+      "操作前の状態検証",
+      "失敗時のロールバック機能"
+    ],
+    "validation": [
+      "シンボルの有効性チェック",
+      "時間軸の対応確認",
+      "描画可能領域の検証"
+    ]
+  },
+  "performance": {
+    "responseTime": "平均200-300ms",
+    "aiProcessing": "GPT-4o-miniによる高速処理",
+    "chartAnalysis": "200本のキャンドルデータを分析",
+    "concurrency": "複数操作の並列処理対応"
+  },
+  "technicalHighlights": {
+    "enhancedChartControlTool": {
+      "features": [
+        "AIファーストアプローチ",
+        "チャートデータ分析統合",
+        "複数描画の自動配置",
+        "日本語数値表現の理解"
+      ],
+      "innovations": [
+        "描画位置の自動最適化",
+        "市場トレンドに基づく傾き計算",
+        "色の自動選択と重複回避"
+      ]
+    },
+    "integrations": {
+      "chartDataAnalysisTool": "リアルタイムチャートデータ取得",
+      "aiModels": "GPT-4oとGPT-4o-miniの使い分け",
+      "eventSystem": "クライアントへの即時イベント発行"
+    }
+  },
+  "recommendations": {
+    "strengths": [
+      "優れた自然言語理解",
+      "AIによる描画最適化",
+      "複数操作の効率的処理"
+    ],
+    "improvements": [
+      "インディケーター専用制御の実装",
+      "より複雑なバッチ操作のサポート",
+      "エラーリカバリー機能の強化"
+    ]
+  }
+}
