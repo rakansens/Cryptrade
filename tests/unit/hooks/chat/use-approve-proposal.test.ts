@@ -2,23 +2,23 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { useApproveProposal } from '@/hooks/chat/use-approve-proposal';
-import { useAnalysisActions } from '@/store/analysis-history.store';
-import { useChat } from '@/store/chat.store';
-import { useAddApprovedDrawing } from '@/store/proposal-approval.store';
-import { useUIEventPublisher } from '@/store/ui-event.store';
-import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
-import { logger } from '@/lib/utils/logger';
-import { DrawingProposalGroup } from '@/types/proposals';
-import { ProposalStatus, ProposalType } from '@/types/enums';
+import { .* } from '../../../../hooks/chat/use-approve-proposal';
+import { .* } from '../../../store/analysis-history.store';
+import { .* } from '../../../store/chat.store';
+import { .* } from '../../../store/proposal-approval.store';
+import { .* } from '../../../store/ui-event.store';
+import { .* } from '../../../../lib/notifications/toast';
+import { .* } from '../../../../lib/utils/logger';
+import { .* } from '../../../types/proposals';
+import { .* } from '../../../types/enums';
 
 // Mock dependencies
-jest.mock('@/store/analysis-history.store');
-jest.mock('@/store/chat.store');
-jest.mock('@/store/proposal-approval.store');
-jest.mock('@/store/ui-event.store');
-jest.mock('@/lib/notifications/toast');
-jest.mock('@/lib/utils/logger');
+jest.mock('../../../../store/analysis-history.store');
+jest.mock('../../../../store/chat.store');
+jest.mock('../../../../store/proposal-approval.store');
+jest.mock('../../../../store/ui-event.store');
+jest.mock('../../../../lib/notifications/toast');
+jest.mock('../../../../lib/utils/logger');
 
 // Mock window.dispatchEvent
 const mockDispatchEvent = jest.fn();

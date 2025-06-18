@@ -1,5 +1,12 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import { act, renderHook } from '@testing-library/react';
 import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
+
+// Import JSDOM setup for this test
+require('@/tests/setup/jsdom-environment');
 
 // Mock the useUIEventStream hook
 const mockPublish = jest.fn();

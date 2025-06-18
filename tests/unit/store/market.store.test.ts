@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+/**
+ * @jest-environment jsdom
+ */
+
 import { act, renderHook } from '@testing-library/react';
 import { useMarketStore, useMarketBatching, useMarketPriceActions } from '@/store/market.store';
 import type { BinanceTradeMessage } from '@/types/market';
+
+// Import JSDOM setup for this test
+require('@/tests/setup/jsdom-environment.js');
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
