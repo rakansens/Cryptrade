@@ -7,10 +7,8 @@
 
 import { logger } from '@/lib/utils/logger';
 import { generateCorrelationId } from '@/types/agent-payload';
-import { traceManager } from '@/lib/monitoring/trace';
 import { analyzeIntent } from '../utils/intent';
 import { agentSelectionTool } from '../tools/agent-selection.tool';
-import { memoryRecallTool } from '../tools/memory-recall.tool';
 import { marketSnapshotTool } from '../tools/market-snapshot.tool';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/store/enhanced-conversation-memory.store';
@@ -32,25 +30,7 @@ const DEFAULT_PARALLEL_CONFIG: ParallelConfig = {
   enablePreloading: true,
 };
 
-// Tool execution result
-interface ToolExecutionResult {
-  toolName: string;
-  result: any;
-  duration: number;
-  error?: Error;
-}
 
-// Parallel operation group
-interface ParallelOperationGroup {
-  operations: Array<{
-    id: string;
-    type: 'tool' | 'agent' | 'analysis';
-    name: string;
-    execute: () => Promise<any>;
-    dependencies?: string[];
-    optional?: boolean;
-  }>;
-}
 
 /**
  * Enhanced orchestrator with parallel processing capabilities
@@ -68,7 +48,7 @@ export class ParallelOrchestrator {
   async execute(
     userQuery: string,
     sessionId?: string,
-    runtimeContext?: OrchestratorRuntimeContext
+    _runtimeContext?: OrchestratorRuntimeContext
   ): Promise<OrchestratorExecutionResponse> {
     const startTime = Date.now();
     const correlationId = generateCorrelationId();
@@ -158,7 +138,7 @@ export class ParallelOrchestrator {
    */
   private async initializeSession(
     sessionId?: string,
-    correlationId?: string
+    _correlationId?: string
   ): Promise<{ sessionId: string; duration: number }> {
     const start = Date.now();
     const memoryStore = useEnhancedConversationMemory.getState();
@@ -213,7 +193,7 @@ export class ParallelOrchestrator {
    * Gather context data in parallel
    */
   private async gatherContextParallel(
-    userQuery: string,
+    _userQuery: string,
     analysis: IntentAnalysisResult,
     sessionId: string,
     correlationId: string
@@ -287,7 +267,7 @@ export class ParallelOrchestrator {
     const context: any = {};
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
-        const opName = operations[index].name;
+        const opName = operations[index]?.name;
         if (opName === 'memoryRecall') {
           context.memoryContext = result.value;
         } else if (opName === 'marketSnapshot') {
@@ -481,7 +461,7 @@ export class ParallelOrchestrator {
     // Log results
     results.forEach((result, index) => {
       const op = operations[index];
-      if (result.status === 'rejected' && !op.optional) {
+      if (result.status === 'rejected' && op && !op.optional) {
         logger.error('[ParallelOrchestrator] Required operation failed', {
           operation: op.name,
           error: result.reason,
@@ -568,7 +548,7 @@ export class ParallelOrchestrator {
   ): any {
     const successfulResults: any[] = [];
     const responses: string[] = [];
-    let proposalGroup = null;
+    let proposalGroup: any = null;
     const toolResults: any[] = [];
     
     results.forEach((result, index) => {
@@ -615,7 +595,7 @@ export class ParallelOrchestrator {
     }
     
     if (responses.length === 1) {
-      return responses[0];
+      return responses[0] || '';
     }
     
     // Combine multiple responses intelligently

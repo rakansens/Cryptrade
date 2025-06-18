@@ -2,6 +2,7 @@
 
 import { z, ZodIssue } from 'zod';
 
+
 // =============================================================================
 // ZOD SCHEMAS - Pattern recognition types
 // =============================================================================
@@ -85,12 +86,21 @@ export const PatternAnalysisSchema = z.object({
   trading_implication: z.enum(['bullish', 'bearish', 'neutral']),
 });
 
+// Multi-timeframe options
+export const MultiTimeframeOptionsSchema = z.object({
+  currentInterval: z.string(),
+  getHigherTimeframeData: z.function()
+    .args(z.string(), z.string())
+    .returns(z.promise(z.any())), // z.array(PriceDataSchema) would be ideal but causes circular dependency
+});
+
 // Pattern detection parameters
 export const PatternDetectionParamsSchema = z.object({
   lookbackPeriod: z.number().int().positive().default(100),
   minConfidence: z.number().min(0).max(1).default(0.7),
   patternTypes: z.array(PatternTypeSchema).optional(),
   includePartialPatterns: z.boolean().default(false),
+  multiTimeframeOptions: MultiTimeframeOptionsSchema.optional(),
 });
 
 // =============================================================================

@@ -12,7 +12,7 @@ const ALGORITHM = 'AES-GCM';
 const KEY_LENGTH = 256;
 const IV_LENGTH = 12; // GCM recommended IV length
 const SALT_LENGTH = 32;
-const TAG_LENGTH = 16;
+
 const ITERATIONS = 100000;
 
 export interface EncryptedData {
