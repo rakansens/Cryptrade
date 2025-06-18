@@ -1,0 +1,145 @@
+{
+  "timestamp": "2025-06-17T09:42:15.153Z",
+  "formatTests": {
+    "total": 5,
+    "passed": 3,
+    "failed": 2,
+    "accuracy": "60.0%",
+    "results": [
+      {
+        "id": "format-001",
+        "query": "BTCの価格",
+        "response": "BTCの現在価格は $105,372.23 です。24時間変化率は +0.17% です。",
+        "valid": true,
+        "checks": {
+          "hasCurrency": true,
+          "hasPrice": true,
+          "hasChange": true,
+          "noTechnicalTerms": true,
+          "noYenConversion": true,
+          "properFormatting": true
+        }
+      },
+      {
+        "id": "format-002",
+        "query": "ETHいくら",
+        "response": "ETHの現在価格は $3,891.45 です。24時間変化率は -1.23% です。",
+        "valid": true,
+        "checks": {
+          "hasCurrency": true,
+          "hasPrice": true,
+          "hasChange": true,
+          "noTechnicalTerms": true,
+          "noYenConversion": true,
+          "properFormatting": true
+        }
+      },
+      {
+        "id": "format-003",
+        "query": "現在価格",
+        "response": "申し訳ございません。価格を確認する通貨を指定してください。BTCやETHなどの暗号通貨名を含めてお尋ねください。",
+        "valid": false,
+        "checks": {
+          "hasCurrency": false,
+          "hasPrice": false,
+          "hasChange": false,
+          "noTechnicalTerms": true,
+          "noYenConversion": true,
+          "properFormatting": false
+        }
+      },
+      {
+        "id": "format-004",
+        "query": "XYZの価格",
+        "response": "XYZUSDTの価格データは現在利用できません。主要な暗号通貨（BTC、ETH、SOL、XRP、BNB）についてお尋ねください。",
+        "valid": false,
+        "checks": {
+          "hasCurrency": false,
+          "hasPrice": false,
+          "hasChange": false,
+          "noTechnicalTerms": true,
+          "noYenConversion": true,
+          "properFormatting": false
+        }
+      },
+      {
+        "id": "format-005",
+        "query": "ソラナの現在値",
+        "response": "SOLの現在価格は $234.67 です。24時間変化率は +2.45% です。",
+        "valid": true,
+        "checks": {
+          "hasCurrency": true,
+          "hasPrice": true,
+          "hasChange": true,
+          "noTechnicalTerms": true,
+          "noYenConversion": true,
+          "properFormatting": true
+        }
+      }
+    ]
+  },
+  "accuracyTests": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "accuracy": "100.0%",
+    "results": [
+      {
+        "symbol": "BTCUSDT",
+        "query": "BTCの価格は？",
+        "passed": true,
+        "expectedPrice": 105372.23,
+        "extractedPrice": 105372.23,
+        "expectedChange": 0.17,
+        "extractedChange": 0.17,
+        "response": "BTCの現在価格は $105,372.23 です。24時間変化率は +0.17% です。"
+      },
+      {
+        "symbol": "ETHUSDT",
+        "query": "イーサリアムの値段",
+        "passed": true,
+        "expectedPrice": 3891.45,
+        "extractedPrice": 3891.45,
+        "expectedChange": -1.23,
+        "extractedChange": -1.23,
+        "response": "ETHの現在価格は $3,891.45 です。24時間変化率は -1.23% です。"
+      },
+      {
+        "symbol": "SOLUSDT",
+        "query": "SOL quote",
+        "passed": true,
+        "expectedPrice": 234.67,
+        "extractedPrice": 234.67,
+        "expectedChange": 2.45,
+        "extractedChange": 2.45,
+        "response": "SOLの現在価格は $234.67 です。24時間変化率は +2.45% です。"
+      },
+      {
+        "symbol": "XRPUSDT",
+        "query": "リップルの現在価格",
+        "passed": true,
+        "expectedPrice": 2.38,
+        "extractedPrice": 2.38,
+        "expectedChange": -0.89,
+        "extractedChange": -0.89,
+        "response": "XRPの現在価格は $2.38 です。24時間変化率は -0.89% です。"
+      },
+      {
+        "symbol": "BNBUSDT",
+        "query": "BNBいくら？",
+        "passed": true,
+        "expectedPrice": 687.92,
+        "extractedPrice": 687.92,
+        "expectedChange": 1.56,
+        "extractedChange": 1.56,
+        "response": "BNBの現在価格は $687.92 です。24時間変化率は +1.56% です。"
+      }
+    ]
+  },
+  "overallSummary": {
+    "totalTests": 10,
+    "totalPassed": 8,
+    "overallAccuracy": "80.0%"
+  },
+  "japaneseSummary": "価格照会エージェント検証完了。フォーマット検査60.0%、価格精度100.0%。全10件中8件成功。エラー処理要改善。"
+}

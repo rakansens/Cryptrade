@@ -1,259 +1,257 @@
-import { analyzeUserIntent as analyzeIntent } from '@/lib/mastra/agents/orchestrator.agent';
-// import type { IntentAnalysisResult } from '@/lib/mastra/agents/orchestrator.agent';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  orchestratorAgent,
+  executeImprovedOrchestrator,
+  analyzeUserIntent,
+  type IntentAnalysisResult,
+  type OrchestratorExecutionResponse,
+} from '@/lib/mastra/agents/orchestrator.agent';
+import { agentSelectionTool } from '@/lib/mastra/tools/agent-selection.tool';
+import { memoryRecallTool } from '@/lib/mastra/tools/memory-recall.tool';
+import { marketSnapshotTool } from '@/lib/mastra/tools/market-snapshot.tool';
+import { useEnhancedConversationMemory } from '@/lib/store/enhanced-conversation-memory.store';
+import { logger } from '@/lib/utils/logger';
 
-describe('Orchestrator Agent - Intent Analysis', () => {
-  describe('analyzeIntent function', () => {
-    describe('Greeting Detection', () => {
-      const greetingTests = [
-        { input: 'こんにちは', expected: 'greeting' },
-        { input: 'おはようございます', expected: 'greeting' },
-        { input: 'こんばんは', expected: 'greeting' },
-        { input: 'Hello', expected: 'greeting' },
-        { input: 'Hi there!', expected: 'greeting' },
-        { input: 'やあ！', expected: 'greeting' },
-      ];
+// Mock dependencies
+jest.mock('@/lib/mastra/tools/agent-selection.tool');
+jest.mock('@/lib/mastra/tools/memory-recall.tool');
+jest.mock('@/lib/mastra/tools/market-snapshot.tool');
+jest.mock('@/lib/store/enhanced-conversation-memory.store');
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/monitoring/trace', () => ({
+  traceManager: {
+    startTrace: jest.fn(),
+    endTrace: jest.fn(),
+  },
+}));
+jest.mock('@/lib/mastra/network/agent-registry', () => ({
+  registerAllAgents: jest.fn(),
+}));
+jest.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
+  parallelOrchestrator: {
+    execute: jest.fn().mockResolvedValue({
+      analysis: {
+        intent: 'trading_analysis',
+        confidence: 0.9,
+        reasoning: 'Complex query requiring parallel processing',
+        analysisDepth: 'comprehensive',
+      },
+      executionResult: {
+        response: 'Parallel processing completed',
+      },
+      executionTime: 1500,
+      success: true,
+    }),
+  },
+}));
 
-      test.each(greetingTests)('should detect greeting: "$input"', ({ input, expected }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe(expected);
-        expect(result.confidence).toBeGreaterThanOrEqual(0.9);
-        expect(result.conversationMode).toBe('friendly');
-      });
+describe('Orchestrator Agent', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Mock memory store
+    (useEnhancedConversationMemory.getState as jest.Mock).mockReturnValue({
+      currentSessionId: 'test-session-123',
+      addMessage: jest.fn().mockResolvedValue(undefined),
+      getSessionContext: jest.fn().mockReturnValue('Previous context'),
+      getMemoryStats: jest.fn().mockReturnValue({
+        totalMessages: 10,
+        processedMessages: 8,
+        estimatedTokens: 500,
+        processors: ['TokenLimiter', 'ToolCallFilter'],
+      }),
+      getRecentMessages: jest.fn().mockReturnValue([]),
+    });
+  });
+
+  describe('Intent Analysis', () => {
+    it('should analyze simple price inquiry correctly', () => {
+      const result = analyzeUserIntent('BTCの価格は？');
+      
+      expect(result.intent).toBe('price_inquiry');
+      expect(result.confidence).toBeGreaterThan(0.8);
+      expect(result.extractedSymbol).toBe('BTCUSDT');
+      expect(result.analysisDepth).toBe('basic');
     });
 
-    describe('Small Talk Detection', () => {
-      const smallTalkTests = [
-        { input: 'ありがとう', expected: 'small_talk' },
-        { input: '疲れたなあ', expected: 'small_talk' },
-        { input: '今日は暑いですね', expected: 'small_talk' },
-        { input: 'お疲れ様でした', expected: 'small_talk' },
-        { input: '元気ですか？', expected: 'small_talk' },
-      ];
-
-      test.each(smallTalkTests)('should detect small talk: "$input"', ({ input, expected }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe(expected);
-        expect(result.confidence).toBeGreaterThanOrEqual(0.8);
-      });
+    it('should analyze UI control intent with drawing commands', () => {
+      const result = analyzeUserIntent('BTCのチャートにトレンドラインを引いて');
+      
+      expect(result.intent).toBe('ui_control');
+      expect(result.confidence).toBeGreaterThan(0.8);
+      expect(result.extractedSymbol).toBe('BTCUSDT');
     });
 
-    describe('Market Chat Detection', () => {
-      const marketChatTests = [
-        { input: '最近の市場はどう？', expected: 'market_chat' },
-        { input: 'ビットコインの将来性について', expected: 'market_chat' },
-        { input: '暗号通貨って面白いよね', expected: 'market_chat' },
-        { input: '市場のトレンドはどうなってる？', expected: 'market_chat' },
-      ];
-
-      test.each(marketChatTests)('should detect market chat: "$input"', ({ input, expected }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe(expected);
-        expect(result.confidence).toBeGreaterThanOrEqual(0.7);
-        expect(result.conversationMode).toBe('casual');
-      });
+    it('should analyze trading analysis requests', () => {
+      const result = analyzeUserIntent('ETHの詳細な分析をお願いします');
+      
+      expect(result.intent).toBe('trading_analysis');
+      expect(result.confidence).toBeGreaterThan(0.8);
+      expect(result.extractedSymbol).toBe('ETHUSDT');
+      expect(result.analysisDepth).toBe('detailed');
     });
 
-    describe('Price Inquiry Detection', () => {
-      const priceTests = [
-        { input: 'BTCの価格は？', symbol: 'BTC' },
-        { input: 'ビットコインはいくら？', symbol: 'BTC' },
-        { input: 'ETHの現在価格を教えて', symbol: 'ETH' },
-        { input: 'イーサリアムの値段', symbol: 'ETH' },
-        { input: 'リップルの価格を知りたい', symbol: 'XRP' },
-      ];
-
-      test.each(priceTests)('should detect price inquiry: "$input"', ({ input, symbol }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe('price_inquiry');
-        expect(result.confidence).toBeGreaterThanOrEqual(0.8);
-        expect(result.extractedSymbol).toBe(symbol);
-      });
+    it('should handle proposal requests correctly', () => {
+      const result = analyzeUserIntent('BTCのエントリーポイントを提案して');
+      
+      expect(result.intent).toBe('proposal_request');
+      expect(result.confidence).toBeGreaterThan(0.8);
+      expect(result.isProposalMode).toBe(true);
+      expect(result.proposalType).toBe('entry');
     });
 
-    describe('UI Control Detection', () => {
-      const uiControlTests = [
-        { input: 'BTCのチャートを表示', action: 'display_chart' },
-        { input: 'ビットコインに切り替えて', action: 'switch_symbol' },
-        { input: 'トレンドラインを描いて', action: 'draw_line' },
-        { input: '15分足に変更', action: 'change_timeframe' },
-        { input: 'インジケーターを追加', action: 'add_indicator' },
-      ];
+    it('should handle conversational queries', () => {
+      const result = analyzeUserIntent('こんにちは、調子はどう？');
+      
+      expect(result.intent).toBe('greeting');
+      expect(result.confidence).toBeGreaterThan(0.7);
+      expect(result.conversationMode).toBeDefined();
+    });
+  });
 
-      test.each(uiControlTests)('should detect UI control: "$input"', ({ input }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe('ui_control');
-        expect(result.confidence).toBeGreaterThanOrEqual(0.8);
+  describe('Orchestrator Execution', () => {
+    it('should execute simple price inquiry successfully', async () => {
+      (agentSelectionTool.execute as jest.Mock).mockResolvedValue({
+        executionResult: {
+          response: 'BTCの現在価格は $45,000 です。',
+          toolResults: [{ toolName: 'marketDataTool', result: { price: 45000 } }],
+        },
       });
+
+      const result = await executeImprovedOrchestrator('BTCの価格は？', 'test-session');
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('price_inquiry');
+      expect(result.executionResult?.response).toContain('45,000');
+      expect(result.executionTime).toBeGreaterThan(0);
     });
 
-    describe('Trading Analysis Detection', () => {
-      const analysisTests = [
-        { input: 'BTCの技術分析をして', depth: 'comprehensive' },
-        { input: 'サポートとレジスタンスを分析', depth: 'detailed' },
-        { input: 'エントリーポイントを教えて', depth: 'detailed' },
-        { input: 'RSIとMACDの状況は？', depth: 'detailed' },
-      ];
-
-      test.each(analysisTests)('should detect trading analysis: "$input"', ({ input, depth }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe('trading_analysis');
-        expect(result.confidence).toBeGreaterThanOrEqual(0.8);
-        expect(result.analysisDepth).toBe(depth);
-      });
+    it('should handle complex queries with parallel processing', async () => {
+      const complexQuery = 'BTCとETHの価格を比較して、どちらが投資に適しているか詳細な分析を提供してください。また、チャートにトレンドラインも表示してください。';
+      
+      const result = await executeImprovedOrchestrator(complexQuery, 'test-session');
+      
+      expect(result.success).toBe(true);
+      expect(result.executionResult?.response).toContain('Parallel processing completed');
+      expect(result.executionTime).toBeLessThan(2000); // Should be optimized
     });
 
-    describe('Proposal Request Detection', () => {
-      const proposalTests = [
-        { input: 'エントリー提案をして', proposalType: 'all' },
-        { input: 'トレンドラインベースで提案', proposalType: 'trendline' },
-        { input: 'サポートラインでエントリー提案', proposalType: 'support-resistance' },
-        { input: 'パターン分析で提案して', proposalType: 'pattern' },
-      ];
-
-      test.each(proposalTests)('should detect proposal request: "$input"', ({ input, proposalType }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe('proposal_request');
-        expect(result.confidence).toBeGreaterThanOrEqual(0.8);
-        expect(result.isProposalMode).toBe(true);
-        expect(result.proposalType).toBe(proposalType);
-      });
+    it('should handle conversational queries directly', async () => {
+      const result = await executeImprovedOrchestrator('こんにちは！', 'test-session');
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('greeting');
+      expect(result.executionResult).toBeDefined();
+      // Should not call agent selection for greetings
+      expect(agentSelectionTool.execute).not.toHaveBeenCalled();
     });
 
-    describe('Help Request Detection', () => {
-      const helpTests = [
-        { input: '使い方を教えて', expected: 'help_request' },
-        { input: 'ヘルプ', expected: 'help_request' },
-        { input: 'どうすればいい？', expected: 'help_request' },
-        { input: '機能について教えて', expected: 'help_request' },
-      ];
-
-      test.each(helpTests)('should detect help request: "$input"', ({ input, expected }) => {
-        const result = analyzeIntent(input);
-        expect(result.intent).toBe(expected);
-        expect(result.confidence).toBeGreaterThanOrEqual(0.7);
-      });
+    it('should handle errors gracefully with fallback', async () => {
+      (agentSelectionTool.execute as jest.Mock).mockRejectedValue(new Error('Agent error'));
+      
+      const result = await executeImprovedOrchestrator('BTCの分析をして', 'test-session');
+      
+      expect(result.success).toBe(true);
+      expect(result.analysis.intent).toBe('trading_analysis');
+      expect(result.executionResult?.response).toBeDefined();
+      expect(result.executionResult?.metadata?.processedBy).toContain('fallback');
     });
 
-    describe('Ambiguous Cases', () => {
-      test('should handle ambiguous "BTC" input', () => {
-        const result = analyzeIntent('BTC');
-        // Could be price inquiry or UI control
-        expect(['price_inquiry', 'ui_control']).toContain(result.intent);
-        expect(result.confidence).toBeGreaterThanOrEqual(0.5);
-        expect(result.extractedSymbol).toBe('BTC');
-      });
+    it('should use context from memory for better intent detection', async () => {
+      const memoryStore = useEnhancedConversationMemory.getState();
+      (memoryStore.getRecentMessages as jest.Mock).mockReturnValue([
+        { content: 'BTCの価格は？', role: 'user' },
+        { content: 'BTCは$45,000です', role: 'assistant' },
+      ]);
+      
+      const result = await executeImprovedOrchestrator('それについてもっと詳しく', 'test-session');
+      
+      expect(result.analysis.intent).toBe('price_inquiry');
+      expect(result.analysis.extractedSymbol).toBe('BTCUSDT');
+      expect(result.analysis.reasoning).toContain('コンテキスト調整済み');
+    });
+  });
 
-      test('should default to conversational for unclear input', () => {
-        const result = analyzeIntent('なんか変だな');
-        expect(result.intent).toBe('conversational');
-        expect(result.confidence).toBeLessThan(0.7);
-      });
+  describe('Dynamic Configuration', () => {
+    it('should select appropriate model based on context', () => {
+      const context = {
+        queryComplexity: 'complex',
+        userTier: 'premium',
+        isProposalMode: true,
+      };
+      
+      const model = orchestratorAgent.model(context);
+      expect(model).toBeDefined();
+      // Model selection logic should pick higher performance model
     });
 
-    describe('Symbol Extraction', () => {
-      const symbolTests = [
-        { input: 'BTCについて', symbol: 'BTC' },
-        { input: 'ビットコインの話', symbol: 'BTC' },
-        { input: 'ETHとBTCの比較', symbol: 'ETH' }, // First symbol
-        { input: 'イーサリアムがいい', symbol: 'ETH' },
-        { input: 'リップル（XRP）', symbol: 'XRP' },
-      ];
+    it('should generate context-aware instructions', () => {
+      const context = {
+        userLevel: 'beginner',
+        marketStatus: 'closed',
+        language: 'ja',
+      };
+      
+      const instructions = orchestratorAgent.instructions(context);
+      expect(instructions).toContain('初心者向け特別指示');
+      expect(instructions).toContain('市場クローズ時の特別指示');
+    });
+  });
 
-      test.each(symbolTests)('should extract symbol from: "$input"', ({ input, symbol }) => {
-        const result = analyzeIntent(input);
-        expect(result.extractedSymbol).toBe(symbol);
-      });
+  describe('Memory Integration', () => {
+    it('should add messages to memory store', async () => {
+      const memoryStore = useEnhancedConversationMemory.getState();
+      
+      await executeImprovedOrchestrator('BTCの価格は？', 'test-session');
+      
+      expect(memoryStore.addMessage).toHaveBeenCalledTimes(2); // User + Assistant
+      expect(memoryStore.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'user',
+          content: 'BTCの価格は？',
+        })
+      );
     });
 
-    describe('Confidence Levels', () => {
-      test('should have high confidence for clear intents', () => {
-        const clearIntents = [
-          'こんにちは',
-          'BTCの価格は？',
-          'チャートを表示',
-          'エントリー提案して',
-        ];
+    it('should extract metadata for memory storage', async () => {
+      const memoryStore = useEnhancedConversationMemory.getState();
+      
+      await executeImprovedOrchestrator('BTCとETHの価格を分析して', 'test-session');
+      
+      expect(memoryStore.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            symbols: expect.arrayContaining(['BTC', 'ETH']),
+            topics: expect.arrayContaining(['price', 'analysis']),
+          }),
+        })
+      );
+    });
+  });
 
-        clearIntents.forEach(input => {
-          const result = analyzeIntent(input);
-          expect(result.confidence).toBeGreaterThanOrEqual(0.8);
-        });
-      });
-
-      test('should have lower confidence for ambiguous intents', () => {
-        const ambiguousIntents = [
-          'BTC',
-          'どう思う？',
-          'これは？',
-        ];
-
-        ambiguousIntents.forEach(input => {
-          const result = analyzeIntent(input);
-          expect(result.confidence).toBeLessThan(0.8);
-        });
-      });
+  describe('Error Handling', () => {
+    it('should handle complete orchestrator failure', async () => {
+      const memoryStore = useEnhancedConversationMemory.getState();
+      (memoryStore.addMessage as jest.Mock).mockRejectedValue(new Error('Memory error'));
+      
+      const result = await executeImprovedOrchestrator('test query', 'test-session');
+      
+      expect(result.success).toBe(false);
+      expect(result.analysis.intent).toBe('conversational');
+      expect(result.analysis.confidence).toBe(0.5);
     });
 
-    describe('Analysis Depth', () => {
-      test('should assign appropriate analysis depth', () => {
-        const depthTests = [
-          { input: '価格は？', depth: 'basic' },
-          { input: 'RSIを見て', depth: 'detailed' },
-          { input: '詳細な技術分析をして', depth: 'comprehensive' },
-          { input: '完全な市場分析をお願い', depth: 'comprehensive' },
-        ];
-
-        depthTests.forEach(({ input, depth }) => {
-          const result = analyzeIntent(input);
-          if (result.intent === 'trading_analysis') {
-            expect(result.analysisDepth).toBe(depth);
-          }
-        });
-      });
-    });
-
-    describe('Emotional Tone Detection', () => {
-      const toneTests = [
-        { input: 'すごい！BTCが上がってる！', tone: 'excited' },
-        { input: '心配だな...下がってる', tone: 'concerned' },
-        { input: 'BTCの価格を教えて', tone: 'neutral' },
-        { input: 'いいね！利益が出た！', tone: 'positive' },
-      ];
-
-      test.each(toneTests)('should detect emotional tone: "$input"', ({ input, tone }) => {
-        const result = analyzeIntent(input);
-        expect(result.emotionalTone).toBe(tone);
-      });
-    });
-
-    describe('Edge Cases', () => {
-      test('should handle empty input', () => {
-        const result = analyzeIntent('');
-        expect(result.intent).toBe('conversational');
-        expect(result.confidence).toBeLessThan(0.5);
-      });
-
-      test('should handle very long input', () => {
-        const longInput = 'これは非常に長い入力で、' + 'いろいろなことを話している'.repeat(20);
-        const result = analyzeIntent(longInput);
-        expect(result).toBeDefined();
-        expect(result.intent).toBeDefined();
-      });
-
-      test('should handle special characters', () => {
-        const specialInputs = [
-          '!!!???',
-          '😊😊😊',
-          '@#$%^&*()',
-          '...',
-        ];
-
-        specialInputs.forEach(input => {
-          const result = analyzeIntent(input);
-          expect(result).toBeDefined();
-          expect(result.intent).toBe('conversational');
-        });
-      });
+    it('should generate appropriate fallback responses', async () => {
+      (agentSelectionTool.execute as jest.Mock).mockRejectedValue(new Error('Tool error'));
+      
+      const priceResult = await executeImprovedOrchestrator('BTCの価格は？', 'test-session');
+      expect(priceResult.executionResult?.response).toContain('価格データの取得に問題');
+      
+      const analysisResult = await executeImprovedOrchestrator('BTCを分析して', 'test-session');
+      expect(analysisResult.executionResult?.response).toContain('分析システム');
+      
+      const uiResult = await executeImprovedOrchestrator('チャートを表示', 'test-session');
+      expect(uiResult.executionResult?.response).toContain('UI操作');
     });
   });
 });

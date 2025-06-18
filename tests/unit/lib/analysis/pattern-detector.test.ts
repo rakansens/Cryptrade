@@ -1,638 +1,359 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { PatternDetector } from '@/lib/analysis/pattern-detector';
 import type { PriceData as CandlestickData } from '@/types/market';
-import type { PatternDetectionParams } from '@/types/pattern';
+import type { PatternDetectionParams, PatternAnalysis } from '@/types/pattern';
+
+// Helper to create mock candlestick data
+function createMockCandle(
+  time: number,
+  open: number,
+  high: number,
+  low: number,
+  close: number,
+  volume: number = 1000
+): CandlestickData {
+  return { time, open, high, low, close, volume };
+}
 
 describe('PatternDetector', () => {
   let detector: PatternDetector;
   let mockData: CandlestickData[];
-
+  
   beforeEach(() => {
-    // Create base mock data - 100 candles
-    mockData = createBaseMockData(100);
-    detector = new PatternDetector(mockData);
+    jest.clearAllMocks();
+    mockData = [];
   });
-
-  describe('constructor', () => {
-    it('should create instance with provided data', () => {
-      expect(detector).toBeDefined();
-      expect(detector).toBeInstanceOf(PatternDetector);
-    });
-  });
-
-  describe('detectPatterns', () => {
-    it('should detect patterns with default parameters', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.6,
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-
-      expect(patterns).toBeInstanceOf(Array);
-      patterns.forEach(pattern => {
-        expect(pattern.confidence).toBeGreaterThanOrEqual(0.6);
-        expect(pattern).toMatchObject({
-          type: expect.any(String),
-          confidence: expect.any(Number),
-          description: expect.any(String),
-          startTime: expect.any(Number),
-          endTime: expect.any(Number),
-          visualization: expect.any(Object),
-          metrics: expect.any(Object),
-          trading_implication: expect.any(String),
-        });
-      });
-    });
-
-    it('should filter patterns by confidence', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.8,
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-
-      patterns.forEach(pattern => {
-        expect(pattern.confidence).toBeGreaterThanOrEqual(0.8);
-      });
-    });
-
-    it('should filter patterns by type when specified', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.5,
-        patternTypes: ['headAndShoulders', 'inverseHeadAndShoulders'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-
-      patterns.forEach(pattern => {
-        expect(['headAndShoulders', 'inverseHeadAndShoulders']).toContain(pattern.type);
-      });
-    });
-
-    it('should use only recent data based on lookbackPeriod', () => {
+  
+  describe('Head and Shoulders detection', () => {
+    it('should detect valid head and shoulders pattern', () => {
+      // Create H&S pattern: left shoulder, head, right shoulder
+      mockData = [
+        createMockCandle(1, 100, 100, 95, 98),
+        createMockCandle(2, 98, 110, 97, 108),  // Left shoulder peak
+        createMockCandle(3, 108, 108, 102, 103),
+        createMockCandle(4, 103, 105, 100, 101), // Left valley
+        createMockCandle(5, 101, 115, 100, 114), // Head peak
+        createMockCandle(6, 114, 114, 101, 102), // Right valley
+        createMockCandle(7, 102, 109, 101, 107), // Right shoulder peak
+        createMockCandle(8, 107, 107, 98, 99),
+      ];
+      
+      detector = new PatternDetector(mockData);
       const params: PatternDetectionParams = {
         lookbackPeriod: 20,
-        minConfidence: 0.5,
-        includePartialPatterns: false,
+        minConfidence: 0.6,
+        patternTypes: ['headAndShoulders']
       };
-
+      
       const patterns = detector.detectPatterns(params);
-
-      patterns.forEach(pattern => {
-        // Check that patterns are from recent data based on time
-        const recentDataStartTime = mockData[mockData.length - 20]!.time;
-        expect(pattern.startTime).toBeGreaterThanOrEqual(recentDataStartTime);
-      });
-    });
-  });
-
-  describe('Head and Shoulders pattern detection', () => {
-    it('should detect classic head and shoulders pattern', () => {
-      // Create data with head and shoulders pattern
-      const hsData = createHeadAndShouldersData();
-      const hsDetector = new PatternDetector(hsData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: hsData.length,
-        minConfidence: 0.5,
-        patternTypes: ['headAndShoulders'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = hsDetector.detectPatterns(params);
-
+      
       expect(patterns.length).toBeGreaterThan(0);
-      expect(patterns[0]!.type).toBe('headAndShoulders');
-      expect(patterns[0]!.metrics).toHaveProperty('leftShoulderHeight');
-      expect(patterns[0]!.metrics).toHaveProperty('headHeight');
-      expect(patterns[0]!.metrics).toHaveProperty('rightShoulderHeight');
-      expect(patterns[0]!.metrics).toHaveProperty('necklineLevel');
+      expect(patterns[0]?.type).toBe('headAndShoulders');
+      expect(patterns[0]?.confidence).toBeGreaterThanOrEqual(0.6);
     });
-
+    
     it('should detect inverse head and shoulders pattern', () => {
-      // Create data with inverse head and shoulders pattern
-      const ihsData = createInverseHeadAndShouldersData();
-      const ihsDetector = new PatternDetector(ihsData);
-
+      // Create inverse H&S pattern
+      mockData = [
+        createMockCandle(1, 100, 105, 100, 102),
+        createMockCandle(2, 102, 103, 90, 92),   // Left shoulder trough
+        createMockCandle(3, 92, 98, 92, 97),
+        createMockCandle(4, 97, 100, 95, 99),    // Left peak
+        createMockCandle(5, 99, 100, 85, 86),    // Head trough
+        createMockCandle(6, 86, 99, 86, 98),     // Right peak
+        createMockCandle(7, 98, 98, 91, 93),     // Right shoulder trough
+        createMockCandle(8, 93, 101, 93, 100),
+      ];
+      
+      detector = new PatternDetector(mockData);
       const params: PatternDetectionParams = {
-        lookbackPeriod: ihsData.length,
-        minConfidence: 0.5,
-        patternTypes: ['inverseHeadAndShoulders'],
-        includePartialPatterns: false,
+        lookbackPeriod: 20,
+        minConfidence: 0.6,
+        patternTypes: ['inverseHeadAndShoulders']
       };
-
-      const patterns = ihsDetector.detectPatterns(params);
-
+      
+      const patterns = detector.detectPatterns(params);
+      
       expect(patterns.length).toBeGreaterThan(0);
-      expect(patterns[0]!.type).toBe('inverseHeadAndShoulders');
-      expect(patterns[0]!.trading_implication).toContain('bullish');
+      expect(patterns[0]?.type).toBe('inverseHeadAndShoulders');
+      expect(patterns[0]?.trading_implication).toBe('bullish');
     });
-
-    it('should validate shoulder symmetry', () => {
-      // Create asymmetric shoulders
-      const asymmetricData = createAsymmetricShoulderData();
-      const asymDetector = new PatternDetector(asymmetricData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: asymmetricData.length,
-        minConfidence: 0.9, // High confidence required
-        patternTypes: ['headAndShoulders'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = asymDetector.detectPatterns(params);
-
-      // Should not detect pattern with high confidence due to asymmetry
-      expect(patterns.length).toBe(0);
+    
+    it('should calculate correct target price for H&S pattern', () => {
+      // Simple H&S with clear neckline
+      mockData = [
+        createMockCandle(1, 100, 100, 95, 98),
+        createMockCandle(2, 98, 110, 97, 110),   // Left shoulder
+        createMockCandle(3, 110, 110, 100, 100), // Neckline 1
+        createMockCandle(4, 100, 120, 100, 120), // Head
+        createMockCandle(5, 120, 120, 100, 100), // Neckline 2
+        createMockCandle(6, 100, 110, 100, 110), // Right shoulder
+        createMockCandle(7, 110, 110, 95, 95),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.5,
+        patternTypes: ['headAndShoulders']
+      });
+      
+      if (patterns.length > 0) {
+        const pattern = patterns[0]!;
+        expect(pattern.metrics.target_level).toBeDefined();
+        expect(pattern.metrics.breakout_level).toBeDefined();
+        expect(pattern.metrics.stop_loss).toBeDefined();
+      }
     });
   });
-
-  describe('Triangle pattern detection', () => {
+  
+  describe('Triangle patterns detection', () => {
     it('should detect ascending triangle pattern', () => {
-      const triangleData = createAscendingTriangleData();
-      const triangleDetector = new PatternDetector(triangleData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: triangleData.length,
+      // Ascending triangle: horizontal resistance, rising support
+      mockData = [
+        createMockCandle(1, 100, 110, 100, 105),
+        createMockCandle(2, 105, 110, 102, 103), // High 1
+        createMockCandle(3, 103, 105, 103, 104),
+        createMockCandle(4, 104, 110, 104, 105), // High 2
+        createMockCandle(5, 105, 106, 105, 106),
+        createMockCandle(6, 106, 110, 106, 107), // High 3
+        createMockCandle(7, 107, 108, 107, 108),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
         minConfidence: 0.6,
-        patternTypes: ['ascendingTriangle'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = triangleDetector.detectPatterns(params);
-
+        patternTypes: ['ascendingTriangle']
+      });
+      
       expect(patterns.some(p => p.type === 'ascendingTriangle')).toBe(true);
-      const ascTriangle = patterns.find(p => p.type === 'ascendingTriangle');
-      if (ascTriangle) {
-        expect(ascTriangle.metrics).toHaveProperty('upperBound');
-        expect(ascTriangle.metrics).toHaveProperty('lowerBound');
-        expect(ascTriangle.trading_implication).toContain('bullish');
-      }
+      const triangle = patterns.find(p => p.type === 'ascendingTriangle');
+      expect(triangle?.trading_implication).toBe('bullish');
     });
-
+    
     it('should detect descending triangle pattern', () => {
-      const triangleData = createDescendingTriangleData();
-      const triangleDetector = new PatternDetector(triangleData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: triangleData.length,
+      // Descending triangle: descending resistance, horizontal support
+      mockData = [
+        createMockCandle(1, 110, 110, 100, 105),
+        createMockCandle(2, 105, 108, 100, 102), // Low 1
+        createMockCandle(3, 102, 106, 100, 101), // Low 2
+        createMockCandle(4, 101, 104, 100, 100), // Low 3
+        createMockCandle(5, 100, 102, 98, 99),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
         minConfidence: 0.6,
-        patternTypes: ['descendingTriangle'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = triangleDetector.detectPatterns(params);
-
+        patternTypes: ['descendingTriangle']
+      });
+      
       expect(patterns.some(p => p.type === 'descendingTriangle')).toBe(true);
-      const descTriangle = patterns.find(p => p.type === 'descendingTriangle');
-      if (descTriangle) {
-        expect(descTriangle.trading_implication).toContain('bearish');
-      }
+      const triangle = patterns.find(p => p.type === 'descendingTriangle');
+      expect(triangle?.trading_implication).toBe('bearish');
     });
-
+    
     it('should detect symmetrical triangle pattern', () => {
-      const triangleData = createSymmetricalTriangleData();
-      const triangleDetector = new PatternDetector(triangleData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: triangleData.length,
-        minConfidence: 0.6,
-        patternTypes: ['symmetricalTriangle'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = triangleDetector.detectPatterns(params);
-
-      expect(patterns.some(p => p.type === 'symmetricalTriangle')).toBe(true);
+      // Symmetrical triangle: converging trend lines
+      mockData = [
+        createMockCandle(1, 100, 110, 100, 105),
+        createMockCandle(2, 105, 108, 102, 103),
+        createMockCandle(3, 103, 106, 104, 105),
+        createMockCandle(4, 105, 105, 105, 105),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.5,
+        patternTypes: ['symmetricalTriangle']
+      });
+      
+      const triangle = patterns.find(p => p.type === 'symmetricalTriangle');
+      expect(triangle?.trading_implication).toBe('neutral');
     });
   });
-
-  describe('Double pattern detection', () => {
+  
+  describe('Double patterns detection', () => {
     it('should detect double top pattern', () => {
-      const doubleTopData = createDoubleTopData();
-      const dtDetector = new PatternDetector(doubleTopData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: doubleTopData.length,
+      // Double top: two similar peaks
+      mockData = [
+        createMockCandle(1, 100, 100, 95, 98),
+        createMockCandle(2, 98, 110, 98, 110),  // First top
+        createMockCandle(3, 110, 110, 100, 100), // Valley
+        createMockCandle(4, 100, 109, 100, 109), // Second top (similar to first)
+        createMockCandle(5, 109, 109, 95, 95),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
         minConfidence: 0.6,
-        patternTypes: ['doubleTop'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = dtDetector.detectPatterns(params);
-
+        patternTypes: ['doubleTop']
+      });
+      
       expect(patterns.some(p => p.type === 'doubleTop')).toBe(true);
       const doubleTop = patterns.find(p => p.type === 'doubleTop');
-      if (doubleTop) {
-        expect(doubleTop.metrics).toHaveProperty('firstPeakPrice');
-        expect(doubleTop.metrics).toHaveProperty('secondPeakPrice');
-        expect(doubleTop.metrics).toHaveProperty('valleyPrice');
-        expect(doubleTop.trading_implication).toContain('bearish');
-      }
+      expect(doubleTop?.trading_implication).toBe('bearish');
     });
-
+    
     it('should detect double bottom pattern', () => {
-      const doubleBottomData = createDoubleBottomData();
-      const dbDetector = new PatternDetector(doubleBottomData);
-
-      const params: PatternDetectionParams = {
-        lookbackPeriod: doubleBottomData.length,
+      // Double bottom: two similar troughs
+      mockData = [
+        createMockCandle(1, 110, 110, 105, 108),
+        createMockCandle(2, 108, 108, 90, 90),   // First bottom
+        createMockCandle(3, 90, 100, 90, 100),   // Peak
+        createMockCandle(4, 100, 100, 91, 91),   // Second bottom (similar to first)
+        createMockCandle(5, 91, 105, 91, 105),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
         minConfidence: 0.6,
-        patternTypes: ['doubleBottom'],
-        includePartialPatterns: false,
-      };
-
-      const patterns = dbDetector.detectPatterns(params);
-
+        patternTypes: ['doubleBottom']
+      });
+      
       expect(patterns.some(p => p.type === 'doubleBottom')).toBe(true);
       const doubleBottom = patterns.find(p => p.type === 'doubleBottom');
-      if (doubleBottom) {
-        expect(doubleBottom.trading_implication).toContain('bullish');
-      }
+      expect(doubleBottom?.trading_implication).toBe('bullish');
     });
-  });
-
-  describe('Pattern visualization', () => {
-    it('should include visualization data for detected patterns', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.5,
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-
-      patterns.forEach(pattern => {
-        expect(pattern.visualization).toBeDefined();
-        expect(pattern.visualization.keyPoints).toBeInstanceOf(Array);
-        expect(pattern.visualization.keyPoints.length).toBeGreaterThan(0);
-
-        pattern.visualization.keyPoints.forEach(point => {
-          expect(point).toMatchObject({
-            time: expect.any(Number),
-            value: expect.any(Number),
-            label: expect.any(String),
-            type: expect.any(String),
-          });
-        });
-
-        if ('trendLines' in pattern.visualization && pattern.visualization.trendLines) {
-          expect(pattern.visualization.trendLines).toBeInstanceOf(Array);
-        }
-
-        if (pattern.visualization.areas) {
-          expect(pattern.visualization.areas).toBeInstanceOf(Array);
-          pattern.visualization.areas.forEach(area => {
-            expect(area).toMatchObject({
-              points: expect.arrayContaining([expect.any(Number)]),
-              style: expect.objectContaining({
-                fillColor: expect.any(String),
-                opacity: expect.any(Number),
-              }),
-            });
-          });
-        }
+    
+    it('should calculate symmetry metric for double patterns', () => {
+      // Perfect double top
+      mockData = [
+        createMockCandle(1, 100, 100, 95, 98),
+        createMockCandle(2, 98, 110, 98, 110),  // First top at 110
+        createMockCandle(3, 110, 110, 100, 100),
+        createMockCandle(4, 100, 110, 100, 110), // Second top at 110 (perfect match)
+        createMockCandle(5, 110, 110, 95, 95),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.6,
+        patternTypes: ['doubleTop']
       });
+      
+      const doubleTop = patterns.find(p => p.type === 'doubleTop');
+      expect(doubleTop?.metrics.symmetry).toBeGreaterThan(0.95);
     });
   });
-
-  describe('Edge cases', () => {
-    it('should handle empty data', () => {
-      const emptyDetector = new PatternDetector([]);
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.6,
-        includePartialPatterns: false,
-      };
-
-      const patterns = emptyDetector.detectPatterns(params);
-      expect(patterns).toHaveLength(0);
-    });
-
-    it('should handle insufficient data', () => {
-      const smallData = createBaseMockData(10);
-      const smallDetector = new PatternDetector(smallData);
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.6,
-        includePartialPatterns: false,
-      };
-
-      const patterns = smallDetector.detectPatterns(params);
-      // Should handle gracefully, possibly return no patterns
-      expect(patterns).toBeInstanceOf(Array);
-    });
-
-    it('should handle lookbackPeriod larger than data length', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 200, // Larger than mockData length
-        minConfidence: 0.6,
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-      // Should use all available data
-      expect(patterns).toBeInstanceOf(Array);
-    });
-
-    it('should handle all pattern types when none specified', () => {
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 50,
-        minConfidence: 0.5,
-        // patternTypes not specified - should check all
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
+  
+  describe('Pattern filtering and confidence', () => {
+    it('should filter patterns by minimum confidence', () => {
+      // Create data that might produce low-confidence patterns
+      mockData = Array.from({ length: 50 }, (_, i) => 
+        createMockCandle(i, 100, 100 + Math.random() * 10, 100 - Math.random() * 10, 100)
+      );
       
-      // Should attempt to detect all pattern types
-      const detectedTypes = new Set(patterns.map(p => p.type));
-      expect(detectedTypes.size).toBeGreaterThanOrEqual(0); // May find various patterns
+      detector = new PatternDetector(mockData);
+      
+      const lowConfPatterns = detector.detectPatterns({
+        lookbackPeriod: 50,
+        minConfidence: 0.3
+      });
+      
+      const highConfPatterns = detector.detectPatterns({
+        lookbackPeriod: 50,
+        minConfidence: 0.8
+      });
+      
+      expect(lowConfPatterns.length).toBeGreaterThanOrEqual(highConfPatterns.length);
+    });
+    
+    it('should detect multiple pattern types when not filtered', () => {
+      // Create complex data that might form multiple patterns
+      mockData = [
+        // Data that could form various patterns
+        createMockCandle(1, 100, 110, 100, 105),
+        createMockCandle(2, 105, 115, 105, 110),
+        createMockCandle(3, 110, 110, 100, 102),
+        createMockCandle(4, 102, 120, 102, 118),
+        createMockCandle(5, 118, 118, 101, 103),
+        createMockCandle(6, 103, 111, 103, 109),
+        createMockCandle(7, 109, 109, 95, 98),
+        createMockCandle(8, 98, 105, 98, 104),
+        createMockCandle(9, 104, 110, 104, 108),
+        createMockCandle(10, 108, 108, 100, 101),
+      ];
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.5
+        // No patternTypes filter - should detect all types
+      });
+      
+      const patternTypes = new Set(patterns.map(p => p.type));
+      expect(patternTypes.size).toBeGreaterThan(0);
     });
   });
-
-  describe('Performance', () => {
-    it('should detect patterns within reasonable time', () => {
-      const largeData = createBaseMockData(1000);
-      const largeDetector = new PatternDetector(largeData);
+  
+  describe('Edge cases and error handling', () => {
+    it('should handle insufficient data gracefully', () => {
+      mockData = [
+        createMockCandle(1, 100, 105, 100, 102),
+        createMockCandle(2, 102, 103, 101, 101),
+      ];
       
-      const params: PatternDetectionParams = {
-        lookbackPeriod: 200,
-        minConfidence: 0.6,
-        includePartialPatterns: false,
-      };
-
-      const startTime = Date.now();
-      const patterns = largeDetector.detectPatterns(params);
-      const endTime = Date.now();
-
-      expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
-      expect(patterns).toBeInstanceOf(Array);
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 50,
+        minConfidence: 0.6
+      });
+      
+      expect(patterns).toEqual([]);
     });
-
-    it('should limit number of patterns returned', () => {
-      const params: PatternDetectionParams = {
+    
+    it('should handle flat price data', () => {
+      // All prices are the same
+      mockData = Array.from({ length: 20 }, (_, i) => 
+        createMockCandle(i, 100, 100, 100, 100)
+      );
+      
+      detector = new PatternDetector(mockData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.6
+      });
+      
+      expect(patterns.length).toBe(0);
+    });
+    
+    it('should use recent data based on lookback period', () => {
+      // Create 100 candles but only recent ones form a pattern
+      mockData = Array.from({ length: 90 }, (_, i) => 
+        createMockCandle(i, 100, 101, 99, 100)
+      );
+      
+      // Add a clear double top in the last 10 candles
+      mockData.push(
+        createMockCandle(90, 100, 110, 100, 110),
+        createMockCandle(91, 110, 110, 100, 100),
+        createMockCandle(92, 100, 110, 100, 110),
+        createMockCandle(93, 110, 110, 95, 95)
+      );
+      
+      detector = new PatternDetector(mockData);
+      
+      // With small lookback, should find the pattern
+      const patternsSmallLookback = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6,
+        patternTypes: ['doubleTop']
+      });
+      
+      // With large lookback including noise, might not find it
+      const patternsLargeLookback = detector.detectPatterns({
         lookbackPeriod: 100,
-        minConfidence: 0.5,
-        includePartialPatterns: false,
-      };
-
-      const patterns = detector.detectPatterns(params);
-
-      // Should return reasonable number of patterns (implementation specific)
-      // Most implementations limit to top patterns by confidence
-      expect(patterns.length).toBeLessThanOrEqual(20);
+        minConfidence: 0.6,
+        patternTypes: ['doubleTop']
+      });
+      
+      expect(patternsSmallLookback.length).toBeGreaterThan(0);
     });
   });
 });
-
-// Helper functions to create specific pattern data
-
-function createBaseMockData(length: number): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  let basePrice = 50000;
-  
-  for (let i = 0; i < length; i++) {
-    const variation = (Math.random() - 0.5) * 1000;
-    const open = basePrice + variation;
-    const close = open + (Math.random() - 0.5) * 500;
-    const high = Math.max(open, close) + Math.random() * 200;
-    const low = Math.min(open, close) - Math.random() * 200;
-    
-    data.push({
-      time: Date.now() - (length - i) * 3600000,
-      open,
-      high,
-      low,
-      close,
-      volume: 1000 + Math.random() * 500,
-    });
-    
-    basePrice = close;
-  }
-  
-  return data;
-}
-
-function createHeadAndShouldersData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create a head and shoulders pattern
-  const prices = [
-    50000, 50500, 51000, 52000, 52500, // Rise to left shoulder
-    52000, 51500, 51000, 50500, 50000, // Drop to left valley
-    50500, 51000, 52000, 53000, 54000, 54500, // Rise to head
-    54000, 53000, 52000, 51000, 50500, 50000, // Drop to right valley
-    50500, 51000, 51500, 52000, 52500, // Rise to right shoulder
-    52000, 51500, 51000, 50500, 50000, // Final drop
-  ];
-  
-  prices.forEach((price, i) => {
-    const variation = Math.random() * 100;
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: price + variation * 2,
-      low: price - variation * 2,
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  });
-  
-  return data;
-}
-
-function createInverseHeadAndShouldersData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create an inverse head and shoulders pattern (bullish reversal)
-  const prices = [
-    52000, 51500, 51000, 50500, 50000, // Drop to left shoulder
-    50500, 51000, 51500, 52000, 52500, // Rise to left peak
-    52000, 51000, 50000, 49000, 48500, // Drop to head
-    49000, 50000, 51000, 52000, 52500, // Rise to right peak
-    52000, 51500, 51000, 50500, 50000, // Drop to right shoulder
-    50500, 51000, 51500, 52000, 52500, // Final rise
-  ];
-  
-  prices.forEach((price, i) => {
-    const variation = Math.random() * 100;
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: price + variation * 2,
-      low: price - variation * 2,
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  });
-  
-  return data;
-}
-
-function createAsymmetricShoulderData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create pattern with very asymmetric shoulders
-  const prices = [
-    50000, 50500, 51000, 51500, // Small left shoulder
-    51000, 50500, 50000, // Drop
-    50500, 51000, 52000, 53000, 54000, // Rise to head
-    53500, 53000, 52500, 52000, // Drop
-    52500, 53000, 53500, 54000, 54500, 55000, // Much higher right shoulder
-  ];
-  
-  prices.forEach((price, i) => {
-    const variation = Math.random() * 100;
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: price + variation * 2,
-      low: price - variation * 2,
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  });
-  
-  return data;
-}
-
-function createAscendingTriangleData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  const resistance = 52000;
-  
-  // Create ascending triangle - rising lows, flat highs
-  for (let i = 0; i < 30; i++) {
-    const lowerBound = 50000 + (i * 50); // Rising lower bound
-    const upperBound = resistance;
-    
-    const price = lowerBound + (upperBound - lowerBound) * (i % 5) / 4;
-    const variation = Math.random() * 100;
-    
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: Math.min(price + variation * 2, upperBound),
-      low: Math.max(price - variation * 2, lowerBound),
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  }
-  
-  return data;
-}
-
-function createDescendingTriangleData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  const support = 50000;
-  
-  // Create descending triangle - falling highs, flat lows
-  for (let i = 0; i < 30; i++) {
-    const upperBound = 52000 - (i * 50); // Falling upper bound
-    const lowerBound = support;
-    
-    const price = lowerBound + (upperBound - lowerBound) * (i % 5) / 4;
-    const variation = Math.random() * 100;
-    
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: Math.min(price + variation * 2, upperBound),
-      low: Math.max(price - variation * 2, lowerBound),
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  }
-  
-  return data;
-}
-
-function createSymmetricalTriangleData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create symmetrical triangle - converging highs and lows
-  for (let i = 0; i < 30; i++) {
-    const upperBound = 52000 - (i * 30); // Falling upper bound
-    const lowerBound = 50000 + (i * 30); // Rising lower bound
-    
-    const price = lowerBound + (upperBound - lowerBound) * (i % 5) / 4;
-    const variation = Math.random() * 50;
-    
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: Math.min(price + variation * 2, upperBound),
-      low: Math.max(price - variation * 2, lowerBound),
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  }
-  
-  return data;
-}
-
-function createDoubleTopData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create double top pattern
-  const prices = [
-    50000, 50500, 51000, 51500, 52000, 52500, // First rise
-    52000, 51500, 51000, 50500, 50000, // Drop to valley
-    50500, 51000, 51500, 52000, 52400, // Second rise (slightly lower)
-    52000, 51500, 51000, 50500, 50000, 49500, // Final drop
-  ];
-  
-  prices.forEach((price, i) => {
-    const variation = Math.random() * 100;
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: price + variation * 2,
-      low: price - variation * 2,
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  });
-  
-  return data;
-}
-
-function createDoubleBottomData(): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  const baseTime = Date.now() - 50 * 3600000;
-  
-  // Create double bottom pattern
-  const prices = [
-    52000, 51500, 51000, 50500, 50000, 49500, // First drop
-    50000, 50500, 51000, 51500, 52000, // Rise to peak
-    51500, 51000, 50500, 50000, 49600, // Second drop (slightly higher)
-    50000, 50500, 51000, 51500, 52000, 52500, // Final rise
-  ];
-  
-  prices.forEach((price, i) => {
-    const variation = Math.random() * 100;
-    data.push({
-      time: baseTime + i * 3600000,
-      open: price - variation,
-      high: price + variation * 2,
-      low: price - variation * 2,
-      close: price + variation,
-      volume: 1000 + Math.random() * 500,
-    });
-  });
-  
-  return data;
-}

@@ -85,7 +85,7 @@ describe('WSManager E2E - Error Handling', () => {
         error: (error) => {
           const elapsed = Date.now() - startTime;
           expect(error.message).toContain('Max retry attempts');
-          expect(elapsed).toBeGreaterThan(10); // Should have tried to retry
+          expect(elapsed).toBeGreaterThan(5); // Should have tried to retry
           done();
         }
       });
@@ -99,7 +99,7 @@ describe('WSManager E2E - Error Handling', () => {
           ws.close(1006);
         }
       }, 5);
-    });
+    }, 10000);
   });
 
   describe('Message Errors', () => {

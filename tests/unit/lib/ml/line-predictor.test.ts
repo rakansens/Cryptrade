@@ -1,23 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import * as tf from '@tensorflow/tfjs';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { LineQualityPredictor } from '@/lib/ml/line-predictor';
-import type { LineFeatures } from '@/lib/ml/line-validation-types';
+import * as tf from '@tensorflow/tfjs';
+import { logger } from '@/lib/utils/logger';
+import type { 
+  LineFeatures, 
+  MLPrediction, 
+  MLReasoning,
+  FeatureImportance,
+  ModelMetrics 
+} from '@/lib/ml/line-validation-types';
 
-// Mock TensorFlow.js
-jest.mock('@tensorflow/tfjs', () => ({
-  sequential: jest.fn(),
-  layers: {
-    dense: jest.fn(() => ({})),
-    dropout: jest.fn(() => ({}))
-  },
-  train: {
-    adam: jest.fn()
-  },
-  tensor2d: jest.fn(),
-  dispose: jest.fn()
-}));
-
-// Mock logger
+// Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -26,6 +19,25 @@ jest.mock('@/lib/utils/logger', () => ({
     debug: jest.fn()
   }
 }));
+
+// Mock TensorFlow.js
+jest.mock('@tensorflow/tfjs', () => {
+  const actualTf = jest.requireActual('@tensorflow/tfjs');
+  return {
+    ...actualTf,
+    sequential: jest.fn(),
+    layers: {
+      dense: jest.fn().mockReturnValue({}),
+      dropout: jest.fn().mockReturnValue({})
+    },
+    train: {
+      adam: jest.fn().mockReturnValue({})
+    },
+    tensor2d: jest.fn().mockReturnValue({
+      dispose: jest.fn()
+    })
+  };
+});
 
 describe('LineQualityPredictor', () => {
   let predictor: LineQualityPredictor;
@@ -364,6 +376,185 @@ describe('LineQualityPredictor', () => {
         validationSplit: 0.2,
         verbose: 0
       });
+    });
+  });
+
+  describe('Edge cases and error handling', () => {
+    it('should handle empty normalized features array', async () => {
+      (predictor as any).isModelReady = true;
+      (predictor as any).model = mockModel;
+      
+      const prediction = await predictor.predictLineSuccess({} as LineFeatures, []);
+      
+      expect(prediction).toBeDefined();
+      expect(prediction.successProbability).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle extreme feature values in reasoning', async () => {
+      const extremeFeatures: LineFeatures = {
+        touchCount: 0,
+        rSquared: 0,
+        confidence: 0,
+        wickTouchRatio: 1,
+        bodyTouchRatio: 0,
+        exactTouchRatio: 0,
+        volumeAverage: 0,
+        volumeMax: 0,
+        volumeStrength: 0,
+        ageInCandles: 0,
+        recentTouchCount: 0,
+        timeSinceLastTouch: 1000,
+        marketCondition: 'volatile',
+        trendStrength: -1,
+        volatility: 1,
+        timeOfDay: 0,
+        dayOfWeek: 0,
+        timeframeConfluence: 0,
+        higherTimeframeAlignment: false,
+        nearPattern: false,
+        distanceFromPrice: 1,
+        priceRoundness: 0,
+        nearPsychological: false
+      };
+      
+      (predictor as any).isModelReady = false;
+      const prediction = await predictor.predictLineSuccess(extremeFeatures, []);
+      
+      expect(prediction).toBeDefined();
+      expect(prediction.reasoning).toBeInstanceOf(Array);
+      expect(prediction.successProbability).toBeGreaterThanOrEqual(0.1);
+      expect(prediction.successProbability).toBeLessThanOrEqual(0.95);
+    });
+
+    it('should handle tensor disposal properly', async () => {
+      (predictor as any).isModelReady = true;
+      (predictor as any).model = mockModel;
+      
+      const inputTensor = { dispose: jest.fn() };
+      const outputTensor = {
+        array: jest.fn().mockResolvedValue([[0.8, 0.6, 0.7, 0.9]]),
+        dispose: jest.fn()
+      };
+      
+      (tf.tensor2d as jest.Mock).mockReturnValueOnce(inputTensor);
+      mockModel.predict.mockReturnValueOnce(outputTensor);
+      
+      await predictor.predictLineSuccess({} as LineFeatures, Array(23).fill(0.5));
+      
+      expect(inputTensor.dispose).toHaveBeenCalled();
+      expect(outputTensor.dispose).toHaveBeenCalled();
+    });
+
+    it('should handle invalid prediction output gracefully', async () => {
+      (predictor as any).isModelReady = true;
+      (predictor as any).model = mockModel;
+      
+      mockModel.predict.mockReturnValueOnce({
+        array: jest.fn().mockResolvedValue([[0.8]]), // Missing values
+        dispose: jest.fn()
+      });
+      
+      const features = createMockFeatures();
+      const prediction = await predictor.predictLineSuccess(features, Array(23).fill(0.5));
+      
+      expect(prediction).toBeDefined();
+      expect(prediction.successProbability).toBeGreaterThan(0);
+    });
+
+    it('should generate reasoning sorted by weight', async () => {
+      const features = createMockFeatures();
+      features.touchCount = 8;
+      features.rSquared = 0.95;
+      features.volumeStrength = 2.0;
+      
+      const prediction = await predictor.predictLineSuccess(features, Array(23).fill(0.5));
+      
+      // Check that reasoning is sorted by weight
+      for (let i = 1; i < prediction.reasoning.length; i++) {
+        const prev = prediction.reasoning[i - 1];
+        const curr = prediction.reasoning[i];
+        if (prev && curr) {
+          expect(prev.weight).toBeGreaterThanOrEqual(curr.weight);
+        }
+      }
+    });
+
+    it('should adjust confidence interval based on model uncertainty', async () => {
+      (predictor as any).isModelReady = true;
+      (predictor as any).model = mockModel;
+      
+      // Test with high confidence (narrow interval)
+      mockModel.predict.mockReturnValueOnce({
+        array: jest.fn().mockResolvedValue([[0.8, 0.6, 0.78, 0.82]]),
+        dispose: jest.fn()
+      });
+      
+      const prediction1 = await predictor.predictLineSuccess(createMockFeatures(), Array(23).fill(0.5));
+      const interval1Width = prediction1.confidenceInterval[1] - prediction1.confidenceInterval[0];
+      
+      // Test with low confidence (wide interval)
+      mockModel.predict.mockReturnValueOnce({
+        array: jest.fn().mockResolvedValue([[0.5, 0.4, 0.3, 0.7]]),
+        dispose: jest.fn()
+      });
+      
+      const prediction2 = await predictor.predictLineSuccess(createMockFeatures(), Array(23).fill(0.5));
+      const interval2Width = prediction2.confidenceInterval[1] - prediction2.confidenceInterval[0];
+      
+      expect(interval2Width).toBeGreaterThan(interval1Width);
+    });
+
+    it('should handle training callbacks correctly', async () => {
+      const logSpy = jest.spyOn(logger, 'info');
+      
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get the fit call
+      const fitCall = mockModel.fit.mock.calls[0];
+      if (fitCall && fitCall[2]?.callbacks?.onEpochEnd) {
+        // Test that callback logs every 5 epochs
+        fitCall[2].callbacks.onEpochEnd(4, { loss: 0.2, accuracy: 0.8 });
+        expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('Training epoch 4'));
+        
+        fitCall[2].callbacks.onEpochEnd(5, { loss: 0.1, accuracy: 0.9 });
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Training epoch 5'),
+          { loss: 0.1, accuracy: 0.9 }
+        );
+      }
+    });
+
+    it('should return a copy of model metrics', () => {
+      const metrics1 = predictor.getModelMetrics();
+      const metrics2 = predictor.getModelMetrics();
+      
+      expect(metrics1).not.toBe(metrics2);
+      expect(metrics1).toEqual(metrics2);
+    });
+
+    it('should handle volume strength edge cases in reasoning', async () => {
+      const features = createMockFeatures();
+      features.volumeStrength = 0.3; // Very low volume
+      
+      const prediction = await predictor.predictLineSuccess(features, Array(23).fill(0.5));
+      
+      // Should not have positive volume reasoning
+      const volumeReason = prediction.reasoning.find(r => r.factor === 'ボリューム');
+      expect(volumeReason).toBeUndefined();
+    });
+
+    it('should handle time-based feature edge cases', async () => {
+      const features = createMockFeatures();
+      features.timeSinceLastTouch = 0; // Just touched
+      features.ageInCandles = 1; // Very new line
+      features.recentTouchCount = 1;
+      
+      const prediction = await predictor.predictLineSuccess(features, Array(23).fill(0.5));
+      
+      const timeReason = prediction.reasoning.find(r => r.factor === '直近の反応');
+      expect(timeReason).toBeDefined();
+      expect(timeReason?.impact).toBe('positive');
     });
   });
 });

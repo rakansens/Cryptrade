@@ -1,8 +1,16 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { FeatureExtractor } from '@/lib/ml/feature-extractor';
+import { env } from '@/config/env';
+import type { LineFeatures } from '@/lib/ml/line-validation-types';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
-import type { LineFeatures } from '@/lib/ml/line-validation-types';
+
+// Mock dependencies
+jest.mock('@/config/env', () => ({
+  env: {
+    NODE_ENV: 'test'
+  }
+}));
 
 describe('FeatureExtractor', () => {
   let extractor: FeatureExtractor;
@@ -320,6 +328,137 @@ describe('FeatureExtractor', () => {
       
       expect(features).toBeDefined();
       expect(features.volumeAverage).toBe(0);
+    });
+
+    it('should handle NaN and Infinity values in price data', () => {
+      const problematicData: PriceData[] = [
+        {
+          time: 1000,
+          open: NaN,
+          high: Infinity,
+          low: -Infinity,
+          close: 100,
+          volume: NaN
+        }
+      ];
+
+      const problematicExtractor = new FeatureExtractor(problematicData, 100);
+      const mockLine = createMockLine(mockPriceData);
+      
+      const features = problematicExtractor.extractFeatures(mockLine, 'BTCUSDT');
+      expect(features).toBeDefined();
+    });
+
+    it('should handle zero volume candles', () => {
+      const zeroVolumeData: PriceData[] = mockPriceData.map(d => ({
+        ...d,
+        volume: 0
+      }));
+
+      const zeroVolumeExtractor = new FeatureExtractor(zeroVolumeData, currentPrice);
+      const mockLine = createMockLine(mockPriceData);
+      
+      const features = zeroVolumeExtractor.extractFeatures(mockLine, 'BTCUSDT');
+      
+      expect(features.volumeAverage).toBe(0);
+      expect(features.volumeMax).toBe(0);
+      expect(features.volumeStrength).toBe(1); // Default when overall avg is 0
+    });
+
+    it('should handle development environment mock values', () => {
+      const originalEnv = env.NODE_ENV;
+      (env as any).NODE_ENV = 'development';
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const mockLine = createMockLine(mockPriceData);
+      const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
+
+      expect(features.timeframeConfluence).toBe(0.65);
+      expect(features.higherTimeframeAlignment).toBe(true);
+      expect(features.nearPattern).toBe(false);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('mock'));
+
+      consoleWarnSpy.mockRestore();
+      (env as any).NODE_ENV = originalEnv;
+    });
+
+    it('should handle production environment mock values', () => {
+      const originalEnv = env.NODE_ENV;
+      (env as any).NODE_ENV = 'production';
+
+      const mockLine = createMockLine(mockPriceData);
+      const features = extractor.extractFeatures(mockLine, 'BTCUSDT');
+
+      expect(features.timeframeConfluence).toBe(0.5);
+      expect(features.higherTimeframeAlignment).toBe(false);
+      expect(features.nearPattern).toBe(false);
+
+      (env as any).NODE_ENV = originalEnv;
+    });
+
+    it('should handle lines with missing properties', () => {
+      const minimalLine: Partial<DetectedLine> = {
+        touchPoints: [{ time: mockPriceData[0]?.time ?? 0, value: 50000 }],
+        confidence: 0.5
+      };
+
+      const features = extractor.extractFeatures(minimalLine as DetectedLine, 'BTCUSDT');
+      
+      expect(features).toBeDefined();
+      expect(features.touchCount).toBe(1);
+      expect(features.confidence).toBe(0.5);
+      expect(features.rSquared).toBe(0);
+    });
+
+    it('should handle extreme market volatility', () => {
+      const volatileData: PriceData[] = [];
+      for (let i = 0; i < 20; i++) {
+        const base = 50000;
+        const swing = (i % 2 === 0) ? 5000 : -5000;
+        volatileData.push({
+          time: i * 3600,
+          open: base,
+          high: base + Math.abs(swing) + 1000,
+          low: base - Math.abs(swing) - 1000,
+          close: base + swing,
+          volume: 10000
+        });
+      }
+
+      const volatileExtractor = new FeatureExtractor(volatileData, 50000);
+      const mockLine = {
+        type: 'horizontal' as const,
+        price: 50000,
+        confidence: 0.8,
+        touchPoints: [{ time: 0, value: 50000 }],
+        timeframe: '1h'
+      };
+
+      const features = volatileExtractor.extractFeatures(mockLine, 'BTCUSDT');
+
+      expect(features.volatility).toBeGreaterThan(0.7);
+      expect(features.marketCondition).toBe('volatile');
+    });
+
+    it('should handle pattern type detection in development mode', () => {
+      const originalEnv = env.NODE_ENV;
+      (env as any).NODE_ENV = 'development';
+
+      jest.spyOn(console, 'warn').mockImplementation();
+      
+      // Create a new extractor and mock the checkNearbyPatterns method
+      const mockExtractor = new FeatureExtractor(mockPriceData, currentPrice);
+      jest.spyOn(mockExtractor as any, 'checkNearbyPatterns').mockReturnValue(true);
+
+      const mockLine = createMockLine(mockPriceData);
+      const features = mockExtractor.extractFeatures(mockLine, 'BTCUSDT');
+
+      expect(features.nearPattern).toBe(true);
+      expect(features.patternType).toBeDefined();
+      expect(['headAndShoulders', 'doubleTop', 'triangle', 'flag']).toContain(features.patternType);
+
+      (env as any).NODE_ENV = originalEnv;
     });
   });
 });

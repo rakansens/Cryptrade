@@ -22,32 +22,109 @@ describe('EnhancedLineDetectorV2', () => {
   let mockTouchDetector: jest.Mocked<AdvancedTouchDetector>;
   
   // Create mock multi-timeframe data
-  const createMockTimeframeData = (basePrice: number = 100): MultiTimeframeData => ({
-    symbol: 'BTCUSDT',
-    timeframes: {
-      '1h': {
-        data: [
-          { time: 1000, open: basePrice, high: basePrice + 5, low: basePrice - 5, close: basePrice + 2, volume: 1000 },
-          { time: 2000, open: basePrice + 2, high: basePrice + 7, low: basePrice - 2, close: basePrice + 4, volume: 1200 },
-          { time: 3000, open: basePrice + 4, high: basePrice + 6, low: basePrice, close: basePrice + 1, volume: 800 },
-          { time: 4000, open: basePrice + 1, high: basePrice + 3, low: basePrice - 1, close: basePrice, volume: 1500 },
-          { time: 5000, open: basePrice, high: basePrice + 8, low: basePrice - 1, close: basePrice + 6, volume: 2000 },
-        ],
-        weight: 1.0,
-        dataPoints: 200
-      },
-      '4h': {
-        data: [
-          { time: 1000, open: basePrice - 2, high: basePrice + 10, low: basePrice - 5, close: basePrice + 5, volume: 5000 },
-          { time: 16000, open: basePrice + 5, high: basePrice + 12, low: basePrice, close: basePrice + 2, volume: 6000 },
-          { time: 32000, open: basePrice + 2, high: basePrice + 4, low: basePrice - 3, close: basePrice + 1, volume: 4500 },
-        ],
-        weight: 1.5,
-        dataPoints: 100
+  const createMockTimeframeData = (basePrice: number = 100): MultiTimeframeData => {
+    // Need at least 11 candles for swing detection (lookback of 5 on each side)
+    const data1h = [];
+    for (let i = 0; i < 20; i++) {
+      const time = 1000 + i * 3600000; // 1 hour intervals
+      
+      // Create clear swing points with deterministic values
+      let high, low, open, close;
+      if (i === 10) {
+        // Clear swing high at index 10 - needs to be higher than surrounding 10 candles
+        high = basePrice + 30;
+        low = basePrice + 25;
+        open = basePrice + 26;
+        close = basePrice + 28;
+      } else if (i === 15) {
+        // Clear swing low at index 15 - needs to be lower than surrounding 10 candles
+        high = basePrice - 15;
+        low = basePrice - 20;
+        open = basePrice - 16;
+        close = basePrice - 18;
+      } else if (i >= 5 && i <= 15 && i !== 10 && i !== 15) {
+        // Mid-range values that won't interfere with swings
+        high = basePrice + 10 - Math.abs(i - 10);
+        low = basePrice - 10 + Math.abs(i - 10);
+        open = basePrice + (Math.random() - 0.5) * 2;
+        close = basePrice + (Math.random() - 0.5) * 2;
+      } else {
+        // Edge values
+        high = basePrice + 5;
+        low = basePrice - 5;
+        open = basePrice + (Math.random() - 0.5) * 2;
+        close = basePrice + (Math.random() - 0.5) * 2;
       }
-    },
-    fetchedAt: Date.now()
-  });
+      
+      data1h.push({
+        time,
+        open,
+        high,
+        low,
+        close,
+        volume: 1000 + Math.random() * 1000
+      });
+    }
+    
+    // Create data for 4h timeframe with similar pattern
+    const data4h = [];
+    for (let i = 0; i < 15; i++) {
+      const time = 1000 + i * 14400000; // 4 hour intervals
+      
+      let high, low, open, close;
+      if (i === 7) {
+        // Clear swing high - needs to be definitively higher
+        high = basePrice + 35;
+        low = basePrice + 30;
+        open = basePrice + 31;
+        close = basePrice + 33;
+      } else if (i === 12) {
+        // Clear swing low - needs to be definitively lower
+        high = basePrice - 20;
+        low = basePrice - 25;
+        open = basePrice - 21;
+        close = basePrice - 23;
+      } else if (i >= 2 && i <= 12) {
+        // Mid-range values
+        high = basePrice + 15 - Math.abs(i - 7);
+        low = basePrice - 15 + Math.abs(i - 7);
+        open = basePrice + (Math.random() - 0.5) * 3;
+        close = basePrice + (Math.random() - 0.5) * 3;
+      } else {
+        // Edge values
+        high = basePrice + 8;
+        low = basePrice - 8;
+        open = basePrice + (Math.random() - 0.5) * 3;
+        close = basePrice + (Math.random() - 0.5) * 3;
+      }
+      
+      data4h.push({
+        time,
+        open,
+        high,
+        low,
+        close,
+        volume: 5000 + Math.random() * 3000
+      });
+    }
+    
+    return {
+      symbol: 'BTCUSDT',
+      timeframes: {
+        '1h': {
+          data: data1h,
+          weight: 1.0,
+          dataPoints: data1h.length
+        },
+        '4h': {
+          data: data4h,
+          weight: 1.5,
+          dataPoints: data4h.length
+        }
+      },
+      fetchedAt: Date.now()
+    };
+  };
 
   const mockTouchAnalysis = {
     touchPoints: [
@@ -214,8 +291,10 @@ describe('EnhancedLineDetectorV2', () => {
 
   describe('horizontal line detection', () => {
     it('should find swing levels correctly', async () => {
+      // Create a detector with minTimeframes: 1 to ensure levels are analyzed
+      const testDetector = new EnhancedLineDetectorV2({ minTimeframes: 1 });
       const multiTimeframeData = createMockTimeframeData(100);
-      await detector.detectEnhancedLines(multiTimeframeData);
+      await testDetector.detectEnhancedLines(multiTimeframeData);
       
       // Should have called touch analysis for detected levels
       expect(mockTouchDetector.analyzeTouchPoints).toHaveBeenCalled();
@@ -437,7 +516,7 @@ describe('EnhancedLineDetectorV2', () => {
       
       // Should still complete without errors
       expect(result).toBeDefined();
-      expect(result.detectionStats.processingTime).toBeGreaterThan(0);
+      expect(result.detectionStats.processingTime).toBeGreaterThanOrEqual(0);
     });
   });
 

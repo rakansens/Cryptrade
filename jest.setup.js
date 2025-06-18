@@ -1,6 +1,12 @@
 // jest.setup.js
 // Global test setup
 
+// Import test environment setup before anything else
+require('./tests/setup/test-env');
+
+// Setup MSW for API mocking
+require('./tests/setup/msw-setup');
+
 // Extend Jest matchers
 require('@testing-library/jest-dom');
 
@@ -40,14 +46,12 @@ jest.mock('next/navigation', () => ({
   },
 }));
 
-// Mock environment variables for tests
-process.env.NODE_ENV = 'test';
+// Environment variables are now set in tests/setup/test-env.ts
+// Additional test-specific environment variables can be set here if needed
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
-process.env.OPENAI_API_KEY = 'test-openai-key';
 process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost:3000';
-process.env.CI = 'false';
 
 // Mock fetch for Node.js environment
 if (typeof fetch === 'undefined') {
@@ -87,6 +91,24 @@ if (typeof window !== 'undefined') {
     unobserve() {}
   };
 }
+
+// Mock semantic embedding service to avoid API calls in tests
+jest.mock('@/lib/services/semantic-embedding.service', () => {
+  const { MockSemanticEmbeddingService } = require('./tests/setup/mock-semantic-embedding');
+  return {
+    SemanticEmbeddingService: MockSemanticEmbeddingService,
+    embeddingService: MockSemanticEmbeddingService.getInstance(),
+  };
+});
+
+// Mock localStorage for tests
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.localStorage = localStorageMock;
 
 // Clean up after each test
 afterEach(() => {

@@ -150,8 +150,8 @@ describe('Chart Drawing Schema Validation', () => {
         })).not.toThrow();
       });
       
-      // Non-boolean values
-      [1, 0, 'true', null, undefined].forEach(showLabels => {
+      // Non-boolean values (except undefined which is allowed)
+      [1, 0, 'true', null].forEach(showLabels => {
         expect(() => DrawingStyleSchema.parse({
           color: '#000000',
           lineWidth: 1,
@@ -159,6 +159,14 @@ describe('Chart Drawing Schema Validation', () => {
           showLabels
         })).toThrow();
       });
+      
+      // undefined is allowed (defaults to false)
+      expect(() => DrawingStyleSchema.parse({
+        color: '#000000',
+        lineWidth: 1,
+        lineStyle: 'solid',
+        showLabels: undefined
+      })).not.toThrow();
     });
   });
 

@@ -39,24 +39,21 @@ describe('UnifiedLogger', () => {
     test('should log debug messages', () => {
       logger.debug('Debug message', { test: true });
       expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Debug message'),
-        undefined
+        expect.stringContaining('Debug message')
       );
     });
 
     test('should log info messages', () => {
       logger.info('Info message', { test: true });
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Info message'),
-        undefined
+        expect.stringContaining('Info message')
       );
     });
 
     test('should log warn messages', () => {
       logger.warn('Warning message', { test: true });
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning message'),
-        undefined
+        expect.stringContaining('Warning message')
       );
     });
 

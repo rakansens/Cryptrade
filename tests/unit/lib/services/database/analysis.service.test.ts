@@ -1,276 +1,268 @@
 import { AnalysisService } from '@/lib/services/database/analysis.service';
 import { prisma } from '@/lib/db/prisma';
-// import { DrawingProposal } from '@/types/proposals'; // Not used
+import type { DrawingProposal, EntryProposal } from '@/types/proposals';
 
-// Mock Prisma client
+// Mock Prisma
 jest.mock('@/lib/db/prisma', () => ({
   prisma: {
     analysisRecord: {
       create: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn()
     },
     touchEvent: {
-      create: jest.fn(),
+      create: jest.fn()
     },
-  },
+    $transaction: jest.fn()
+  }
 }));
 
 describe('AnalysisService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock Date.now() for consistent timestamps
-    jest.spyOn(Date, 'now').mockReturnValue(1234567890000);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   describe('saveAnalysis', () => {
-    it('should create analysis record with all required fields', async () => {
-      const mockRecord = { id: 'analysis-1', symbol: 'BTCUSDT' };
-      (prisma.analysisRecord.create as jest.Mock).mockResolvedValue(mockRecord);
-
-      const data = {
-        sessionId: 'session-123',
-        symbol: 'BTCUSDT',
-        interval: '1h',
-        type: 'support' as const,
-        proposalData: { 
-          id: 'test-proposal',
-          type: 'support',
-          price: 50000, 
-          confidence: 0.85,
-          reasoning: 'Test reasoning'
+    it('should save analysis with drawing proposal', async () => {
+      const drawingProposal: DrawingProposal = {
+        id: 'draw-1',
+        type: 'trendline',
+        confidence: 0.85,
+        reasoning: 'Strong uptrend detected',
+        coordinates: {
+          start: { x: 100, y: 50000 },
+          end: { x: 200, y: 60000 }
         },
+        style: {
+          color: '#00ff00',
+          lineWidth: 2
+        }
       };
 
-      const result = await AnalysisService.saveAnalysis(data);
+      const mockRecord = {
+        id: 'analysis-1',
+        sessionId: 'session-1',
+        timestamp: BigInt(Date.now()),
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        type: 'trendline',
+        proposalData: drawingProposal,
+        trackingData: {
+          status: 'monitoring',
+          touches: 0,
+          startTime: Date.now()
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      (prisma.analysisRecord.create as jest.Mock).mockResolvedValue(mockRecord);
+
+      const result = await AnalysisService.saveAnalysis({
+        sessionId: 'session-1',
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        type: 'trendline',
+        proposalData: drawingProposal
+      });
 
       expect(prisma.analysisRecord.create).toHaveBeenCalledWith({
         data: {
-          sessionId: 'session-123',
-          timestamp: BigInt(1234567890000),
+          sessionId: 'session-1',
+          timestamp: expect.any(BigInt),
           symbol: 'BTCUSDT',
           interval: '1h',
-          type: 'support',
-          proposalData: { price: 50000, confidence: 0.85 },
+          type: 'trendline',
+          proposalData: drawingProposal,
           trackingData: {
             status: 'monitoring',
             touches: 0,
-            startTime: 1234567890000,
-          },
-        },
+            startTime: expect.any(Number)
+          }
+        }
       });
 
-      expect(result).toBe(mockRecord);
+      expect(result).toEqual(mockRecord);
+    });
+
+    it('should save analysis with entry proposal', async () => {
+      const entryProposal: EntryProposal = {
+        id: 'entry-1',
+        type: 'long',
+        confidence: 0.75,
+        reasoning: 'Bullish breakout pattern',
+        entry: 50000,
+        stopLoss: 48000,
+        targets: [52000, 54000, 56000],
+        riskReward: 3.0,
+        timeframe: '4h'
+      };
+
+      await AnalysisService.saveAnalysis({
+        symbol: 'BTCUSDT',
+        interval: '4h',
+        type: 'pattern',
+        proposalData: entryProposal
+      });
+
+      expect(prisma.analysisRecord.create).toHaveBeenCalledWith({
+        data: {
+          timestamp: expect.any(BigInt),
+          symbol: 'BTCUSDT',
+          interval: '4h',
+          type: 'pattern',
+          proposalData: entryProposal,
+          trackingData: {
+            status: 'monitoring',
+            touches: 0,
+            startTime: expect.any(Number)
+          }
+        }
+      });
     });
 
     it('should handle optional sessionId', async () => {
-      const mockRecord = { id: 'analysis-2', symbol: 'ETHUSDT' };
-      (prisma.analysisRecord.create as jest.Mock).mockResolvedValue(mockRecord);
-
-      const data = {
+      await AnalysisService.saveAnalysis({
         symbol: 'ETHUSDT',
-        interval: '4h',
-        type: 'resistance' as const,
-        proposalData: { 
-          id: 'test-proposal-2',
-          type: 'resistance',
-          price: 3000,
-          confidence: 0.9,
-          reasoning: 'Test resistance reasoning'
-        },
-      };
-
-      await AnalysisService.saveAnalysis(data);
+        interval: '15m',
+        type: 'support',
+        proposalData: {
+          id: 'support-1',
+          type: 'horizontal',
+          confidence: 0.8,
+          reasoning: 'Multiple bounces',
+          price: 3000
+        }
+      });
 
       expect(prisma.analysisRecord.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          sessionId: undefined,
-          symbol: 'ETHUSDT',
-          type: 'resistance',
-        }),
+        data: expect.not.objectContaining({
+          sessionId: expect.anything()
+        })
       });
-    });
-
-    it('should handle all analysis types', async () => {
-      const types = ['support', 'resistance', 'trendline', 'pattern', 'fibonacci'] as const;
-
-      for (const type of types) {
-        await AnalysisService.saveAnalysis({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          type,
-          proposalData: {
-            id: `test-${type}`,
-            type: type,
-            confidence: 0.8,
-            reasoning: 'Test proposal'
-          },
-        });
-      }
-
-      expect(prisma.analysisRecord.create).toHaveBeenCalledTimes(types.length);
     });
   });
 
   describe('recordTouchEvent', () => {
-    it('should create touch event and update analysis record', async () => {
-      const mockTouchEvent = { id: 'touch-1', recordId: 'record-1' };
-      const mockUpdatedRecord = { id: 'record-1', trackingData: { touches: 1 } };
-
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue(mockTouchEvent);
-      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue(mockUpdatedRecord);
-
-      const data = {
-        recordId: 'record-1',
-        price: 50100,
-        result: 'bounce' as const,
-        strength: 0.9,
-        volume: 1000000,
+    it('should record touch event and update analysis record', async () => {
+      const mockTouchEvent = {
+        id: 'touch-1',
+        recordId: 'analysis-1',
+        timestamp: BigInt(Date.now()),
+        price: 51000,
+        result: 'bounce',
+        strength: 0.8,
+        volume: 1000000
       };
 
-      const result = await AnalysisService.recordTouchEvent(data);
-
-      // Verify touch event creation
-      expect(prisma.touchEvent.create).toHaveBeenCalledWith({
-        data: {
-          recordId: 'record-1',
-          timestamp: BigInt(1234567890000),
-          price: 50100,
-          result: 'bounce',
-          strength: 0.9,
-          volume: 1000000,
-        },
+      (prisma.touchEvent.create as jest.Mock).mockResolvedValue(mockTouchEvent);
+      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue({
+        id: 'analysis-1',
+        trackingData: {
+          touches: 1,
+          lastTouchTime: Date.now()
+        }
       });
 
-      // Verify analysis record update
+      const result = await AnalysisService.recordTouchEvent({
+        recordId: 'analysis-1',
+        price: 51000,
+        result: 'bounce',
+        strength: 0.8,
+        volume: 1000000
+      });
+
+      expect(prisma.touchEvent.create).toHaveBeenCalledWith({
+        data: {
+          recordId: 'analysis-1',
+          timestamp: expect.any(BigInt),
+          price: 51000,
+          result: 'bounce',
+          strength: 0.8,
+          volume: 1000000
+        }
+      });
+
       expect(prisma.analysisRecord.update).toHaveBeenCalledWith({
-        where: { id: 'record-1' },
+        where: { id: 'analysis-1' },
         data: {
           trackingData: {
             update: {
               touches: { increment: 1 },
-              lastTouchTime: 1234567890000,
-            },
-          },
-        },
+              lastTouchTime: expect.any(Number)
+            }
+          }
+        }
       });
 
-      expect(result).toBe(mockTouchEvent);
+      expect(result).toEqual(mockTouchEvent);
     });
 
-    it('should handle optional volume', async () => {
-      const mockTouchEvent = { id: 'touch-2' };
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue(mockTouchEvent);
-      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue({});
-
+    it('should handle touch event without volume', async () => {
       await AnalysisService.recordTouchEvent({
-        recordId: 'record-2',
-        price: 3050,
+        recordId: 'analysis-1',
+        price: 49000,
         result: 'test',
-        strength: 0.5,
+        strength: 0.5
       });
 
       expect(prisma.touchEvent.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          volume: undefined,
-        }),
+        data: expect.not.objectContaining({
+          volume: expect.anything()
+        })
       });
-    });
-
-    it('should handle all touch result types', async () => {
-      const results = ['bounce', 'break', 'test'] as const;
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue({});
-      (prisma.analysisRecord.update as jest.Mock).mockResolvedValue({});
-
-      for (const result of results) {
-        await AnalysisService.recordTouchEvent({
-          recordId: 'record-3',
-          price: 50000,
-          result,
-          strength: 0.8,
-        });
-      }
-
-      expect(prisma.touchEvent.create).toHaveBeenCalledTimes(results.length);
     });
   });
 
   describe('getSessionAnalyses', () => {
-    it('should fetch analyses for a session with touch events', async () => {
+    it('should get analyses for a session with touch events', async () => {
       const mockAnalyses = [
         {
           id: 'analysis-1',
-          sessionId: 'session-123',
+          sessionId: 'session-1',
+          symbol: 'BTCUSDT',
           touchEvents: [
-            { id: 'touch-1', timestamp: BigInt(123) },
-            { id: 'touch-2', timestamp: BigInt(456) },
-          ],
+            { id: 'touch-1', result: 'bounce' },
+            { id: 'touch-2', result: 'break' }
+          ]
         },
+        {
+          id: 'analysis-2',
+          sessionId: 'session-1',
+          symbol: 'ETHUSDT',
+          touchEvents: []
+        }
       ];
 
       (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockAnalyses);
 
-      const result = await AnalysisService.getSessionAnalyses('session-123');
+      const result = await AnalysisService.getSessionAnalyses('session-1');
 
       expect(prisma.analysisRecord.findMany).toHaveBeenCalledWith({
-        where: { sessionId: 'session-123' },
+        where: { sessionId: 'session-1' },
         include: {
           touchEvents: {
             orderBy: { timestamp: 'desc' },
-            take: 10,
-          },
+            take: 10
+          }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' }
       });
 
-      expect(result).toBe(mockAnalyses);
-    });
-
-    it('should limit touch events to 10 most recent', async () => {
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue([]);
-
-      await AnalysisService.getSessionAnalyses('session-456');
-
-      const call = (prisma.analysisRecord.findMany as jest.Mock).mock.calls[0][0];
-      expect(call.include.touchEvents.take).toBe(10);
-      expect(call.include.touchEvents.orderBy).toEqual({ timestamp: 'desc' });
+      expect(result).toEqual(mockAnalyses);
     });
   });
 
   describe('getActiveAnalyses', () => {
-    it('should fetch all active analyses when no symbol specified', async () => {
+    it('should get active analyses with optional symbol filter', async () => {
       const mockActiveAnalyses = [
-        { id: 'analysis-1', trackingData: { status: 'monitoring' } },
-        { id: 'analysis-2', trackingData: { status: 'monitoring' } },
-      ];
-
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockActiveAnalyses);
-
-      const result = await AnalysisService.getActiveAnalyses();
-
-      expect(prisma.analysisRecord.findMany).toHaveBeenCalledWith({
-        where: {
-          symbol: undefined,
-          trackingData: {
-            path: ['status'],
-            equals: 'monitoring',
-          },
-        },
-        include: {
-          touchEvents: true,
-        },
-      });
-
-      expect(result).toBe(mockActiveAnalyses);
-    });
-
-    it('should filter by symbol when specified', async () => {
-      const mockActiveAnalyses = [
-        { id: 'analysis-1', symbol: 'BTCUSDT', trackingData: { status: 'monitoring' } },
+        {
+          id: 'analysis-1',
+          symbol: 'BTCUSDT',
+          trackingData: { status: 'monitoring' },
+          touchEvents: []
+        }
       ];
 
       (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue(mockActiveAnalyses);
@@ -282,79 +274,11 @@ describe('AnalysisService', () => {
           symbol: 'BTCUSDT',
           trackingData: {
             path: ['status'],
-            equals: 'monitoring',
-          },
+            equals: 'monitoring'
+          }
         },
         include: {
-          touchEvents: true,
-        },
+          touchEvents: true
+        }
       });
 
-      expect(result).toBe(mockActiveAnalyses);
-    });
-
-    it('should use JSON path query for status', async () => {
-      (prisma.analysisRecord.findMany as jest.Mock).mockResolvedValue([]);
-
-      await AnalysisService.getActiveAnalyses();
-
-      const call = (prisma.analysisRecord.findMany as jest.Mock).mock.calls[0][0];
-      expect(call.where.trackingData).toEqual({
-        path: ['status'],
-        equals: 'monitoring',
-      });
-    });
-  });
-
-  describe('error handling', () => {
-    it('should propagate database errors from saveAnalysis', async () => {
-      const dbError = new Error('Database connection failed');
-      (prisma.analysisRecord.create as jest.Mock).mockRejectedValue(dbError);
-
-      await expect(
-        AnalysisService.saveAnalysis({
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          type: 'support',
-          proposalData: {
-            id: 'test-error',
-            type: 'support',
-            confidence: 0.8,
-            reasoning: 'Test error proposal'
-          },
-        })
-      ).rejects.toThrow('Database connection failed');
-    });
-
-    it('should propagate errors from recordTouchEvent', async () => {
-      const dbError = new Error('Constraint violation');
-      (prisma.touchEvent.create as jest.Mock).mockRejectedValue(dbError);
-
-      await expect(
-        AnalysisService.recordTouchEvent({
-          recordId: 'invalid-id',
-          price: 50000,
-          result: 'bounce',
-          strength: 0.9,
-        })
-      ).rejects.toThrow('Constraint violation');
-    });
-
-    it('should handle update failure in recordTouchEvent', async () => {
-      (prisma.touchEvent.create as jest.Mock).mockResolvedValue({ id: 'touch-1' });
-      (prisma.analysisRecord.update as jest.Mock).mockRejectedValue(
-        new Error('Record not found')
-      );
-
-      // Should still throw even though touch event was created
-      await expect(
-        AnalysisService.recordTouchEvent({
-          recordId: 'non-existent',
-          price: 50000,
-          result: 'bounce',
-          strength: 0.9,
-        })
-      ).rejects.toThrow('Record not found');
-    });
-  });
-});

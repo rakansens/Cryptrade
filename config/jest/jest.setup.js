@@ -302,6 +302,14 @@ jest.mock('@/lib/monitoring/metrics', () => ({
   },
 }));
 
+// Mock semantic embedding service to avoid API calls in tests
+jest.mock('@/lib/services/semantic-embedding.service', () => {
+  const { MockSemanticEmbeddingService } = require('@/tests/setup/mock-semantic-embedding');
+  return {
+    SemanticEmbeddingService: MockSemanticEmbeddingService,
+  };
+});
+
 // Clean up after each test
 afterEach(() => {
   jest.clearAllMocks();

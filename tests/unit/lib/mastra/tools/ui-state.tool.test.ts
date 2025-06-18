@@ -1,400 +1,483 @@
+// Mock dependencies before imports
+jest.mock('@/lib/utils/logger');
+
+// Mock dynamic imports
+const mockUseChartBaseStore = {
+  getState: jest.fn(),
+};
+
+const mockUseIndicatorStore = {
+  getState: jest.fn(),
+};
+
+jest.mock('@/store/chart', () => ({
+  useChartBaseStore: mockUseChartBaseStore,
+  useIndicatorStore: mockUseIndicatorStore,
+}));
+
 import { uiStateTool } from '@/lib/mastra/tools/ui-state.tool';
 
-// Mock logger
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
-
-// Mock store modules
-const mockBaseStore = {
-  symbol: 'BTCUSDT',
-  timeframe: '1h',
-};
-
-const mockIndicatorStore = {
-  indicators: {
-    ma: false,
-    rsi: false,
-    macd: false,
-    boll: false,
-  },
-  settings: {
-    ma: { period: 20 },
-    rsi: { period: 14 },
-    macd: { fast: 12, slow: 26, signal: 9 },
-    boll: { period: 20, stdDev: 2 },
-  },
-  setIndicatorEnabled: jest.fn(),
-  setIndicatorSetting: jest.fn(),
-};
-
-// Mock the store imports
-jest.mock('@/lib/store/chart', () => ({
-  useChartBaseStore: {
-    getState: () => mockBaseStore,
-  },
-  useIndicatorStore: {
-    getState: () => mockIndicatorStore,
-  },
-}));
+// Type cast the execute function to avoid TypeScript errors
+const executeUIStateTool = uiStateTool.execute as any;
 
 describe('uiStateTool', () => {
+  const mockBaseState = {
+    symbol: 'BTCUSDT',
+    timeframe: '1h',
+  };
+
+  const mockIndicatorState = {
+    indicators: {
+      ma: true,
+      rsi: false,
+      macd: false,
+      boll: true,
+    },
+    settings: {
+      ma: { period: 20 },
+      rsi: { period: 14 },
+      macd: { fast: 12, slow: 26, signal: 9 },
+      boll: { period: 20, stdDev: 2 },
+    },
+    setIndicatorEnabled: jest.fn(),
+    setIndicatorSetting: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Reset mock store state
-    mockIndicatorStore.indicators = {
-      ma: false,
-      rsi: false,
-      macd: false,
-      boll: false,
-    };
+    // Setup default mocks
+    mockUseChartBaseStore.getState.mockReturnValue(mockBaseState);
+    mockUseIndicatorStore.getState.mockReturnValue(mockIndicatorState);
     
-    // Setup window object for browser environment check
+    // Mock window object
     global.window = {} as any;
   });
 
   afterEach(() => {
-    // Clean up window mock
     delete (global as any).window;
   });
 
-  describe('server-side execution', () => {
-    it('should return error when executed on server side', async () => {
-      delete (global as any).window;
-
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'get_state',
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Server-side execution not supported');
-      expect(result.message).toBe('UI state control requires browser environment');
+  describe('tool configuration', () => {
+    it('should have correct metadata', () => {
+      expect(uiStateTool.id).toBe('ui-state-control');
+      expect(uiStateTool.description).toContain('UI state management tool');
+      expect(uiStateTool.inputSchema).toBeDefined();
+      expect(uiStateTool.outputSchema).toBeDefined();
     });
   });
 
-  describe('get_state action', () => {
-    it('should return current UI state', async () => {
-      const result = await uiStateTool.execute({
+  describe('execute - get_state action', () => {
+    it('should retrieve current UI state', async () => {
+      const result = await executeUIStateTool({
         context: {
           action: 'get_state',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('get_state');
-      expect(result.message).toBe('Current UI state retrieved');
-      expect(result.currentState).toEqual({
-        symbol: 'BTCUSDT',
-        timeframe: '1h',
-        indicators: {
-          ma: false,
-          rsi: false,
-          macd: false,
-          boll: false,
+      expect(result).toEqual({
+        success: true,
+        action: 'get_state',
+        currentState: {
+          symbol: 'BTCUSDT',
+          timeframe: '1h',
+          indicators: {
+            ma: true,
+            rsi: false,
+            macd: false,
+            boll: true,
+          },
+          settings: {
+            ma: { period: 20 },
+            rsi: { period: 14 },
+            macd: { fast: 12, slow: 26, signal: 9 },
+            boll: { period: 20, stdDev: 2 },
+          },
         },
-        settings: {
-          ma: { period: 20 },
-          rsi: { period: 14 },
-          macd: { fast: 12, slow: 26, signal: 9 },
-          boll: { period: 20, stdDev: 2 },
-        },
+        message: 'Current UI state retrieved',
       });
     });
   });
 
-  describe('toggle_indicator action', () => {
-    it('should toggle moving averages indicator', async () => {
-      const result = await uiStateTool.execute({
+  describe('execute - toggle_indicator action', () => {
+    it('should toggle indicator on/off', async () => {
+      const result = await executeUIStateTool({
+        context: {
+          action: 'toggle_indicator',
+          indicator: 'rsi',
+          enabled: true,
+        },
+      });
+
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledWith('rsi', true);
+      expect(result).toMatchObject({
+        success: true,
+        action: 'toggle_indicator',
+        changes: ['rsi: false → true'],
+        message: 'Indicator rsi enabled',
+      });
+    });
+
+    it('should toggle indicator without explicit enabled value', async () => {
+      await executeUIStateTool({
         context: {
           action: 'toggle_indicator',
           indicator: 'movingAverages',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('toggle_indicator');
-      expect(result.message).toBe('Indicator movingAverages enabled');
-      expect(result.changes).toEqual(['movingAverages: false → true']);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('ma', true);
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledWith('ma', false);
     });
 
-    it('should toggle RSI indicator', async () => {
-      mockIndicatorStore.indicators.rsi = true;
+    it('should map indicator names correctly', async () => {
+      const mappings = [
+        { input: 'movingAverages', expected: 'ma' },
+        { input: 'rsi', expected: 'rsi' },
+        { input: 'macd', expected: 'macd' },
+        { input: 'bollingerBands', expected: 'boll' },
+      ];
 
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'toggle_indicator',
-          indicator: 'rsi',
-        },
-        runtimeContext: {} as any
-      });
+      for (const mapping of mappings) {
+        await executeUIStateTool({
+          context: {
+            action: 'toggle_indicator',
+            indicator: mapping.input,
+            enabled: true,
+          },
+        });
 
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Indicator rsi disabled');
-      expect(result.changes).toEqual(['rsi: true → false']);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('rsi', false);
+        expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledWith(
+          mapping.expected,
+          true
+        );
+      }
     });
 
-    it('should enable indicator with explicit enabled parameter', async () => {
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'toggle_indicator',
-          indicator: 'macd',
-          enabled: true,
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Indicator macd enabled');
-      expect(result.changes).toEqual(['macd: false → true']);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('macd', true);
-    });
-
-    it('should disable indicator with explicit enabled parameter', async () => {
-      mockIndicatorStore.indicators.boll = true;
-
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'toggle_indicator',
-          indicator: 'bollingerBands',
-          enabled: false,
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Indicator bollingerBands disabled');
-      expect(result.changes).toEqual(['bollingerBands: true → false']);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('boll', false);
-    });
-
-    it('should return error when indicator is missing', async () => {
-      const result = await uiStateTool.execute({
+    it('should return error for missing indicator parameter', async () => {
+      const result = await executeUIStateTool({
         context: {
           action: 'toggle_indicator',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Indicator parameter required for toggle_indicator action');
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Indicator parameter required for toggle_indicator action',
+      });
     });
 
     it('should return error for unknown indicator', async () => {
-      const result = await uiStateTool.execute({
+      const result = await executeUIStateTool({
         context: {
           action: 'toggle_indicator',
-          indicator: 'unknown' as any,
+          indicator: 'unknownIndicator' as any,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Unknown indicator: unknown');
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Unknown indicator: unknownIndicator',
+      });
     });
   });
 
-  describe('update_indicator_settings action', () => {
+  describe('execute - update_indicator_settings action', () => {
     it('should update indicator settings', async () => {
-      const result = await uiStateTool.execute({
+      const result = await executeUIStateTool({
         context: {
           action: 'update_indicator_settings',
-          indicator: 'movingAverages',
+          indicator: 'rsi',
           settings: {
-            period: 50,
-            type: 'EMA',
+            period: 21,
+            overbought: 80,
+            oversold: 20,
           },
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('update_indicator_settings');
-      expect(result.message).toBe('Settings updated for movingAverages');
-      expect(result.changes).toEqual([
-        'movingAverages.period: 50',
-        'movingAverages.type: EMA',
-      ]);
-      expect(mockIndicatorStore.setIndicatorSetting).toHaveBeenCalledWith('movingAverages', 'period', 50);
-      expect(mockIndicatorStore.setIndicatorSetting).toHaveBeenCalledWith('movingAverages', 'type', 'EMA');
+      expect(mockIndicatorState.setIndicatorSetting).toHaveBeenCalledTimes(3);
+      expect(mockIndicatorState.setIndicatorSetting).toHaveBeenCalledWith('rsi', 'period', 21);
+      expect(mockIndicatorState.setIndicatorSetting).toHaveBeenCalledWith('rsi', 'overbought', 80);
+      expect(mockIndicatorState.setIndicatorSetting).toHaveBeenCalledWith('rsi', 'oversold', 20);
+
+      expect(result).toMatchObject({
+        success: true,
+        action: 'update_indicator_settings',
+        changes: ['rsi.period: 21', 'rsi.overbought: 80', 'rsi.oversold: 20'],
+        message: 'Settings updated for rsi',
+      });
     });
 
     it('should return error when indicator is missing', async () => {
-      const result = await uiStateTool.execute({
+      const result = await executeUIStateTool({
         context: {
           action: 'update_indicator_settings',
-          settings: { period: 30 },
+          settings: { period: 21 },
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Both indicator and settings parameters required');
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Both indicator and settings parameters required',
+      });
     });
 
-    it('should return error when settings is missing', async () => {
-      const result = await uiStateTool.execute({
+    it('should return error when settings are missing', async () => {
+      const result = await executeUIStateTool({
         context: {
           action: 'update_indicator_settings',
           indicator: 'rsi',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Both indicator and settings parameters required');
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Both indicator and settings parameters required',
+      });
+    });
+
+    it('should handle empty settings object', async () => {
+      const result = await executeUIStateTool({
+        context: {
+          action: 'update_indicator_settings',
+          indicator: 'macd',
+          settings: {},
+        },
+      });
+
+      expect(mockIndicatorState.setIndicatorSetting).not.toHaveBeenCalled();
+      expect(result.changes).toEqual([]);
     });
   });
 
-  describe('get_indicators action', () => {
-    it('should return all indicator states', async () => {
-      mockIndicatorStore.indicators.ma = true;
-      mockIndicatorStore.indicators.rsi = true;
-
-      const result = await uiStateTool.execute({
+  describe('execute - get_indicators action', () => {
+    it('should retrieve indicator states', async () => {
+      const result = await executeUIStateTool({
         context: {
           action: 'get_indicators',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('get_indicators');
-      expect(result.message).toBe('Indicator states retrieved');
-      expect(result.currentState?.indicators).toEqual({
-        ma: true,
-        rsi: true,
+      expect(result).toEqual({
+        success: true,
+        action: 'get_indicators',
+        currentState: {
+          symbol: 'BTCUSDT',
+          timeframe: '1h',
+          indicators: mockIndicatorState.indicators,
+          settings: mockIndicatorState.settings,
+        },
+        message: 'Indicator states retrieved',
+      });
+    });
+  });
+
+  describe('execute - reset_indicators action', () => {
+    it('should reset all indicators to disabled', async () => {
+      const result = await executeUIStateTool({
+        context: {
+          action: 'reset_indicators',
+        },
+      });
+
+      // Should disable only enabled indicators
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledTimes(2);
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledWith('ma', false);
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledWith('boll', false);
+
+      expect(result).toMatchObject({
+        success: true,
+        action: 'reset_indicators',
+        changes: ['ma: enabled → disabled', 'boll: enabled → disabled'],
+        message: 'All indicators reset to default (disabled)',
+      });
+    });
+
+    it('should handle case where all indicators are already disabled', async () => {
+      mockIndicatorState.indicators = {
+        ma: false,
+        rsi: false,
         macd: false,
         boll: false,
-      });
-    });
-  });
+      };
 
-  describe('reset_indicators action', () => {
-    it('should reset all indicators to disabled', async () => {
-      // Set some indicators as enabled
-      mockIndicatorStore.indicators.ma = true;
-      mockIndicatorStore.indicators.rsi = true;
-      mockIndicatorStore.indicators.macd = true;
-
-      const result = await uiStateTool.execute({
+      const result = await executeUIStateTool({
         context: {
           action: 'reset_indicators',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('reset_indicators');
-      expect(result.message).toBe('All indicators reset to default (disabled)');
-      expect(result.changes).toEqual([
-        'ma: enabled → disabled',
-        'rsi: enabled → disabled',
-        'macd: enabled → disabled',
-      ]);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('ma', false);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('rsi', false);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('macd', false);
-      expect(mockIndicatorStore.setIndicatorEnabled).toHaveBeenCalledWith('boll', false);
-    });
-
-    it('should not report changes for already disabled indicators', async () => {
-      // Only one indicator enabled
-      mockIndicatorStore.indicators.rsi = true;
-
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'reset_indicators',
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.changes).toEqual(['rsi: enabled → disabled']);
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledTimes(4);
+      expect(result.changes).toEqual([]);
     });
   });
 
-  describe('unknown action', () => {
-    it('should return error for unknown action', async () => {
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'unknown_action' as any,
-        },
-        runtimeContext: {} as any
-      });
+  describe('execute - server environment', () => {
+    it('should return error when executed in server environment', async () => {
+      delete (global as any).window;
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Unknown action: unknown_action');
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle store import errors', async () => {
-      // Temporarily mock the import to throw an error
-      jest.doMock('@/store/chart', () => {
-        throw new Error('Failed to import store');
-      });
-
-      const result = await uiStateTool.execute({
+      const result = await executeUIStateTool({
         context: {
           action: 'get_state',
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('UI state operation failed: get_state');
-      expect(result.error).toContain('Failed to import store');
-    });
-
-    it('should handle setIndicatorEnabled errors', async () => {
-      mockIndicatorStore.setIndicatorEnabled.mockImplementation(() => {
-        throw new Error('Failed to set indicator');
+      expect(result).toEqual({
+        success: false,
+        action: 'get_state',
+        message: 'UI state control requires browser environment',
+        error: 'Server-side execution not supported',
       });
-
-      const result = await uiStateTool.execute({
-        context: {
-          action: 'toggle_indicator',
-          indicator: 'rsi',
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to set indicator');
     });
   });
 
-  describe('return state consistency', () => {
-    it('should always return currentState after successful operations', async () => {
-      const actions = [
-        { action: 'get_state' as const },
-        { action: 'toggle_indicator' as const, indicator: 'rsi' as const },
-        { action: 'update_indicator_settings' as const, indicator: 'movingAverages' as const, settings: { period: 30 } },
-        { action: 'get_indicators' as const },
-        { action: 'reset_indicators' as const },
+  describe('execute - unknown action', () => {
+    it('should return error for unknown action', async () => {
+      const result = await executeUIStateTool({
+        context: {
+          action: 'unknown_action' as any,
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Unknown action: unknown_action',
+      });
+    });
+  });
+
+  describe('execute - error handling', () => {
+    it('should handle store access errors', async () => {
+      mockUseChartBaseStore.getState.mockImplementation(() => {
+        throw new Error('Store access failed');
+      });
+
+      const result = await executeUIStateTool({
+        context: {
+          action: 'get_state',
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        error: 'Store access failed',
+        message: 'UI state operation failed: get_state',
+      });
+    });
+
+    it('should handle non-Error exceptions', async () => {
+      mockUseIndicatorStore.getState.mockImplementation(() => {
+        throw 'String error';
+      });
+
+      const result = await executeUIStateTool({
+        context: {
+          action: 'get_indicators',
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        error: 'String error',
+      });
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle complex settings updates', async () => {
+      const complexSettings = {
+        period: 50,
+        multiplier: 2.5,
+        offset: -1,
+        colors: ['#FF0000', '#00FF00'],
+        enabled: true,
+        style: { lineWidth: 2, opacity: 0.8 },
+      };
+
+      const result = await executeUIStateTool({
+        context: {
+          action: 'update_indicator_settings',
+          indicator: 'bollingerBands',
+          settings: complexSettings,
+        },
+      });
+
+      expect(mockIndicatorState.setIndicatorSetting).toHaveBeenCalledTimes(6);
+      expect(result.changes).toHaveLength(6);
+    });
+
+    it('should preserve state updates across multiple operations', async () => {
+      // First operation
+      await executeUIStateTool({
+        context: {
+          action: 'toggle_indicator',
+          indicator: 'rsi',
+          enabled: true,
+        },
+      });
+
+      // Update mock state to reflect the change
+      mockIndicatorState.indicators.rsi = true;
+
+      // Second operation should see the updated state
+      const result = await executeUIStateTool({
+        context: {
+          action: 'get_state',
+        },
+      });
+
+      expect(result.currentState.indicators.rsi).toBe(true);
+    });
+
+    it('should handle rapid successive calls', async () => {
+      const promises = [
+        executeUIStateTool({ context: { action: 'get_state' } }),
+        executeUIStateTool({ context: { action: 'get_indicators' } }),
+        executeUIStateTool({ 
+          context: { 
+            action: 'toggle_indicator', 
+            indicator: 'macd',
+            enabled: true,
+          } 
+        }),
       ];
 
-      for (const context of actions) {
-        const result = await uiStateTool.execute({ 
-          context,
-          runtimeContext: {} as any
-        });
-        
-        if (result.success) {
-          expect(result.currentState).toBeDefined();
+      const results = await Promise.all(promises);
+      expect(results).toHaveLength(3);
+      expect(results.every(r => r.success)).toBe(true);
+    });
+
+    it('should handle all indicator types in reset', async () => {
+      // Set all indicators to enabled
+      mockIndicatorState.indicators = {
+        ma: true,
+        rsi: true,
+        macd: true,
+        boll: true,
+      };
+
+      const result = await executeUIStateTool({
+        context: {
+          action: 'reset_indicators',
+        },
+      });
+
+      expect(mockIndicatorState.setIndicatorEnabled).toHaveBeenCalledTimes(4);
+      expect(result.changes).toHaveLength(4);
+    });
+
+    it('should return consistent state format across all actions', async () => {
+      const actions = ['get_state', 'get_indicators', 'toggle_indicator', 'reset_indicators'];
+      
+      for (const action of actions) {
+        const context: any = { action };
+        if (action === 'toggle_indicator') {
+          context.indicator = 'rsi';
+        }
+
+        const result = await executeUIStateTool({ context });
+
+        if (result.success && result.currentState) {
           expect(result.currentState).toHaveProperty('symbol');
           expect(result.currentState).toHaveProperty('timeframe');
           expect(result.currentState).toHaveProperty('indicators');

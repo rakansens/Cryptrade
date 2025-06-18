@@ -1,13 +1,10 @@
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { prisma } from '@/lib/db/prisma';
-import { logger } from '@/lib/utils/logger';
 import { checkDatabaseHealth } from '@/lib/db/health-check';
-import { withDatabase } from '@/lib/utils/db-connection';
-import { validateAndSanitizeChatMessage } from '@/lib/services/database/chat.validation';
 import { chatRateLimiters, enforceRateLimit } from '@/lib/services/database/rate-limiter';
 import { chatCaches, invalidateSessionCache, invalidateUserCache } from '@/lib/services/database/chat-cache';
+import { logger } from '@/lib/utils/logger';
 import type { ConversationSession, ConversationMessage } from '@prisma/client';
-// ChatMessage type is used indirectly through mocks
 
 // Mock dependencies
 jest.mock('@/lib/db/prisma', () => ({
@@ -17,125 +14,111 @@ jest.mock('@/lib/db/prisma', () => ({
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
-      delete: jest.fn(),
+      delete: jest.fn()
     },
     conversationMessage: {
       create: jest.fn(),
-      findMany: jest.fn(),
+      findMany: jest.fn()
     },
-    $transaction: jest.fn(),
-  },
+    $transaction: jest.fn()
+  }
 }));
 
-jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/db/health-check');
-jest.mock('@/lib/utils/db-connection');
-jest.mock('@/lib/services/database/chat.validation');
 jest.mock('@/lib/services/database/rate-limiter');
 jest.mock('@/lib/services/database/chat-cache');
+jest.mock('@/lib/utils/logger');
 
 describe('ChatDatabaseService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock withDatabase to execute main function by default
-    (withDatabase as jest.Mock).mockImplementation(async (mainFn) => mainFn());
-    // Mock validation to pass through by default
-    (validateAndSanitizeChatMessage as jest.Mock).mockImplementation((msg) => msg);
-    // Mock rate limiting to pass through
+    (checkDatabaseHealth as jest.Mock).mockResolvedValue({ status: 'healthy' });
     (enforceRateLimit as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe('createSession', () => {
-    const mockSession: ConversationSession = {
-      id: 'session-1',
-      userId: 'user-1',
-      summary: 'Test Session',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      lastActiveAt: new Date(),
-      startedAt: new Date(),
-      metadata: {},
-    };
+    it('should create a new session with userId and title', async () => {
+      const mockSession: ConversationSession = {
+        id: 'session-1',
+        userId: 'user-123',
+        summary: 'Test Session',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastActiveAt: new Date()
+      };
 
-    it('should create a session successfully', async () => {
-      (checkDatabaseHealth as jest.Mock).mockResolvedValueOnce({ status: 'healthy' });
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValueOnce(mockSession);
+      (prisma.conversationSession.create as jest.Mock).mockResolvedValue(mockSession);
 
-      const result = await ChatDatabaseService.createSession('user-1', 'Test Session');
+      const result = await ChatDatabaseService.createSession('user-123', 'Test Session');
+
+      expect(enforceRateLimit).toHaveBeenCalledWith(
+        chatRateLimiters.sessionCreation,
+        'user-123'
+      );
 
       expect(prisma.conversationSession.create).toHaveBeenCalledWith({
         data: {
-          userId: 'user-1',
-          summary: 'Test Session',
-        },
+          userId: 'user-123',
+          summary: 'Test Session'
+        }
       });
+
+      expect(invalidateUserCache).toHaveBeenCalledWith('user-123');
       expect(result).toEqual(mockSession);
-      expect(invalidateUserCache).toHaveBeenCalledWith('user-1');
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Session created', { sessionId: 'session-1' });
     });
 
-    it('should create session with default title when not provided', async () => {
-      (checkDatabaseHealth as jest.Mock).mockResolvedValueOnce({ status: 'healthy' });
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValueOnce(mockSession);
+    it('should create anonymous session without userId', async () => {
+      const mockSession: ConversationSession = {
+        id: 'session-2',
+        userId: null,
+        summary: expect.stringContaining('Chat session'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastActiveAt: new Date()
+      };
 
-      await ChatDatabaseService.createSession('user-1');
+      (prisma.conversationSession.create as jest.Mock).mockResolvedValue(mockSession);
 
-      expect(prisma.conversationSession.create).toHaveBeenCalledWith({
-        data: {
-          userId: 'user-1',
-          summary: expect.stringContaining('Chat session'),
-        },
-      });
-    });
+      const result = await ChatDatabaseService.createSession();
 
-    it('should create anonymous session when userId not provided', async () => {
-      const anonymousSession = { ...mockSession, userId: null };
-      (checkDatabaseHealth as jest.Mock).mockResolvedValueOnce({ status: 'healthy' });
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValueOnce(anonymousSession);
+      expect(enforceRateLimit).toHaveBeenCalledWith(
+        chatRateLimiters.sessionCreation,
+        'anonymous'
+      );
 
-      await ChatDatabaseService.createSession();
-
-      expect(prisma.conversationSession.create).toHaveBeenCalledWith({
-        data: {
-          userId: undefined,
-          summary: expect.any(String),
-        },
-      });
-      expect(invalidateUserCache).not.toHaveBeenCalled();
-    });
-
-    it('should apply rate limiting', async () => {
-      (checkDatabaseHealth as jest.Mock).mockResolvedValueOnce({ status: 'healthy' });
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValueOnce(mockSession);
-
-      await ChatDatabaseService.createSession('user-1');
-
-      expect(enforceRateLimit).toHaveBeenCalledWith(chatRateLimiters.sessionCreation, 'user-1');
+      expect(result).toEqual(mockSession);
     });
 
     it('should handle database health check failure gracefully', async () => {
-      (checkDatabaseHealth as jest.Mock).mockRejectedValueOnce(new Error('Health check failed'));
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValueOnce(mockSession);
+      (checkDatabaseHealth as jest.Mock).mockRejectedValue(new Error('Health check failed'));
 
-      const result = await ChatDatabaseService.createSession('user-1');
+      const mockSession = { id: 'session-3' };
+      (prisma.conversationSession.create as jest.Mock).mockResolvedValue(mockSession);
 
-      expect(result).toEqual(mockSession);
-      expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Database health check failed', {
-        error: expect.any(Error),
+      await expect(ChatDatabaseService.createSession()).resolves.toEqual(mockSession);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[ChatDB] Database health check failed',
+        expect.any(Object)
+      );
+    });
+
+    it('should sanitize title input', async () => {
+      await ChatDatabaseService.createSession('user-123', '<script>alert("xss")</script>');
+
+      expect(prisma.conversationSession.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          summary: expect.not.stringContaining('<script>')
+        }
       });
     });
 
-    it('should handle creation errors', async () => {
-      const error = new Error('Database error');
-      (checkDatabaseHealth as jest.Mock).mockResolvedValueOnce({ status: 'healthy' });
-      (prisma.conversationSession.create as jest.Mock).mockRejectedValueOnce(error);
+    it('should handle rate limit errors', async () => {
+      (enforceRateLimit as jest.Mock).mockRejectedValue(new Error('Rate limit exceeded'));
 
-      await expect(ChatDatabaseService.createSession('user-1')).rejects.toThrow('Database error');
-      expect(logger.error).toHaveBeenCalledWith('[ChatDB] Failed to create session', {
-        error,
-        userId: 'user-1',
-        title: undefined,
-      });
+      await expect(ChatDatabaseService.createSession())
+        .rejects.toThrow('Rate limit exceeded');
     });
   });
 
@@ -143,164 +126,88 @@ describe('ChatDatabaseService', () => {
     const mockSessions: ConversationSession[] = [
       {
         id: 'session-1',
-        userId: 'user-1',
+        userId: 'user-123',
         summary: 'Session 1',
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastActiveAt: new Date(),
-        startedAt: new Date(),
-        metadata: {},
+        lastActiveAt: new Date()
       },
       {
         id: 'session-2',
-        userId: 'user-1',
+        userId: 'user-123',
         summary: 'Session 2',
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastActiveAt: new Date(Date.now() - 3600000),
-        startedAt: new Date(),
-        metadata: {},
-      },
+        lastActiveAt: new Date()
+      }
     ];
 
     it('should return cached sessions if available', async () => {
       chatCaches.sessionLists.get = jest.fn().mockReturnValue(mockSessions);
 
-      const result = await ChatDatabaseService.getUserSessions('user-1');
+      const result = await ChatDatabaseService.getUserSessions('user-123');
 
       expect(result).toEqual(mockSessions);
       expect(prisma.conversationSession.findMany).not.toHaveBeenCalled();
-      expect(logger.debug).toHaveBeenCalledWith('[ChatDB] Sessions retrieved from cache', {
-        userId: 'user-1',
-        count: 2,
-      });
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[ChatDB] Sessions retrieved from cache',
+        expect.any(Object)
+      );
     });
 
-    it('should fetch sessions from database when cache miss', async () => {
+    it('should fetch from database if not cached', async () => {
       chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValueOnce(mockSessions);
+      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValue(mockSessions);
 
-      const result = await ChatDatabaseService.getUserSessions('user-1');
+      const result = await ChatDatabaseService.getUserSessions('user-123');
 
       expect(prisma.conversationSession.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+        where: { userId: 'user-123' },
         orderBy: { lastActiveAt: 'desc' },
-        take: 50,
+        take: 50
       });
+
+      expect(chatCaches.sessionLists.set).toHaveBeenCalledWith('user-123', mockSessions);
       expect(result).toEqual(mockSessions);
-      expect(chatCaches.sessionLists.set).toHaveBeenCalledWith('user-1', mockSessions);
     });
 
-    it('should handle pagination', async () => {
+    it('should handle pagination with cursor', async () => {
       chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValueOnce([mockSessions[1]]);
+      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValue(mockSessions);
 
-      const result = await ChatDatabaseService.getUserSessions('user-1', {
-        limit: 1,
-        cursor: 'session-1',
+      await ChatDatabaseService.getUserSessions('user-123', {
+        limit: 10,
+        cursor: 'session-0'
       });
 
       expect(prisma.conversationSession.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+        where: { userId: 'user-123' },
         orderBy: { lastActiveAt: 'desc' },
-        take: 1,
-        cursor: { id: 'session-1' },
-        skip: 1,
+        take: 10,
+        cursor: { id: 'session-0' },
+        skip: 1
       });
-      expect(result).toEqual([mockSessions[1]]);
+
       // Should not cache paginated results
       expect(chatCaches.sessionLists.set).not.toHaveBeenCalled();
     });
 
-    it('should return anonymous sessions when userId not provided', async () => {
-      chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValueOnce(mockSessions);
-
-      await ChatDatabaseService.getUserSessions();
-
-      expect(prisma.conversationSession.findMany).toHaveBeenCalledWith({
-        where: {},
-        orderBy: { lastActiveAt: 'desc' },
-        take: 50,
-      });
-    });
-
     it('should use stale cache on database error', async () => {
       chatCaches.sessionLists.get = jest.fn()
-        .mockReturnValueOnce(null) // First call - no fresh cache
-        .mockReturnValueOnce(mockSessions); // Second call - stale cache
+        .mockReturnValueOnce(null) // First call - no cache
+        .mockReturnValueOnce(mockSessions); // Fallback call - stale cache
 
-      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
+      (prisma.conversationSession.findMany as jest.Mock).mockRejectedValue(
+        new Error('Database error')
+      );
 
-      const result = await ChatDatabaseService.getUserSessions('user-1');
+      const result = await ChatDatabaseService.getUserSessions('user-123');
 
       expect(result).toEqual(mockSessions);
-      expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Using stale cache due to database error', {
-        userId: 'user-1',
-      });
-    });
-
-    it('should return empty array in development when no cache available', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: 'development',
-        configurable: true
-      });
-
-      chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (withDatabase as jest.Mock).mockImplementation(async (_mainFn, fallbackFn) => fallbackFn());
-
-      const result = await ChatDatabaseService.getUserSessions('user-1');
-
-      expect(result).toEqual([]);
-      expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Returning empty array in development mode');
-
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: originalEnv,
-        configurable: true
-      });
-    });
-
-    it('should apply rate limiting', async () => {
-      chatCaches.sessionLists.get = jest.fn().mockReturnValue(null);
-      (prisma.conversationSession.findMany as jest.Mock).mockResolvedValueOnce([]);
-
-      await ChatDatabaseService.getUserSessions('user-1');
-
-      expect(enforceRateLimit).toHaveBeenCalledWith(chatRateLimiters.bulkOperations, 'user-1');
-    });
-  });
-
-  describe('getSession', () => {
-    const mockSession: ConversationSession = {
-      id: 'session-1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: 'user-1',
-      startedAt: new Date(),
-      lastActiveAt: new Date(),
-      summary: 'Test Session',
-      metadata: {},
-    };
-
-    it('should get session successfully', async () => {
-      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValueOnce(mockSession);
-
-      const result = await ChatDatabaseService.getSession('session-1');
-
-      expect(prisma.conversationSession.findUnique).toHaveBeenCalledWith({
-        where: { id: 'session-1' },
-      });
-      expect(result).toEqual(mockSession);
-    });
-
-    it('should return null on error', async () => {
-      (prisma.conversationSession.findUnique as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
-
-      const result = await ChatDatabaseService.getSession('invalid-id');
-
-      expect(result).toBeNull();
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[ChatDB] Using stale cache due to database error',
+        { userId: 'user-123' }
+      );
     });
   });
 
@@ -308,24 +215,20 @@ describe('ChatDatabaseService', () => {
     const mockMessages: ConversationMessage[] = [
       {
         id: 'msg-1',
-        createdAt: new Date(),
-        timestamp: new Date(),
         sessionId: 'session-1',
-        role: 'user' as const,
+        role: 'user',
         content: 'Hello',
-        agentId: null,
-        metadata: { type: 'text' },
+        timestamp: new Date(Date.now() - 1000),
+        metadata: null
       },
       {
         id: 'msg-2',
-        createdAt: new Date(),
-        timestamp: new Date(Date.now() + 1000),
         sessionId: 'session-1',
-        role: 'assistant' as const,
+        role: 'assistant',
         content: 'Hi there!',
-        agentId: null,
-        metadata: { type: 'text' },
-      },
+        timestamp: new Date(),
+        metadata: { type: 'text' }
+      }
     ];
 
     it('should return cached messages if available', async () => {
@@ -338,352 +241,242 @@ describe('ChatDatabaseService', () => {
         id: 'msg-1',
         content: 'Hello',
         role: 'user',
-        type: 'text',
+        timestamp: expect.any(Number)
       });
       expect(prisma.conversationMessage.findMany).not.toHaveBeenCalled();
     });
 
-    it('should fetch messages from database when cache miss', async () => {
+    it('should fetch from database and cache results', async () => {
       chatCaches.messages.get = jest.fn().mockReturnValue(null);
-      (prisma.conversationMessage.findMany as jest.Mock).mockResolvedValueOnce(mockMessages);
+      (prisma.conversationMessage.findMany as jest.Mock).mockResolvedValue(mockMessages);
 
       const result = await ChatDatabaseService.getMessages('session-1');
 
       expect(prisma.conversationMessage.findMany).toHaveBeenCalledWith({
         where: { sessionId: 'session-1' },
-        orderBy: { timestamp: 'asc' },
+        orderBy: { timestamp: 'asc' }
       });
+
       expect(chatCaches.messages.set).toHaveBeenCalledWith('session-1', mockMessages);
       expect(result).toHaveLength(2);
     });
 
-    it('should handle empty metadata correctly', async () => {
-      const messagesWithoutMetadata = [
-        {
-          ...mockMessages[0],
-          metadata: null,
-        },
-      ];
+    it('should convert metadata correctly', async () => {
+      const messageWithMetadata: ConversationMessage = {
+        id: 'msg-3',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: 'Analysis',
+        timestamp: new Date(),
+        metadata: {
+          type: 'proposal',
+          proposalGroup: {
+            id: 'pg-1',
+            proposals: []
+          }
+        }
+      };
 
-      chatCaches.messages.get = jest.fn().mockReturnValue(messagesWithoutMetadata);
+      chatCaches.messages.get = jest.fn().mockReturnValue([messageWithMetadata]);
 
       const result = await ChatDatabaseService.getMessages('session-1');
 
-      expect(result[0]?.type).toBeUndefined();
+      expect(result[0]).toMatchObject({
+        type: 'proposal',
+        proposalGroup: {
+          id: 'pg-1',
+          proposals: []
+        }
+      });
     });
   });
 
   describe('addMessage', () => {
-    const mockMessage: ConversationMessage = {
-      id: 'msg-1',
-      createdAt: new Date(),
-      timestamp: new Date(),
-      sessionId: 'session-1',
-      role: 'user' as const,
-      content: 'Test message',
-      agentId: null,
-      metadata: { type: 'text' },
-    };
+    it('should add a message and update session', async () => {
+      const mockMessage: ConversationMessage = {
+        id: 'msg-1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: 'Test message',
+        timestamp: new Date(),
+        metadata: null
+      };
 
-    const mockSession: ConversationSession = {
-      id: 'session-1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: 'user-1',
-      startedAt: new Date(),
-      lastActiveAt: new Date(),
-      summary: 'Test Session',
-      metadata: {},
-    };
+      const mockSession = {
+        id: 'session-1',
+        userId: 'user-123'
+      };
 
-    it('should add message successfully', async () => {
-      const transactionMock = jest.fn().mockImplementation(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
         const tx = {
           conversationSession: {
             findUnique: jest.fn().mockResolvedValue(mockSession),
-            update: jest.fn().mockResolvedValue(mockSession),
+            update: jest.fn().mockResolvedValue(mockSession)
           },
           conversationMessage: {
-            create: jest.fn().mockResolvedValue(mockMessage),
-          },
+            create: jest.fn().mockResolvedValue(mockMessage)
+          }
         };
-        return callback(tx);
+        return fn(tx);
       });
-
-      (prisma.$transaction as jest.Mock).mockImplementation(transactionMock);
 
       const result = await ChatDatabaseService.addMessage('session-1', {
         content: 'Test message',
-        role: 'user',
-        type: 'text',
+        role: 'user'
       });
 
-      expect(enforceRateLimit).toHaveBeenCalledWith(chatRateLimiters.messageCreation, 'session-1');
-      expect(validateAndSanitizeChatMessage).toHaveBeenCalled();
+      expect(enforceRateLimit).toHaveBeenCalledWith(
+        chatRateLimiters.messageCreation,
+        'session-1'
+      );
+
       expect(result).toEqual(mockMessage);
-      expect(invalidateSessionCache).toHaveBeenCalledWith('session-1', 'user-1');
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Message added', {
-        sessionId: 'session-1',
-        messageId: 'msg-1',
-        role: 'user',
-      });
+      expect(invalidateSessionCache).toHaveBeenCalledWith('session-1', 'user-123');
     });
 
-    it('should handle proposal group messages', async () => {
-      const proposalMessage = {
-        content: 'Here is a trading proposal',
+    it('should handle message with metadata', async () => {
+      const messageWithMetadata = {
+        content: 'Analysis result',
         role: 'assistant' as const,
         type: 'proposal' as const,
         proposalGroup: {
-          id: 'group-1',
-          title: 'Trading Proposal',
-          description: 'BTCUSDT Buy Signal',
-          proposals: [
-            {
-              id: 'prop-1',
-              type: 'trendline',
-              analysisType: 'support',
-              coordinates: {
-                start: { x: 0, y: 50000 },
-                end: { x: 100, y: 51000 }
-              },
-              confidence: 0.8,
-              reasoning: 'Strong support level',
-              priority: 'high' as const,
-              status: 'pending' as any,
-              createdAt: Date.now()
-            },
-          ],
-          groupType: 'analysis' as const,
-          createdAt: Date.now()
-        },
+          id: 'pg-1',
+          proposals: []
+        }
       };
 
-      (validateAndSanitizeChatMessage as jest.Mock).mockReturnValue(proposalMessage);
-
-      const transactionMock = jest.fn().mockImplementation(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
         const tx = {
           conversationSession: {
-            findUnique: jest.fn().mockResolvedValue(mockSession),
-            update: jest.fn().mockResolvedValue(mockSession),
+            findUnique: jest.fn().mockResolvedValue({ id: 'session-1' }),
+            update: jest.fn()
           },
           conversationMessage: {
-            create: jest.fn().mockResolvedValue({
-              ...mockMessage,
-              metadata: {
+            create: jest.fn((args) => {
+              expect(args.data.metadata).toEqual({
                 type: 'proposal',
-                proposalGroup: proposalMessage.proposalGroup,
-              },
-            }),
-          },
+                proposalGroup: messageWithMetadata.proposalGroup
+              });
+              return Promise.resolve({ id: 'msg-1' });
+            })
+          }
         };
-        return callback(tx);
+        return fn(tx);
       });
 
-      (prisma.$transaction as jest.Mock).mockImplementation(transactionMock);
-
-      await ChatDatabaseService.addMessage('session-1', proposalMessage as any);
-
-      const txCall = transactionMock.mock.calls[0][0];
-      const tx = {
-        conversationSession: {
-          findUnique: jest.fn().mockResolvedValue(mockSession),
-          update: jest.fn(),
-        },
-        conversationMessage: {
-          create: jest.fn(),
-        },
-      };
-      await txCall(tx);
-
-      expect(tx.conversationMessage.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          metadata: expect.objectContaining({
-            type: 'proposal',
-            proposalGroup: proposalMessage.proposalGroup,
-          }),
-        }),
-      });
+      await ChatDatabaseService.addMessage('session-1', messageWithMetadata);
     });
 
     it('should throw error if session not found', async () => {
-      const transactionMock = jest.fn().mockImplementation(async (callback) => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
         const tx = {
           conversationSession: {
-            findUnique: jest.fn().mockResolvedValue(null),
-          },
+            findUnique: jest.fn().mockResolvedValue(null)
+          }
         };
-        return callback(tx);
+        return fn(tx);
       });
 
-      (prisma.$transaction as jest.Mock).mockImplementation(transactionMock);
+      await expect(ChatDatabaseService.addMessage('invalid-session', {
+        content: 'Test',
+        role: 'user'
+      })).rejects.toThrow('Session not found: invalid-session');
+    });
 
-      await expect(
-        ChatDatabaseService.addMessage('invalid-session', {
-          content: 'Test',
-          role: 'user',
-        })
-      ).rejects.toThrow('Session not found: invalid-session');
+    it('should sanitize message content', async () => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
+        const tx = {
+          conversationSession: {
+            findUnique: jest.fn().mockResolvedValue({ id: 'session-1' }),
+            update: jest.fn()
+          },
+          conversationMessage: {
+            create: jest.fn((args) => {
+              expect(args.data.content).not.toContain('<script>');
+              return Promise.resolve({ id: 'msg-1' });
+            })
+          }
+        };
+        return fn(tx);
+      });
+
+      await ChatDatabaseService.addMessage('session-1', {
+        content: '<script>alert("xss")</script>Hello',
+        role: 'user'
+      });
     });
   });
 
   describe('updateSessionTitle', () => {
-    const mockUpdatedSession: ConversationSession = {
-      id: 'session-1',
-      userId: 'user-1',
-      summary: 'Updated Title',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      lastActiveAt: new Date(),
-      startedAt: new Date(),
-      metadata: {},
-    };
+    it('should update session title and invalidate cache', async () => {
+      const updatedSession = {
+        id: 'session-1',
+        summary: 'New Title'
+      };
 
-    it('should update session title successfully', async () => {
-      (prisma.conversationSession.update as jest.Mock).mockResolvedValueOnce(mockUpdatedSession);
+      (prisma.conversationSession.update as jest.Mock).mockResolvedValue(updatedSession);
 
-      const result = await ChatDatabaseService.updateSessionTitle('session-1', 'Updated Title');
+      const result = await ChatDatabaseService.updateSessionTitle('session-1', 'New Title');
 
       expect(prisma.conversationSession.update).toHaveBeenCalledWith({
         where: { id: 'session-1' },
-        data: { summary: 'Updated Title' },
+        data: { summary: 'New Title' }
       });
-      expect(result).toEqual(mockUpdatedSession);
+
       expect(chatCaches.sessions.delete).toHaveBeenCalledWith('session-1');
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Session title updated', {
-        sessionId: 'session-1',
-        title: 'Updated Title',
-      });
+      expect(result).toEqual(updatedSession);
     });
 
-    it('should handle update errors', async () => {
-      const error = new Error('Update failed');
-      (prisma.conversationSession.update as jest.Mock).mockRejectedValueOnce(error);
-
-      await expect(ChatDatabaseService.updateSessionTitle('session-1', 'New Title')).rejects.toThrow(
-        'Update failed'
+    it('should sanitize title', async () => {
+      await ChatDatabaseService.updateSessionTitle(
+        'session-1',
+        '<b>Bold</b> Title'
       );
-      expect(logger.error).toHaveBeenCalled();
+
+      expect(prisma.conversationSession.update).toHaveBeenCalledWith({
+        where: { id: 'session-1' },
+        data: { summary: expect.not.stringContaining('<b>') }
+      });
     });
   });
 
   describe('deleteSession', () => {
-    it('should delete session successfully', async () => {
-      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValueOnce({
-        userId: 'user-1',
+    it('should delete session and invalidate caches', async () => {
+      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-123'
       });
-      (prisma.conversationSession.delete as jest.Mock).mockResolvedValueOnce({});
+
+      (prisma.conversationSession.delete as jest.Mock).mockResolvedValue({
+        id: 'session-1'
+      });
 
       await ChatDatabaseService.deleteSession('session-1');
 
-      expect(prisma.conversationSession.delete).toHaveBeenCalledWith({
+      expect(prisma.conversationSession.findUnique).toHaveBeenCalledWith({
         where: { id: 'session-1' },
+        select: { userId: true }
       });
-      expect(invalidateSessionCache).toHaveBeenCalledWith('session-1', 'user-1');
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Session deleted', { sessionId: 'session-1' });
+
+      expect(prisma.conversationSession.delete).toHaveBeenCalledWith({
+        where: { id: 'session-1' }
+      });
+
+      expect(invalidateSessionCache).toHaveBeenCalledWith('session-1', 'user-123');
     });
 
     it('should handle deletion errors', async () => {
-      const error = new Error('Not found');
-      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValueOnce({ userId: 'user-1' });
-      (prisma.conversationSession.delete as jest.Mock).mockRejectedValueOnce(error);
+      (prisma.conversationSession.delete as jest.Mock).mockRejectedValue(
+        new Error('Delete failed')
+      );
 
-      await expect(ChatDatabaseService.deleteSession('session-1')).rejects.toThrow('Not found');
-      expect(logger.error).toHaveBeenCalled();
-    });
-  });
+      await expect(ChatDatabaseService.deleteSession('session-1'))
+        .rejects.toThrow('Delete failed');
 
-  describe('convertToChatMessage', () => {
-    it('should convert database message to chat message format', () => {
-      const dbMessage: ConversationMessage = {
-        id: 'msg-1',
-        createdAt: new Date(),
-        timestamp: new Date('2024-01-01T00:00:00Z'),
-        sessionId: 'session-1',
-        role: 'user' as const,
-        content: 'Test message',
-        agentId: null,
-        metadata: {
-          type: 'text',
-          proposalGroup: {
-            proposals: [],
-          },
-        },
-      };
-
-      const result = ChatDatabaseService.convertToChatMessage(dbMessage);
-
-      expect(result).toEqual({
-        id: 'msg-1',
-        content: 'Test message',
-        role: 'user',
-        timestamp: new Date('2024-01-01T00:00:00Z').getTime(),
-        type: 'text',
-        proposalGroup: {
-          proposals: [],
-        },
-        isTyping: undefined,
-        entryProposalGroup: undefined,
-      });
-    });
-
-    it('should handle null metadata', () => {
-      const dbMessage: ConversationMessage = {
-        id: 'msg-1',
-        createdAt: new Date(),
-        timestamp: new Date(),
-        sessionId: 'session-1',
-        role: 'assistant' as const,
-        content: 'Response',
-        agentId: null,
-        metadata: null,
-      };
-
-      const result = ChatDatabaseService.convertToChatMessage(dbMessage);
-
-      expect(result.type).toBeUndefined();
-      expect(result.proposalGroup).toBeUndefined();
-    });
-  });
-
-  describe('convertToChatSession', () => {
-    it('should convert database session to chat session format', () => {
-      const dbSession: ConversationSession = {
-        id: 'session-1',
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-        updatedAt: new Date('2024-01-01T01:00:00Z'),
-        userId: 'user-1',
-        startedAt: new Date(),
-        lastActiveAt: new Date(),
-        summary: 'Test Session',
-        metadata: {},
-      };
-
-      const result = ChatDatabaseService.convertToChatSession(dbSession);
-
-      expect(result).toEqual({
-        id: 'session-1',
-        title: 'Test Session',
-        createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
-        updatedAt: new Date('2024-01-01T01:00:00Z').getTime(),
-      });
-    });
-
-    it('should use default title when summary is null', () => {
-      const dbSession: ConversationSession = {
-        id: 'session-1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: 'user-1',
-        startedAt: new Date(),
-        lastActiveAt: new Date(),
-        summary: null,
-        metadata: {},
-      };
-
-      const result = ChatDatabaseService.convertToChatSession(dbSession);
-
-      expect(result.title).toBe('Untitled session');
+      expect(logger.error).toHaveBeenCalledWith(
+        '[ChatDB] Failed to delete session',
+        expect.any(Object)
+      );
     });
   });
 
@@ -692,71 +485,141 @@ describe('ChatDatabaseService', () => {
       sessions: {
         'local-session-1': {
           id: 'local-session-1',
-          title: 'Local Session',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        },
+          title: 'Migrated Session',
+          createdAt: Date.now() - 86400000,
+          updatedAt: Date.now()
+        }
       },
       messagesBySession: {
         'local-session-1': [
           {
             id: 'local-msg-1',
-            content: 'Local message',
+            content: 'Hello from local',
             role: 'user' as const,
-            timestamp: Date.now(),
-            type: 'text' as const,
+            timestamp: Date.now() - 3600000
           },
-        ],
-      },
+          {
+            id: 'local-msg-2',
+            content: 'Response from local',
+            role: 'assistant' as const,
+            timestamp: Date.now() - 3500000,
+            type: 'text' as const
+          }
+        ]
+      }
     };
 
-    it('should migrate data successfully', async () => {
+    it('should migrate sessions and messages', async () => {
       (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue(null);
-      (prisma.conversationSession.create as jest.Mock).mockResolvedValue({});
-      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue({});
+      (prisma.conversationSession.create as jest.Mock).mockResolvedValue({ id: 'local-session-1' });
+      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue({ id: 'msg-1' });
 
-      await ChatDatabaseService.migrateFromLocalStorage(localData, 'user-1');
+      await ChatDatabaseService.migrateFromLocalStorage(localData, 'user-123');
 
       expect(prisma.conversationSession.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: {
           id: 'local-session-1',
-          userId: 'user-1',
-          summary: 'Local Session',
-        }),
+          userId: 'user-123',
+          summary: 'Migrated Session',
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date)
+        }
       });
 
+      expect(prisma.conversationMessage.create).toHaveBeenCalledTimes(2);
       expect(prisma.conversationMessage.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: {
           id: 'local-msg-1',
           sessionId: 'local-session-1',
-          content: 'Local message',
           role: 'user',
-        }),
+          content: 'Hello from local',
+          timestamp: expect.any(Date),
+          metadata: null
+        }
       });
 
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Migration completed successfully');
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ChatDB] Migration completed successfully'
+      );
     });
 
     it('should skip existing sessions', async () => {
-      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue({ id: 'local-session-1' });
+      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue({
+        id: 'local-session-1'
+      });
 
       await ChatDatabaseService.migrateFromLocalStorage(localData);
 
       expect(prisma.conversationSession.create).not.toHaveBeenCalled();
-      expect(logger.info).toHaveBeenCalledWith('[ChatDB] Session already exists, skipping', {
-        sessionId: 'local-session-1',
-      });
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ChatDB] Session already exists, skipping',
+        { sessionId: 'local-session-1' }
+      );
     });
 
     it('should handle migration errors', async () => {
-      const error = new Error('Migration failed');
-      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue(null);
-      (prisma.conversationSession.create as jest.Mock).mockRejectedValueOnce(error);
-
-      await expect(ChatDatabaseService.migrateFromLocalStorage(localData)).rejects.toThrow(
-        'Migration failed'
+      (prisma.conversationSession.findUnique as jest.Mock).mockRejectedValue(
+        new Error('Database error')
       );
-      expect(logger.error).toHaveBeenCalledWith('[ChatDB] Migration failed', { error });
+
+      await expect(ChatDatabaseService.migrateFromLocalStorage(localData))
+        .rejects.toThrow('Database error');
+
+      expect(logger.error).toHaveBeenCalledWith(
+        '[ChatDB] Migration failed',
+        expect.any(Object)
+      );
     });
   });
-});
+
+  describe('convertToChatMessage', () => {
+    it('should convert database message to chat format', () => {
+      const dbMessage: ConversationMessage = {
+        id: 'msg-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: 'Test content',
+        timestamp: new Date('2024-01-01T12:00:00Z'),
+        metadata: {
+          type: 'proposal',
+          proposalGroup: { id: 'pg-1' },
+          isTyping: false
+        }
+      };
+
+      const result = ChatDatabaseService.convertToChatMessage(dbMessage);
+
+      expect(result).toEqual({
+        id: 'msg-1',
+        content: 'Test content',
+        role: 'assistant',
+        timestamp: new Date('2024-01-01T12:00:00Z').getTime(),
+        type: 'proposal',
+        proposalGroup: { id: 'pg-1' },
+        isTyping: false
+      });
+    });
+
+    it('should handle null metadata', () => {
+      const dbMessage: ConversationMessage = {
+        id: 'msg-2',
+        sessionId: 'session-1',
+        role: 'user',
+        content: 'Simple message',
+        timestamp: new Date(),
+        metadata: null
+      };
+
+      const result = ChatDatabaseService.convertToChatMessage(dbMessage);
+
+      expect(result).not.toHaveProperty('type');
+      expect(result).not.toHaveProperty('proposalGroup');
+      expect(result).not.toHaveProperty('isTyping');
+    });
+  });
+
+  describe('convertToChatSession', () => {
+    it('should convert database session to chat format', () => {
+      const dbSession: ConversationSession = {
+        id: 'session-1',
+        userId: 'user-123',

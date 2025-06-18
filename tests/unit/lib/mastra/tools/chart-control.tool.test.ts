@@ -1,580 +1,612 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { createTool } from '@mastra/core';
+// Mock dependencies before imports
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/monitoring/metrics');
+jest.mock('ai');
+jest.mock('@ai-sdk/openai');
+jest.mock('@/lib/mastra/tools/chart-data-analysis.tool');
+
+import { chartControlTool } from '@/lib/mastra/tools/chart-control.tool';
 import { generateText } from 'ai';
-import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import { openai } from '@ai-sdk/openai';
 import { incrementMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
+import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
 
-// Mock dependencies
-jest.mock('@mastra/core');
-jest.mock('ai');
-jest.mock('@/lib/mastra/tools/chart-data-analysis.tool');
-jest.mock('@/lib/monitoring/metrics');
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  },
-}));
-
-// Create mock GenerateTextResult
-function createMockGenerateTextResult(text: string): any {
-  return {
-    text,
-    reasoning: undefined,
-    files: [],
-    reasoningDetails: [],
-    sources: [],
-    experimental_output: undefined,
-    toolCalls: [],
-    toolResults: [],
-    finishReason: 'stop',
-    usage: {
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150,
-    },
-    warnings: undefined,
-    steps: [],
-    request: {
-      model: 'gpt-4',
-    },
-    response: {
-      id: 'test-response-id',
-      model: 'gpt-4',
-      timestamp: new Date(),
-    },
-  };
-}
+// Type cast the execute function to avoid TypeScript errors
+const executeChartControlTool = chartControlTool.execute as any;
 
 describe('chartControlTool', () => {
   const mockGenerateText = generateText as jest.MockedFunction<typeof generateText>;
-  const mockIncrementMetric = incrementMetric as jest.MockedFunction<typeof incrementMetric>;
-  const mockCreateTool = createTool as jest.MockedFunction<typeof createTool>;
-
-  let mockExecute: jest.Mock;
+  const mockOpenai = openai as jest.MockedFunction<typeof openai>;
+  const mockChartDataAnalysisTool = chartDataAnalysisTool.execute as jest.MockedFunction<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Setup createTool mock to capture the execute function
-    mockExecute = jest.fn();
-    mockCreateTool.mockImplementation((config) => {
-      mockExecute = config.execute as jest.Mock;
-      return {
-        id: config.id,
-        description: config.description,
-        inputSchema: config.inputSchema,
-        outputSchema: config.outputSchema,
-        execute: mockExecute,
-      } as any;
-    });
-
-    // Re-import to apply mocks
-    jest.isolateModules(() => {
-      require('@/lib/mastra/tools/chart-control.tool');
-    });
-  });
-
-  describe('Symbol Change Operations', () => {
-    it('should handle symbol change requests', async () => {
-      const mockAnalysisResponse = {
+    
+    // Mock AI model
+    mockOpenai.mockReturnValue('gpt-4o' as any);
+    
+    // Default mock for generateText - valid JSON response
+    mockGenerateText.mockResolvedValue({
+      text: JSON.stringify({
         operations: [{
           type: 'symbol_change',
           action: 'change_symbol',
           parameters: { symbol: 'BTCUSDT' },
           priority: 8,
-          description: 'Change symbol to BTC'
+          description: 'Change to BTC'
         }],
-        reasoning: 'User wants to change to Bitcoin',
-        confidence: 0.95,
+        reasoning: 'User wants to view BTC chart',
+        confidence: 0.9,
         complexity: 'simple',
-        userIntent: 'Change to BTC'
-      };
+        userIntent: 'View BTC chart'
+      }),
+      usage: { promptTokens: 100, completionTokens: 50 },
+      finishReason: 'stop',
+      response: {} as any,
+    } as any);
+  });
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('BTCに変更します。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'BTCに変更して',
-          conversationHistory: [],
-          currentState: { symbol: 'ETHUSDT' }
-        }
-      }) as any;
-
-      expect(result.success).toBe(true);
-      expect(result.operations).toHaveLength(1);
-      expect(result.operations[0].type).toBe('symbol_change');
-      expect(result.operations[0].clientEvent).toEqual({
-        event: 'ui:changeSymbol',
-        data: { symbol: 'BTCUSDT' }
-      });
-      expect(result.response).toBe('BTCに変更します。');
-    });
-
-    it('should handle ETH symbol change', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'symbol_change',
-          action: 'change_symbol',
-          parameters: { symbol: 'ETHUSDT' },
-          priority: 8,
-          description: 'Change symbol to ETH'
-        }],
-        reasoning: 'User wants to change to Ethereum',
-        confidence: 0.95,
-        complexity: 'simple',
-        userIntent: 'Change to ETH'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('ETHに変更します。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'ETHに切り替え',
-          currentState: { symbol: 'BTCUSDT' }
-        }
-      });
-
-      expect((result as any).operations[0].parameters.symbol).toBe('ETHUSDT');
+  describe('tool configuration', () => {
+    it('should have correct metadata', () => {
+      expect(chartControlTool.id).toBe('ai-unified-chart-control');
+      expect(chartControlTool.description).toContain('AI-powered unified chart control tool');
+      expect(chartControlTool.inputSchema).toBeDefined();
+      expect(chartControlTool.outputSchema).toBeDefined();
     });
   });
 
-  describe('Timeframe Change Operations', () => {
-    it('should handle timeframe change requests', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'timeframe_change',
-          action: 'change_timeframe',
-          parameters: { timeframe: '4h' },
-          priority: 7,
-          description: 'Change timeframe to 4 hours'
-        }],
-        reasoning: 'User wants to change to 4-hour timeframe',
-        confidence: 0.9,
-        complexity: 'simple',
-        userIntent: 'Change to 4h timeframe'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('4時間足に変更しました。'));
-
-      const result = await mockExecute({
+  describe('execute - basic operations', () => {
+    it('should handle symbol change request', async () => {
+      const result = await executeChartControlTool({
         context: {
-          userRequest: '4時間足にして',
+          userRequest: 'BTCに変更して',
+          conversationHistory: [],
+          currentState: { symbol: 'ETHUSDT', timeframe: '1h' }
+        }
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.operations).toHaveLength(1);
+      expect(result.operations[0]).toMatchObject({
+        type: 'symbol_change',
+        action: 'change_symbol',
+        parameters: { symbol: 'BTCUSDT' },
+        clientEvent: {
+          event: 'ui:changeSymbol',
+          data: { symbol: 'BTCUSDT' }
+        }
+      });
+    });
+
+    it('should handle timeframe change request', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'timeframe_change',
+            action: 'change_timeframe',
+            parameters: { timeframe: '4h' },
+            priority: 7,
+            description: 'Change to 4 hour timeframe'
+          }],
+          reasoning: 'User wants 4h timeframe',
+          confidence: 0.85,
+          complexity: 'simple',
+          userIntent: 'Change timeframe'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: {
+          userRequest: '4時間足に変更',
           currentState: { timeframe: '1h' }
         }
       });
 
-      expect((result as any).success).toBe(true);
-      expect((result as any).operations[0].type).toBe('timeframe_change');
-      expect((result as any).operations[0].clientEvent).toEqual({
+      expect(result.operations[0].clientEvent).toEqual({
         event: 'ui:changeTimeframe',
         data: { timeframe: '4h' }
       });
     });
+
+    it('should handle chart operations', async () => {
+      const chartOps = [
+        { action: 'fit_content', event: 'chart:fitContent' },
+        { action: 'zoom_in', event: 'chart:zoomIn' },
+        { action: 'zoom_out', event: 'chart:zoomOut' },
+        { action: 'reset_view', event: 'chart:resetView' },
+        { action: 'clear_all_drawings', event: 'chart:clearAllDrawings' }
+      ];
+
+      for (const op of chartOps) {
+        mockGenerateText.mockResolvedValueOnce({
+          text: JSON.stringify({
+            operations: [{
+              type: 'chart_operation',
+              action: op.action,
+              parameters: {},
+              priority: 5,
+              description: `Execute ${op.action}`
+            }],
+            reasoning: 'Chart operation requested',
+            confidence: 0.8,
+            complexity: 'simple',
+            userIntent: 'Chart control'
+          }),
+          usage: { promptTokens: 100, completionTokens: 50 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any);
+
+        const result = await executeChartControlTool({
+          context: { userRequest: op.action }
+        });
+
+        expect(result.operations[0].clientEvent?.event).toBe(op.event);
+      }
+    });
   });
 
-  describe('Drawing Operations', () => {
-    beforeEach(() => {
-      // Mock chart data analysis tool
-      jest.mocked(chartDataAnalysisTool.execute).mockResolvedValue({
-        currentPrice: { price: 105000 },
+  describe('execute - drawing operations', () => {
+    it('should handle trendline drawing with chart analysis', async () => {
+      const mockChartAnalysis = {
+        currentPrice: { price: 50000, timestamp: Date.now() },
         technicalAnalysis: {
-          trend: { direction: 'upward', strength: 0.75 },
-          momentum: { rsi: 65.5 },
+          trend: { direction: 'bullish', strength: 0.8, confidence: 0.9 },
+          momentum: { rsi: 65 },
           volatility: { volatilityLevel: 'medium' },
-          supportResistance: {
-            supports: [{ price: 100000 }, { price: 98000 }],
-            resistances: [{ price: 110000 }, { price: 112000 }]
-          }
+          supportResistance: { supports: [], resistances: [] }
         },
         recommendations: {
           trendlineDrawing: [{
+            type: 'trendline',
+            description: 'Uptrend line',
             points: [
-              { time: 1735830000000, value: 100000 },
-              { time: 1735837200000, value: 102000 }
+              { time: 1000000, price: 48000 },
+              { time: 2000000, price: 52000 }
             ],
             style: { color: '#00e676', lineWidth: 2, lineStyle: 'solid' },
-            description: 'Strong upward trendline',
-            priority: 1
+            priority: 9
           }],
-          analysis: 'Bullish trend detected'
+          analysis: 'Strong uptrend detected',
+          nextAction: 'Draw trendline'
         }
-      });
-    });
-
-    it('should handle trendline drawing with chart analysis', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'drawing_operation',
-          action: 'draw_trendline',
-          parameters: {},
-          priority: 9,
-          description: 'Draw trendline'
-        }],
-        reasoning: 'User wants to draw a trendline',
-        confidence: 0.85,
-        complexity: 'moderate',
-        userIntent: 'Draw trendline'
       };
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('上昇トレンドラインを描画します。'));
+      mockChartDataAnalysisTool.mockResolvedValueOnce(mockChartAnalysis);
+      
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'drawing_operation',
+            action: 'draw_trendline',
+            parameters: {},
+            priority: 8,
+            description: 'Draw trendline'
+          }],
+          reasoning: 'User wants trendline',
+          confidence: 0.9,
+          complexity: 'moderate',
+          userIntent: 'Draw trend'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      const result = await mockExecute({
+      const result = await executeChartControlTool({
         context: {
           userRequest: 'トレンドラインを引いて',
-          currentState: { symbol: 'BTCUSDT', timeframe: '1h' }
+          currentState: { symbol: 'BTCUSDT' }
         }
       });
 
-      expect((result as any).success).toBe(true);
-      expect(chartDataAnalysisTool.execute).toHaveBeenCalled();
-      expect((result as any).operations[0].parameters.points).toBeDefined();
-      expect((result as any).operations[0].parameters.autoGenerated).toBe(true);
-      expect((result as any).metadata.chartDataUsed).toBe(true);
+      expect(mockChartDataAnalysisTool).toHaveBeenCalled();
+      expect(result.operations[0].parameters).toMatchObject({
+        points: mockChartAnalysis.recommendations.trendlineDrawing[0].points,
+        autoGenerated: true
+      });
     });
 
     it('should handle fibonacci drawing', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'drawing_operation',
-          action: 'draw_fibonacci',
-          parameters: {
-            points: [
-              { x: 100, y: 200, price: 100000, time: 1735830000000 },
-              { x: 300, y: 150, price: 105000, time: 1735837200000 }
-            ]
-          },
-          priority: 8,
-          description: 'Draw fibonacci retracement'
-        }],
-        reasoning: 'User wants fibonacci retracement',
-        confidence: 0.8,
-        complexity: 'moderate',
-        userIntent: 'Draw fibonacci'
-      };
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'drawing_operation',
+            action: 'draw_fibonacci',
+            parameters: {
+              points: [
+                { x: 100, y: 200, price: 45000, time: 1000000 },
+                { x: 300, y: 100, price: 55000, time: 2000000 }
+              ]
+            },
+            priority: 7,
+            description: 'Draw fibonacci'
+          }],
+          reasoning: 'Fibonacci analysis requested',
+          confidence: 0.85,
+          complexity: 'moderate',
+          userIntent: 'Fibonacci retracement'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('フィボナッチリトレースメントを描画します。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'フィボナッチを描画',
-          currentState: {}
-        }
+      const result = await executeChartControlTool({
+        context: { userRequest: 'フィボナッチを描画' }
       });
 
-      expect((result as any).operations[0].type).toBe('drawing_operation');
-      expect((result as any).operations[0].action).toBe('draw_fibonacci');
-      expect((result as any).operations[0].clientEvent.event).toBe('draw:fibonacci');
-    });
-
-    it('should handle horizontal line drawing', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'drawing_operation',
-          action: 'draw_horizontal',
-          parameters: { price: 105000 },
-          priority: 7,
-          description: 'Draw horizontal line at 105000'
-        }],
-        reasoning: 'User wants a horizontal support line',
-        confidence: 0.85,
-        complexity: 'simple',
-        userIntent: 'Draw horizontal line'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('水平線を105000に描画します。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'サポートラインを引いて',
-          currentState: {}
+      expect(result.operations[0].clientEvent).toMatchObject({
+        event: 'draw:fibonacci',
+        data: {
+          points: expect.arrayContaining([
+            expect.objectContaining({ time: 1000000, price: 45000 })
+          ])
         }
-      });
-
-      expect((result as any).operations[0].clientEvent.event).toBe('chart:addDrawing');
-      expect((result as any).operations[0].clientEvent.data.type).toBe('horizontal');
-      expect((result as any).operations[0].clientEvent.data.price).toBe(105000);
-    });
-  });
-
-  describe('Chart Operations', () => {
-    it('should handle fit content operation', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'chart_operation',
-          action: 'fit_content',
-          parameters: {},
-          priority: 6,
-          description: 'Fit chart content'
-        }],
-        reasoning: 'User wants to fit chart to screen',
-        confidence: 0.9,
-        complexity: 'simple',
-        userIntent: 'Fit content'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('チャートを画面に合わせます。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'チャートを画面に合わせて',
-          currentState: {}
-        }
-      });
-
-      expect((result as any).operations[0].clientEvent).toEqual({
-        event: 'chart:fitContent',
-        data: {}
       });
     });
 
-    it('should handle zoom operations', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'chart_operation',
-          action: 'zoom_in',
-          parameters: { factor: 1.5 },
-          priority: 6,
-          description: 'Zoom in'
-        }],
-        reasoning: 'User wants to zoom in',
-        confidence: 0.85,
-        complexity: 'simple',
-        userIntent: 'Zoom in'
-      };
+    it('should handle horizontal and vertical lines', async () => {
+      // Test horizontal line
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'drawing_operation',
+            action: 'draw_horizontal',
+            parameters: { price: 50000 },
+            priority: 6,
+            description: 'Draw horizontal line'
+          }],
+          reasoning: 'Horizontal level requested',
+          confidence: 0.9,
+          complexity: 'simple',
+          userIntent: 'Support level'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('ズームインします。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'ズームイン',
-          currentState: {}
-        }
+      const horizontalResult = await executeChartControlTool({
+        context: { userRequest: '水平線を引く' }
       });
 
-      expect((result as any).operations[0].clientEvent.event).toBe('chart:zoomIn');
-      expect((result as any).operations[0].clientEvent.data.factor).toBe(1.5);
+      expect(horizontalResult.operations[0].clientEvent).toMatchObject({
+        event: 'chart:addDrawing',
+        data: expect.objectContaining({
+          type: 'horizontal',
+          price: 50000
+        })
+      });
+
+      // Test vertical line
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'drawing_operation',
+            action: 'draw_vertical',
+            parameters: { time: 1640995200000 },
+            priority: 6,
+            description: 'Draw vertical line'
+          }],
+          reasoning: 'Vertical marker requested',
+          confidence: 0.9,
+          complexity: 'simple',
+          userIntent: 'Time marker'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const verticalResult = await executeChartControlTool({
+        context: { userRequest: '垂直線を引く' }
+      });
+
+      expect(verticalResult.operations[0].clientEvent).toMatchObject({
+        event: 'chart:addDrawing',
+        data: expect.objectContaining({
+          type: 'vertical',
+          time: 1640995200000
+        })
+      });
     });
   });
 
-  describe('Undo/Redo Operations', () => {
-    it('should handle undo operation', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'undo_redo',
-          action: 'undo',
-          parameters: {},
-          priority: 8,
-          description: 'Undo last action'
-        }],
-        reasoning: 'User wants to undo',
-        confidence: 0.95,
-        complexity: 'simple',
-        userIntent: 'Undo'
-      };
+  describe('execute - undo/redo operations', () => {
+    it('should handle undo operations', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'undo_redo',
+            action: 'undo',
+            parameters: { steps: 1 },
+            priority: 9,
+            description: 'Undo last action'
+          }],
+          reasoning: 'User wants to undo',
+          confidence: 0.95,
+          complexity: 'simple',
+          userIntent: 'Undo'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('元に戻しました。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: '元に戻す',
-          currentState: {}
-        }
+      const result = await executeChartControlTool({
+        context: { userRequest: '元に戻す' }
       });
 
-      expect((result as any).operations[0].clientEvent).toEqual({
+      expect(result.operations[0].clientEvent).toEqual({
         event: 'chart:undo',
         data: { steps: 1 }
       });
     });
 
-    it('should handle redo operation', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'undo_redo',
-          action: 'redo',
-          parameters: { steps: 2 },
-          priority: 8,
-          description: 'Redo 2 steps'
-        }],
-        reasoning: 'User wants to redo',
-        confidence: 0.95,
-        complexity: 'simple',
-        userIntent: 'Redo'
-      };
+    it('should handle redo operations', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'undo_redo',
+            action: 'redo',
+            parameters: {},
+            priority: 9,
+            description: 'Redo action'
+          }],
+          reasoning: 'User wants to redo',
+          confidence: 0.95,
+          complexity: 'simple',
+          userIntent: 'Redo'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('やり直しました。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'やり直し',
-          currentState: {}
-        }
+      const result = await executeChartControlTool({
+        context: { userRequest: 'やり直す' }
       });
 
-      expect((result as any).operations[0].clientEvent.event).toBe('chart:redo');
-      expect((result as any).operations[0].clientEvent.data.steps).toBe(2);
+      expect(result.operations[0].clientEvent).toEqual({
+        event: 'chart:redo',
+        data: { steps: 1 }
+      });
     });
   });
 
-  describe('Style Update Operations', () => {
-    it('should handle color update', async () => {
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'style_update',
-          action: 'update_color',
-          parameters: { color: '#2196F3', drawingId: 'line_123' },
-          priority: 6,
-          description: 'Update color to blue'
-        }],
-        reasoning: 'User wants to change color',
-        confidence: 0.8,
-        complexity: 'simple',
-        userIntent: 'Change color'
-      };
+  describe('execute - style updates', () => {
+    it('should handle color updates', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'style_update',
+            action: 'update_color',
+            parameters: { color: '#2196F3', drawingId: 'drawing_123' },
+            priority: 5,
+            description: 'Change color to blue'
+          }],
+          reasoning: 'Color change requested',
+          confidence: 0.9,
+          complexity: 'simple',
+          userIntent: 'Change color'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('色を青に変更しました。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: '青色に変更',
-          currentState: {}
-        }
+      const result = await executeChartControlTool({
+        context: { userRequest: '青色に変更' }
       });
 
-      expect((result as any).operations[0].clientEvent.event).toBe('chart:updateDrawingColor');
-      expect((result as any).operations[0].clientEvent.data.color).toBe('#2196F3');
+      expect(result.operations[0].clientEvent).toEqual({
+        event: 'chart:updateDrawingColor',
+        data: { id: 'drawing_123', color: '#2196F3' }
+      });
+    });
+
+    it('should handle line width updates', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'style_update',
+            action: 'update_line_width',
+            parameters: { lineWidth: 3, drawingId: 'drawing_456' },
+            priority: 5,
+            description: 'Change line width'
+          }],
+          reasoning: 'Line width change requested',
+          confidence: 0.85,
+          complexity: 'simple',
+          userIntent: 'Change line width'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: '線を太くする' }
+      });
+
+      expect(result.operations[0].clientEvent).toEqual({
+        event: 'chart:updateDrawingLineWidth',
+        data: { id: 'drawing_456', lineWidth: 3 }
+      });
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle AI analysis parsing errors', async () => {
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult('Invalid JSON response'))
-        .mockResolvedValueOnce(createMockGenerateTextResult('申し訳ございません。リクエストを処理できませんでした。'));
+  describe('execute - indicator controls', () => {
+    it('should handle indicator toggle', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'indicator_control',
+            action: 'toggle_ma',
+            parameters: { indicator: 'MA', enabled: true },
+            priority: 6,
+            description: 'Enable MA indicator'
+          }],
+          reasoning: 'MA indicator requested',
+          confidence: 0.9,
+          complexity: 'simple',
+          userIntent: 'Show MA'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      const result = await mockExecute({
-        context: {
-          userRequest: 'BTCに変更',
-          currentState: {}
-        }
+      const result = await executeChartControlTool({
+        context: { userRequest: '移動平均線を表示' }
       });
 
-      expect((result as any).success).toBe(true);
-      expect((result as any).operations).toHaveLength(1);
-      expect((result as any).metadata.confidence).toBe(0.3);
-      expect(mockIncrementMetric).toHaveBeenCalledWith('chart_control_parse_error_total');
-      expect(logger.error).toHaveBeenCalled();
-    });
-
-    it('should handle chart analysis failures gracefully', async () => {
-      jest.mocked(chartDataAnalysisTool.execute).mockRejectedValue(new Error('Chart analysis failed'));
-
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'drawing_operation',
-          action: 'draw_trendline',
-          parameters: {},
-          priority: 9,
-          description: 'Draw trendline'
-        }],
-        reasoning: 'User wants trendline',
-        confidence: 0.85,
-        complexity: 'moderate',
-        userIntent: 'Draw trendline'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('トレンドラインを描画します。'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'トレンドラインを引いて',
-          currentState: {}
-        }
+      expect(result.operations[0].clientEvent).toEqual({
+        event: 'ui:toggleIndicator',
+        data: { indicator: 'MA', enabled: true }
       });
-
-      expect((result as any).success).toBe(true);
-      expect((result as any).metadata.chartDataUsed).toBe(false);
-      expect(logger.warn).toHaveBeenCalled();
-    });
-
-    it('should handle complete failures with error response', async () => {
-      mockGenerateText.mockRejectedValue(new Error('AI service unavailable'));
-
-      const result = await mockExecute({
-        context: {
-          userRequest: 'BTCに変更',
-          currentState: {}
-        }
-      });
-
-      expect((result as any).success).toBe(false);
-      expect((result as any).operations).toHaveLength(0);
-      expect((result as any).error).toBe('AI service unavailable');
-      expect((result as any).response).toBe('申し訳ございません。リクエストの処理中に問題が発生しました。しばらく時間をおいて再度お試しください。');
     });
   });
 
-  describe('Context and State Management', () => {
-    it('should include conversation history in analysis', async () => {
-      const conversationHistory = [
-        { role: 'user', content: 'BTCのチャートを見たい' },
-        { role: 'assistant', content: 'BTCに変更しました' }
+  describe('execute - analysis operations', () => {
+    it('should handle auto analysis', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'analysis_operation',
+            action: 'auto_analysis',
+            parameters: { analysisType: 'trend' },
+            priority: 8,
+            description: 'Auto analyze trends'
+          }],
+          reasoning: 'Auto analysis requested',
+          confidence: 0.85,
+          complexity: 'complex',
+          userIntent: 'Analyze chart'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: '自動分析を実行' }
+      });
+
+      expect(result.operations[0].clientEvent).toEqual({
+        event: 'chart:autoAnalysis',
+        data: { analysisType: 'trend' }
+      });
+    });
+  });
+
+  describe('execute - error handling', () => {
+    it('should handle AI response parsing errors', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: 'Invalid JSON response',
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'テスト' }
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.reasoning).toBe('Failed to parse AI analysis, using enhanced fallback');
+      expect(incrementMetric).toHaveBeenCalledWith('chart_control_parse_error_total');
+    });
+
+    it('should use fallback for specific request types on parse error', async () => {
+      const testCases = [
+        { request: 'BTCに変更', expectedType: 'symbol_change', expectedAction: 'change_symbol' },
+        { request: '元に戻す', expectedType: 'undo_redo', expectedAction: 'undo' },
+        { request: 'ラインを引く', expectedType: 'drawing_operation', expectedAction: 'draw_trendline' }
       ];
 
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'timeframe_change',
-          action: 'change_timeframe',
-          parameters: { timeframe: '1d' },
-          priority: 7,
-          description: 'Change to daily'
-        }],
-        reasoning: 'Following up on BTC chart request',
-        confidence: 0.85,
-        complexity: 'simple',
-        userIntent: 'View daily chart'
-      };
+      for (const testCase of testCases) {
+        mockGenerateText.mockResolvedValueOnce({
+          text: 'Invalid JSON',
+          usage: { promptTokens: 100, completionTokens: 50 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any);
 
+        const result = await executeChartControlTool({
+          context: { userRequest: testCase.request }
+        });
+
+        expect(result.operations[0]).toMatchObject({
+          type: testCase.expectedType,
+          action: testCase.expectedAction
+        });
+      }
+    });
+
+    it('should handle complete execution failure', async () => {
+      mockGenerateText.mockRejectedValueOnce(new Error('AI service error'));
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'テスト' }
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('AI service error');
+      expect(result.operations).toEqual([]);
+    });
+
+    it('should generate error response on failure', async () => {
       mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('日足に変更しました。'));
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({
+          text: '申し訳ございません。ネットワークエラーが発生しました。',
+          usage: { promptTokens: 50, completionTokens: 25 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any);
 
-      const result = await mockExecute({
+      const result = await executeChartControlTool({
+        context: { userRequest: 'チャート操作' }
+      });
+
+      expect(result.response).toBe('申し訳ございません。ネットワークエラーが発生しました。');
+    });
+
+    it('should use fallback error message when error response generation fails', async () => {
+      mockGenerateText
+        .mockRejectedValueOnce(new Error('Primary error'))
+        .mockRejectedValueOnce(new Error('Error response generation failed'));
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'テスト' }
+      });
+
+      expect(result.response).toBe('申し訳ございません。リクエストの処理中に問題が発生しました。しばらく時間をおいて再度お試しください。');
+    });
+  });
+
+  describe('execute - context building', () => {
+    it('should include conversation history in context', async () => {
+      const conversationHistory = [
+        { role: 'user', content: 'BTCのチャートを見せて' },
+        { role: 'assistant', content: 'BTCUSDTのチャートを表示しました' },
+        { role: 'user', content: '1時間足に変更' }
+      ];
+
+      await executeChartControlTool({
         context: {
-          userRequest: '日足で見たい',
+          userRequest: 'RSIを表示',
           conversationHistory,
-          currentState: { symbol: 'BTCUSDT' }
+          currentState: { symbol: 'BTCUSDT', timeframe: '1h' }
         }
       });
 
-      expect((result as any).success).toBe(true);
       expect(mockGenerateText).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: expect.stringContaining('Recent conversation:')
@@ -582,94 +614,277 @@ describe('chartControlTool', () => {
       );
     });
 
-    it('should use current state in analysis', async () => {
+    it('should include current state in context', async () => {
       const currentState = {
-        symbol: 'BTCUSDT',
-        timeframe: '1h',
+        symbol: 'ETHUSDT',
+        timeframe: '4h',
         activeIndicators: ['MA', 'RSI'],
         drawingMode: 'trendline'
       };
 
-      const mockAnalysisResponse = {
-        operations: [{
-          type: 'indicator_control',
-          action: 'toggle_indicator',
-          parameters: { indicator: 'MACD', enabled: true },
-          priority: 6,
-          description: 'Add MACD indicator'
-        }],
-        reasoning: 'User wants to add MACD to existing indicators',
-        confidence: 0.9,
-        complexity: 'simple',
-        userIntent: 'Add MACD'
-      };
-
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('MACDインジケーターを追加しました。'));
-
-      const result = await mockExecute({
+      await executeChartControlTool({
         context: {
-          userRequest: 'MACDを追加',
+          userRequest: 'ズームイン',
           currentState
         }
       });
 
-      expect((result as any).success).toBe(true);
-      expect(mockGenerateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          prompt: expect.stringContaining('Active indicators: MA, RSI')
-        })
+      const promptCall = mockGenerateText.mock.calls[0][0];
+      expect(promptCall.prompt).toContain('Symbol: ETHUSDT');
+      expect(promptCall.prompt).toContain('Timeframe: 4h');
+      expect(promptCall.prompt).toContain('Active indicators: MA, RSI');
+    });
+
+    it('should not fetch chart analysis for non-technical requests', async () => {
+      await executeChartControlTool({
+        context: {
+          userRequest: 'BTCに変更',
+          currentState: { symbol: 'ETHUSDT' }
+        }
+      });
+
+      expect(mockChartDataAnalysisTool).not.toHaveBeenCalled();
+    });
+
+    it('should handle chart analysis fetch failure gracefully', async () => {
+      mockChartDataAnalysisTool.mockRejectedValueOnce(new Error('Analysis failed'));
+
+      const result = await executeChartControlTool({
+        context: {
+          userRequest: 'サポートラインを引いて',
+          currentState: { symbol: 'BTCUSDT' }
+        }
+      });
+
+      expect(result.success).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[ChartControl] Chart analysis failed, proceeding without',
+        expect.objectContaining({ error: 'Error: Analysis failed' })
       );
     });
   });
 
-  describe('Multi-operation Support', () => {
-    it('should handle multiple operations in one request', async () => {
-      const mockAnalysisResponse = {
-        operations: [
-          {
-            type: 'symbol_change',
-            action: 'change_symbol',
-            parameters: { symbol: 'ETHUSDT' },
-            priority: 9,
-            description: 'Change to ETH'
-          },
-          {
-            type: 'timeframe_change',
-            action: 'change_timeframe',
-            parameters: { timeframe: '4h' },
-            priority: 8,
-            description: 'Change to 4h'
-          },
-          {
-            type: 'indicator_control',
-            action: 'toggle_indicator',
-            parameters: { indicator: 'RSI', enabled: true },
-            priority: 7,
-            description: 'Add RSI'
-          }
-        ],
-        reasoning: 'User wants to analyze ETH on 4h with RSI',
-        confidence: 0.85,
-        complexity: 'complex',
-        userIntent: 'Setup ETH analysis'
-      };
+  describe('execute - multi-operation support', () => {
+    it('should handle multiple operations in single request', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [
+            {
+              type: 'symbol_change',
+              action: 'change_symbol',
+              parameters: { symbol: 'BTCUSDT' },
+              priority: 9,
+              description: 'Change to BTC'
+            },
+            {
+              type: 'timeframe_change',
+              action: 'change_timeframe',
+              parameters: { timeframe: '1h' },
+              priority: 8,
+              description: 'Change to 1h'
+            },
+            {
+              type: 'indicator_control',
+              action: 'toggle_rsi',
+              parameters: { indicator: 'RSI', enabled: true },
+              priority: 7,
+              description: 'Enable RSI'
+            }
+          ],
+          reasoning: 'Multiple operations requested',
+          confidence: 0.85,
+          complexity: 'complex',
+          userIntent: 'Setup BTC 1h with RSI'
+        }),
+        usage: { promptTokens: 150, completionTokens: 100 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
 
-      mockGenerateText
-        .mockResolvedValueOnce(createMockGenerateTextResult(JSON.stringify(mockAnalysisResponse)))
-        .mockResolvedValueOnce(createMockGenerateTextResult('ETHの4時間足にRSIを表示します。'));
-
-      const result = await mockExecute({
+      const result = await executeChartControlTool({
         context: {
-          userRequest: 'ETHの4時間足でRSI表示',
-          currentState: {}
+          userRequest: 'BTCの1時間足でRSIを表示して'
         }
       });
 
-      expect((result as any).success).toBe(true);
-      expect((result as any).operations).toHaveLength(3);
-      expect((result as any).metadata.complexity).toBe('complex');
+      expect(result.operations).toHaveLength(3);
+      expect(result.operations[0].type).toBe('symbol_change');
+      expect(result.operations[1].type).toBe('timeframe_change');
+      expect(result.operations[2].type).toBe('indicator_control');
+      expect(result.metadata.complexity).toBe('complex');
+    });
+  });
+
+  describe('execute - response generation', () => {
+    it('should generate natural language response', async () => {
+      mockGenerateText
+        .mockResolvedValueOnce({
+          text: JSON.stringify({
+            operations: [{
+              type: 'symbol_change',
+              action: 'change_symbol',
+              parameters: { symbol: 'BTCUSDT' },
+              priority: 8,
+              description: 'Change to BTC'
+            }],
+            reasoning: 'User wants BTC',
+            confidence: 0.9,
+            complexity: 'simple',
+            userIntent: 'View BTC'
+          }),
+          usage: { promptTokens: 100, completionTokens: 50 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any)
+        .mockResolvedValueOnce({
+          text: 'BTCUSDTのチャートに切り替えました。現在の価格動向をご確認ください。',
+          usage: { promptTokens: 50, completionTokens: 25 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'BTCに変更' }
+      });
+
+      expect(result.response).toBe('BTCUSDTのチャートに切り替えました。現在の価格動向をご確認ください。');
+    });
+
+    it('should include technical context in response when available', async () => {
+      const mockChartAnalysis = {
+        currentPrice: { price: 50000, timestamp: Date.now() },
+        technicalAnalysis: {
+          trend: { direction: 'bullish', strength: 0.8, confidence: 0.9 },
+          momentum: { rsi: 65 },
+          volatility: { volatilityLevel: 'high' },
+          supportResistance: { supports: [], resistances: [] }
+        },
+        recommendations: {
+          trendlineDrawing: [{ description: 'Uptrend' }],
+          analysis: 'Strong uptrend',
+          nextAction: 'Hold position'
+        }
+      };
+
+      mockChartDataAnalysisTool.mockResolvedValueOnce(mockChartAnalysis);
+      mockGenerateText
+        .mockResolvedValueOnce({
+          text: JSON.stringify({
+            operations: [{
+              type: 'drawing_operation',
+              action: 'draw_trendline',
+              parameters: {},
+              priority: 8,
+              description: 'Draw trendline'
+            }],
+            reasoning: 'Trendline analysis',
+            confidence: 0.9,
+            complexity: 'moderate',
+            userIntent: 'Analyze trend'
+          }),
+          usage: { promptTokens: 100, completionTokens: 50 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any)
+        .mockResolvedValueOnce({
+          text: '上昇トレンドラインを描画しました。現在の価格は50000で、RSIは65です。',
+          usage: { promptTokens: 100, completionTokens: 50 },
+          finishReason: 'stop',
+          response: {} as any,
+        } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'トレンドラインを引いて' }
+      });
+
+      const responsePromptCall = mockGenerateText.mock.calls[1][0];
+      expect(responsePromptCall.prompt).toContain('Current Price: 50000');
+      expect(responsePromptCall.prompt).toContain('Trend: bullish');
+      expect(responsePromptCall.prompt).toContain('RSI: 65');
+    });
+  });
+
+  describe('execute - edge cases', () => {
+    it('should handle empty operations array', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [],
+          reasoning: 'No clear operation identified',
+          confidence: 0.3,
+          complexity: 'simple',
+          userIntent: 'Unclear'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'よろしく' }
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.operations).toEqual([]);
+    });
+
+    it('should handle operations without client events', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: JSON.stringify({
+          operations: [{
+            type: 'unknown_type',
+            action: 'unknown_action',
+            parameters: {},
+            priority: 5,
+            description: 'Unknown operation'
+          }],
+          reasoning: 'Unknown operation type',
+          confidence: 0.5,
+          complexity: 'simple',
+          userIntent: 'Unknown'
+        }),
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'Unknown request' }
+      });
+
+      expect(result.operations[0].clientEvent).toBeUndefined();
+    });
+
+    it('should handle malformed AI response with partial data', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: '{"operations": [{"type": "symbol_change"}], "reasoning": "test"',
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'テスト' }
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.reasoning).toBe('Failed to parse AI analysis, using enhanced fallback');
+    });
+
+    it('should strip markdown code blocks from AI response', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        text: '```json\n{"operations":[{"type":"symbol_change","action":"change_symbol","parameters":{"symbol":"BTCUSDT"},"priority":8,"description":"Change to BTC"}],"reasoning":"User wants BTC","confidence":0.9,"complexity":"simple","userIntent":"View BTC"}\n```',
+        usage: { promptTokens: 100, completionTokens: 50 },
+        finishReason: 'stop',
+        response: {} as any,
+      } as any);
+
+      const result = await executeChartControlTool({
+        context: { userRequest: 'BTCに変更' }
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.operations).toHaveLength(1);
+      expect(result.operations[0].type).toBe('symbol_change');
     });
   });
 });

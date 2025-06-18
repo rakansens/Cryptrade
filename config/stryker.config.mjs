@@ -7,11 +7,13 @@ const config = {
   coverageAnalysis: "perTest",
   jest: {
     projectType: "custom",
-    configFile: "jest.config.js",
+    configFile: "config/jest/jest.config.stryker.js",
   },
   mutate: [
     "lib/utils/compose.ts",
     "lib/utils/logger.ts",
+    "lib/utils/retry.ts",
+    "lib/analysis/pattern-detector.ts",
   ],
   checkers: [],
   htmlReporter: {
@@ -22,8 +24,8 @@ const config = {
     low: 60,
     break: 50,
   },
-  timeoutMS: 60000,
-  mutationLevels: ["standard"],
+  timeoutMS: 30000,
+  concurrency: 4,
 };
 
 export default config;

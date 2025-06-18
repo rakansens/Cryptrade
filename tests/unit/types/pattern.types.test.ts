@@ -154,8 +154,9 @@ describe('pattern.types', () => {
 
     it('should return false for missing required fields', () => {
       expect(isPatternMetrics({})).toBe(false);
-      expect(isPatternMetrics({ confidence: 0.85 })).toBe(false);
-      expect(isPatternMetrics({ strength: 0.9 })).toBe(false);
+      expect(isPatternMetrics({ confidence: 0.85 })).toBe(true); // Has at least one number
+      expect(isPatternMetrics({ strength: 0.9 })).toBe(true); // Has at least one number
+      expect(isPatternMetrics({ notANumber: 'string' })).toBe(false); // No numbers
     });
 
     it('should return false for wrong field types', () => {

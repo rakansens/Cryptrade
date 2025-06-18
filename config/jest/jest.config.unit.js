@@ -22,11 +22,28 @@ module.exports = {
   // ユニットテスト用のカバレッジ収集対象
   collectCoverageFrom: [
     ...baseConfig.collectCoverageFrom,
+    // 明示的に含める
     '<rootDir>/lib/**/*.{ts,tsx}',
     '<rootDir>/app/api/**/*.{ts,tsx}',
-    '<rootDir>/types/**/*.{ts,tsx}',
     '<rootDir>/config/**/*.{ts,tsx}',
     '<rootDir>/utils/**/*.{ts,tsx}',
+    // 追加の除外パターン
+    '!<rootDir>/lib/**/index.{ts,tsx}',
+    '!<rootDir>/app/api/**/index.{ts,tsx}',
+    '!<rootDir>/config/**/*.config.{ts,js}',
+    '!<rootDir>/utils/**/index.{ts,tsx}',
+    '!<rootDir>/lib/**/*.types.ts',
+    '!<rootDir>/lib/**/*.interface.ts',
+    '!<rootDir>/lib/**/*.constants.ts',
+    '!<rootDir>/lib/**/*.schema.ts',
+    '!<rootDir>/app/api/**/*.types.ts',
+    '!<rootDir>/app/api/**/*.interface.ts',
+    '!<rootDir>/app/api/**/*.constants.ts',
+    '!<rootDir>/app/api/**/*.schema.ts',
+    '!<rootDir>/utils/**/*.types.ts',
+    '!<rootDir>/utils/**/*.interface.ts',
+    '!<rootDir>/utils/**/*.constants.ts',
+    '!<rootDir>/utils/**/*.schema.ts',
   ],
 
   // カバレッジ閾値
