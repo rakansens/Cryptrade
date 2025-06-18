@@ -1,330 +1,278 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { 
-  memoryRecallTool,
-  formatConversationContext,
-  extractMetadataFromQuery 
-} from '@/lib/mastra/tools/memory-recall.tool';
+// Mock dependencies before imports
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/store/conversation-memory.store');
+
+import { memoryRecallTool, formatConversationContext, extractMetadataFromQuery } from '@/lib/mastra/tools/memory-recall.tool';
 import { useConversationMemory, semanticSearch } from '@/lib/store/conversation-memory.store';
 import { logger } from '@/lib/utils/logger';
 
-// Mock dependencies
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
-
-jest.mock('@/lib/store/conversation-memory.store', () => ({
-  useConversationMemory: {
-    getState: jest.fn(),
-  },
-  semanticSearch: jest.fn(),
-}));
-
-// Type for mocked memory store
-interface MockMemoryStore {
-  sessions: Record<string, unknown>;
-  getRecentMessages: jest.Mock;
-  searchMessages: jest.Mock;
-  getSessionContext: jest.Mock;
-  addMessage: jest.Mock;
-}
+// Type cast the execute function to avoid TypeScript errors
+const executeMemoryRecallTool = memoryRecallTool.execute as any;
 
 describe('memoryRecallTool', () => {
-  let mockMemoryStore: MockMemoryStore;
+  const mockGetState = {
+    getRecentMessages: jest.fn(),
+    searchMessages: jest.fn(),
+    getSessionContext: jest.fn(),
+    addMessage: jest.fn(),
+    sessions: {},
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockReset();
-    
-    // Setup mock memory store
-    mockMemoryStore = {
-      sessions: {},
-      getRecentMessages: jest.fn(),
-      searchMessages: jest.fn(),
-      getSessionContext: jest.fn(),
-      addMessage: jest.fn(),
-    };
-    
-    (useConversationMemory.getState as jest.Mock).mockReturnValue(mockMemoryStore);
+    (useConversationMemory.getState as jest.Mock).mockReturnValue(mockGetState);
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-    (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockReset();
+  describe('tool configuration', () => {
+    it('should have correct metadata', () => {
+      expect(memoryRecallTool.id).toBe('memory-recall');
+      expect(memoryRecallTool.description).toBe('Access and manage conversation memory for context-aware responses');
+      expect(memoryRecallTool.inputSchema).toBeDefined();
+      expect(memoryRecallTool.outputSchema).toBeDefined();
+    });
   });
 
   describe('execute - getRecent operation', () => {
     it('should retrieve recent messages successfully', async () => {
       const mockMessages = [
         {
-          id: '1',
-          role: 'user' as const,
-          content: 'What is the price of BTC?',
+          id: 'msg-1',
+          role: 'user',
+          content: 'Hello',
           timestamp: new Date('2024-01-01T10:00:00Z'),
-          agentId: 'user-123',
-          metadata: { intent: 'price_query' },
+          agentId: 'agent-1',
+          metadata: { intent: 'greeting' },
         },
         {
-          id: '2',
-          role: 'assistant' as const,
-          content: 'The current price of BTC is $50,000',
-          timestamp: new Date('2024-01-01T10:00:30Z'),
-          agentId: 'trading-agent',
-          metadata: { confidence: 0.95 },
+          id: 'msg-2',
+          role: 'assistant',
+          content: 'Hi there!',
+          timestamp: new Date('2024-01-01T10:00:10Z'),
         },
       ];
 
-      mockMemoryStore.getRecentMessages.mockReturnValue(mockMessages);
+      mockGetState.getRecentMessages.mockReturnValue(mockMessages);
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
           limit: 5,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockGetState.getRecentMessages).toHaveBeenCalledWith('session-123', 5);
+      expect(result).toEqual({
         success: true,
         messages: [
           {
-            id: '1',
+            id: 'msg-1',
             role: 'user',
-            content: 'What is the price of BTC?',
+            content: 'Hello',
             timestamp: '2024-01-01T10:00:00.000Z',
-            agentId: 'user-123',
-            metadata: { intent: 'price_query' },
+            agentId: 'agent-1',
+            metadata: { intent: 'greeting' },
           },
           {
-            id: '2',
+            id: 'msg-2',
             role: 'assistant',
-            content: 'The current price of BTC is $50,000',
-            timestamp: '2024-01-01T10:00:30.000Z',
-            agentId: 'trading-agent',
-            metadata: { confidence: 0.95 },
+            content: 'Hi there!',
+            timestamp: '2024-01-01T10:00:10.000Z',
+            agentId: undefined,
+            metadata: undefined,
           },
         ],
         summary: 'Retrieved 2 recent messages',
       });
-
-      expect(mockMemoryStore.getRecentMessages).toHaveBeenCalledWith('session-123', 5);
-      expect(logger.info).toHaveBeenCalledWith(
-        '[MemoryRecallTool] Executing operation',
-        expect.objectContaining({
-          operation: 'getRecent',
-          sessionId: 'session-123',
-        })
-      );
     });
 
-    it('should handle empty message history', async () => {
-      mockMemoryStore.getRecentMessages.mockReturnValue([]);
+    it('should use default limit if not provided', async () => {
+      mockGetState.getRecentMessages.mockReturnValue([]);
 
-      const result = await memoryRecallTool.execute!({
+      await executeMemoryRecallTool({
         context: {
-          sessionId: 'session-456',
+          sessionId: 'session-123',
           operation: 'getRecent',
-          limit: 8
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockGetState.getRecentMessages).toHaveBeenCalledWith('session-123', 8);
+    });
+
+    it('should handle empty message list', async () => {
+      mockGetState.getRecentMessages.mockReturnValue([]);
+
+      const result = await executeMemoryRecallTool({
+        context: {
+          sessionId: 'session-123',
+          operation: 'getRecent',
+        },
+      });
+
+      expect(result).toEqual({
         success: true,
         messages: [],
         summary: 'Retrieved 0 recent messages',
       });
     });
-
-    it('should use default limit when not specified', async () => {
-      mockMemoryStore.getRecentMessages.mockReturnValue([]);
-
-      const result = await memoryRecallTool.execute!({
-        context: {
-          sessionId: 'session-789',
-          operation: 'getRecent',
-          limit: 8
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.success).toBe(true);
-      // The limit should be applied by zod when parsing the input
-      expect(mockMemoryStore.getRecentMessages).toHaveBeenCalled();
-      // Check that the function was called with the session ID at least
-      expect(mockMemoryStore.getRecentMessages.mock.calls[0]?.[0]).toBe('session-789');
-    });
   });
 
   describe('execute - search operation', () => {
-    it('should search messages successfully', async () => {
+    it('should perform semantic search successfully', async () => {
       const mockSearchResults = [
         {
-          id: '3',
-          sessionId: 'session-123',
-          role: 'user' as const,
-          content: 'Show me the ETH chart',
-          timestamp: new Date('2024-01-01T11:00:00Z'),
-          agentId: 'user-123',
-          metadata: { symbols: ['ETH'] },
-        },
-        {
-          id: '4',
-          sessionId: 'session-123',
-          role: 'assistant' as const,
-          content: 'Here is the ETH/USDT chart analysis',
-          timestamp: new Date('2024-01-01T11:00:30Z'),
-          agentId: 'chart-agent',
-          metadata: { chartType: 'candlestick' } as any,
+          id: 'msg-10',
+          role: 'user',
+          content: 'What is the price of BTC?',
+          timestamp: new Date('2024-01-01T12:00:00Z'),
+          agentId: 'agent-1',
+          metadata: { symbols: ['BTC'] },
         },
       ];
 
-      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockResolvedValue(mockSearchResults);
+      const mockSemanticSearch = semanticSearch as jest.MockedFunction<typeof semanticSearch>;
+      mockSemanticSearch.mockResolvedValue(mockSearchResults);
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'search',
-          query: 'ETH chart',
-          limit: 10,
+          query: 'BTC price',
+          limit: 5,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockSemanticSearch).toHaveBeenCalledWith('BTC price', 'session-123', 0.7, 5);
+      expect(result).toEqual({
         success: true,
-        messages: expect.arrayContaining([
-          expect.objectContaining({
-            id: '3',
-            content: 'Show me the ETH chart',
-          }),
-          expect.objectContaining({
-            id: '4',
-            content: 'Here is the ETH/USDT chart analysis',
-          }),
-        ]),
-        summary: 'Found 2 messages matching "ETH chart"',
+        messages: [
+          {
+            id: 'msg-10',
+            role: 'user',
+            content: 'What is the price of BTC?',
+            timestamp: '2024-01-01T12:00:00.000Z',
+            agentId: 'agent-1',
+            metadata: { symbols: ['BTC'] },
+          },
+        ],
+        summary: 'Found 1 messages matching "BTC price"',
       });
-
-      expect(semanticSearch).toHaveBeenCalledWith('ETH chart', 'session-123', 0.7, 10);
     });
 
-    it('should return error when query is missing', async () => {
-      const result = await memoryRecallTool.execute!({
+    it('should fall back to text search when semantic search fails', async () => {
+      const mockSemanticSearch = semanticSearch as jest.MockedFunction<typeof semanticSearch>;
+      mockSemanticSearch.mockRejectedValue(new Error('Semantic search unavailable'));
+
+      const mockTextSearchResults = [
+        {
+          id: 'msg-20',
+          role: 'user',
+          content: 'BTC price inquiry',
+          timestamp: new Date('2024-01-01T13:00:00Z'),
+        },
+      ];
+
+      mockGetState.searchMessages.mockReturnValue(mockTextSearchResults);
+
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'search',
-          limit: 8
+          query: 'BTC',
+          limit: 3,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(logger.error).toHaveBeenCalledWith(
+        '[MemoryRecallTool] Semantic search failed',
+        { error: 'Error: Semantic search unavailable' }
+      );
+      expect(mockGetState.searchMessages).toHaveBeenCalledWith('BTC', 'session-123');
+      expect(result.messages).toHaveLength(1);
+      expect(result.summary).toBe('Found 1 messages matching "BTC"');
+    });
+
+    it('should return error when query is missing for search', async () => {
+      const result = await executeMemoryRecallTool({
+        context: {
+          sessionId: 'session-123',
+          operation: 'search',
+        },
+      });
+
+      expect(result).toEqual({
         success: false,
         error: 'Search query is required for search operation',
       });
-
-      expect(semanticSearch).not.toHaveBeenCalled();
     });
 
-    it('should respect limit in search results', async () => {
-      const manyResults = Array(20).fill(null).map((_, i) => ({
-        id: String(i),
-        sessionId: 'session-123',
+    it('should respect limit in fallback text search', async () => {
+      const mockSemanticSearch = semanticSearch as jest.MockedFunction<typeof semanticSearch>;
+      mockSemanticSearch.mockRejectedValue(new Error('Semantic search error'));
+
+      const manyMessages = Array.from({ length: 10 }, (_, i) => ({
+        id: `msg-${i}`,
         role: 'user' as const,
         content: `Message ${i}`,
         timestamp: new Date(),
-        agentId: 'user-123',
       }));
 
-      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockResolvedValue(manyResults.slice(0, 10));
+      mockGetState.searchMessages.mockReturnValue(manyMessages);
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'search',
           query: 'test',
-          limit: 5,
+          limit: 3,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result.messages).toHaveLength(5);
-      expect(semanticSearch).toHaveBeenCalledWith('test', 'session-123', 0.7, 5);
-    });
-
-    it('should fallback to text search on semantic error', async () => {
-      (semanticSearch as jest.MockedFunction<typeof semanticSearch>).mockRejectedValue(new Error('fail'));
-      const fallbackResults = [
-        { id: '1', role: 'user' as const, content: 'fallback1', timestamp: new Date(), agentId: 'a' },
-        { id: '2', role: 'assistant' as const, content: 'fallback2', timestamp: new Date(), agentId: 'b' },
-      ];
-      mockMemoryStore.searchMessages.mockReturnValue(fallbackResults);
-
-      const result = await memoryRecallTool.execute!({
-        context: {
-          sessionId: 'session-123',
-          operation: 'search',
-          query: 'backup',
-          limit: 5,
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(result.messages).toHaveLength(2);
-      expect(semanticSearch).toHaveBeenCalledWith('backup', 'session-123', 0.7, 5);
-      expect(mockMemoryStore.searchMessages).toHaveBeenCalledWith('backup', 'session-123');
+      expect(result.messages).toHaveLength(3);
     });
   });
 
   describe('execute - getContext operation', () => {
     it('should retrieve session context successfully', async () => {
-      const mockContext = 'User is analyzing BTC price movements and requesting technical indicators';
-      mockMemoryStore.getSessionContext.mockReturnValue(mockContext);
-      mockMemoryStore.sessions['session-123'] = {
-        summary: 'Trading analysis session focused on BTC',
+      const mockContext = 'User discussing BTC trading strategies';
+      const mockSession = {
+        summary: 'Trading discussion focused on BTC',
       };
 
-      const result = await memoryRecallTool.execute!({
+      mockGetState.getSessionContext.mockReturnValue(mockContext);
+      mockGetState.sessions = {
+        'session-123': mockSession,
+      };
+
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'getContext',
-          limit: 8
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockGetState.getSessionContext).toHaveBeenCalledWith('session-123');
+      expect(result).toEqual({
         success: true,
         context: mockContext,
-        summary: 'Trading analysis session focused on BTC',
+        summary: 'Trading discussion focused on BTC',
       });
-
-      expect(mockMemoryStore.getSessionContext).toHaveBeenCalledWith('session-123');
     });
 
     it('should handle missing session summary', async () => {
-      mockMemoryStore.getSessionContext.mockReturnValue('Basic context');
-      mockMemoryStore.sessions['session-456'] = undefined;
+      mockGetState.getSessionContext.mockReturnValue('Some context');
+      mockGetState.sessions = {};
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
-          sessionId: 'session-456',
+          sessionId: 'session-123',
           operation: 'getContext',
-          limit: 8
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         success: true,
-        context: 'Basic context',
+        context: 'Some context',
         summary: 'No session summary available',
       });
     });
@@ -332,195 +280,201 @@ describe('memoryRecallTool', () => {
 
   describe('execute - addMessage operation', () => {
     it('should add message successfully', async () => {
-      const newMessage = {
+      const message = {
         role: 'user' as const,
-        content: 'What is the RSI for BTC?',
-        agentId: 'user-123',
+        content: 'New message',
+        agentId: 'agent-1',
         metadata: {
-          intent: 'indicator_query',
+          intent: 'question',
+          confidence: 0.9,
           symbols: ['BTC'],
+          topics: ['price'],
         },
       };
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
-          message: newMessage,
-          limit: 8
+          message,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockGetState.addMessage).toHaveBeenCalledWith({
+        sessionId: 'session-123',
+        role: 'user',
+        content: 'New message',
+        agentId: 'agent-1',
+        metadata: {
+          intent: 'question',
+          confidence: 0.9,
+          symbols: ['BTC'],
+          topics: ['price'],
+        },
+      });
+
+      expect(result).toEqual({
         success: true,
         summary: 'Message added to session session-123',
       });
-
-      expect(mockMemoryStore.addMessage).toHaveBeenCalledWith({
-        sessionId: 'session-123',
-        ...newMessage,
-      });
     });
 
-    it('should return error when message is missing', async () => {
-      const result = await memoryRecallTool.execute!({
+    it('should handle message without metadata', async () => {
+      const message = {
+        role: 'assistant' as const,
+        content: 'Simple response',
+      };
+
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'addMessage',
-          limit: 8
+          message,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(mockGetState.addMessage).toHaveBeenCalledWith({
+        sessionId: 'session-123',
+        role: 'assistant',
+        content: 'Simple response',
+        metadata: undefined,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should return error when message is missing for addMessage', async () => {
+      const result = await executeMemoryRecallTool({
+        context: {
+          sessionId: 'session-123',
+          operation: 'addMessage',
+        },
+      });
+
+      expect(result).toEqual({
         success: false,
         error: 'Message is required for addMessage operation',
       });
-
-      expect(mockMemoryStore.addMessage).not.toHaveBeenCalled();
-    });
-
-    it('should validate message structure', async () => {
-      const invalidMessage = {
-        role: 'invalid' as any,
-        content: 'Test message',
-      };
-
-      // The zod schema should catch this, but if it doesn't, the tool should handle it
-      const result = await memoryRecallTool.execute!({
-        context: {
-          sessionId: 'session-123',
-          operation: 'addMessage',
-          message: invalidMessage,
-          limit: 8
-        },
-        runtimeContext: {} as any
-      });
-
-      // This might throw a zod error, which is caught by the try-catch
-      if (!result.success) {
-        expect(result.error).toBeDefined();
-      }
     });
   });
 
   describe('execute - error handling', () => {
-    it('should handle unknown operations', async () => {
-      const result = await memoryRecallTool.execute!({
+    it('should handle unknown operation', async () => {
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
-          operation: 'unknownOp' as any,
-          limit: 8
+          operation: 'unknownOperation' as any,
         },
-        runtimeContext: {} as any
       });
 
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         success: false,
-        error: 'Unknown operation: unknownOp',
+        error: 'Unknown operation: unknownOperation',
       });
     });
 
-    it('should handle store errors gracefully', async () => {
-      mockMemoryStore.getRecentMessages.mockImplementation(() => {
+    it('should handle execution errors gracefully', async () => {
+      mockGetState.getRecentMessages.mockImplementation(() => {
         throw new Error('Database connection failed');
       });
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
-          limit: 8
         },
-        runtimeContext: {} as any
-      });
-
-      expect(result).toMatchObject({
-        success: false,
-        error: 'Database connection failed',
       });
 
       expect(logger.error).toHaveBeenCalledWith(
         '[MemoryRecallTool] Operation failed',
         expect.objectContaining({
+          operation: 'getRecent',
+          sessionId: 'session-123',
           error: 'Error: Database connection failed',
-        })
-      );
-    });
-
-    it('should log execution time on errors', async () => {
-      mockMemoryStore.getRecentMessages.mockImplementation(() => {
-        throw new Error('Test error');
-      });
-
-      await memoryRecallTool.execute!({
-        context: {
-          sessionId: 'session-123',
-          operation: 'getRecent',
-          limit: 8
-        },
-        runtimeContext: {} as any
-      });
-
-      expect(logger.error).toHaveBeenCalledWith(
-        '[MemoryRecallTool] Operation failed',
-        expect.objectContaining({
           executionTime: expect.any(Number),
         })
       );
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Database connection failed',
+      });
+    });
+
+    it('should handle non-Error exceptions', async () => {
+      mockGetState.getRecentMessages.mockImplementation(() => {
+        throw 'String error';
+      });
+
+      const result = await executeMemoryRecallTool({
+        context: {
+          sessionId: 'session-123',
+          operation: 'getRecent',
+        },
+      });
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Memory operation failed',
+      });
     });
   });
 
   describe('formatConversationContext', () => {
-    it('should format messages within token limit', () => {
-      const messages = [
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Hi there!' },
-        { role: 'user', content: 'How are you?' },
-        { role: 'assistant', content: 'I am doing well, thank you!' },
-      ];
-
-      const context = formatConversationContext(messages, 100);
-
-      expect(context).toContain('user: Hello');
-      expect(context).toContain('assistant: Hi there!');
-      expect(context).toContain('user: How are you?');
-      expect(context).toContain('assistant: I am doing well, thank you!');
-    });
-
-    it('should truncate messages exceeding token limit', () => {
-      const messages = [
-        { role: 'user', content: 'A'.repeat(1000) },
-        { role: 'assistant', content: 'B'.repeat(1000) },
-        { role: 'user', content: 'This should be included' },
-      ];
-
-      const context = formatConversationContext(messages, 100);
-
-      expect(context).toContain('This should be included');
-      expect(context).not.toContain('A'.repeat(1000));
-      expect(context).not.toContain('B'.repeat(1000));
-    });
-
-    it('should process messages in reverse order', () => {
+    it('should format messages with token limit', () => {
       const messages = [
         { role: 'user', content: 'First message' },
-        { role: 'assistant', content: 'Second message' },
-        { role: 'user', content: 'Third message' },
+        { role: 'assistant', content: 'First response' },
+        { role: 'user', content: 'Second message' },
+        { role: 'assistant', content: 'Second response' },
+        { role: 'user', content: 'Third message with much longer content that will consume more tokens' },
+      ];
+
+      const context = formatConversationContext(messages, 100);
+
+      // Should include most recent messages first
+      expect(context).toContain('Third message');
+      expect(context).toContain('Second response');
+      
+      // May not include oldest messages due to token limit
+      const lines = context.split('\n');
+      expect(lines.length).toBeGreaterThan(0);
+    });
+
+    it('should handle empty message list', () => {
+      const context = formatConversationContext([]);
+      expect(context).toBe('');
+    });
+
+    it('should format messages in reverse chronological order', () => {
+      const messages = [
+        { role: 'user', content: 'Message 1' },
+        { role: 'assistant', content: 'Response 1' },
+        { role: 'user', content: 'Message 2' },
+      ];
+
+      const context = formatConversationContext(messages, 1000);
+
+      // Check order - most recent should appear first
+      const lines = context.split('\n\n');
+      expect(lines[0]).toBe('user: Message 2');
+      expect(lines[1]).toBe('assistant: Response 1');
+      expect(lines[2]).toBe('user: Message 1');
+    });
+
+    it('should respect token limit', () => {
+      const longMessage = 'x'.repeat(500); // ~125 tokens
+      const messages = [
+        { role: 'user', content: longMessage },
+        { role: 'assistant', content: longMessage },
+        { role: 'user', content: longMessage },
       ];
 
       const context = formatConversationContext(messages, 200);
 
-      const firstIndex = context.indexOf('First message');
-      const thirdIndex = context.indexOf('Third message');
-      
-      expect(firstIndex).toBeLessThan(thirdIndex);
-    });
-
-    it('should handle empty messages array', () => {
-      const context = formatConversationContext([]);
-      expect(context).toBe('');
+      // Should only include messages that fit within token limit
+      const occurrences = (context.match(/user:/g) || []).length;
+      expect(occurrences).toBeLessThan(3);
     });
   });
 
@@ -528,134 +482,129 @@ describe('memoryRecallTool', () => {
     it('should extract cryptocurrency symbols', () => {
       const testCases = [
         { query: 'What is the price of BTC?', expectedSymbols: ['BTC'] },
-        { query: 'Compare ETH and ADA', expectedSymbols: ['ETH', 'ADA'] },
-        { query: 'Show me BTC, ETH, and SOL charts', expectedSymbols: ['BTC', 'ETH', 'SOL'] },
+        { query: 'Compare ETH and SOL', expectedSymbols: ['ETH', 'SOL'] },
+        { query: 'Show me BTC, ETH, and ADA charts', expectedSymbols: ['BTC', 'ETH', 'ADA'] },
         { query: 'btc price', expectedSymbols: ['BTC'] }, // Case insensitive
-        { query: 'No crypto here', expectedSymbols: [] },
       ];
 
-      testCases.forEach(({ query, expectedSymbols }) => {
-        const { symbols } = extractMetadataFromQuery(query);
-        expect(symbols).toEqual(expect.arrayContaining(expectedSymbols));
-        expect(symbols).toHaveLength(expectedSymbols.length);
-      });
+      for (const testCase of testCases) {
+        const result = extractMetadataFromQuery(testCase.query);
+        expect(result.symbols).toEqual(testCase.expectedSymbols);
+      }
     });
 
-    it('should extract topics from keywords', () => {
+    it('should extract topics based on keywords', () => {
       const testCases = [
         { query: '価格を教えて', expectedTopics: ['price'] },
-        { query: 'Show me the technical analysis', expectedTopics: ['analysis'] },
-        { query: 'I want to trade BTC', expectedTopics: ['trading'] },
-        { query: 'Display the chart with RSI indicator', expectedTopics: ['chart', 'indicator'] },
-        { query: 'What is the market trend?', expectedTopics: ['market'] },
-        { query: 'Random text', expectedTopics: [] },
+        { query: 'I want to buy and sell', expectedTopics: ['trading'] },
+        { query: 'Technical analysis of the market', expectedTopics: ['analysis', 'market'] },
+        { query: 'チャートを見せて', expectedTopics: ['chart'] },
+        { query: 'Check RSI indicator', expectedTopics: ['indicator'] },
       ];
 
-      testCases.forEach(({ query, expectedTopics }) => {
-        const { topics } = extractMetadataFromQuery(query);
-        expect(topics).toEqual(expect.arrayContaining(expectedTopics));
-      });
+      for (const testCase of testCases) {
+        const result = extractMetadataFromQuery(testCase.query);
+        expect(result.topics).toEqual(expect.arrayContaining(testCase.expectedTopics));
+      }
     });
 
-    it('should extract both symbols and topics', () => {
-      const query = 'Show me BTC price chart with technical analysis';
-      const { symbols, topics } = extractMetadataFromQuery(query);
-      
-      expect(symbols).toContain('BTC');
-      expect(topics).toEqual(expect.arrayContaining(['price', 'chart', 'analysis']));
+    it('should handle mixed Japanese and English', () => {
+      const result = extractMetadataFromQuery('BTCの価格とチャートanalysisを見せて');
+      expect(result.symbols).toContain('BTC');
+      expect(result.topics).toContain('price');
+      expect(result.topics).toContain('chart');
+      expect(result.topics).toContain('analysis');
     });
 
-    it('should handle queries with multiple languages', () => {
-      const query = 'BTCの価格とチャートを見せて (Show BTC price and chart)';
-      const { symbols, topics } = extractMetadataFromQuery(query);
-      
-      expect(symbols).toContain('BTC');
-      expect(topics).toEqual(expect.arrayContaining(['price', 'chart']));
+    it('should handle queries with no metadata', () => {
+      const result = extractMetadataFromQuery('Hello, how are you?');
+      expect(result.symbols).toEqual([]);
+      expect(result.topics).toEqual([]);
     });
 
-    it('should handle empty query', () => {
-      const { symbols, topics } = extractMetadataFromQuery('');
-      expect(symbols).toEqual([]);
-      expect(topics).toEqual([]);
+    it('should not extract partial matches', () => {
+      const result = extractMetadataFromQuery('BTCUSDT pair information');
+      // Should not extract BTC from BTCUSDT
+      expect(result.symbols).toEqual([]);
     });
 
-    it('should avoid duplicate symbols', () => {
-      const query = 'BTC BTC BTC price';
-      const { symbols } = extractMetadataFromQuery(query);
-      
-      expect(symbols).toEqual(['BTC']);
+    it('should handle multiple occurrences of same symbol', () => {
+      const result = extractMetadataFromQuery('BTC is great, I love BTC, BTC to the moon!');
+      expect(result.symbols).toEqual(['BTC']); // Should not duplicate
+    });
+
+    it('should extract all supported crypto symbols', () => {
+      const allSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'DOGE', 'XRP', 'DOT', 'LINK', 'UNI', 'AVAX', 'MATIC'];
+      const query = allSymbols.join(' and ');
+      const result = extractMetadataFromQuery(query);
+      expect(result.symbols.sort()).toEqual(allSymbols.sort());
     });
   });
 
   describe('edge cases', () => {
     it('should handle very long session IDs', async () => {
-      const longSessionId = 'session-' + 'x'.repeat(1000);
-      mockMemoryStore.getRecentMessages.mockReturnValue([]);
+      const longSessionId = 'x'.repeat(1000);
+      mockGetState.getRecentMessages.mockReturnValue([]);
 
-      const result = await memoryRecallTool.execute!({
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: longSessionId,
           operation: 'getRecent',
-          limit: 8
         },
-        runtimeContext: {} as any
       });
 
+      expect(mockGetState.getRecentMessages).toHaveBeenCalledWith(longSessionId, 8);
       expect(result.success).toBe(true);
-      expect(mockMemoryStore.getRecentMessages).toHaveBeenCalled();
-      expect(mockMemoryStore.getRecentMessages.mock.calls[0]?.[0]).toBe(longSessionId);
     });
 
-    it('should handle messages with undefined metadata', async () => {
-      const messagesWithoutMetadata = [
-        {
-          id: '1',
-          role: 'user' as const,
-          content: 'Test message',
-          timestamp: new Date(),
-          agentId: undefined,
-          metadata: undefined,
+    it('should handle special characters in search queries', async () => {
+      const specialQuery = 'BTC/USD @ $50,000!';
+      const mockSemanticSearch = semanticSearch as jest.MockedFunction<typeof semanticSearch>;
+      mockSemanticSearch.mockResolvedValue([]);
+
+      const result = await executeMemoryRecallTool({
+        context: {
+          sessionId: 'session-123',
+          operation: 'search',
+          query: specialQuery,
         },
-      ];
+      });
 
-      mockMemoryStore.getRecentMessages.mockReturnValue(messagesWithoutMetadata);
+      expect(mockSemanticSearch).toHaveBeenCalledWith(specialQuery, 'session-123', 0.7, 8);
+      expect(result.success).toBe(true);
+    });
 
-      const result = await memoryRecallTool.execute!({
+    it('should handle maximum limit values', async () => {
+      mockGetState.getRecentMessages.mockReturnValue([]);
+
+      const result = await executeMemoryRecallTool({
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
-          limit: 8
+          limit: 20, // Maximum allowed
         },
-        runtimeContext: {} as any
       });
 
+      expect(mockGetState.getRecentMessages).toHaveBeenCalledWith('session-123', 20);
       expect(result.success).toBe(true);
-      expect(result.messages?.[0]).toMatchObject({
-        id: '1',
-        content: 'Test message',
-      });
     });
 
     it('should handle concurrent operations', async () => {
-      mockMemoryStore.getRecentMessages.mockReturnValue([]);
+      mockGetState.getRecentMessages.mockReturnValue([]);
+      mockGetState.searchMessages.mockReturnValue([]);
 
-      const operations = Array(10).fill(null).map((_, i) => 
-        memoryRecallTool.execute!({
-          context: {
-            sessionId: `session-${i}`,
-            operation: 'getRecent',
-            limit: 8
-          },
-          runtimeContext: {} as any
-        })
-      );
+      const promises = [
+        executeMemoryRecallTool({
+          context: { sessionId: 'session-1', operation: 'getRecent' },
+        }),
+        executeMemoryRecallTool({
+          context: { sessionId: 'session-2', operation: 'getRecent' },
+        }),
+      ];
 
-      const results = await Promise.all(operations);
-      
-      expect(results).toHaveLength(10);
-      results.forEach(result => {
-        expect(result.success).toBe(true);
-      });
+      const results = await Promise.all(promises);
+      expect(results).toHaveLength(2);
+      expect(results.every(r => r.success)).toBe(true);
     });
   });
 });

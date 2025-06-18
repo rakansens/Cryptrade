@@ -207,9 +207,11 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               };
               
               // Clear processed cache to force reprocessing
-              const session = state.sessions[message.sessionId];
-              if (session && 'processedMessages' in session) {
-                delete (session as any).processedMessages;
+              const updatedSession = state.sessions[message.sessionId];
+              if (updatedSession && 'processedMessages' in updatedSession) {
+                // Clear processedMessages by reassigning
+                const { processedMessages, ...rest } = updatedSession as any;
+                state.sessions[message.sessionId] = rest as ConversationSession;
               }
               
               // Update token usage
@@ -324,7 +326,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             
             // If message count changed, invalidate cache
             if (Math.abs(processedCount - currentCount) > 5) {
-              delete session.processedMessages;
+              // Clear processedMessages by reassigning
+              const { processedMessages: _, ...rest } = session as any;
+              state.sessions[sessionId] = rest as ConversationSession;
             } else {
               return session.processedMessages.slice(-limit);
             }
@@ -353,7 +357,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
           set((state) => {
             const session = state.sessions[sessionId];
             if (session) {
-              session.processedMessages = processedMessages;
+              // Use Object.assign to avoid read-only property error
+              Object.assign(session, { processedMessages });
             }
           });
           
@@ -398,7 +403,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               if (message) {
                 message.metadata = { ...message.metadata, ...metadata };
                 // Clear processed cache
-                delete session.processedMessages;
+                // Clear processedMessages by reassigning
+              const { processedMessages: _, ...rest } = session as any;
+              state.sessions[sessionId] = rest as ConversationSession;
                 break;
               }
             }
@@ -429,7 +436,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             if (session) {
               session.messages = [];
               session.lastActiveAt = new Date();
-              delete session.processedMessages;
+              // Clear processedMessages by reassigning
+              const { processedMessages: _, ...rest } = session as any;
+              state.sessions[sessionId] = rest as ConversationSession;
             }
           });
           
@@ -487,7 +496,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             if (session) {
               session.processors.push(processor);
               // Clear processed cache to force reprocessing
-              delete session.processedMessages;
+              // Clear processedMessages by reassigning
+              const { processedMessages: _, ...rest } = session as any;
+              state.sessions[sessionId] = rest as ConversationSession;
             }
           });
           
@@ -505,7 +516,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                 p => p.getName() !== processorName
               );
               // Clear processed cache
-              delete session.processedMessages;
+              // Clear processedMessages by reassigning
+              const { processedMessages: _, ...rest } = session as any;
+              state.sessions[sessionId] = rest as ConversationSession;
             }
           });
           
@@ -911,6 +924,9 @@ export function createEnhancedSession(
   
   if (options.maxTokens) {
     processors.push(new TokenLimiter(options.maxTokens));
+  } else {
+    // Add default token limiter if not specified
+    processors.push(new TokenLimiter(127000));
   }
   
   if (options.excludeTools || options.includeAllTools !== undefined) {
@@ -918,6 +934,9 @@ export function createEnhancedSession(
       ...(options.excludeTools && { exclude: options.excludeTools }),
       ...(options.includeAllTools !== undefined && { includeAll: options.includeAllTools }),
     }));
+  } else {
+    // Add default tool filter if not specified
+    processors.push(new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] }));
   }
   
   return useEnhancedConversationMemory.getState().createSession(sessionId, processors);
