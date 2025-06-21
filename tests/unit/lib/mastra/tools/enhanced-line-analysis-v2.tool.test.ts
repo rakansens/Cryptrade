@@ -1,7 +1,9 @@
 // Mock dependencies before imports
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/services/enhanced-market-data.service');
-jest.mock('@/lib/analysis/enhanced-line-detector-v2');
+jest.mock('@/lib/analysis/enhanced-line-detector-v2', () => ({
+  enhancedLineDetectorV2: jest.fn(),
+}));
 
 import { enhancedLineAnalysisV2Tool } from '@/lib/mastra/tools/enhanced-line-analysis-v2.tool';
 import { logger } from '@/lib/utils/logger';
@@ -124,7 +126,7 @@ describe('enhancedLineAnalysisV2Tool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (enhancedMarketDataService.fetchMultiTimeframeData as jest.Mock).mockResolvedValue(mockMultiTimeframeData);
-    jest.mocked(enhancedLineDetectorV2).mockImplementation(() => mockDetector);
+    (enhancedLineDetectorV2 as jest.Mock).mockImplementation(() => mockDetector);
   });
 
   describe('tool configuration', () => {

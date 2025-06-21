@@ -47,9 +47,13 @@ beforeEach(() => {
   jest.clearAllMocks();
   // Reset store state
   const store = useEnhancedConversationMemory.getState();
-  Object.keys(store.sessions).forEach(sessionId => {
-    store.clearSession(sessionId);
-  });
+  if (store && store.sessions) {
+    Object.keys(store.sessions).forEach(sessionId => {
+      if (store.clearSession) {
+        store.clearSession(sessionId);
+      }
+    });
+  }
   useEnhancedConversationMemory.setState({ 
     sessions: {}, 
     currentSessionId: null,

@@ -6,22 +6,61 @@ jest.mock('ai', () => ({
 jest.mock('@ai-sdk/openai', () => ({
   openai: jest.fn(() => 'mock-model'),
 }));
-jest.mock('./chart-data-analysis.tool', () => ({
+jest.mock('@/lib/mastra/tools/chart-data-analysis.tool', () => ({
   chartDataAnalysisTool: {
     execute: jest.fn(),
   },
-}), { virtual: true });
+}));
 
 import { enhancedChartControlTool } from '@/lib/mastra/tools/enhanced-chart-control.tool';
 import { logger } from '@/lib/utils/logger';
 import { generateText } from 'ai';
-import { chartDataAnalysisTool } from './chart-data-analysis.tool';
+import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
 
 // Type cast the execute function to avoid TypeScript errors
 const executeEnhancedChartControl = enhancedChartControlTool.execute as any;
 
 // Mock generateText
 const mockGenerateText = generateText as jest.MockedFunction<typeof generateText>;
+
+// Mock chart analysis data
+const mockChartAnalysis = {
+  rawData: {
+    candles: [
+      { time: 1000, open: 100, high: 110, low: 90, close: 105, volume: 1000 },
+      { time: 2000, open: 105, high: 115, low: 95, close: 110, volume: 1200 },
+    ],
+  },
+  candles: [
+    { time: 1000, open: 100, high: 110, low: 90, close: 105, volume: 1000 },
+    { time: 2000, open: 105, high: 115, low: 95, close: 110, volume: 1200 },
+  ],
+  trend: {
+    direction: 'bullish' as const,
+  },
+  recommendations: {
+    trendlineDrawing: [
+      {
+        points: [
+          { time: 1000, price: 95 },
+          { time: 2000, price: 100 },
+        ],
+        style: { color: '#00E676', lineWidth: 2, lineStyle: 'solid' },
+        description: 'Primary uptrend line',
+        confidence: 0.9,
+      },
+      {
+        points: [
+          { time: 1000, price: 110 },
+          { time: 2000, price: 115 },
+        ],
+        style: { color: '#2196F3', lineWidth: 2, lineStyle: 'solid' },
+        description: 'Resistance line',
+        confidence: 0.8,
+      },
+    ],
+  },
+};
 
 describe('enhancedChartControlTool', () => {
   beforeEach(() => {
@@ -40,43 +79,6 @@ describe('enhancedChartControlTool', () => {
   });
 
   describe('execute - successful operations', () => {
-    const mockChartAnalysis = {
-      rawData: {
-        candles: [
-          { time: 1000, open: 100, high: 110, low: 90, close: 105, volume: 1000 },
-          { time: 2000, open: 105, high: 115, low: 95, close: 110, volume: 1200 },
-        ],
-      },
-      candles: [
-        { time: 1000, open: 100, high: 110, low: 90, close: 105, volume: 1000 },
-        { time: 2000, open: 105, high: 115, low: 95, close: 110, volume: 1200 },
-      ],
-      trend: {
-        direction: 'bullish' as const,
-      },
-      recommendations: {
-        trendlineDrawing: [
-          {
-            points: [
-              { time: 1000, price: 95 },
-              { time: 2000, price: 100 },
-            ],
-            style: { color: '#00E676', lineWidth: 2, lineStyle: 'solid' },
-            description: 'Primary uptrend line',
-            confidence: 0.9,
-          },
-          {
-            points: [
-              { time: 1000, price: 110 },
-              { time: 2000, price: 115 },
-            ],
-            style: { color: '#2196F3', lineWidth: 2, lineStyle: 'solid' },
-            description: 'Resistance line',
-            confidence: 0.85,
-          },
-        ],
-      },
-    };
 
     beforeEach(() => {
       (chartDataAnalysisTool.execute as jest.Mock).mockResolvedValue(mockChartAnalysis);
@@ -101,12 +103,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'ÈìóÉé¤ó’Ï;W~W_',
+          text: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ÈìóÉé¤ó’Df',
+          userRequest: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {
             symbol: 'BTCUSDT',
             timeframe: '1h',
@@ -155,12 +157,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: '3,nÈìóÉé¤ó’Ï;W~W_',
+          text: '3,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '3,nÈìóÉé¤ó’Df',
+          userRequest: '3,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {
             symbol: 'BTCUSDT',
             timeframe: '1h',
@@ -191,9 +193,9 @@ describe('enhancedChartControlTool', () => {
 
     it('should handle Japanese number expressions', async () => {
       const testCases = [
-        { request: '”,nÈìóÉé¤ó’Df', expectedCount: 5 },
-        { request: 'pnÈìóÉé¤ó’Df', expectedCount: 3 }, // Default for p
-        { request: '_OU“ÈìóÉé¤ó’Df', expectedCount: 5 }, // Default for _OU“
+        { request: 'ï¿½,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df', expectedCount: 5 },
+        { request: 'pnï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df', expectedCount: 3 }, // Default for p
+        { request: '_OUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df', expectedCount: 5 }, // Default for _OUï¿½
       ];
 
       for (const testCase of testCases) {
@@ -215,7 +217,7 @@ describe('enhancedChartControlTool', () => {
             }),
           } as any)
           .mockResolvedValueOnce({
-            text: `${testCase.expectedCount},nÈìóÉé¤ó’Ï;W~W_`,
+            text: `${testCase.expectedCount},nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_`,
           } as any);
 
         const result = await executeEnhancedChartControl({
@@ -248,12 +250,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'ETHUSDTkŠÿH~W_',
+          text: 'ETHUSDTkï¿½ï¿½H~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ETHkŠÿHf',
+          userRequest: 'ETHkï¿½ï¿½Hf',
           currentState: { symbol: 'BTCUSDT' },
         },
       });
@@ -289,12 +291,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: '4B“³kŠÿH~W_',
+          text: '4Bï¿½ï¿½kï¿½ï¿½H~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '4B“³kWf',
+          userRequest: '4Bï¿½ï¿½kWf',
           currentState: { timeframe: '1h' },
         },
       });
@@ -330,12 +332,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'YyfnÏ;’JdW~W_',
+          text: 'Yyfnï¿½;ï¿½JdW~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'YyfnÏ;’Jd',
+          userRequest: 'Yyfnï¿½;ï¿½Jd',
           currentState: {
             existingDrawings: [
               { id: 'draw-1', type: 'trendline' },
@@ -378,12 +380,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'ÈìóÉé¤ó’Ï;W~W_',
+          text: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ÈìóÉé¤ó’Df',
+          userRequest: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -404,12 +406,12 @@ describe('enhancedChartControlTool', () => {
           text: 'Invalid JSON response',
         } as any)
         .mockResolvedValueOnce({
-          text: 'Õ©üëÐÃ¯gÈìóÉé¤ó’Ï;W~W_',
+          text: 'Õ©ï¿½ï¿½ï¿½Ã¯gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ÈìóÉé¤ó’Df',
+          userRequest: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -431,14 +433,14 @@ describe('enhancedChartControlTool', () => {
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ÈìóÉé¤ó’Df',
+          userRequest: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('OpenAI API error');
-      expect(result.response).toBe('3W3TVD~[“ê¯¨¹Ènæ-k¨éüLzW~W_');
+      expect(result.response).toBe('ç”³ã—è¨³ã”ã–ã„ã¾ã›ã‚“ã€‚ãƒªã‚¯ã‚¨ã‚¹ãƒˆã®å‡¦ç†ä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸã€‚');
       expect(result.metadata.confidence).toBe(0);
     });
 
@@ -510,12 +512,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: '3,nÈìóÉé¤ó’Ï;W~W_',
+          text: '3,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '3,nÈìóÉé¤ó’Df',
+          userRequest: '3,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -566,12 +568,12 @@ describe('enhancedChartControlTool', () => {
             }),
           } as any)
           .mockResolvedValueOnce({
-            text: 'ÈìóÉé¤ó’Ï;W~W_',
+            text: 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
           } as any);
 
         const result = await executeEnhancedChartControl({
           context: {
-            userRequest: '2,nÈìóÉé¤ó’Df',
+            userRequest: '2,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
             currentState: {},
           },
         });
@@ -620,12 +622,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: '8,nÈìóÉé¤ó’Ï;W~W_',
+          text: '8,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '8,nÈìóÉé¤ó’Df',
+          userRequest: '8,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -686,12 +688,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: '_OU“nÈìóÉé¤ó’Ï;W~W_',
+          text: '_OUï¿½nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '100,nÈìóÉé¤ó’Df',
+          userRequest: '100,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -734,12 +736,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'ETHn4B“³kŠÿHf2,nÈìóÉé¤ó’Ï;W~W_',
+          text: 'ETHn4Bï¿½ï¿½kï¿½ï¿½Hf2,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: 'ETHn4B“³g2,nÈìóÉé¤ó’Df',
+          userRequest: 'ETHn4Bï¿½ï¿½g2,nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Df',
           currentState: {},
         },
       });
@@ -810,12 +812,12 @@ describe('enhancedChartControlTool', () => {
           }),
         } as any)
         .mockResolvedValueOnce({
-          text: 'âXnÏ;ký W~W_',
+          text: 'ï¿½Xnï¿½;kï¿½ï¿½W~W_',
         } as any);
 
       const result = await executeEnhancedChartControl({
         context: {
-          userRequest: '‚F1,ý ',
+          userRequest: 'ï¿½F1,ï¿½ï¿½',
           currentState: {
             existingDrawings,
           },

@@ -185,7 +185,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       contexts.forEach(({ expected, ...context }) => {
         const selectedModel = model(context);
         expect(selectedModel).toBeDefined();
-        expectjest.mocked(openai).toHaveBeenCalledWith(expected);
+        expect(jest.mocked(openai)).toHaveBeenCalledWith(expected);
       });
     });
 
@@ -317,7 +317,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.analysis.intent).toBe('greeting');
-      expectjest.mocked(Agent).toHaveBeenCalled();
+      expect(jest.mocked(Agent)).toHaveBeenCalled();
     });
 
     it('should use parallel orchestrator for complex queries', async () => {
@@ -600,7 +600,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const newUserResult = await executeImprovedOrchestrator('こんにちは');
-      expectjest.mocked(Agent).toHaveBeenCalledWith(
+      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('new:')
         })
@@ -615,7 +615,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const regularUserResult = await executeImprovedOrchestrator('こんにちは');
-      expectjest.mocked(Agent).toHaveBeenCalledWith(
+      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('regular:')
         })
