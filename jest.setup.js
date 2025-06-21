@@ -804,10 +804,14 @@ jest.mock('axios', () => {
 jest.mock('nanoid/non-secure', () => ({ nanoid: () => 'test-id' }));
 
 // pg client mock to bypass database connections
-jest.mock('pg', () => ({
-  Client: jest.fn().mockImplementation(() => ({
-    connect: jest.fn(),
-    end: jest.fn(),
-    query: jest.fn().mockResolvedValue({ rows: [] }),
-  })),
-}));
+jest.mock(
+  'pg',
+  () => ({
+    Client: jest.fn().mockImplementation(() => ({
+      connect: jest.fn(),
+      end: jest.fn(),
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+    })),
+  }),
+  { virtual: true }
+);
