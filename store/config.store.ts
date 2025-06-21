@@ -480,3 +480,22 @@ export const useConfig = () => {
     ...actions,
   };
 };
+
+// ---------------------------------------------------------------------------
+// Legacy aliases for unit tests (to be removed in future)
+// 旧API互換のため、ストアフック自体に actions を直接ぶら下げる
+// 例: useConfigStore.setThemeMode('dark') が動作するようにする
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(useConfigStoreBase as any).setThemeMode = (mode: any) => {
+  useConfigActions().setThemeMode(mode);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(useConfigStoreBase as any).updateChart = (config: any) => {
+  useConfigActions().updateChart(config);
+};
+
+// 互換エクスポート
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const useConfigStoreLegacy: any = useConfigStoreBase;

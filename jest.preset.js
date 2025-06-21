@@ -28,9 +28,9 @@ module.exports = {
 
   // パスエイリアス + 静的モック
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/hooks/store/(.*)$': '<rootDir>/store/$1',
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/types/(.*)$': '<rootDir>/types/$1',
@@ -60,10 +60,10 @@ module.exports = {
     '^../../../types/(.*)$': '<rootDir>/types/$1',
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
-    // store を hooks 配下からインポートしている古いテスト互換
-    '^@/hooks/store/(.*)$': '<rootDir>/store/$1',
     // 移行前の market-data.service エイリアス
     '^@/lib/services/market-data\.service$': '<rootDir>/lib/services/enhanced-market-data.service.ts',
+    // 汎用キャッチオールは最後にする
+    '^@/(.*)$': '<rootDir>/$1',
   },
 
   // Coverage 対象ファイル
