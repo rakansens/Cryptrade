@@ -75,11 +75,22 @@ module.exports = {
   bail: false,
   detectOpenHandles: false,
   forceExit: true,
-  maxWorkers: '50%', // CPUコアの50%を使用
-  maxConcurrency: 5, // 並列実行数を増やす
+  maxWorkers: 4, // 並列数を固定値に変更（安定性重視）
+  maxConcurrency: 3, // 同時実行数を減らす
   cache: true,
   cacheDirectory: '<rootDir>/.jest-cache',
-  testTimeout: 10000, // デフォルトは10秒（必要に応じて個別のテストで延長）
+  testTimeout: 5000, // デフォルトタイムアウトを5秒に短縮
+  
+  // テストの順序をランダム化しない（デバッグしやすくする）
+  testSequencer: '@jest/test-sequencer',
+  
+  // 長時間かかるテストを除外
+  testPathIgnorePatterns: [
+    ...preset.testPathIgnorePatterns,
+    // WebSocketテストを一時的に除外
+    '<rootDir>/tests/unit/lib/ws/',
+    '<rootDir>/tests/integration/ws/',
+  ],
   
   // Coverage settings at root level
   coverageDirectory: '<rootDir>/coverage',

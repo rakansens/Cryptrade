@@ -17,7 +17,6 @@ module.exports = {
         tsconfig: 'tsconfig.test.json',
         useESM: false,
         diagnostics: false,        // skip type-checking for speed
-        isolatedModules: true,     // transpileOnly mode
       },
     ],
     '^.+\\.(js|jsx)$': 'babel-jest',
