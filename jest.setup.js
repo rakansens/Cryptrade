@@ -107,6 +107,18 @@ if (typeof global.fetch === 'undefined') {
   );
 }
 
+// ▶ Node 環境で window が未定義の場合に最低限のスタブを用意
+if (typeof global.window === 'undefined') {
+  global.window = {};
+}
+if (typeof global.window.dispatchEvent === 'undefined') {
+  global.window.dispatchEvent = jest.fn();
+}
+if (typeof global.window.addEventListener === 'undefined') {
+  global.window.addEventListener = jest.fn();
+  global.window.removeEventListener = jest.fn();
+}
+
 // Mock browser APIs only if window is defined (jsdom environment)
 if (typeof window !== 'undefined') {
   // Mock window.matchMedia
