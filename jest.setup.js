@@ -30,13 +30,14 @@ if (typeof global.BroadcastChannel === 'undefined') {
 }
 
 // Polyfill fetch for Node.js (required for MSW) - must be done before any other imports
-if (typeof global.fetch === 'undefined') {
-  const { fetch, Headers, Request, Response } = require('undici');
-  global.fetch = fetch;
-  global.Headers = Headers;
-  global.Request = Request;
-  global.Response = Response;
-}
+// Commented out to use jest mock instead
+// if (typeof global.fetch === 'undefined') {
+//   const { fetch, Headers, Request, Response } = require('undici');
+//   global.fetch = fetch;
+//   global.Headers = Headers;
+//   global.Request = Request;
+//   global.Response = Response;
+// }
 
 // Import test environment setup before anything else
 require('./tests/setup/test-env');
@@ -97,18 +98,91 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost:3000';
 
-// Mock fetch for Node.js environment
-if (typeof global.fetch === 'undefined') {
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({}),
-      text: () => Promise.resolve(''),
-      status: 200,
-      statusText: 'OK',
-    })
-  );
+// Mock fetch for testing
+const createDefaultResponse = (url) => ({
+  ok: true,
+  json: jest.fn().mockResolvedValue({}),
+  text: jest.fn().mockResolvedValue(''),
+  status: 200,
+  statusText: 'OK',
+  headers: new Headers(),
+  redirected: false,
+  type: 'basic',
+  url: url || '',
+  clone: jest.fn(function() { 
+    return {...this};
+  }),
+  body: null,
+  bodyUsed: false,
+  arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
+  blob: jest.fn().mockResolvedValue(new Blob()),
+  formData: jest.fn().mockResolvedValue(new FormData()),
+});
+
+// Create the base mock function
+const mockFetch = jest.fn();
+
+// Set default implementation
+mockFetch.mockImplementation((url, options) => {
+  return Promise.resolve(createDefaultResponse(url));
+});
+
+global.fetch = mockFetch;
+
+// Helper to create a mock ReadableStream for testing
+global.createMockReadableStream = (chunks) => {
+  let index = 0;
+  return new ReadableStream({
+    async start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(chunk);
+      }
+      controller.close();
+    },
+  });
+};
+
+// Mock EventSource for SSE testing
+class MockEventSource {
+  constructor(url, options) {
+    this.url = url;
+    this.readyState = 0; // CONNECTING
+    this.onopen = null;
+    this.onmessage = null;
+    this.onerror = null;
+    this.close = jest.fn(() => {
+      this.readyState = 2; // CLOSED
+    });
+    
+    // Simulate connection
+    setTimeout(() => {
+      this.readyState = 1; // OPEN
+      if (this.onopen) {
+        this.onopen({ type: 'open' });
+      }
+    }, 0);
+  }
+  
+  // Helper method for tests to simulate messages
+  simulateMessage(data) {
+    if (this.onmessage && this.readyState === 1) {
+      this.onmessage({ type: 'message', data });
+    }
+  }
+  
+  // Helper method for tests to simulate errors
+  simulateError(error) {
+    if (this.onerror) {
+      this.onerror({ type: 'error', error });
+    }
+  }
 }
+
+MockEventSource.CONNECTING = 0;
+MockEventSource.OPEN = 1;
+MockEventSource.CLOSED = 2;
+
+global.EventSource = MockEventSource;
 
 // ▶ Node 環境で window が未定義の場合に最低限のスタブを用意
 if (typeof global.window === 'undefined') {

@@ -399,12 +399,6 @@ export const useConfigStore = <T>(
   return useConfigStoreBase(selector);
 };
 
-// Full config hook
-export const useConfig = () => {
-  const state = useConfigStoreBase();
-  return state;
-};
-
 // Theme hooks
 export const useThemeConfig = () => 
   useConfigStore(state => state.theme);

@@ -9,6 +9,7 @@ import { useConfigStoreBase } from '@/store/config.store';
 
 import { 
   useConfig,
+  useConfigStore,
   useThemeConfig,
   useThemeMode,
   useAccentColor,

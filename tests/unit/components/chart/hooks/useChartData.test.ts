@@ -1,15 +1,31 @@
 import { renderHook } from '@testing-library/react';
 import { useChartData } from '@/components/chart/hooks/useChartData';
 import { prepareLightweightChartsData } from '@/lib/utils/chart-data';
-import { calculateMultipleMovingAverages } from '@/lib/indicators/moving-average';
-import { calculateBollingerBands } from '@/lib/indicators/bollinger-bands';
 import type { ProcessedKline, IndicatorOptions } from '@/types/market';
 import type { ChartSeriesRefs } from '@/components/chart/hooks/useChartInstance';
 
 // Mock dependencies
 jest.mock('@/lib/utils/chart-data');
-jest.mock('@/lib/indicators/moving-average');
-jest.mock('@/lib/indicators/bollinger-bands');
+jest.mock('@/lib/indicators/moving-average', () => ({
+  calculateMultipleMovingAverages: jest.fn(),
+  getMovingAverageConfigs: jest.fn((periods) => 
+    periods.map(period => ({ 
+      period, 
+      type: 'SMA',
+      color: '#ff0000',
+      visible: true 
+    }))
+  ),
+}));
+jest.mock('@/lib/indicators/bollinger-bands', () => ({
+  calculateBollingerBands: jest.fn(),
+  getBollingerBandsConfig: jest.fn(() => ({
+    period: 20,
+    stdDev: 2,
+    color: '#0000ff',
+    visible: true
+  })),
+}));
 
 describe('useChartData', () => {
   const mockPriceData: ProcessedKline[] = [
@@ -53,14 +69,16 @@ describe('useChartData', () => {
     );
     
     // Mock MA calculation
-    (calculateMultipleMovingAverages as jest.Mock).mockReturnValue({
+    const movingAverageModule = require('@/lib/indicators/moving-average');
+    movingAverageModule.calculateMultipleMovingAverages.mockReturnValue({
       7: [{ time: 1735837200, value: 101166.67 }],
       25: [{ time: 1735837200, value: 101166.67 }],
       99: [{ time: 1735837200, value: 101166.67 }],
     });
     
     // Mock Bollinger Bands calculation
-    (calculateBollingerBands as jest.Mock).mockReturnValue([
+    const bollingerModule = require('@/lib/indicators/bollinger-bands');
+    bollingerModule.calculateBollingerBands.mockReturnValue([
       { time: 1735837200, upper: 103000, middle: 101500, lower: 100000 },
     ]);
   });
@@ -97,7 +115,8 @@ describe('useChartData', () => {
   it('should calculate moving averages', () => {
     renderHook(() => useChartData(defaultProps));
     
-    expect(calculateMultipleMovingAverages).toHaveBeenCalledWith(
+    const movingAverageModule = require('@/lib/indicators/moving-average');
+    expect(movingAverageModule.calculateMultipleMovingAverages).toHaveBeenCalledWith(
       expect.any(Array),
       [7, 25, 99],
       'SMA'
@@ -107,7 +126,8 @@ describe('useChartData', () => {
   it('should calculate Bollinger Bands', () => {
     renderHook(() => useChartData(defaultProps));
     
-    expect(calculateBollingerBands).toHaveBeenCalledWith(
+    const bollingerModule = require('@/lib/indicators/bollinger-bands');
+    expect(bollingerModule.calculateBollingerBands).toHaveBeenCalledWith(
       expect.any(Array),
       20,
       2
@@ -120,7 +140,8 @@ describe('useChartData', () => {
       bollingerSettings: { period: 30, stdDev: 3 },
     }));
     
-    expect(calculateBollingerBands).toHaveBeenCalledWith(
+    const bollingerModule = require('@/lib/indicators/bollinger-bands');
+    expect(bollingerModule.calculateBollingerBands).toHaveBeenCalledWith(
       expect.any(Array),
       30,
       3
