@@ -75,11 +75,11 @@ module.exports = {
   bail: false,
   detectOpenHandles: false,
   forceExit: true,
-  maxWorkers: 4,
-  maxConcurrency: 2,
+  maxWorkers: '50%', // CPUコアの50%を使用
+  maxConcurrency: 5, // 並列実行数を増やす
   cache: true,
   cacheDirectory: '<rootDir>/.jest-cache',
-  testTimeout: 30000, // 30秒に設定（WebSocketテスト対応）
+  testTimeout: 10000, // デフォルトは10秒（必要に応じて個別のテストで延長）
   
   // Coverage settings at root level
   coverageDirectory: '<rootDir>/coverage',

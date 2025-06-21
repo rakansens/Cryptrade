@@ -1,10 +1,9 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { renderHook, act } from '@testing-library/react';
 import { useLineTracking } from '@/hooks/use-line-tracking';
-import * as analysishistorystore from '@/store/analysis-history.store';
+import { useAnalysisHistory, useAnalysisActions } from '@/store/analysis-history.store';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies

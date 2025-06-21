@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useProposalManagement } from '@/hooks/use-proposal-management';
+import { useProposalManagement } from '@/hooks/chat/use-proposal-management';
 
 describe('useProposalManagement', () => {
   it('should initialize with default values', () => {

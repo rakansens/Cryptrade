@@ -1,13 +1,15 @@
-import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { renderHook, act } from '@testing-library/react';
 import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
-import { chart } from '@/store/chart';
+import { usePatternActions, useChartBaseStore } from '@/store/chart';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 import { agentUtils } from '@/lib/chart/agent-utils';
 
 // Mock dependencies
-jest.mock('@/store/chart');
+jest.mock('@/store/chart', () => ({
+  usePatternActions: jest.fn(),
+  useChartBaseStore: jest.fn()
+}));
 jest.mock('@/lib/utils/logger');
 jest.mock('@/lib/chart/agent-utils');
 

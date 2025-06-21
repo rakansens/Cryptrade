@@ -52,9 +52,14 @@ describe('useManagedWebSocket', () => {
   });
 
   it('should auto-connect when autoConnect is true', async () => {
-    renderHook(() => 
+    const { result } = renderHook(() => 
       useManagedWebSocket({ url: 'ws://test.com', autoConnect: true })
     );
+    
+    // Wait for the effect to run
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
     
     await waitFor(() => {
       expect(connectionManager.createConnection).toHaveBeenCalledWith(
@@ -62,6 +67,8 @@ describe('useManagedWebSocket', () => {
         'ws://test.com'
       );
     });
+    
+    expect(result.current.isConnecting).toBe(true);
   });
 
   it('should handle successful connection', async () => {

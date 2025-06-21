@@ -1,6 +1,5 @@
-import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
-import { useAIStream } from '@/hooks/use-ai-stream';
+import { renderHook, act } from '@testing-library/react';
+import { useAIStream, formatStreamMessage, getTypingDelay } from '@/hooks/use-ai-stream';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import { logger } from '@/lib/utils/logger';
 

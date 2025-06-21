@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useRejectProposal } from '@/hooks/use-reject-proposal';
+import { useRejectProposal } from '@/hooks/chat/use-reject-proposal';
 
 describe('useRejectProposal', () => {
   it('should initialize with default values', () => {

@@ -1,13 +1,12 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';;
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAIChat } from '@/hooks/use-ai-chat';
-import * as chatstore from '@/store/chat.store';
+import { useChat } from '@/store/chat.store';
 import { useIsClient } from '@/hooks/use-is-client';
 import { logger } from '@/lib/utils/logger';
-import { validation } from '@/lib/utils/validation';
+import { safeParseOrWarn } from '@/lib/utils/validation';
 import { streamUtils } from '@/lib/utils/stream-utils';
 
 // Mock dependencies
@@ -20,7 +19,9 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
-jest.mock('@/lib/utils/validation');
+jest.mock('@/lib/utils/validation', () => ({
+  safeParseOrWarn: jest.fn()
+}));
 jest.mock('@/lib/utils/stream-utils');
 
 // Mock fetch

@@ -1243,3 +1243,28 @@ jest.mock(
   }),
   { virtual: true }
 );
+
+// Setup WebSocket mock with constants
+if (typeof global.WebSocket === 'undefined') {
+  global.WebSocket = class WebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+    
+    constructor(url, protocols) {
+      this.url = url;
+      this.protocols = protocols;
+      this.readyState = WebSocket.CONNECTING;
+      this.onopen = null;
+      this.onclose = null;
+      this.onmessage = null;
+      this.onerror = null;
+    }
+    
+    send() {}
+    close() {}
+    addEventListener() {}
+    removeEventListener() {}
+  };
+}
