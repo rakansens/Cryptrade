@@ -1,12 +1,12 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';;
-import { useManagedWebSocket } from '../../../../hooks/base/use-managed-websocket';
-import { connectionManager } from '../../../../lib/ws/connection-manager';
-import { logger } from '../../../../lib/utils/logger';
+import { useManagedWebSocket } from '@/hooks/base/use-managed-websocket';
+import { connectionManager } from '@/lib/ws/connection-manager';
+import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
-jest.mock('../../../../lib/ws/connection-manager');
-jest.mock('../../../../lib/utils/logger');
+jest.mock('@/lib/ws/connection-manager');
+jest.mock('@/lib/utils/logger');
 
 // Mock WebSocket
 class MockWebSocket {

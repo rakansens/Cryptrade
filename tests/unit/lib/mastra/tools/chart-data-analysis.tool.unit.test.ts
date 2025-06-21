@@ -1,8 +1,8 @@
 // Unit tests for chart-data-analysis.tool.ts helper functions
 // These tests focus on individual function behavior
 
-import { chartDataAnalysisTool } from '../../../../../lib/mastra/tools/chart-data-analysis.tool';
-import type { Candle, TechnicalAnalysis, Pattern } from '../../../../../lib/mastra/tools/chart-data-analysis.tool';
+import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import type { Candle, TechnicalAnalysis, Pattern } from '@/lib/mastra/tools/chart-data-analysis.tool';
 
 // Since the helper functions are not exported, we'll test them through the tool's behavior
 // This file focuses on testing specific calculation scenarios

@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useWebSocket } from '../../../../hooks/base/use-websocket';
-import { logger } from '../../../../lib/utils/logger';
+import { useWebSocket } from '@/hooks/base/use-websocket';
+import { logger } from '@/lib/utils/logger';
 
 // Mock logger
-jest.mock('../../../../lib/utils/logger');
+jest.mock('@/lib/utils/logger');
 
 describe('useWebSocket', () => {
   let mockWebSocket: any;

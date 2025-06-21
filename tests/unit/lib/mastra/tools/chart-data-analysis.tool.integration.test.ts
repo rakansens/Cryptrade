@@ -1,11 +1,11 @@
 // Integration tests for chart-data-analysis.tool.ts
 // These tests focus on the tool's integration and overall functionality
 
-import { chartDataAnalysisTool } from '../../../../../lib/mastra/tools/chart-data-analysis.tool';
-import { logger } from '../../../../../lib/utils/logger';
+import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import { logger } from '@/lib/utils/logger';
 
 // Mock the logger
-jest.mock('../../../../../lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),

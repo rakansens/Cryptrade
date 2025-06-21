@@ -19,9 +19,6 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
-// Mock timers
-jest.useFakeTimers();
-
 describe('useMarketTicker', () => {
   const mockBinanceTicker: BinanceTicker24hr = {
     symbol: 'BTCUSDT',
@@ -71,7 +68,7 @@ describe('useMarketTicker', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.clearAllTimers();
+    jest.useFakeTimers();
     
     // Setup store mock
     (useMarketStore as unknown as jest.Mock).mockImplementation((selector) => {

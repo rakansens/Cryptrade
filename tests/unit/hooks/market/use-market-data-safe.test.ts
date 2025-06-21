@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useMarketDataSafe } from '../../../../hooks/use-market-data-safe';
+import { useMarketDataSafe } from '@/hooks/use-market-data-safe';
 
 describe('useMarketDataSafe', () => {
   it('should initialize with default values', () => {

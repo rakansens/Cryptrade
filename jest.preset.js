@@ -24,7 +24,7 @@ module.exports = {
   },
 
   // ESM modules that need to be transformed
-  transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$|@.*/|msw))'],
+  transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$|@.*/|msw|@supabase))'],
 
   // パスエイリアス + 静的モック
   moduleNameMapper: {
@@ -41,7 +41,6 @@ module.exports = {
     '^@/config/(.*)$': '<rootDir>/config/$1',
     '^@/tests/(.*)$': '<rootDir>/tests/$1',
     // 深い相対パスを補正 - パターンを拡張
-    '^(?:\\.\\./)+hooks/(.*)$': '<rootDir>/components/chart/hooks/$1',
     '^(?:\\.\\./)+store/(.*)$': '<rootDir>/store/$1',
     '^(?:\\.\\./)+tests/setup/(.*)$': '<rootDir>/tests/setup/$1',
     '^(?:\\.\\./)+lib/(.*)$': '<rootDir>/lib/$1',

@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useChartSync } from '../../../../../hooks/useChartSync';
+import { useChartSync } from '@/hooks/useChartSync';
 
 describe('useChartSync', () => {
   it('should initialize with default values', () => {

@@ -7,9 +7,9 @@ import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventH
 import { agentUtils } from '@/lib/chart/agent-utils';
 
 // Mock dependencies
-jest.mock('../../../store/chart');
-jest.mock('../../../lib/utils/logger');
-jest.mock('../../../lib/chart/agent-utils');
+jest.mock('@/store/chart');
+jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/chart/agent-utils');
 
 describe('usePatternEventHandlers', () => {
   const mockHandlers: ChartEventHandlers = {

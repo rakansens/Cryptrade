@@ -5,8 +5,8 @@ import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
-jest.mock('../../../hooks/base/use-sse-stream');
-jest.mock('../../../lib/utils/logger');
+jest.mock('@/hooks/base/use-sse-stream');
+jest.mock('@/lib/utils/logger');
 
 describe('useAIStream', () => {
   const mockSSEStream = {

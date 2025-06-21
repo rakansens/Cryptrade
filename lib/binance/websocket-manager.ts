@@ -4,6 +4,9 @@ import { logger } from '@/lib/utils/logger';
 import type { BinanceTradeMessage } from '@/types/market';
 import { Mutex } from '@/lib/utils/concurrent';
 
+// Import timer functions for Node.js environment
+const { setInterval, clearInterval } = globalThis;
+
 export interface BinanceTradeData {
   symbol: string;      // Symbol
   price: number;       // Price

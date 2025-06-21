@@ -1,6 +1,20 @@
 // jest.setup.js
 // Global test setup
 
+// Ensure timer functions are available globally
+if (typeof global.setTimeout === 'undefined') {
+  global.setTimeout = require('timers').setTimeout;
+}
+if (typeof global.clearTimeout === 'undefined') {
+  global.clearTimeout = require('timers').clearTimeout;
+}
+if (typeof global.setInterval === 'undefined') {
+  global.setInterval = require('timers').setInterval;
+}
+if (typeof global.clearInterval === 'undefined') {
+  global.clearInterval = require('timers').clearInterval;
+}
+
 // Polyfill TextEncoder/TextDecoder for Node.js
 if (typeof global.TextEncoder === 'undefined') {
   const { TextEncoder, TextDecoder } = require('util');
@@ -1179,11 +1193,26 @@ if (typeof window !== 'undefined' && !window.location) {
   window.location = new URL('http://localhost/');
 }
 
-// Vite 環境などで clearInterval が undefined になる防御
-if (typeof clearInterval === 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// Timer functions polyfill for jsdom environment
+if (typeof global.clearInterval === 'undefined' || typeof global.setInterval === 'undefined') {
   // @ts-ignore
-  global.clearInterval = () => {};
+  global.setInterval = global.setInterval || function(callback, delay, ...args) {
+    return setTimeout(function repeat() {
+      callback(...args);
+      setTimeout(repeat, delay);
+    }, delay);
+  };
+  
+  // @ts-ignore
+  global.clearInterval = global.clearInterval || clearTimeout;
+}
+
+if (typeof global.clearTimeout === 'undefined' || typeof global.setTimeout === 'undefined') {
+  // These should exist in Node.js, but add fallback
+  // @ts-ignore
+  global.setTimeout = global.setTimeout || (() => 0);
+  // @ts-ignore
+  global.clearTimeout = global.clearTimeout || (() => {});
 }
 
 // ---------------------------------------------------------------------------

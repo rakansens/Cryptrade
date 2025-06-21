@@ -10,8 +10,8 @@ import { streamUtils } from '@/lib/utils/stream-utils';
 import type { AnalysisProgressEvent, AnalysisStep } from '@/types/analysis-progress';
 
 // Mock dependencies
-jest.mock('../../../hooks/base/use-streaming');
-jest.mock('../../../lib/utils/logger', () => ({
+jest.mock('@/hooks/base/use-streaming');
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
@@ -19,7 +19,7 @@ jest.mock('../../../lib/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
-jest.mock('../../../lib/utils/stream-utils');
+jest.mock('@/lib/utils/stream-utils');
 
 // Mock fetch
 global.fetch = jest.fn();

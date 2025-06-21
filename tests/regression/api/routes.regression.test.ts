@@ -12,10 +12,10 @@ import { GET as getLogsStream } from '@/app/api/logs/stream/route';
 import { POST as postAlerts } from '@/app/api/alerts/route';
 
 // Mock dependencies
-jest.mock('../../../lib/services/database');
-jest.mock('../../../lib/services/binance.service');
-jest.mock('../../../lib/services/websocket.service');
-jest.mock('../../../lib/utils/logger');
+jest.mock('@/lib/services/database');
+jest.mock('@/lib/services/binance.service');
+jest.mock('@/lib/services/websocket.service');
+jest.mock('@/lib/utils/logger');
 
 describe('API Routes Regression Tests', () => {
   beforeEach(() => {

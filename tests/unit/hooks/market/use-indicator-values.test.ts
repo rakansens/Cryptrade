@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useIndicatorValues } from '../../../../hooks/use-indicator-values';
+import { useIndicatorValues } from '@/hooks/use-indicator-values';
 
 describe('useIndicatorValues', () => {
   it('should initialize with default values', () => {

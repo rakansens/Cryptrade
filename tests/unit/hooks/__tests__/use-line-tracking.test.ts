@@ -8,8 +8,8 @@ import * as analysishistorystore from '@/store/analysis-history.store';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
-jest.mock('../../../store/analysis-history.store');
-jest.mock('../../../lib/utils/logger', () => ({
+jest.mock('@/store/analysis-history.store');
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -18,13 +18,13 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 // Mock dynamic imports
-jest.mock('../../../lib/notifications/browser-notifications', () => ({
+jest.mock('@/lib/notifications/browser-notifications', () => ({
   notifications: {
     showLineTouch: jest.fn().mockResolvedValue(true),
   },
 }));
 
-jest.mock('../../../lib/binance/websocket-manager', () => ({
+jest.mock('@/lib/binance/websocket-manager', () => ({
   binanceWS: {
     subscribe: jest.fn(),
   },

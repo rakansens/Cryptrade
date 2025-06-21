@@ -1,9 +1,9 @@
-import { chartDataAnalysisTool } from '../../../../../lib/mastra/tools/chart-data-analysis.tool';
-import { logger } from '../../../../../lib/utils/logger';
+import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import { logger } from '@/lib/utils/logger';
 import { z } from 'zod';
 
 // Mock the logger
-jest.mock('../../../../../lib/utils/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),

@@ -7,10 +7,10 @@ import { useChartControlAgentEvents } from '@/components/chart/hooks/useChartCon
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 
 // Mock all the individual event handler hooks
-jest.mock('../../../hooks/chart/useChartUIEventHandlers');
-jest.mock('../../../hooks/chart/useDrawingEventHandlers');
-jest.mock('../../../hooks/chart/usePatternEventHandlers');
-jest.mock('../../../components/chart/hooks/useChartControlAgentEvents');
+jest.mock('@/hooks/chart/useChartUIEventHandlers');
+jest.mock('@/hooks/chart/useDrawingEventHandlers');
+jest.mock('@/hooks/chart/usePatternEventHandlers');
+jest.mock('@/components/chart/hooks/useChartControlAgentEvents');
 
 describe('useAgentEventBridge', () => {
   const mockHandlers: ChartEventHandlers = {

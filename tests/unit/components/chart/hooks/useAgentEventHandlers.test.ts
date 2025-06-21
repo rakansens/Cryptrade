@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useAgentEventHandlers } from '../../../../../hooks/useAgentEventHandlers';
+import { useAgentEventHandlers } from '@/hooks/useAgentEventHandlers';
 
 describe('useAgentEventHandlers', () => {
   it('should initialize with default values', () => {

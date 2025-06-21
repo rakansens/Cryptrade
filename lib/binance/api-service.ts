@@ -192,11 +192,18 @@ export class BinanceAPIService extends BaseService {
 // Example migration:
 // Before: import { binanceAPI } from '@/lib/binance/api-service';
 // After:  import { BinanceAPIService } from '@/lib/binance/api-service';
-//         const binanceAPI = new BinanceAPIService();
-const binanceAPIInstance = new BinanceAPIService();
-export const binanceAPI = binanceAPIInstance;
+// Create a singleton instance with error handling
+let binanceAPIInstance: BinanceAPIService | null = null;
+
+try {
+  binanceAPIInstance = new BinanceAPIService();
+} catch (error) {
+  logger.error('[BinanceAPI] Failed to initialize BinanceAPIService', { error });
+}
+
+export const binanceAPI = binanceAPIInstance || ({} as BinanceAPIService);
 
 // Export standalone functions for convenience
-export const fetchKlines = binanceAPIInstance.fetchKlines.bind(binanceAPIInstance);
-export const fetchTicker24hr = binanceAPIInstance.fetchTicker24hr.bind(binanceAPIInstance);
-export const isValidSymbol = binanceAPIInstance.isValidSymbol.bind(binanceAPIInstance);
+export const fetchKlines = binanceAPIInstance ? binanceAPIInstance.fetchKlines.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
+export const fetchTicker24hr = binanceAPIInstance ? binanceAPIInstance.fetchTicker24hr.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
+export const isValidSymbol = binanceAPIInstance ? binanceAPIInstance.isValidSymbol.bind(binanceAPIInstance) : (() => false);

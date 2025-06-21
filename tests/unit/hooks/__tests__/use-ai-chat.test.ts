@@ -11,17 +11,17 @@ import { validation } from '@/lib/utils/validation';
 import { streamUtils } from '@/lib/utils/stream-utils';
 
 // Mock dependencies
-jest.mock('../../../store/chat.store');
-jest.mock('../../../hooks/use-is-client');
-jest.mock('../../../lib/utils/logger', () => ({
+jest.mock('@/store/chat.store');
+jest.mock('@/hooks/use-is-client');
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
   },
 }));
-jest.mock('../../../lib/utils/validation');
-jest.mock('../../../lib/utils/stream-utils');
+jest.mock('@/lib/utils/validation');
+jest.mock('@/lib/utils/stream-utils');
 
 // Mock fetch
 global.fetch = jest.fn();

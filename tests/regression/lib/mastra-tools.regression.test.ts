@@ -20,8 +20,8 @@ import type {
 } from '@/lib/mastra/tools/proposal-generation/types';
 
 // Mock dependencies
-jest.mock('../../../lib/services/chart-drawing.service');
-jest.mock('../../../lib/services/database/memory.service');
+jest.mock('@/lib/services/chart-drawing.service');
+jest.mock('@/lib/services/database/memory.service');
 jest.mock('../../../store/ui.store');
 
 describe('Mastra Tools Regression Tests', () => {
