@@ -1299,3 +1299,24 @@ if (typeof global.WebSocket === 'undefined') {
     removeEventListener() {}
   };
 }
+
+// Error handling for Jest workers
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception in Jest worker:', error);
+  // Don't exit the process, let Jest handle it
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, let Jest handle it
+});
+
+// Increase memory limits for tests
+if (global.gc) {
+  // Run garbage collection periodically
+  afterEach(() => {
+    if (global.gc) {
+      global.gc();
+    }
+  });
+}

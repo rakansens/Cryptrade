@@ -5,7 +5,11 @@ import { MainLayout } from '@/components/MainLayout'
 import { useRouter } from 'next/navigation'
 
 // Mock dependencies
-jest.mock('next/navigation')
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/'),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+}))
 jest.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: jest.fn(() => false), // Default to desktop
 }))
@@ -33,7 +37,7 @@ jest.mock('@/components/ui/resizable', () => ({
 }))
 
 const mockPush = jest.fn()
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>
+const mockUseRouter = useRouter as jest.Mock
 
 describe('MainLayout', () => {
   beforeEach(() => {
@@ -46,7 +50,7 @@ describe('MainLayout', () => {
       pathname: '/',
       query: {},
       asPath: '/',
-    } as any)
+    })
   })
 
   it('renders main layout structure', () => {

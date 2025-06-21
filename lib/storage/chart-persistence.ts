@@ -467,10 +467,14 @@ export class ChartPersistenceManager {
 
   private static clearLocalStorage(): void {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem(STORAGE_KEYS.DRAWINGS);
-    localStorage.removeItem(STORAGE_KEYS.PATTERNS);
-    localStorage.removeItem(STORAGE_KEYS.TIMEFRAME_STATE);
-    logger.info('[ChartPersistence] Local storage cleared');
+    try {
+      localStorage.removeItem(STORAGE_KEYS.DRAWINGS);
+      localStorage.removeItem(STORAGE_KEYS.PATTERNS);
+      localStorage.removeItem(STORAGE_KEYS.TIMEFRAME_STATE);
+      logger.info('[ChartPersistence] Local storage cleared');
+    } catch (error) {
+      logger.error('[ChartPersistence] Failed to clear data', { error });
+    }
   }
 
   /**

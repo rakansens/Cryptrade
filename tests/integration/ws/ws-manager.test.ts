@@ -45,14 +45,20 @@ interface MockKlineMessage {
 }
 
 describe('WSManager E2E Tests', () => {
-  setupWebSocketMocking();
+  const cleanupWebSocketMocking = setupWebSocketMocking();
   
   beforeEach(() => {
     jest.clearAllMocks();
+    MockWebSocket.clearInstances();
   });
 
   afterEach(() => {
     jest.clearAllTimers();
+    MockWebSocket.clearInstances();
+  });
+
+  afterAll(() => {
+    cleanupWebSocketMocking();
   });
 
   describe('WebSocket Stream Mocking', () => {

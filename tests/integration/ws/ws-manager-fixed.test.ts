@@ -17,7 +17,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('WSManager Simplified E2E Tests', () => {
-  setupWebSocketMocking();
+  const cleanupWebSocketMocking = setupWebSocketMocking();
   let managers: WSManager[] = [];
   
   beforeEach(() => {
@@ -31,6 +31,10 @@ describe('WSManager Simplified E2E Tests', () => {
     managers.forEach(manager => manager.destroy());
     managers = [];
     MockWebSocket.clearInstances();
+  });
+
+  afterAll(() => {
+    cleanupWebSocketMocking();
   });
 
   describe('Basic WebSocket Operations', () => {

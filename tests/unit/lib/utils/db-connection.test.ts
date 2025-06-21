@@ -24,20 +24,22 @@ jest.mock('@/config/env', () => ({
 }));
 
 // Mock prisma
-const mockPrisma = {
-  $connect: jest.fn(),
-  $disconnect: jest.fn(),
-  $transaction: jest.fn(),
-  $queryRaw: jest.fn(),
-};
-
 jest.mock('@/lib/db/prisma', () => ({
-  prisma: mockPrisma,
+  prisma: {
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
+  },
 }));
 
 describe('DatabaseConnection', () => {
+  let mockPrisma: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Get the mocked prisma instance
+    mockPrisma = require('@/lib/db/prisma').prisma;
     // Reset static state
     (DatabaseConnection as any).isConnected = false;
     (DatabaseConnection as any).connectionAttempts = 0;

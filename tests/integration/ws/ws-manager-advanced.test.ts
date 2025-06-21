@@ -25,14 +25,20 @@ jest.mock('@/lib/utils/logger', () => ({
 jest.setTimeout(30000);
 
 describe('WSManager Advanced E2E Scenarios', () => {
-  setupWebSocketMocking();
+  const cleanupWebSocketMocking = setupWebSocketMocking();
   
   beforeEach(() => {
     jest.clearAllMocks();
+    MockWebSocket.clearInstances();
   });
 
   afterEach(() => {
     jest.clearAllTimers();
+    MockWebSocket.clearInstances();
+  });
+
+  afterAll(() => {
+    cleanupWebSocketMocking();
   });
 
   describe('High-Frequency Trading Simulation', () => {

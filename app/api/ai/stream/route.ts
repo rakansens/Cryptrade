@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { mastra } from '@/lib/mastra/mastra';
 import { logger } from '@/lib/utils/logger';
-import { ValidationError, AgentError } from '@/lib/errors/base-error';
+import { AgentError } from '@/lib/errors/base-error';
 import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
 
 /**
@@ -73,9 +73,9 @@ export const POST = createSSEHandler({
         logger.error('[AI Stream API] Request failed', { error });
         if (error instanceof z.ZodError) {
           stream.write({ data: { error: 'Invalid request data', details: error.errors } });
-        } else if (error && typeof error === 'object' && 'code' in error && 
+        } else if (error && typeof error === 'object' && 'code' in error && 'message' in error &&
                    ((error as any).code === 'AGENT_EXECUTION_ERROR' || (error as any).code === 'VALIDATION_ERROR')) {
-          stream.write({ data: { error: (error as Error).message } });
+          stream.write({ data: { error: (error as any).message } });
         } else {
           stream.write({ data: { error: (error as Error).message } });
         }

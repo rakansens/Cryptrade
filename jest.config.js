@@ -39,7 +39,7 @@ module.exports = {
       testPathIgnorePatterns: preset.testPathIgnorePatterns,
       moduleFileExtensions: preset.moduleFileExtensions,
       transformIgnorePatterns: preset.transformIgnorePatterns,
-      workerIdleMemoryLimit: '512MB',
+      workerIdleMemoryLimit: '1GB',
     },
     {
       displayName: 'integration',
@@ -67,7 +67,7 @@ module.exports = {
       testPathIgnorePatterns: preset.testPathIgnorePatterns,
       moduleFileExtensions: preset.moduleFileExtensions,
       transformIgnorePatterns: preset.transformIgnorePatterns,
-      workerIdleMemoryLimit: '512MB',
+      workerIdleMemoryLimit: '1GB',
     },
   ],
   
@@ -75,14 +75,17 @@ module.exports = {
   bail: false,
   detectOpenHandles: false,
   forceExit: true,
-  maxWorkers: 4, // 並列数を固定値に変更（安定性重視）
-  maxConcurrency: 3, // 同時実行数を減らす
+  maxWorkers: 2, // 並列数を減らしてメモリ使用量を削減
+  maxConcurrency: 2, // 同時実行数も合わせて削減
   cache: true,
   cacheDirectory: '<rootDir>/.jest-cache',
   testTimeout: 5000, // デフォルトタイムアウトを5秒に短縮
   
   // テストの順序をランダム化しない（デバッグしやすくする）
   testSequencer: '@jest/test-sequencer',
+  
+  // Worker再試行設定
+  workerThreads: false, // プロセスベースのworkerを使用（より安定）
   
   // 長時間かかるテストを除外
   testPathIgnorePatterns: [
