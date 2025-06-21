@@ -57,6 +57,10 @@ module.exports = {
     '^../../../types/(.*)$': '<rootDir>/types/$1',
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
+    // store を hooks 配下からインポートしている古いテスト互換
+    '^@/hooks/store/(.*)$': '<rootDir>/store/$1',
+    // 移行前の market-data.service エイリアス
+    '^@/lib/services/market-data\.service$': '<rootDir>/lib/services/enhanced-market-data.service.ts',
   },
 
   // Coverage 対象ファイル
