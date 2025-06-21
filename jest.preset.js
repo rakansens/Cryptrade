@@ -34,10 +34,27 @@ module.exports = {
     '^@/store/(.*)$': '<rootDir>/store/$1',
     '^@/utils/(.*)$': '<rootDir>/utils/$1',
     '^@/config/(.*)$': '<rootDir>/config/$1',
-    // 深い相対パスを補正
+    '^@/tests/(.*)$': '<rootDir>/tests/$1',
+    // 深い相対パスを補正 - パターンを拡張
     '^(?:\\.\\./)+hooks/(.*)$': '<rootDir>/hooks/$1',
     '^(?:\\.\\./)+store/(.*)$': '<rootDir>/store/$1',
     '^(?:\\.\\./)+tests/setup/(.*)$': '<rootDir>/tests/setup/$1',
+    '^(?:\\.\\./)+lib/(.*)$': '<rootDir>/lib/$1',
+    '^(?:\\.\\./)+components/(.*)$': '<rootDir>/components/$1',
+    '^(?:\\.\\./)+types/(.*)$': '<rootDir>/types/$1',
+    '^(?:\\.\\./)+app/(.*)$': '<rootDir>/app/$1',
+    // 4層レベルの相対パス対応
+    '^../../../../hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^../../../../store/(.*)$': '<rootDir>/store/$1',
+    '^../../../../lib/(.*)$': '<rootDir>/lib/$1',
+    '^../../../../components/(.*)$': '<rootDir>/components/$1',
+    '^../../../../types/(.*)$': '<rootDir>/types/$1',
+    // 3層レベルの相対パス対応
+    '^../../../hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^../../../store/(.*)$': '<rootDir>/store/$1',
+    '^../../../lib/(.*)$': '<rootDir>/lib/$1',
+    '^../../../components/(.*)$': '<rootDir>/components/$1',
+    '^../../../types/(.*)$': '<rootDir>/types/$1',
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },

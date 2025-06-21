@@ -41,6 +41,9 @@ if (typeof global.fetch === 'undefined') {
 // Import test environment setup before anything else
 require('./tests/setup/test-env');
 
+// Import JSDOM environment setup
+require('./tests/setup/jsdom-environment');
+
 // Setup MSW for API mocking
 // Temporarily disabled due to TypeScript compilation issues
 // require('./tests/setup/msw-setup');
@@ -581,6 +584,105 @@ jest.mock('zustand/middleware/immer', () => ({
   immer: jest.fn((stateCreator) => stateCreator),
 }));
 
+// Mock SSE handler utilities
+jest.mock('@/lib/api/create-sse-handler', () => {
+  const mockSSEStream = {
+    write: jest.fn(),
+    close: jest.fn(),
+    isClosed: false,
+  };
+
+  class MockSSEBroadcast {
+    constructor() {
+      this.subscribers = new Set();
+      this.messageHistory = [];
+    }
+    
+    subscribe(stream) {
+      this.subscribers.add(stream);
+      return () => {
+        this.subscribers.delete(stream);
+      };
+    }
+    
+    broadcast(message) {
+      this.messageHistory.push(message);
+      for (const stream of this.subscribers) {
+        if (!stream.isClosed) {
+          stream.write(message);
+        }
+      }
+    }
+    
+    getSubscriberCount() {
+      return this.subscribers.size;
+    }
+    
+    close() {
+      for (const stream of this.subscribers) {
+        if (!stream.isClosed) {
+          stream.close();
+        }
+      }
+      this.subscribers.clear();
+      this.messageHistory = [];
+    }
+  }
+
+  return {
+    SSEBroadcast: MockSSEBroadcast,
+    createSSEHandler: jest.fn((config) => {
+      return jest.fn(async (request) => {
+        // Create a mock response for SSE
+        const stream = new ReadableStream({
+          start(controller) {
+            const sseStream = { ...mockSSEStream };
+            
+            // Call onConnect if provided
+            if (config.handler.onConnect) {
+              config.handler.onConnect({
+                request,
+                data: {},
+                stream: sseStream,
+              });
+            }
+            
+            // Send initial connected event
+            const message = JSON.stringify({
+              event: 'connected',
+              data: {
+                message: 'SSE connection established',
+                timestamp: Date.now(),
+              },
+            });
+            controller.enqueue(`event: connected\ndata: ${message}\n\n`);
+          },
+        });
+        
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      });
+    }),
+    createSSEOptionsHandler: jest.fn(() => {
+      return jest.fn(async () => {
+        return new Response(null, {
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      });
+    }),
+  };
+});
+
 // Mock Prisma client before any imports use it
 jest.mock('@/lib/db/prisma', () => ({
   prisma: {
@@ -615,6 +717,18 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
+    trace: jest.fn(),
+  },
+}));
+
+// Mock metrics
+jest.mock('@/lib/monitoring/metrics', () => ({
+  metrics: {
+    incrementMetric: jest.fn(),
+    recordMetric: jest.fn(),
+    recordHistogram: jest.fn(),
+    recordGauge: jest.fn(),
+    startTimer: jest.fn(() => jest.fn()),
   },
 }));
 
@@ -654,3 +768,21 @@ jest.mock('@/lib/errors/base-error', () => ({
 afterEach(() => {
   jest.clearAllMocks();
 });
+
+// ---------------------------------------------------------------------------
+// Additional JSDOM / Node polyfills
+// ---------------------------------------------------------------------------
+
+// jsdom 22+ may expose window but location が null のケースを回避
+if (typeof window !== 'undefined' && !window.location) {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  window.location = new URL('http://localhost/');
+}
+
+// Vite 環境などで clearInterval が undefined になる防御
+if (typeof clearInterval === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  global.clearInterval = () => {};
+}
