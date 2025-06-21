@@ -333,7 +333,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       const sessionId = 'custom-session-id';
       await executeImprovedOrchestrator('BTCの価格', sessionId);
       
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       expect(memoryStore.addMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: expect.any(String),
@@ -382,7 +382,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should handle memory recall failures', async () => {
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       memoryStore.getSessionContext = jest.fn().mockImplementation(() => {
         throw new Error('Memory error');
       });
@@ -439,7 +439,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should use memory recall tool for context-dependent queries', async () => {
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       memoryStore.getRecentMessages = jest.fn(() => [
         { role: 'user', content: 'BTCについて教えて', metadata: {} },
         { role: 'assistant', content: 'BTCは...', metadata: {} },
@@ -461,7 +461,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
   describe('Context and Memory Management', () => {
     it('should maintain conversation context across messages', async () => {
       const sessionId = 'test-session';
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       
       await executeImprovedOrchestrator('BTCについて教えて', sessionId);
       await executeImprovedOrchestrator('それは高い？', sessionId);
@@ -479,7 +479,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should extract metadata from queries', async () => {
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       
       await executeImprovedOrchestrator('BTCとETHの価格分析をお願いします');
       
@@ -589,7 +589,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should adapt response based on relationship level', async () => {
-      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
+      const memoryStore = (useEnhancedConversationMemory.getState as jest.Mock)();
       
       // New user (few messages)
       memoryStore.getMemoryStats = jest.fn(() => ({

@@ -37,6 +37,23 @@ jest.mock('@/lib/db/prisma', () => ({
 }));
 jest.mock('@/lib/utils/logger');
 
+// Helper to ensure store has all required methods
+const ensureStoreMethods = (store: any) => {
+  const requiredMethods = [
+    'createSession', 'addMessage', 'getProcessedMessages', 'getRecentMessages',
+    'getSessionContext', 'updateMessageMetadata', 'clearSession', 'searchMessages',
+    'summarizeSession', 'addProcessor', 'removeProcessor', 'setDefaultProcessors',
+    'getMemoryStats', 'enableDbSync', 'disableDbSync', 'syncWithDatabase',
+    'loadFromDatabase'
+  ];
+  
+  for (const method of requiredMethods) {
+    if (typeof store[method] !== 'function') {
+      console.warn(`Store method ${method} is not a function or doesn't exist`);
+    }
+  }
+};
+
 // MSW server handlers
 beforeEach(() => {
   server.use(
@@ -45,22 +62,32 @@ beforeEach(() => {
     })
   );
   jest.clearAllMocks();
-  // Reset store state
+  
+  // Get current store to properly reset it
   const store = useEnhancedConversationMemory.getState();
-  if (store && store.sessions) {
+  
+  // Clear all sessions if clearSession method exists
+  if (store && store.sessions && typeof store.clearSession === 'function') {
     Object.keys(store.sessions).forEach(sessionId => {
-      if (store.clearSession) {
-        store.clearSession(sessionId);
-      }
+      store.clearSession(sessionId);
     });
   }
-  useEnhancedConversationMemory.setState({ 
-    sessions: {}, 
-    currentSessionId: null,
-    isDbEnabled: true,
-    isSyncing: false,
-    defaultProcessors: [new TokenLimiter(127000), new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] })]
-  });
+  
+  // Ensure the store has been properly initialized with all methods
+  ensureStoreMethods(store);
+  
+  // Reset state while preserving methods
+  if (store) {
+    // Clear sessions
+    store.sessions = {};
+    store.currentSessionId = null;
+    store.isDbEnabled = true;
+    store.isSyncing = false;
+    store.defaultProcessors = [
+      new TokenLimiter(127000), 
+      new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] })
+    ];
+  }
 });
 
 describe('EnhancedConversationMemoryStore', () => {

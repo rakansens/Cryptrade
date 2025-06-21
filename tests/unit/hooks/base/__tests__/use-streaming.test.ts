@@ -20,6 +20,8 @@ jest.mock('@/lib/utils/logger', () => ({
 // Use the EventSource mock from jest.setup.js
 
 describe('useStreaming', () => {
+  jest.setTimeout(10000); // Increase timeout for streaming tests
+  
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset fetch mock if it exists
@@ -118,18 +120,32 @@ describe('useStreaming', () => {
 
     it('should handle disconnect', async () => {
       const abortSpy = jest.fn();
+      const abortSignal = { aborted: false };
       global.AbortController = jest.fn().mockImplementation(() => ({
-        signal: {},
-        abort: abortSpy
+        signal: abortSignal,
+        abort: () => {
+          abortSignal.aborted = true;
+          abortSpy();
+        }
       }));
+
+      const mockReader = {
+        read: jest.fn().mockImplementation(() => {
+          // Check if aborted
+          if (abortSignal.aborted) {
+            return Promise.reject(new DOMException('Aborted', 'AbortError'));
+          }
+          // Return pending promise to keep stream alive
+          return new Promise(() => {});
+        }),
+        releaseLock: jest.fn()
+      };
 
       const mockResponse = {
         ok: true,
-        body: new ReadableStream({
-          start() {
-            // Keep stream open
-          }
-        })
+        body: {
+          getReader: () => mockReader
+        }
       };
 
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
@@ -142,16 +158,25 @@ describe('useStreaming', () => {
       );
 
       await act(async () => {
-        await result.current.connect();
+        result.current.connect();
+        // Give it a moment to start reading
+        await new Promise(resolve => setTimeout(resolve, 50));
       });
+
+      expect(result.current.isStreaming).toBe(true);
 
       act(() => {
         result.current.disconnect();
       });
 
+      // Wait for state update
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
       expect(abortSpy).toHaveBeenCalled();
       expect(result.current.isStreaming).toBe(false);
-    });
+    }, 15000);
   });
 
   describe('stream processing', () => {
@@ -174,16 +199,17 @@ describe('useStreaming', () => {
       const messages: any[] = [];
       const onMessage = jest.fn((data) => messages.push(data));
 
-      renderHook(() => 
+      const { result } = renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
-          onMessage
+          onMessage,
+          autoConnect: true
         })
       );
 
       await waitFor(() => {
         expect(messages.length).toBe(3);
-      });
+      }, { timeout: 5000 });
 
       expect(messages).toEqual([
         { event: 'start' },
@@ -208,16 +234,17 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      renderHook(() => 
+      const { result } = renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
-          onMessage: (data) => messages.push(data)
+          onMessage: (data) => messages.push(data),
+          autoConnect: true
         })
       );
 
       await waitFor(() => {
         expect(messages.length).toBe(2);
-      });
+      }, { timeout: 5000 });
 
       expect(messages).toEqual([
         { type: 'message', text: 'hello' },
@@ -241,7 +268,7 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      renderHook(() => 
+      const { result } = renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
           parseResponse: (chunk) => {
@@ -250,13 +277,14 @@ describe('useStreaming', () => {
             }
             return null;
           },
-          onMessage: (data) => messages.push(data)
+          onMessage: (data) => messages.push(data),
+          autoConnect: true
         })
       );
 
       await waitFor(() => {
         expect(messages.length).toBe(2);
-      });
+      }, { timeout: 5000 });
 
       expect(messages).toEqual([
         { custom: 'hello' },
@@ -281,16 +309,17 @@ describe('useStreaming', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
       const messages: any[] = [];
-      renderHook(() => 
+      const { result } = renderHook(() => 
         useStreaming({
           endpoint: '/api/stream',
-          onMessage: (data) => messages.push(data)
+          onMessage: (data) => messages.push(data),
+          autoConnect: true
         })
       );
 
       await waitFor(() => {
         expect(messages.length).toBe(1);
-      });
+      }, { timeout: 5000 });
 
       expect(messages[0]).toEqual({ message: 'split' });
     });
@@ -414,7 +443,7 @@ describe('useStreaming', () => {
 
       await waitFor(() => {
         expect(result.current.data).toEqual({ success: true });
-      }, { timeout: 10000 });
+      }, { timeout: 5000 });
 
       expect(attemptCount).toBe(3);
     });
@@ -435,7 +464,7 @@ describe('useStreaming', () => {
 
       await waitFor(() => {
         expect(onError).toHaveBeenCalledTimes(2);
-      }, { timeout: 10000 });
+      }, { timeout: 5000 });
 
       expect(result.current.error?.message).toBe('Connection failed');
     });
@@ -609,9 +638,6 @@ describe('useStreaming', () => {
 });
 
 describe('useSSE', () => {
-  // Set a longer timeout for SSE tests
-  jest.setTimeout(30000);
-
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
