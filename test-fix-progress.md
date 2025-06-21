@@ -180,3 +180,32 @@
 
 ### Phase 4.1: React Testing Library環境整備
 **開始時刻**: 2025-06-21 11:15
+**対象**: React Testing Library環境、モジュール解決
+
+#### 調査ログ
+- 問題1: CandlestickChartのモックエラー
+  - 原因: forwardRefが必要
+- 問題2: useAgentEventHandlersのパス解決エラー
+  - 原因: jest.preset.jsのmoduleNameMapperに不足
+- 問題3: PrismaClientKnownRequestErrorがモックされていない
+  - 原因: @prisma/clientのモックが必要
+
+#### 修正内容
+1. **MainLayout.test.tsx**
+   - CandlestickChartにReact.forwardRef追加
+   - next/navigationモックの詳細化
+
+2. **jest.preset.js**
+   - components/chart/hooksのパスマッピング追加
+
+3. **db-connection.test.ts**
+   - @prisma/clientのモック追加
+   - PrismaClientKnownRequestErrorクラスの実装
+
+#### 現在のテスト状況
+- **前回**: 307 failed, 497 passed (61.4%)
+- **コミット**: e24b144c
+
+---
+
+## Phase 5: モジュール解決の修正（Phase 4と並行実施）

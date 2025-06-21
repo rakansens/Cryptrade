@@ -5,6 +5,21 @@ import {
   checkDatabaseHealth,
   type TransactionOptions,
 } from '@/lib/utils/db-connection';
+// Mock Prisma before importing
+jest.mock('@prisma/client', () => ({
+  Prisma: {
+    PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {
+      constructor(message: string, options: any) {
+        super(message);
+        this.code = options.code;
+        this.clientVersion = options.clientVersion || '0.0.0';
+      }
+      code: string;
+      clientVersion: string;
+    },
+  },
+}));
+
 import { Prisma } from '@prisma/client';
 
 // Mock logger

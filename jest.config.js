@@ -23,6 +23,17 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add specific UI component mocks
+        '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
+        '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',
+        '^@/components/ui/card$': '<rootDir>/__mocks__/@/components/ui/card.tsx',
+        '^@/components/ui/dialog$': '<rootDir>/__mocks__/@/components/ui/dialog.tsx',
+        '^@/components/ui/switch$': '<rootDir>/__mocks__/@/components/ui/switch.tsx',
+        '^@/components/ui/slider$': '<rootDir>/__mocks__/@/components/ui/slider.tsx',
+        '^@/components/ui/tabs$': '<rootDir>/__mocks__/@/components/ui/tabs.tsx',
+        '^@/components/ui/select$': '<rootDir>/__mocks__/@/components/ui/select.tsx',
+        '^@/components/ui/popover$': '<rootDir>/__mocks__/@/components/ui/popover.tsx',
+        '^@/components/ui/toast$': '<rootDir>/__mocks__/@/components/ui/toast.tsx',
         // Add specific Radix UI mocks
         '^@radix-ui/react-popover$': '<rootDir>/__mocks__/@radix-ui/react-popover.tsx',
         '^@radix-ui/react-select$': '<rootDir>/__mocks__/@radix-ui/react-select.tsx',
@@ -51,6 +62,17 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add specific UI component mocks
+        '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
+        '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',
+        '^@/components/ui/card$': '<rootDir>/__mocks__/@/components/ui/card.tsx',
+        '^@/components/ui/dialog$': '<rootDir>/__mocks__/@/components/ui/dialog.tsx',
+        '^@/components/ui/switch$': '<rootDir>/__mocks__/@/components/ui/switch.tsx',
+        '^@/components/ui/slider$': '<rootDir>/__mocks__/@/components/ui/slider.tsx',
+        '^@/components/ui/tabs$': '<rootDir>/__mocks__/@/components/ui/tabs.tsx',
+        '^@/components/ui/select$': '<rootDir>/__mocks__/@/components/ui/select.tsx',
+        '^@/components/ui/popover$': '<rootDir>/__mocks__/@/components/ui/popover.tsx',
+        '^@/components/ui/toast$': '<rootDir>/__mocks__/@/components/ui/toast.tsx',
         // Add specific Radix UI mocks
         '^@radix-ui/react-popover$': '<rootDir>/__mocks__/@radix-ui/react-popover.tsx',
         '^@radix-ui/react-select$': '<rootDir>/__mocks__/@radix-ui/react-select.tsx',

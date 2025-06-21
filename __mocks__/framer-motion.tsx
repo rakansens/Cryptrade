@@ -6,7 +6,7 @@ export const motion = new Proxy(
   {
     get: (target, prop) => {
       // Return a component that strips motion props and renders the element
-      return React.forwardRef((props: any, ref: any) => {
+      const Component = React.forwardRef((props: any, ref: any) => {
         const { 
           initial, 
           animate, 
@@ -46,6 +46,8 @@ export const motion = new Proxy(
           ref 
         });
       });
+      Component.displayName = `motion.${String(prop)}`; 
+      return Component;
     }
   }
 );

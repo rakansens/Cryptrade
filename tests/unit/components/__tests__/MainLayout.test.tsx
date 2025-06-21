@@ -15,7 +15,7 @@ jest.mock('@/hooks/use-media-query', () => ({
 }))
 
 jest.mock('@/components/chart/core/CandlestickChart', () => ({
-  CandlestickChart: () => <div data-testid="candlestick-chart">Chart</div>
+  CandlestickChart: React.forwardRef(() => <div data-testid="candlestick-chart">Chart</div>)
 }))
 
 jest.mock('@/components/chat/ChatPanel', () => ({

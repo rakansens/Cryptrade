@@ -23,26 +23,38 @@ export const Popover = ({ children, open, onOpenChange }: any) => {
   );
 };
 
-export const PopoverTrigger = ({ children, asChild, isOpen, setIsOpen }: any) => {
-  const handleClick = () => {
-    setIsOpen?.(!isOpen);
-  };
-  
-  if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as any, { 
-      onClick: handleClick,
-      'data-testid': 'popover-trigger'
-    });
+export const PopoverTrigger = React.forwardRef<HTMLButtonElement, any>(
+  ({ children, asChild, isOpen, setIsOpen, ...props }, ref) => {
+    const handleClick = () => {
+      setIsOpen?.(!isOpen);
+    };
+    
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as any, { 
+        ref,
+        onClick: handleClick,
+        'data-testid': 'popover-trigger',
+        ...props
+      });
+    }
+    
+    return (
+      <button ref={ref} data-testid="popover-trigger" onClick={handleClick} {...props}>
+        {children}
+      </button>
+    );
   }
-  
-  return (
-    <button data-testid="popover-trigger" onClick={handleClick}>
-      {children}
-    </button>
-  );
-};
+);
+PopoverTrigger.displayName = 'PopoverTrigger';
 
-export const PopoverContent = ({ children, isOpen }: any) => {
-  if (!isOpen) return null;
-  return <div data-testid="popover-content">{children}</div>;
-};
+export const PopoverContent = React.forwardRef<HTMLDivElement, any>(
+  ({ children, isOpen, ...props }, ref) => {
+    if (!isOpen) return null;
+    return (
+      <div ref={ref} data-testid="popover-content" {...props}>
+        {children}
+      </div>
+    );
+  }
+);
+PopoverContent.displayName = 'PopoverContent';

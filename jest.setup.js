@@ -1069,39 +1069,8 @@ jest.mock('next/link', () => {
 });
 
 // Mock common UI components
-jest.mock('@/components/ui/button', () => ({
-  Button: require('react').forwardRef(({ children, onClick, ...props }, ref) => 
-    require('react').createElement('button', { ref, onClick, 'data-testid': 'button', ...props }, children)
-  ),
-}))
-
-jest.mock('@/components/ui/card', () => ({
-  Card: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card', ...props }, children),
-  CardHeader: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-header', ...props }, children),
-  CardTitle: ({ children, ...props }) => require('react').createElement('h3', { 'data-testid': 'card-title', ...props }, children),
-  CardDescription: ({ children, ...props }) => require('react').createElement('p', { 'data-testid': 'card-description', ...props }, children),
-  CardContent: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-content', ...props }, children),
-  CardFooter: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-footer', ...props }, children),
-}))
-
-jest.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }) => {
-    const React = require('react');
-    return open ? React.createElement('div', { 'data-testid': 'dialog' }, children) : null;
-  },
-  DialogTrigger: ({ children, asChild }) => {
-    const React = require('react');
-    if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children);
-    }
-    return React.createElement('button', { 'data-testid': 'dialog-trigger' }, children);
-  },
-  DialogContent: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-content' }, children),
-  DialogHeader: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-header' }, children),
-  DialogTitle: ({ children }) => require('react').createElement('h2', { 'data-testid': 'dialog-title' }, children),
-  DialogDescription: ({ children }) => require('react').createElement('p', { 'data-testid': 'dialog-description' }, children),
-  DialogFooter: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-footer' }, children),
-}))
+// Note: These mocks are handled by the manual mocks in __mocks__/@/components/ui/
+// The mapping is configured in jest.preset.js moduleNameMapper
 
 jest.mock('@/components/ui/scroll-area', () => ({
   ScrollArea: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'scroll-area', ...props }, children),

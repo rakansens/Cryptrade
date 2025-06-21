@@ -49,6 +49,10 @@ module.exports = {
     '^(?:\\.\\./)+components/(.*)$': '<rootDir>/components/$1',
     '^(?:\\.\\./)+types/(.*)$': '<rootDir>/types/$1',
     '^(?:\\.\\./)+app/(.*)$': '<rootDir>/app/$1',
+    // components/chart/hooksのパスマッピング追加
+    '^@/hooks/useAgentEventHandlers$': '<rootDir>/components/chart/hooks/useAgentEventHandlers',
+    '^@/hooks/useChartInstance$': '<rootDir>/components/chart/hooks/useChartInstance',
+    '^@/hooks/useChartSync$': '<rootDir>/components/chart/hooks/useChartSync',
     // 4層レベルの相対パス対応
     '^../../../../hooks/(.*)$': '<rootDir>/hooks/$1',
     '^../../../../store/(.*)$': '<rootDir>/store/$1',
