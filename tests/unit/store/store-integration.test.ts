@@ -6,6 +6,7 @@ import { useChartStore, useDrawingStore, usePatternStore, useChartBaseStore } fr
 import { useChatStore, useChatActions } from '@/store/chat.store';
 import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
 import { useProposalApprovalStore } from '@/store/proposal-approval.store';
+import { resetAllStores } from '@/tests/setup/reset-stores';
 import type { ChartDrawing } from '@/types/drawing';
 import type { PatternData } from '@/store/chart/types';
 import type { DrawingProposalGroup } from '@/types/proposals';
@@ -61,6 +62,7 @@ describe('Store Integration Tests', () => {
     jest.clearAllMocks();
     resetAllStores();
     usePatternStore.setState({ patterns: new Map() });
+    useDrawingStore.getState().clearAllDrawings();
   });
 
   describe('Chart and Drawing Integration', () => {
@@ -111,6 +113,11 @@ describe('Store Integration Tests', () => {
     it('should handle pattern creation with associated drawings', () => {
       const { result: drawingStore } = renderHook(() => useDrawingStore());
       const { result: patternStore } = renderHook(() => usePatternStore());
+
+      // Clear any existing drawings
+      act(() => {
+        drawingStore.current.clearAllDrawings();
+      });
 
       // Create multiple drawings
       const drawings: ChartDrawing[] = [
@@ -202,7 +209,7 @@ describe('Store Integration Tests', () => {
       let sessionId: string = '';
 
       // Create chat session
-      act(async () => {
+      await act(async () => {
         sessionId = await chatActions.current.createSession();
       });
 
@@ -320,7 +327,7 @@ describe('Store Integration Tests', () => {
       });
 
       // 2. Create chat session
-      act(async () => {
+      await act(async () => {
         sessionId = await chatActions.current.createSession();
         chatActions.current.setOpen(true);
       });
@@ -452,7 +459,7 @@ describe('Store Integration Tests', () => {
       let sessionId2: string = '';
 
       // Create two sessions with different contexts
-      act(async () => {
+      await act(async () => {
         sessionId1 = await chatActions.current.createSession();
         
         // Add drawings for session 1
@@ -472,7 +479,7 @@ describe('Store Integration Tests', () => {
         });
       });
 
-      act(async () => {
+      await act(async () => {
         sessionId2 = await chatActions.current.createSession();
         
         // Clear drawings when switching session
@@ -510,7 +517,6 @@ describe('Store Integration Tests', () => {
     });
   });
 
-  import { resetAllStores } from '@/tests/setup/reset-stores';
 
 describe('Error Handling Across Stores', () => {
     it('should propagate errors between stores', async () => {
@@ -523,7 +529,7 @@ describe('Error Handling Across Stores', () => {
       });
 
       // Error should affect chat functionality
-      act(async () => {
+      await act(async () => {
         await chatActions.current.createSession();
         chatActions.current.setError('Cannot analyze - chart not ready');
       });
@@ -598,7 +604,7 @@ describe('Error Handling Across Stores', () => {
       let sessionId: string = '';
       const messageCount = 1000;
 
-      act(async () => {
+      await act(async () => {
         sessionId = await chatActions.current.createSession();
       });
 
@@ -630,7 +636,7 @@ describe('Error Handling Across Stores', () => {
       const { result: chatStore } = renderHook(() => useChatStore(state => state));
 
       // Populate stores with data
-      act(async () => {
+      await act(async () => {
         // Add drawings
         for (let i = 0; i < 50; i++) {
           drawingStore.current.addDrawing({

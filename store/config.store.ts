@@ -192,7 +192,7 @@ const INITIAL_STATE: ConfigState = {
   migrationCompleted: false,
 };
 
-const useConfigStoreBase = create<ConfigStore>()(
+export const useConfigStoreBase = create<ConfigStore>()(
   persist(
     subscribeWithSelector<ConfigStore>((set, get) => ({
       ...INITIAL_STATE,
@@ -397,6 +397,12 @@ export const useConfigStore = <T>(
   selector: (state: ConfigStore) => T
 ) => {
   return useConfigStoreBase(selector);
+};
+
+// Full config hook
+export const useConfig = () => {
+  const state = useConfigStoreBase();
+  return state;
 };
 
 // Theme hooks

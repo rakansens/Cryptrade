@@ -17,58 +17,73 @@ jest.mock('@/lib/utils/logger', () => ({
 
 describe('WSManager Error Handling', () => {
   const cleanupMock = setupWebSocketMocking();
+  let managers: WSManager[] = [];
   
   beforeEach(() => {
     jest.clearAllMocks();
+    MockWebSocket.clearInstances();
+    managers = [];
   });
 
-  it('should handle connection errors', (done) => {
+  it('should handle connection errors', async () => {
     const manager = new WSManager({
       url: 'wss://test.com',
       maxRetryAttempts: 1,
       baseRetryDelay: 10
     });
+    managers.push(manager);
     
-    manager.subscribe('test@stream').subscribe({
-      next: () => {},
-      error: (error) => {
-        expect(error).toBeDefined();
-        expect(error.message).toContain('Max retry attempts');
-        done();
-      }
+    // Create a promise that resolves when error is received
+    const errorReceived = new Promise<void>((resolve) => {
+      manager.subscribe('test@stream').subscribe({
+        next: () => {},
+        error: (error) => {
+          expect(error).toBeDefined();
+          expect(error.message).toContain('Max retry attempts');
+          resolve();
+        }
+      });
     });
     
     // Simulate error immediately
-    setTimeout(() => {
-      const ws = MockWebSocket.getAllInstances()[0];
-      if (ws) {
-        ws.simulateError(new Error('Connection failed'));
-        ws.close(1006);
-      }
-    }, 10);
-  });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const ws = MockWebSocket.getAllInstances()[0];
+    if (ws) {
+      ws.simulateError(new Error('Connection failed'));
+      ws.close(1006);
+    }
+    
+    // Wait for error
+    await errorReceived;
+  }, 10000);
 
-  it('should handle WebSocket close events', (done) => {
+  it('should handle WebSocket close events', async () => {
     const manager = new WSManager({
       url: 'wss://test.com',
       maxRetryAttempts: 0
     });
+    managers.push(manager);
     
-    manager.subscribe('test@stream').subscribe({
-      next: () => {},
-      error: (error) => {
-        expect(error).toBeDefined();
-        done();
-      }
+    // Create a promise that resolves when error is received
+    const errorReceived = new Promise<void>((resolve) => {
+      manager.subscribe('test@stream').subscribe({
+        next: () => {},
+        error: (error) => {
+          expect(error).toBeDefined();
+          resolve();
+        }
+      });
     });
     
-    setTimeout(() => {
-      const ws = MockWebSocket.getAllInstances()[0];
-      if (ws) {
-        ws.close(1000, 'Normal closure');
-      }
-    }, 10);
-  });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const ws = MockWebSocket.getAllInstances()[0];
+    if (ws) {
+      ws.close(1000, 'Normal closure');
+    }
+    
+    // Wait for error
+    await errorReceived;
+  }, 10000);
 
   it('should retry on failure with exponential backoff', () => {
     const manager = new WSManager({
@@ -77,6 +92,7 @@ describe('WSManager Error Handling', () => {
       maxRetryDelay: 1000,
       maxRetryAttempts: 3
     });
+    managers.push(manager);
     
     // Test retry delay calculation
     const delay1 = manager.getRetryDelayPreview(1);
@@ -99,6 +115,7 @@ describe('WSManager Error Handling', () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
+    managers.push(manager);
     
     // Subscribe with empty stream name
     const sub = manager.subscribe('').subscribe({
@@ -113,34 +130,43 @@ describe('WSManager Error Handling', () => {
     manager.destroy();
   });
 
-  it('should cleanup on error', (done) => {
+  it('should cleanup on error', async () => {
     const manager = new WSManager({
       url: 'wss://test.com',
       maxRetryAttempts: 0
     });
+    managers.push(manager);
     
-    manager.subscribe('test@stream').subscribe({
-      next: () => {},
-      error: () => {
-        // After error, stream should be cleaned up
-        setTimeout(() => {
-          expect(manager.getActiveStreamsCount()).toBe(0);
-          done();
-        }, 50);
-      }
+    // Create a promise that resolves when cleanup is confirmed
+    const cleanupConfirmed = new Promise<void>((resolve) => {
+      manager.subscribe('test@stream').subscribe({
+        next: () => {},
+        error: () => {
+          // After error, stream should be cleaned up
+          setTimeout(() => {
+            expect(manager.getActiveStreamsCount()).toBe(0);
+            resolve();
+          }, 100);
+        }
+      });
     });
     
     // Force error
-    setTimeout(() => {
-      const ws = MockWebSocket.getAllInstances()[0];
-      if (ws) {
-        ws.simulateError(new Error('Test error'));
-        ws.close(1006);
-      }
-    }, 10);
-  });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const ws = MockWebSocket.getAllInstances()[0];
+    if (ws) {
+      ws.simulateError(new Error('Test error'));
+      ws.close(1006);
+    }
+    
+    // Wait for cleanup
+    await cleanupConfirmed;
+  }, 10000);
 
   afterEach(() => {
+    // Clean up all managers
+    managers.forEach(manager => manager.destroy());
+    managers = [];
     MockWebSocket.clearInstances();
   });
 

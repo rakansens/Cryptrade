@@ -18,9 +18,19 @@ jest.mock('@/lib/utils/logger', () => ({
 
 describe('WSManager Simplified E2E Tests', () => {
   setupWebSocketMocking();
+  let managers: WSManager[] = [];
   
   beforeEach(() => {
     jest.clearAllMocks();
+    MockWebSocket.clearInstances();
+    managers = [];
+  });
+
+  afterEach(() => {
+    // Clean up all managers
+    managers.forEach(manager => manager.destroy());
+    managers = [];
+    MockWebSocket.clearInstances();
   });
 
   describe('Basic WebSocket Operations', () => {
@@ -29,6 +39,7 @@ describe('WSManager Simplified E2E Tests', () => {
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       // Subscribe to a stream
       const subscription = manager.subscribe('btcusdt@trade').subscribe({
@@ -42,43 +53,51 @@ describe('WSManager Simplified E2E Tests', () => {
       expect(instances[0]?.url).toBe('wss://stream.binance.com:9443/ws/btcusdt@trade');
 
       subscription.unsubscribe();
+      manager.destroy();
     });
 
-    it('should handle incoming messages', (done) => {
+    it('should handle incoming messages', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       const tradeData = BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000.00');
 
-      // Subscribe and wait for message
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          expect(data).toEqual(tradeData);
-          subscription.unsubscribe();
-          done();
-        },
-        error: done.fail
+      // Create a promise that resolves when message is received
+      const messageReceived = new Promise<void>((resolve, reject) => {
+        // Subscribe and wait for message
+        const subscription = manager.subscribe('btcusdt@trade').subscribe({
+          next: (data) => {
+            expect(data).toEqual(tradeData);
+            subscription.unsubscribe();
+            resolve();
+          },
+          error: reject
+        });
       });
 
-      // Get the mock WebSocket instance and simulate message
-      // Use setImmediate to ensure WebSocket is created
-      setImmediate(() => {
-        const mockWs = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        if (mockWs) {
-          mockWs.simulateMessage(tradeData);
-        } else {
-          done.fail('Mock WebSocket not found');
-        }
-      });
-    });
+      // Wait a bit for WebSocket to be created
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const mockWs = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      if (mockWs) {
+        mockWs.simulateMessage(tradeData);
+      } else {
+        throw new Error('Mock WebSocket not found');
+      }
+      
+      // Wait for message
+      await messageReceived;
+    }, 10000);
 
     it('should share connections for same stream', () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       // Create multiple subscriptions to same stream
       const sub1 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {}, error: () => {} });
@@ -93,34 +112,43 @@ describe('WSManager Simplified E2E Tests', () => {
       sub1.unsubscribe();
       sub2.unsubscribe();
       sub3.unsubscribe();
+      manager.destroy();
     });
 
-    it('should handle connection errors', (done) => {
+    it('should handle connection errors', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false,
         maxRetryAttempts: 1
       });
+      managers.push(manager);
 
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
-        next: () => {},
-        error: (error) => {
-          expect(error).toBeDefined();
-          expect(error.message).toContain('Max retry attempts');
-          subscription.unsubscribe();
-          done();
-        }
+      // Create a promise that resolves when error is received
+      const errorReceived = new Promise<void>((resolve) => {
+        const subscription = manager.subscribe('btcusdt@trade').subscribe({
+          next: () => {},
+          error: (error) => {
+            expect(error).toBeDefined();
+            expect(error.message).toContain('Max retry attempts');
+            subscription.unsubscribe();
+            resolve();
+          }
+        });
       });
 
+      // Wait for WebSocket to be created
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       // Simulate connection error
-      setImmediate(() => {
-        const mockWs = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        if (mockWs) {
-          mockWs.simulateError(new Error('WebSocket error'));
-          mockWs.close(1006, 'Connection failed');
-        }
-      });
-    });
+      const mockWs = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      if (mockWs) {
+        mockWs.simulateError(new Error('WebSocket error'));
+        mockWs.close(1006, 'Connection failed');
+      }
+      
+      // Wait for error
+      await errorReceived;
+    }, 10000);
   });
 
   describe('Metrics and Monitoring', () => {
@@ -129,6 +157,7 @@ describe('WSManager Simplified E2E Tests', () => {
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       // Initial state
       let metrics = manager.getMetrics();
@@ -152,6 +181,8 @@ describe('WSManager Simplified E2E Tests', () => {
       // Check metrics after unsubscribe
       metrics = manager.getMetrics();
       expect(metrics.activeConnections).toBe(0);
+      
+      manager.destroy();
     });
 
     it('should export Prometheus metrics', () => {
@@ -159,21 +190,25 @@ describe('WSManager Simplified E2E Tests', () => {
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       const prometheusMetrics = manager.getPrometheusMetrics();
       
       expect(prometheusMetrics).toContain('# TYPE ws_manager_active_connections gauge');
       expect(prometheusMetrics).toContain('# TYPE ws_manager_stream_creations_total counter');
       expect(prometheusMetrics).toContain('# TYPE ws_manager_retry_count_total counter');
+      
+      manager.destroy();
     });
   });
 
   describe('Stream Management', () => {
-    it('should cleanup inactive streams', (done) => {
+    it('should cleanup inactive streams', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       // Create a subscription
       const sub = manager.subscribe('btcusdt@trade').subscribe({
@@ -188,11 +223,12 @@ describe('WSManager Simplified E2E Tests', () => {
       sub.unsubscribe();
 
       // Give it a moment to clean up
-      setTimeout(() => {
-        // Stream should be removed when no subscribers
-        expect(manager.getActiveStreamsCount()).toBe(0);
-        done();
-      }, 50);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Stream should be removed when no subscribers
+      expect(manager.getActiveStreamsCount()).toBe(0);
+      
+      manager.destroy();
     });
 
     it('should handle multiple stream types', () => {

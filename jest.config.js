@@ -79,7 +79,7 @@ module.exports = {
   maxConcurrency: 2,
   cache: true,
   cacheDirectory: '<rootDir>/.jest-cache',
-  testTimeout: 10000,
+  testTimeout: 30000, // 30秒に設定（WebSocketテスト対応）
   
   // Coverage settings at root level
   coverageDirectory: '<rootDir>/coverage',

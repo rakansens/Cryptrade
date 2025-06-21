@@ -288,6 +288,7 @@ describe('Intent Analysis Accuracy', () => {
 });
 
 describe('Ambiguous and Multilingual Queries', () => {
+  const testSessionId = `test-ambiguous-${Date.now()}`;
   const queries = [
     { query: 'BTC価格チャート', expectedIntent: 'price_inquiry' },
     { query: 'チャートのビットコイン価格', expectedIntent: 'price_inquiry' },

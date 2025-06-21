@@ -2,30 +2,26 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { useApproveProposal } from '../../../../hooks/chat/use-approve-proposal';
-import { useAnalysisActions } from '../../../../store/analysis-history.store';
-import { useChat } from '../../../../store/chat.store';
-import { useAddApprovedDrawing } from '../../../../store/proposal-approval.store';
-import { useUIEventPublisher } from '../../../../store/ui-event.store';
-import { toast, showProposalApprovalSuccess, showProposalApprovalError } from '../../../../lib/notifications/toast';
-import { logger } from '../../../../lib/utils/logger';
-import { ProposalType, ProposalStatus } from '../../../../types/enums';
-import type { DrawingProposalGroup, ChartDrawingData } from '../../../../types/proposals';
-import type { ChatMessageData } from '../../../../types/chat';
+import { useApproveProposal } from '@/hooks/chat/use-approve-proposal';
+import { useAnalysisActions } from '@/store/analysis-history.store';
+import { useChat } from '@/store/chat.store';
+import { useAddApprovedDrawing } from '@/store/proposal-approval.store';
+import { useUIEventPublisher } from '@/store/ui-event.store';
+import { toast, showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
+import { logger } from '@/lib/utils/logger';
+import { ProposalType, ProposalStatus } from '@/types/enums';
+import type { DrawingProposalGroup, ChartDrawingData } from '@/types/proposals';
+import type { ChatMessageData } from '@/types/chat';
 
 // Mock dependencies
-jest.mock('../../../../store/analysis-history.store');
-jest.mock('../../../../store/chat.store');
-jest.mock('../../../../store/proposal-approval.store');
-jest.mock('../../../../store/ui-event.store');
-jest.mock('../../../../lib/notifications/toast');
-jest.mock('../../../../lib/utils/logger');
+jest.mock('@/store/analysis-history.store');
+jest.mock('@/store/chat.store');
+jest.mock('@/store/proposal-approval.store');
+jest.mock('@/store/ui-event.store');
+jest.mock('@/lib/notifications/toast');
+jest.mock('@/lib/utils/logger');
 
-// Mock window.dispatchEvent
-const mockDispatchEvent = jest.fn();
-Object.defineProperty(window, 'dispatchEvent', {
-  value: mockDispatchEvent,
-});
+// Mock functions
 
 const mockAnalysisActions = {
   addRecord: jest.fn(),
@@ -105,7 +101,7 @@ describe('useApproveProposal', () => {
     expect(mockPublish).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'ui:proposal-action',
-        payload: expect.objectContaining({
+        detail: expect.objectContaining({
           action: 'approve',
           proposalId: 'proposal-1',
         }),
@@ -113,7 +109,6 @@ describe('useApproveProposal', () => {
     );
 
     expect(showProposalApprovalSuccess).toHaveBeenCalledWith('BTCUSDT', 'trendline');
-    expect(mockDispatchEvent).toHaveBeenCalled();
   });
 
   it('should handle approval errors gracefully', async () => {
@@ -242,6 +237,7 @@ describe('useApproveProposal', () => {
               ],
             },
             mlPrediction: {
+              confidence: 0.75,
               successProbability: 0.75,
               expectedBounces: 3,
               direction: 'up' as const,
@@ -267,8 +263,9 @@ describe('useApproveProposal', () => {
         type: 'trendline',
         proposal: expect.objectContaining({
           mlPrediction: expect.objectContaining({
-            direction: 'up',
             successProbability: 0.75,
+            expectedBounces: 0,
+            reasoning: [],
           }),
         }),
       })

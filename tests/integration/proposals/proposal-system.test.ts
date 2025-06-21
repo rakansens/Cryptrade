@@ -300,10 +300,9 @@ describe('Proposal System Integration Tests', () => {
       });
       
       try {
-        await dispatchTypedUIEvent({
-          type: 'proposal.created',
+        await dispatchTypedUIEvent('proposal.created', {
           proposal: {} as any
-        } as ProposalEventData);
+        });
       } catch (error) {
         expect(error).toBeDefined();
       }

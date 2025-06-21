@@ -89,6 +89,7 @@ describe('useMarketTicker', () => {
   afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
+    jest.clearAllMocks();
   });
 
   describe('initialization', () => {
@@ -97,7 +98,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledWith('BTCUSDT');
-      });
+      }, { timeout: 5000 });
 
       expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', true);
       expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', false);
@@ -137,7 +138,7 @@ describe('useMarketTicker', () => {
           low24h: '39000.00',
           volume24h: '10000.00',
         });
-      });
+      }, { timeout: 5000 });
     });
 
     it('should handle API errors', async () => {
@@ -152,7 +153,7 @@ describe('useMarketTicker', () => {
           { symbol: 'BTCUSDT' },
           error
         );
-      });
+      }, { timeout: 5000 });
 
       expect(mockStoreActions['setConnectionError']).toHaveBeenCalledWith(
         'Failed to fetch market stats for BTCUSDT'
@@ -170,7 +171,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', true);
-      });
+      }, { timeout: 5000 });
 
       await act(async () => {
         resolvePromise!(mockBinanceTicker);
@@ -178,7 +179,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(mockStoreActions['setSymbolLoading']).toHaveBeenCalledWith('BTCUSDT', false);
-      });
+      }, { timeout: 5000 });
     });
   });
 
@@ -189,7 +190,7 @@ describe('useMarketTicker', () => {
       // Initial call
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 5000 });
 
       // Fast forward 30 seconds
       act(() => {
@@ -198,7 +199,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(2);
-      });
+      }, { timeout: 5000 });
 
       // Fast forward another 30 seconds
       act(() => {
@@ -207,7 +208,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(3);
-      });
+      }, { timeout: 5000 });
     });
 
     it('should cleanup interval on unmount', async () => {
@@ -215,7 +216,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 5000 });
 
       unmount();
 
@@ -236,14 +237,14 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledWith('BTCUSDT');
-      });
+      }, { timeout: 5000 });
 
       // Change symbol
       rerender({ symbol: 'ETHUSDT' });
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledWith('ETHUSDT');
-      });
+      }, { timeout: 5000 });
 
       // Fast forward 30 seconds
       act(() => {
@@ -253,7 +254,7 @@ describe('useMarketTicker', () => {
       // Should have called ETHUSDT again, not BTCUSDT
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenLastCalledWith('ETHUSDT');
-      });
+      }, { timeout: 5000 });
     });
   });
 
@@ -263,7 +264,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 5000 });
 
       // Manual refresh
       await act(async () => {
@@ -278,7 +279,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 5000 });
 
       // Make next call fail
       (binanceAPI.fetchTicker24hr as jest.Mock).mockRejectedValueOnce(new Error('Refresh error'));
@@ -344,7 +345,7 @@ describe('useMarketTicker', () => {
           price: '41000.00',
           change: '2.50',
         });
-      });
+      }, { timeout: 5000 });
     });
   });
 
@@ -359,7 +360,7 @@ describe('useMarketTicker', () => {
 
       await waitFor(() => {
         expect(binanceAPI.fetchTicker24hr).toHaveBeenCalled();
-      });
+      }, { timeout: 5000 });
 
       const initialRenderCount = renderSpy.mock.calls.length;
 

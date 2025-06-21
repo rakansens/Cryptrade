@@ -3,8 +3,11 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
+
+// Import the base store directly for testing
+import { useConfigStoreBase } from '@/store/config.store';
+
 import { 
-  useConfigStore,
   useConfig,
   useThemeConfig,
   useThemeMode,
@@ -106,9 +109,9 @@ describe('Store: ConfigStore', () => {
     jest.clearAllMocks();
     mockLocalStorage.clear();
     
-    // Reset store state using setState with initial state
+    // Reset store state using the base store's setState
     const initialState = getInitialState();
-    useConfigStore.setState(initialState);
+    useConfigStoreBase.setState(initialState);
   });
 
   describe('Initial State', () => {

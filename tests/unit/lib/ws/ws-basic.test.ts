@@ -19,15 +19,19 @@ jest.mock('@/lib/utils/logger', () => ({
 const cleanupMock = setupWebSocketMocking();
 
 describe('WSManager Basic Tests', () => {
+  let managers: WSManager[] = [];
+
   beforeEach(() => {
     MockWebSocket.clearInstances();
     jest.clearAllMocks();
+    managers = [];
   });
 
   it('should create and destroy manager', () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
+    managers.push(manager);
     
     expect(manager).toBeDefined();
     expect(manager.getActiveStreamsCount()).toBe(0);
@@ -39,6 +43,7 @@ describe('WSManager Basic Tests', () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
+    managers.push(manager);
     
     const subscription = manager.subscribe('test@stream').subscribe({
       next: () => {},
@@ -51,34 +56,41 @@ describe('WSManager Basic Tests', () => {
     manager.destroy();
   });
 
-  it('should receive messages', (done) => {
+  it('should receive messages', async () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
     
     const testMessage = { test: 'data' };
     
-    manager.subscribe('test@stream').subscribe({
-      next: (data) => {
-        expect(data).toEqual(testMessage);
-        done();
-      },
-      error: done.fail
+    // Create a promise that resolves when message is received
+    const messageReceived = new Promise<void>((resolve, reject) => {
+      manager.subscribe('test@stream').subscribe({
+        next: (data) => {
+          expect(data).toEqual(testMessage);
+          resolve();
+        },
+        error: reject
+      });
     });
     
     // Send message after connection
-    setTimeout(() => {
-      const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
-      if (ws) {
-        ws.simulateMessage(testMessage as any);
-      }
-    }, 20);
-  });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const ws = MockWebSocket.getInstanceByUrl('wss://test.com/test@stream');
+    if (ws) {
+      ws.simulateMessage(testMessage as any);
+    }
+    
+    // Wait for message
+    await messageReceived;
+    manager.destroy();
+  }, 10000);
 
   it('should share connections', () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
+    managers.push(manager);
     
     const sub1 = manager.subscribe('test@stream').subscribe({ next: () => {} });
     const sub2 = manager.subscribe('test@stream').subscribe({ next: () => {} });
@@ -96,6 +108,7 @@ describe('WSManager Basic Tests', () => {
     const manager = new WSManager({
       url: 'wss://test.com'
     });
+    managers.push(manager);
     
     const metrics = manager.getMetrics();
     expect(metrics).toHaveProperty('activeConnections');
@@ -106,6 +119,9 @@ describe('WSManager Basic Tests', () => {
   });
 
   afterEach(() => {
+    // Clean up all managers
+    managers.forEach(manager => manager.destroy());
+    managers = [];
     MockWebSocket.clearInstances();
   });
 

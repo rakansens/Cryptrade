@@ -69,17 +69,19 @@ describe('WSManager + Binance API Integration', () => {
   });
 
   describe('Real-time Price Updates', () => {
-    it('should update market store with WebSocket price data', (done) => {
+    it('should update market store with WebSocket price data', async () => {
       const symbol = 'BTCUSDT';
       const expectedPrice = 52000;
       
-      // Subscribe to price updates in store
-      const unsubscribe = useMarketStoreBase.subscribe((state: ReturnType<typeof useMarketStoreBase.getState>) => {
-        if (state.currentPrices[symbol]) {
-          expect(state.currentPrices[symbol].price).toBe(expectedPrice);
-          unsubscribe();
-          done();
-        }
+      // Create a promise that resolves when price is updated
+      const priceUpdated = new Promise<void>((resolve) => {
+        const unsubscribe = useMarketStoreBase.subscribe((state: ReturnType<typeof useMarketStoreBase.getState>) => {
+          if (state.currentPrices[symbol]) {
+            expect(state.currentPrices[symbol].price).toBe(expectedPrice);
+            unsubscribe();
+            resolve();
+          }
+        });
       });
       
       // Connect to WebSocket stream
@@ -93,10 +95,10 @@ describe('WSManager + Binance API Integration', () => {
       });
       
       // Simulate WebSocket message
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
-        if (ws) {
-          ws.simulateMessage({
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+      if (ws) {
+        ws.simulateMessage({
             e: '24hrTicker',
             E: Date.now(),
             s: symbol,
@@ -121,40 +123,45 @@ describe('WSManager + Binance API Integration', () => {
             F: 0,
             L: 0,
             n: 0
-          } as any);
-        }
-      }, 50);
-    });
+        } as any);
+      }
+      
+      // Wait for price update
+      await priceUpdated;
+    }, 15000);
 
-    it('should handle multiple symbol subscriptions', (done) => {
+    it('should handle multiple symbol subscriptions', async () => {
       const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
       const receivedPrices = new Set<string>();
       
-      // Subscribe to multiple symbols
-      symbols.forEach(symbol => {
-        binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@ticker`, (data) => {
-          if ('c' in data && typeof data['c'] === 'string') {
-            marketStore.setCurrentPrice(symbol, createPriceUpdate(symbol, parseFloat(data['c'])));
-            receivedPrices.add(symbol);
-          
-            if (receivedPrices.size === symbols.length) {
-              // Verify all prices are in store
-              symbols.forEach(s => {
-                expect(marketStore.currentPrices[s]).toBeDefined();
-                expect(marketStore.currentPrices[s]?.price).toBeGreaterThan(0);
-              });
-              done();
+      // Create a promise that resolves when all prices are received
+      const allPricesReceived = new Promise<void>((resolve) => {
+        // Subscribe to multiple symbols
+        symbols.forEach(symbol => {
+          binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@ticker`, (data) => {
+            if ('c' in data && typeof data['c'] === 'string') {
+              marketStore.setCurrentPrice(symbol, createPriceUpdate(symbol, parseFloat(data['c'])));
+              receivedPrices.add(symbol);
+            
+              if (receivedPrices.size === symbols.length) {
+                // Verify all prices are in store
+                symbols.forEach(s => {
+                  expect(marketStore.currentPrices[s]).toBeDefined();
+                  expect(marketStore.currentPrices[s]?.price).toBeGreaterThan(0);
+                });
+                resolve();
+              }
             }
-          }
+          });
         });
       });
       
       // Simulate messages for all symbols
-      setTimeout(() => {
-        symbols.forEach((symbol, index) => {
-          const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
-          if (ws) {
-            ws.simulateMessage({
+      await new Promise(resolve => setTimeout(resolve, 100));
+      symbols.forEach((symbol, index) => {
+        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+        if (ws) {
+          ws.simulateMessage({
               e: '24hrTicker',
               E: Date.now(),
               s: symbol,
@@ -179,53 +186,60 @@ describe('WSManager + Binance API Integration', () => {
               F: 0,
               L: 0,
               n: 0
-            } as any);
-          }
-        });
-      }, 50);
-    });
-  });
-
-  describe('Kline Data Integration', () => {
-    it('should process kline data and update indicators', (done) => {
-      const symbol = 'BTCUSDT';
-      const interval = '1m';
-      
-      // Subscribe to kline updates
-      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@kline_${interval}`, (data) => {
-        // Check if it's a BinanceKlineMessage with 'k' property
-        if ('k' in data && typeof data.k === 'object' && data.k) {
-          const kline = data.k as BinanceKlineMessage['k'];
-          // Update store with kline data
-          marketStore.addKline(symbol, {
-            time: kline.t / 1000, // Convert to seconds
-            open: parseFloat(kline.o),
-            high: parseFloat(kline.h),
-            low: parseFloat(kline.l),
-            close: parseFloat(kline.c),
-            volume: parseFloat(kline.v)
-          });
-        
-          // Verify kline was added
-          const klines = marketStore.priceData[symbol] || [];
-          expect(klines).toBeDefined();
-          expect(klines.length).toBeGreaterThan(0);
-          
-          const lastKline = klines[klines.length - 1];
-          expect(lastKline?.close).toBe(parseFloat(kline.c));
-          
-          done();
+          } as any);
         }
       });
       
+      // Wait for all prices
+      await allPricesReceived;
+    }, 15000);
+  });
+
+  describe('Kline Data Integration', () => {
+    it('should process kline data and update indicators', async () => {
+      const symbol = 'BTCUSDT';
+      const interval = '1m';
+      
+      // Create a promise that resolves when kline is processed
+      const klineProcessed = new Promise<void>((resolve) => {
+        // Subscribe to kline updates
+        binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@kline_${interval}`, (data) => {
+          // Check if it's a BinanceKlineMessage with 'k' property
+          if ('k' in data && typeof data.k === 'object' && data.k) {
+            const kline = data.k as BinanceKlineMessage['k'];
+            // Update store with kline data
+            marketStore.addKline(symbol, {
+              time: kline.t / 1000, // Convert to seconds
+              open: parseFloat(kline.o),
+              high: parseFloat(kline.h),
+              low: parseFloat(kline.l),
+              close: parseFloat(kline.c),
+              volume: parseFloat(kline.v)
+            });
+          
+            // Verify kline was added
+            const klines = marketStore.priceData[symbol] || [];
+            expect(klines).toBeDefined();
+            expect(klines.length).toBeGreaterThan(0);
+            
+            const lastKline = klines[klines.length - 1];
+            expect(lastKline?.close).toBe(parseFloat(kline.c));
+            
+            resolve();
+          }
+        });
+      });
+      
       // Simulate kline message
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
-        if (ws) {
-          ws.simulateMessage(BinanceMessageGenerator.klineMessage(symbol, interval));
-        }
-      }, 50);
-    });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
+      if (ws) {
+        ws.simulateMessage(BinanceMessageGenerator.klineMessage(symbol, interval));
+      }
+      
+      // Wait for kline processing
+      await klineProcessed;
+    }, 15000);
 
     it('should calculate indicators from kline data', async () => {
       const symbol = 'BTCUSDT';
@@ -299,53 +313,57 @@ describe('WSManager + Binance API Integration', () => {
       subscription?.();
     });
 
-    it('should handle reconnection with data continuity', (done) => {
+    it('should handle reconnection with data continuity', async () => {
       const symbol = 'BTCUSDT';
       let messageCount = 0;
       let disconnected = false;
       
-      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@trade`, (data) => {
-        // Cast to BinanceTradeMessage for type safety
-        const trade = data as BinanceTradeMessage;
-        messageCount++;
-        
-        if (messageCount === 1) {
-          // First message received, simulate disconnect
-          setTimeout(() => {
-            const ws = MockWebSocket.getAllInstances()[0];
-            if (ws) {
-              disconnected = true;
-              ws.simulateDisconnect();
-            }
-          }, 50);
-        } else if (messageCount === 2 && disconnected && trade.s) {
-          // Second message after reconnection
-          expect(trade.s).toBe(symbol);
-          done();
-        }
+      // Create a promise that resolves when reconnection is confirmed
+      const reconnectionConfirmed = new Promise<void>((resolve) => {
+        binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@trade`, (data) => {
+          // Cast to BinanceTradeMessage for type safety
+          const trade = data as BinanceTradeMessage;
+          messageCount++;
+          
+          if (messageCount === 1) {
+            // First message received, simulate disconnect
+            setTimeout(() => {
+              const ws = MockWebSocket.getAllInstances()[0];
+              if (ws) {
+                disconnected = true;
+                ws.simulateDisconnect();
+              }
+            }, 50);
+          } else if (messageCount === 2 && disconnected && trade.s) {
+            // Second message after reconnection
+            expect(trade.s).toBe(symbol);
+            resolve();
+          }
+        });
       });
       
       // Send first message
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`);
-        if (ws) {
-          ws.simulateMessage(BinanceMessageGenerator.tradeMessage(symbol, '50000'));
-        }
-      }, 50);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`);
+      if (ws) {
+        ws.simulateMessage(BinanceMessageGenerator.tradeMessage(symbol, '50000'));
+      }
       
       // Send message after reconnection
-      setTimeout(() => {
-        const instances = MockWebSocket.getAllInstances();
-        const activeWs = instances.find(ws => ws.readyState === MockWebSocket.OPEN);
-        if (activeWs) {
-          activeWs.simulateMessage(BinanceMessageGenerator.tradeMessage(symbol, '51000'));
-        }
-      }, 300);
-    });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const instances = MockWebSocket.getAllInstances();
+      const activeWs = instances.find(ws => ws.readyState === MockWebSocket.OPEN);
+      if (activeWs) {
+        activeWs.simulateMessage(BinanceMessageGenerator.tradeMessage(symbol, '51000'));
+      }
+      
+      // Wait for reconnection confirmation
+      await reconnectionConfirmed;
+    }, 15000);
   });
 
   describe('Performance and Load Testing', () => {
-    it('should handle high-frequency updates efficiently', (done) => {
+    it('should handle high-frequency updates efficiently', async () => {
       const symbol = 'BTCUSDT';
       const updateCount = 100;
       let receivedCount = 0;
@@ -353,29 +371,32 @@ describe('WSManager + Binance API Integration', () => {
       // Track performance
       const startTime = Date.now();
       
-      binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@aggTrade`, (_trade) => {
-        receivedCount++;
-        
-        if (receivedCount === updateCount) {
-          const duration = Date.now() - startTime;
+      // Create a promise that resolves when all updates are received
+      const allUpdatesReceived = new Promise<void>((resolve) => {
+        binanceConnectionManager.subscribe(`${symbol.toLowerCase()}@aggTrade`, (_trade) => {
+          receivedCount++;
           
-          // Should process all messages quickly
-          expect(duration).toBeLessThan(1000); // Less than 1 second
-          
-          // Verify store updates
-          expect(marketStore.lastUpdateTime).toBeDefined();
-          expect(marketStore.lastUpdateTime).toBeGreaterThan(startTime);
-          
-          done();
-        }
+          if (receivedCount === updateCount) {
+            const duration = Date.now() - startTime;
+            
+            // Should process all messages quickly
+            expect(duration).toBeLessThan(1000); // Less than 1 second
+            
+            // Verify store updates
+            expect(marketStore.lastUpdateTime).toBeDefined();
+            expect(marketStore.lastUpdateTime).toBeGreaterThan(startTime);
+            
+            resolve();
+          }
+        });
       });
       
       // Send burst of messages
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@aggTrade`);
-        if (ws) {
-          for (let i = 0; i < updateCount; i++) {
-            ws.simulateMessage({
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@aggTrade`);
+      if (ws) {
+        for (let i = 0; i < updateCount; i++) {
+          ws.simulateMessage({
               e: 'aggTrade',
               E: Date.now(),
               s: symbol,
@@ -386,10 +407,12 @@ describe('WSManager + Binance API Integration', () => {
               l: 100 + i,
               T: Date.now(),
               m: i % 2 === 0
-            } as any);
-          }
+          } as any);
         }
-      }, 50);
-    }, 5000);
+      }
+      
+      // Wait for all updates
+      await allUpdatesReceived;
+    }, 15000);
   });
 });
