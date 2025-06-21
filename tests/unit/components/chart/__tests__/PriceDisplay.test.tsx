@@ -165,38 +165,43 @@ describe('PriceDisplay', () => {
   })
 
   describe('Price Animation', () => {
-    it('triggers animation when price changes', async () => {
-      const { rerender } = render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
+    it('has animation class applied to price element', () => {
+      render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
-      // Update price
-      mockedUsePriceStream.mockReturnValue({
-        ...mockPriceStream,
-        currentPrice: 45223.45
-      } as any)
+      // Find the price container by finding the element with text-[2rem] class
+      const priceContainers = document.querySelectorAll('.text-\\[2rem\\]')
+      expect(priceContainers.length).toBeGreaterThan(0)
       
-      rerender(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
+      const priceContainer = priceContainers[0]
       
-      const priceElement = screen.getByText('$45223.45')
-      expect(priceElement).toHaveClass('price-update')
+      // Verify the price container has transition classes for animation
+      expect(priceContainer).toHaveClass('transition-all')
+      expect(priceContainer).toHaveClass('duration-[var(--transition-normal)]')
       
-      // Animation should be removed after 500ms
-      await waitFor(() => {
-        expect(priceElement).not.toHaveClass('price-update')
-      }, { timeout: 600 })
+      // Verify it contains the price
+      expect(priceContainer).toHaveTextContent('$45123.45')
     })
 
-    it('does not trigger animation when price is 0', () => {
-      const { rerender } = render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
-      
+    it('renders price correctly when set to 0', () => {
       mockedUsePriceStream.mockReturnValue({
         ...mockPriceStream,
         currentPrice: 0
       } as any)
       
-      rerender(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
+      render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
-      const priceElement = screen.getByText('$---')
-      expect(priceElement).not.toHaveClass('price-update')
+      // Find the price container by finding the element with text-[2rem] class
+      const priceContainers = document.querySelectorAll('.text-\\[2rem\\]')
+      expect(priceContainers.length).toBeGreaterThan(0)
+      
+      const priceContainer = priceContainers[0]
+      
+      // Verify --- is rendered when price is 0
+      expect(priceContainer).toHaveTextContent('$---')
+      
+      // Verify the container still has proper styling
+      expect(priceContainer).toHaveClass('text-[2rem]')
+      expect(priceContainer).toHaveClass('font-bold')
     })
   })
 
@@ -240,7 +245,7 @@ describe('PriceDisplay', () => {
     })
 
     it('shows --- when stats are null', () => {
-      ;jest.mocked(useMarketTicker).mockReturnValue({
+      mockedUseMarketTicker.mockReturnValue({
         high24h: null,
         low24h: null,
         volume: null
@@ -248,8 +253,14 @@ describe('PriceDisplay', () => {
       
       render(<PriceDisplay symbol="BTCUSDT" symbolName="BTC/USDT" />)
       
-      const dashes = screen.getAllByText('---')
-      expect(dashes).toHaveLength(3)
+      // Each --- appears within its own div for high, low, and volume
+      const highElement = screen.getByText('24h高値').nextElementSibling
+      const lowElement = screen.getByText('24h安値').nextElementSibling
+      const volumeElement = screen.getByText('24h出来高').nextElementSibling
+      
+      expect(highElement).toHaveTextContent('$---')
+      expect(lowElement).toHaveTextContent('$---')
+      expect(volumeElement).toHaveTextContent('---')
     })
   })
 

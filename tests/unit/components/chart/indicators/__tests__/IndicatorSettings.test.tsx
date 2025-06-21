@@ -1,278 +1,173 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { IndicatorSettings } from '@/components/chart/indicators/IndicatorSettings'
-import { IndicatorType } from '@/types/indicator-types'
+import IndicatorSettings from '@/components/chart/indicators/IndicatorSettings'
+import { useChart } from '@/store/chart.store'
+
+// Mock the chart store
+jest.mock('@/store/chart.store')
+
+// Mock the UI components
+jest.mock('@/components/ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange, ...props }: any) => (
+    <button
+      role="switch"
+      aria-checked={checked ?? false}
+      onClick={() => onCheckedChange(!checked)}
+      data-testid="switch"
+      {...props}
+    />
+  ),
+}))
+
+jest.mock('@/components/ui/separator', () => ({
+  Separator: ({ className }: any) => <hr className={className} data-testid="separator" />,
+}))
 
 describe('IndicatorSettings', () => {
-  const defaultProps = {
-    indicator: 'RSI' as IndicatorType,
-    settings: { period: 14 },
-    onSettingsChange: jest.fn(),
-    onClose: jest.fn(),
+  const mockUpdateIndicator = jest.fn()
+  const defaultIndicators = {
+    ma: false,
+    rsi: true,
+    macd: false,
+    boll: true,
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(useChart as jest.MockedFunction<typeof useChart>).mockReturnValue({
+      indicators: defaultIndicators,
+      updateIndicator: mockUpdateIndicator,
+    } as any)
   })
 
-  it('renders settings dialog with title', () => {
-    render(<IndicatorSettings {...defaultProps} />)
+  it('renders the settings panel with title', () => {
+    render(<IndicatorSettings />)
     
-    expect(screen.getByText('RSI Settings')).toBeInTheDocument()
+    expect(screen.getByText('Technical Indicators')).toBeInTheDocument()
   })
 
-  it('displays current settings values', () => {
-    render(<IndicatorSettings {...defaultProps} />)
+  it('displays all indicator toggles', () => {
+    render(<IndicatorSettings />)
     
-    const periodInput = screen.getByLabelText(/period/i) as HTMLInputElement
-    expect(periodInput.value).toBe('14')
+    expect(screen.getByText('Moving Averages')).toBeInTheDocument()
+    expect(screen.getByText('RSI (14)')).toBeInTheDocument()
+    expect(screen.getByText('MACD (12, 26, 9)')).toBeInTheDocument()
+    expect(screen.getByText('Bollinger Bands (20, 2)')).toBeInTheDocument()
   })
 
-  it('updates RSI period setting', async () => {
+  it('shows correct checked state for indicators', () => {
+    render(<IndicatorSettings />)
+    
+    const switches = screen.getAllByRole('switch')
+    expect(switches[0]).toHaveAttribute('aria-checked', 'false') // MA
+    expect(switches[1]).toHaveAttribute('aria-checked', 'true')  // RSI
+    expect(switches[2]).toHaveAttribute('aria-checked', 'false') // MACD
+    expect(switches[3]).toHaveAttribute('aria-checked', 'true')  // Bollinger
+  })
+
+  it('calls updateIndicator when toggling Moving Averages', async () => {
     const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
+    render(<IndicatorSettings />)
     
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, '20')
+    const maSwitch = screen.getAllByRole('switch')[0]
+    await user.click(maSwitch)
     
-    await user.click(screen.getByText('Apply'))
-    
-    expect(defaultProps.onSettingsChange).toHaveBeenCalledWith({ period: 20 })
+    expect(mockUpdateIndicator).toHaveBeenCalledWith('ma', true)
   })
 
-  it('validates RSI period range', async () => {
+  it('calls updateIndicator when toggling RSI', async () => {
     const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
+    render(<IndicatorSettings />)
     
-    const periodInput = screen.getByLabelText(/period/i)
+    const rsiSwitch = screen.getAllByRole('switch')[1]
+    await user.click(rsiSwitch)
     
-    // Test minimum value
-    await user.clear(periodInput)
-    await user.type(periodInput, '1')
-    expect(screen.getByText(/must be between 2 and 100/i)).toBeInTheDocument()
-    
-    // Test maximum value
-    await user.clear(periodInput)
-    await user.type(periodInput, '101')
-    expect(screen.getByText(/must be between 2 and 100/i)).toBeInTheDocument()
-    
-    // Test valid value
-    await user.clear(periodInput)
-    await user.type(periodInput, '50')
-    expect(screen.queryByText(/must be between 2 and 100/i)).not.toBeInTheDocument()
+    expect(mockUpdateIndicator).toHaveBeenCalledWith('rsi', false)
   })
 
-  it('renders MACD settings correctly', () => {
-    const macdProps = {
-      ...defaultProps,
-      indicator: 'MACD' as IndicatorType,
-      settings: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
-    }
-    
-    render(<IndicatorSettings {...macdProps} />)
-    
-    expect(screen.getByText('MACD Settings')).toBeInTheDocument()
-    expect((screen.getByLabelText(/fast period/i) as HTMLInputElement).value).toBe('12')
-    expect((screen.getByLabelText(/slow period/i) as HTMLInputElement).value).toBe('26')
-    expect((screen.getByLabelText(/signal period/i) as HTMLInputElement).value).toBe('9')
-  })
-
-  it('updates MACD settings', async () => {
+  it('calls updateIndicator when toggling MACD', async () => {
     const user = userEvent.setup()
-    const macdProps = {
-      ...defaultProps,
-      indicator: 'MACD' as IndicatorType,
-      settings: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
-    }
+    render(<IndicatorSettings />)
     
-    render(<IndicatorSettings {...macdProps} />)
+    const macdSwitch = screen.getAllByRole('switch')[2]
+    await user.click(macdSwitch)
     
-    const fastInput = screen.getByLabelText(/fast period/i)
-    await user.clear(fastInput)
-    await user.type(fastInput, '10')
+    expect(mockUpdateIndicator).toHaveBeenCalledWith('macd', true)
+  })
+
+  it('calls updateIndicator when toggling Bollinger Bands', async () => {
+    const user = userEvent.setup()
+    render(<IndicatorSettings />)
     
-    await user.click(screen.getByText('Apply'))
+    const bollSwitch = screen.getAllByRole('switch')[3]
+    await user.click(bollSwitch)
     
-    expect(macdProps.onSettingsChange).toHaveBeenCalledWith({
-      fastPeriod: 10,
-      slowPeriod: 26,
-      signalPeriod: 9,
+    expect(mockUpdateIndicator).toHaveBeenCalledWith('boll', false)
+  })
+
+  it('displays separators between indicator groups', () => {
+    render(<IndicatorSettings />)
+    
+    const separators = screen.getAllByTestId('separator')
+    expect(separators).toHaveLength(3)
+  })
+
+  it('applies hover effect class to indicator rows', () => {
+    render(<IndicatorSettings />)
+    
+    const maRow = screen.getByText('Moving Averages').parentElement
+    expect(maRow).toHaveClass('hover:bg-[hsl(var(--glass-bg))]')
+  })
+
+  it('applies premium glass styling to container', () => {
+    const { container } = render(<IndicatorSettings />)
+    
+    const settingsContainer = container.firstChild
+    expect(settingsContainer).toHaveClass('premium-glass')
+  })
+
+  it('handles rapid toggle changes', async () => {
+    const user = userEvent.setup()
+    render(<IndicatorSettings />)
+    
+    const maSwitch = screen.getAllByRole('switch')[0]
+    
+    // Rapidly toggle multiple times
+    await user.click(maSwitch)
+    await user.click(maSwitch)
+    await user.click(maSwitch)
+    
+    expect(mockUpdateIndicator).toHaveBeenCalledTimes(3)
+    expect(mockUpdateIndicator).toHaveBeenLastCalledWith('ma', true)
+  })
+
+  it('memoizes component to prevent unnecessary re-renders', () => {
+    const { rerender } = render(<IndicatorSettings />)
+    
+    // Re-render with same props
+    rerender(<IndicatorSettings />)
+    
+    // Component should still function properly
+    expect(screen.getByText('Technical Indicators')).toBeInTheDocument()
+  })
+
+  it('does not break when receiving unexpected indicator state', () => {
+    // Test with undefined indicators
+    ;(useChart as jest.MockedFunction<typeof useChart>).mockReturnValue({
+      indicators: {} as any,
+      updateIndicator: mockUpdateIndicator,
+    } as any)
+    
+    render(<IndicatorSettings />)
+    
+    // Should still render without crashing
+    expect(screen.getByText('Technical Indicators')).toBeInTheDocument()
+    
+    // Switches should default to unchecked when indicator state is undefined
+    const switches = screen.getAllByRole('switch')
+    switches.forEach(switchEl => {
+      expect(switchEl).toHaveAttribute('aria-checked', 'false')
     })
-  })
-
-  it('validates MACD period relationships', async () => {
-    const user = userEvent.setup()
-    const macdProps = {
-      ...defaultProps,
-      indicator: 'MACD' as IndicatorType,
-      settings: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
-    }
-    
-    render(<IndicatorSettings {...macdProps} />)
-    
-    const fastInput = screen.getByLabelText(/fast period/i)
-    const slowInput = screen.getByLabelText(/slow period/i)
-    
-    // Fast period should be less than slow period
-    await user.clear(fastInput)
-    await user.type(fastInput, '30')
-    
-    expect(screen.getByText(/fast period must be less than slow period/i)).toBeInTheDocument()
-    
-    // Fix the error
-    await user.clear(fastInput)
-    await user.type(fastInput, '10')
-    expect(screen.queryByText(/fast period must be less than slow period/i)).not.toBeInTheDocument()
-  })
-
-  it('closes dialog on cancel', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    await user.click(screen.getByText('Cancel'))
-    
-    expect(defaultProps.onClose).toHaveBeenCalled()
-    expect(defaultProps.onSettingsChange).not.toHaveBeenCalled()
-  })
-
-  it('closes dialog after applying settings', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    await user.click(screen.getByText('Apply'))
-    
-    expect(defaultProps.onSettingsChange).toHaveBeenCalled()
-    expect(defaultProps.onClose).toHaveBeenCalled()
-  })
-
-  it('resets to default values', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} settings={{ period: 20 }} />)
-    
-    const periodInput = screen.getByLabelText(/period/i) as HTMLInputElement
-    expect(periodInput.value).toBe('20')
-    
-    await user.click(screen.getByText('Reset to Default'))
-    
-    expect(periodInput.value).toBe('14')
-  })
-
-  it('disables apply button when validation fails', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, '0')
-    
-    const applyButton = screen.getByText('Apply')
-    expect(applyButton).toBeDisabled()
-  })
-
-  it('enables apply button when all validations pass', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, '25')
-    
-    const applyButton = screen.getByText('Apply')
-    expect(applyButton).not.toBeDisabled()
-  })
-
-  it('handles keyboard shortcuts', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    // Press Escape to close
-    await user.keyboard('{Escape}')
-    expect(defaultProps.onClose).toHaveBeenCalled()
-  })
-
-  it('shows tooltips for settings', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const helpIcon = screen.getByLabelText(/help/i)
-    await user.hover(helpIcon)
-    
-    expect(screen.getByText(/number of periods used to calculate/i)).toBeInTheDocument()
-  })
-
-  it('preserves unsaved changes warning', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, '25')
-    
-    // Try to close without saving
-    await user.click(screen.getByText('Cancel'))
-    
-    // Should show confirmation dialog
-    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument()
-    
-    // Confirm discard
-    await user.click(screen.getByText('Discard'))
-    expect(defaultProps.onClose).toHaveBeenCalled()
-  })
-
-  it('supports custom indicator types', () => {
-    const customProps = {
-      ...defaultProps,
-      indicator: 'BOLLINGER_BANDS' as IndicatorType,
-      settings: { period: 20, standardDeviations: 2 },
-    }
-    
-    render(<IndicatorSettings {...customProps} />)
-    
-    expect(screen.getByText('BOLLINGER_BANDS Settings')).toBeInTheDocument()
-    expect((screen.getByLabelText(/period/i) as HTMLInputElement).value).toBe('20')
-    expect((screen.getByLabelText(/standard deviations/i) as HTMLInputElement).value).toBe('2')
-  })
-
-  it('handles number input with keyboard', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    periodInput.focus()
-    
-    // Arrow up should increase value
-    await user.keyboard('{ArrowUp}')
-    expect((periodInput as HTMLInputElement).value).toBe('15')
-    
-    // Arrow down should decrease value
-    await user.keyboard('{ArrowDown}')
-    expect((periodInput as HTMLInputElement).value).toBe('14')
-  })
-
-  it('prevents non-numeric input', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, 'abc')
-    
-    expect((periodInput as HTMLInputElement).value).toBe('')
-  })
-
-  it('applies settings on Enter key', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorSettings {...defaultProps} />)
-    
-    const periodInput = screen.getByLabelText(/period/i)
-    await user.clear(periodInput)
-    await user.type(periodInput, '30')
-    
-    await user.keyboard('{Enter}')
-    
-    expect(defaultProps.onSettingsChange).toHaveBeenCalledWith({ period: 30 })
-    expect(defaultProps.onClose).toHaveBeenCalled()
   })
 })

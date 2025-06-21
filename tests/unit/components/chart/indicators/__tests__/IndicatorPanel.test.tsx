@@ -1,247 +1,194 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { IndicatorPanel } from '@/components/chart/indicators/IndicatorPanel'
-import { IndicatorType } from '@/types/indicator-types'
+import IndicatorPanel from '@/components/chart/indicators/IndicatorPanel'
 
-// Mock the child components
-jest.mock('@/components/chart/indicators/RsiChart', () => ({
-  RsiChart: ({ data, settings }: any) => (
-    <div data-testid="rsi-chart">
-      RSI Chart - Period: {settings.period}
-    </div>
-  )
+// Mock lucide-react
+jest.mock('lucide-react', () => ({
+  X: ({ className }: any) => <span className={className}>X</span>
 }))
-
-jest.mock('@/components/chart/indicators/MacdChart', () => ({
-  MacdChart: ({ data, settings }: any) => (
-    <div data-testid="macd-chart">
-      MACD Chart - Fast: {settings.fastPeriod}, Slow: {settings.slowPeriod}
-    </div>
-  )
-}))
-
-jest.mock('@/components/chart/indicators/IndicatorSettings', () => ({
-  IndicatorSettings: ({ indicator, settings, onSettingsChange, onClose }: any) => (
-    <div data-testid="indicator-settings">
-      <h3>Settings for {indicator}</h3>
-      <button onClick={() => onSettingsChange({ ...settings, period: 20 })}>
-        Update Settings
-      </button>
-      <button onClick={onClose}>Close</button>
-    </div>
-  )
-}))
-
-const mockCandleData = [
-  { time: '2024-01-01', open: 100, high: 110, low: 90, close: 105, volume: 1000 },
-  { time: '2024-01-02', open: 105, high: 115, low: 100, close: 110, volume: 1200 },
-  { time: '2024-01-03', open: 110, high: 120, low: 105, close: 115, volume: 1100 },
-]
 
 describe('IndicatorPanel', () => {
+  const mockOnClose = jest.fn()
+  const mockInitChart = jest.fn(() => jest.fn())
+
   const defaultProps = {
-    indicators: ['RSI', 'MACD'] as IndicatorType[],
-    data: mockCandleData,
-    onRemoveIndicator: jest.fn(),
+    title: 'RSI',
     height: 200,
+    onClose: mockOnClose,
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('renders all active indicators', () => {
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
-    expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
+  afterEach(() => {
+    cleanup()
   })
 
-  it('renders empty state when no indicators', () => {
-    render(<IndicatorPanel {...defaultProps} indicators={[]} />)
-    
-    expect(screen.queryByTestId('rsi-chart')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('macd-chart')).not.toBeInTheDocument()
-  })
-
-  it('displays indicator labels', () => {
+  it('renders with title', () => {
     render(<IndicatorPanel {...defaultProps} />)
     
     expect(screen.getByText('RSI')).toBeInTheDocument()
-    expect(screen.getByText('MACD')).toBeInTheDocument()
   })
 
-  it('shows settings button for each indicator', () => {
+  it('renders with auto height', () => {
+    render(<IndicatorPanel {...defaultProps} height="auto" />)
+    
+    const panel = screen.getByTestId('rsi-panel')
+    expect(panel).toHaveStyle({ height: '100%' })
+  })
+
+  it('renders with numeric height', () => {
+    render(<IndicatorPanel {...defaultProps} height={300} />)
+    
+    const panel = screen.getByTestId('rsi-panel')
+    expect(panel).toHaveStyle({ height: '300px' })
+  })
+
+  it('shows close button when onClose is provided', () => {
     render(<IndicatorPanel {...defaultProps} />)
     
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    expect(settingsButtons).toHaveLength(2)
+    const closeButton = screen.getByLabelText('Close RSI')
+    expect(closeButton).toBeInTheDocument()
   })
 
-  it('shows remove button for each indicator', () => {
-    render(<IndicatorPanel {...defaultProps} />)
+  it('does not show close button when onClose is not provided', () => {
+    render(<IndicatorPanel title="RSI" height={200} />)
     
-    const removeButtons = screen.getAllByLabelText(/remove/i)
-    expect(removeButtons).toHaveLength(2)
+    const closeButton = screen.queryByLabelText('Close RSI')
+    expect(closeButton).not.toBeInTheDocument()
   })
 
-  it('calls onRemoveIndicator when remove button clicked', async () => {
+  it('calls onClose when close button is clicked', async () => {
     const user = userEvent.setup()
     render(<IndicatorPanel {...defaultProps} />)
     
-    const removeButtons = screen.getAllByLabelText(/remove/i)
-    await user.click(removeButtons[0])
+    const closeButton = screen.getByLabelText('Close RSI')
+    await user.click(closeButton)
     
-    expect(defaultProps.onRemoveIndicator).toHaveBeenCalledWith('RSI')
+    expect(mockOnClose).toHaveBeenCalledTimes(1)
   })
 
-  it('opens settings dialog when settings button clicked', async () => {
+  it('renders children content', () => {
+    render(
+      <IndicatorPanel {...defaultProps}>
+        <div data-testid="child-content">Child Content</div>
+      </IndicatorPanel>
+    )
+    
+    expect(screen.getByTestId('child-content')).toBeInTheDocument()
+    expect(screen.getByText('Child Content')).toBeInTheDocument()
+  })
+
+  it('applies custom className', () => {
+    render(<IndicatorPanel {...defaultProps} className="custom-class" />)
+    
+    const panel = screen.getByTestId('rsi-panel')
+    expect(panel).toHaveClass('custom-class')
+  })
+
+  it('generates testid from title', () => {
+    render(<IndicatorPanel title="MACD Histogram" height={200} />)
+    
+    const panel = screen.getByTestId('macd histogram-panel')
+    expect(panel).toBeInTheDocument()
+  })
+
+  it('uses custom data-testid when provided', () => {
+    render(<IndicatorPanel {...defaultProps} data-testid="custom-panel" />)
+    
+    const panel = screen.getByTestId('custom-panel')
+    expect(panel).toBeInTheDocument()
+  })
+
+  it('calls initChart with container element', () => {
+    render(<IndicatorPanel {...defaultProps} initChart={mockInitChart} />)
+    
+    expect(mockInitChart).toHaveBeenCalledTimes(1)
+    expect(mockInitChart).toHaveBeenCalledWith(expect.any(HTMLDivElement))
+  })
+
+  it('calls cleanup function when unmounting', () => {
+    const mockCleanup = jest.fn()
+    mockInitChart.mockReturnValue(mockCleanup)
+    
+    const { unmount } = render(<IndicatorPanel {...defaultProps} initChart={mockInitChart} />)
+    
+    unmount()
+    
+    expect(mockCleanup).toHaveBeenCalledTimes(1)
+  })
+
+  it('handles initChart that returns undefined', () => {
+    const mockInitChartNoCleanup = jest.fn(() => undefined)
+    
+    const { unmount } = render(<IndicatorPanel {...defaultProps} initChart={mockInitChartNoCleanup} />)
+    
+    // Should not throw when unmounting
+    expect(() => unmount()).not.toThrow()
+  })
+
+  it('applies correct styling classes', () => {
+    render(<IndicatorPanel {...defaultProps} />)
+    
+    const panel = screen.getByTestId('rsi-panel')
+    expect(panel).toHaveClass('premium-glass-subtle')
+    expect(panel).toHaveClass('border-t')
+    expect(panel).toHaveClass('flex-col')
+    expect(panel).toHaveClass('overflow-hidden')
+  })
+
+  it('renders header with correct styling', () => {
+    render(<IndicatorPanel {...defaultProps} />)
+    
+    const header = screen.getByText('RSI').parentElement
+    expect(header).toHaveClass('border-b')
+    expect(header).toHaveClass('bg-[hsl(var(--glass-bg))]')
+  })
+
+  it('applies hover effects to close button', async () => {
     const user = userEvent.setup()
     render(<IndicatorPanel {...defaultProps} />)
     
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    await user.click(settingsButtons[0])
+    const closeButton = screen.getByLabelText('Close RSI')
     
-    expect(screen.getByTestId('indicator-settings')).toBeInTheDocument()
-    expect(screen.getByText('Settings for RSI')).toBeInTheDocument()
+    // Check initial classes
+    expect(closeButton).toHaveClass('text-[hsl(var(--text-muted))]')
+    
+    // Hover effects are applied via CSS, so we just verify the classes exist
+    expect(closeButton).toHaveClass('hover:text-[hsl(var(--text-secondary))]')
+    expect(closeButton).toHaveClass('hover:bg-[hsl(var(--glass-bg))]')
   })
 
-  it('closes settings dialog when close button clicked', async () => {
+  it('handles rapid close button clicks', async () => {
     const user = userEvent.setup()
     render(<IndicatorPanel {...defaultProps} />)
     
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    await user.click(settingsButtons[0])
+    const closeButton = screen.getByLabelText('Close RSI')
     
-    expect(screen.getByTestId('indicator-settings')).toBeInTheDocument()
+    // Click multiple times rapidly
+    await user.click(closeButton)
+    await user.click(closeButton)
+    await user.click(closeButton)
     
-    await user.click(screen.getByText('Close'))
-    
-    expect(screen.queryByTestId('indicator-settings')).not.toBeInTheDocument()
+    expect(mockOnClose).toHaveBeenCalledTimes(3)
   })
 
-  it('updates indicator settings', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorPanel {...defaultProps} />)
+  it('maintains layout when content changes', () => {
+    const { rerender } = render(
+      <IndicatorPanel {...defaultProps}>
+        <div>Content 1</div>
+      </IndicatorPanel>
+    )
     
-    // Open settings for RSI
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    await user.click(settingsButtons[0])
+    rerender(
+      <IndicatorPanel {...defaultProps}>
+        <div>Content 2 with much longer text that might affect layout</div>
+      </IndicatorPanel>
+    )
     
-    // Update settings
-    await user.click(screen.getByText('Update Settings'))
-    
-    // Settings should close and RSI should show updated period
-    expect(screen.queryByTestId('indicator-settings')).not.toBeInTheDocument()
-    expect(screen.getByTestId('rsi-chart')).toHaveTextContent('Period: 20')
-  })
-
-  it('maintains separate settings for each indicator', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    // Check initial settings
-    expect(screen.getByTestId('rsi-chart')).toHaveTextContent('Period: 14')
-    expect(screen.getByTestId('macd-chart')).toHaveTextContent('Fast: 12, Slow: 26')
-    
-    // Open and modify RSI settings
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    await user.click(settingsButtons[0])
-    await user.click(screen.getByText('Update Settings'))
-    
-    // RSI should be updated, MACD should remain the same
-    expect(screen.getByTestId('rsi-chart')).toHaveTextContent('Period: 20')
-    expect(screen.getByTestId('macd-chart')).toHaveTextContent('Fast: 12, Slow: 26')
-  })
-
-  it('renders indicators with correct height', () => {
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    const indicatorContainers = screen.getAllByTestId(/chart$/)
-    indicatorContainers.forEach(container => {
-      expect(container.closest('.indicator-container')).toHaveStyle({ height: '200px' })
-    })
-  })
-
-  it('handles empty data gracefully', () => {
-    render(<IndicatorPanel {...defaultProps} data={[]} />)
-    
-    expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
-    expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
-  })
-
-  it('applies hover effects on indicator containers', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    const indicatorContainers = screen.getAllByRole('region')
-    
-    await user.hover(indicatorContainers[0])
-    expect(indicatorContainers[0]).toHaveClass('hover:shadow-lg')
-  })
-
-  it('displays indicator type badges', () => {
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    const badges = screen.getAllByRole('status')
-    expect(badges[0]).toHaveTextContent('RSI')
-    expect(badges[1]).toHaveTextContent('MACD')
-  })
-
-  it('handles keyboard navigation', async () => {
-    const user = userEvent.setup()
-    render(<IndicatorPanel {...defaultProps} />)
-    
-    const settingsButtons = screen.getAllByLabelText(/settings/i)
-    const removeButtons = screen.getAllByLabelText(/remove/i)
-    
-    settingsButtons[0].focus()
-    expect(settingsButtons[0]).toHaveFocus()
-    
-    await user.tab()
-    expect(removeButtons[0]).toHaveFocus()
-    
-    await user.tab()
-    expect(settingsButtons[1]).toHaveFocus()
-  })
-
-  it('preserves settings when indicators are reordered', () => {
-    const { rerender } = render(<IndicatorPanel {...defaultProps} />)
-    
-    expect(screen.getByTestId('rsi-chart')).toHaveTextContent('Period: 14')
-    
-    // Reorder indicators
-    rerender(<IndicatorPanel {...defaultProps} indicators={['MACD', 'RSI']} />)
-    
-    // Settings should be preserved
-    expect(screen.getByTestId('rsi-chart')).toHaveTextContent('Period: 14')
-    expect(screen.getByTestId('macd-chart')).toHaveTextContent('Fast: 12, Slow: 26')
-  })
-
-  it('handles rapid indicator additions and removals', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(<IndicatorPanel {...defaultProps} />)
-    
-    // Remove RSI
-    const removeButtons = screen.getAllByLabelText(/remove/i)
-    await user.click(removeButtons[0])
-    expect(defaultProps.onRemoveIndicator).toHaveBeenCalledWith('RSI')
-    
-    // Simulate re-adding RSI
-    rerender(<IndicatorPanel {...defaultProps} indicators={['MACD', 'RSI']} />)
-    
-    // Both indicators should be present
-    expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
-    expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
-  })
-
-  it('supports custom indicator types', () => {
-    const customIndicators = ['RSI', 'MACD', 'BOLLINGER_BANDS'] as IndicatorType[]
-    render(<IndicatorPanel {...defaultProps} indicators={customIndicators} />)
-    
-    // Should handle unknown indicator types gracefully
-    expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
-    expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
+    const panel = screen.getByTestId('rsi-panel')
+    expect(panel).toHaveClass('overflow-hidden')
   })
 })
