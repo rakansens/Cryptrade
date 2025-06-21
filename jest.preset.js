@@ -11,13 +11,16 @@
 module.exports = {
   // TypeScript, JavaScript を ts-jest で変換
   transform: {
-    '^.+\\.(ts|tsx|js|jsx)$': [
+    '^.+\\.(ts|tsx)$': [
       'ts-jest',
       {
         tsconfig: 'tsconfig.test.json',
         useESM: false,
+        diagnostics: false,        // skip type-checking for speed
+        isolatedModules: true,     // transpileOnly mode
       },
     ],
+    '^.+\\.(js|jsx)$': 'babel-jest',
   },
 
   // ESM modules that need to be transformed
@@ -106,4 +109,16 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '/.next/', '/dist/', '/build/', '/.stryker-tmp/', '/coverage/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   roots: ['<rootDir>'],
+
+  // Jest 全体のキャッシュディレクトリを明示
+  cacheDirectory: '<rootDir>/.jestCache',
+
+  // V8 ベースのカバレッジエンジンは Babel より高速
+  coverageProvider: 'v8',
+
+  // CPU コア数の 50% を上限にワーカーを生成（過剰スレッドでのコンテキストスイッチ削減）
+  maxWorkers: '50%',
+
+  // デフォルトタイムアウトも短縮（長いテストは個別で延長）
+  testTimeout: 10000,
 }; 
