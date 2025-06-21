@@ -17,6 +17,12 @@ jest.mock('@prisma/client', () => ({
       code: string;
       clientVersion: string;
     },
+    TransactionIsolationLevel: {
+      ReadUncommitted: 'ReadUncommitted',
+      ReadCommitted: 'ReadCommitted',
+      RepeatableRead: 'RepeatableRead',
+      Serializable: 'Serializable',
+    },
   },
 }));
 
@@ -67,7 +73,7 @@ describe('DatabaseConnection', () => {
       const result = await DatabaseConnection.ensureConnection();
       
       expect(result).toBe(true);
-      expect(mockPrisma.$connect).toHaveBeenCalledOnce();
+      expect(mockPrisma.$connect).toHaveBeenCalledTimes(1);
       expect(DatabaseConnection.isHealthy()).toBe(true);
     });
 
@@ -132,7 +138,7 @@ describe('DatabaseConnection', () => {
       
       await DatabaseConnection.disconnect();
       
-      expect(mockPrisma.$disconnect).toHaveBeenCalledOnce();
+      expect(mockPrisma.$disconnect).toHaveBeenCalledTimes(1);
       expect(DatabaseConnection.isHealthy()).toBe(false);
     });
 
@@ -142,7 +148,7 @@ describe('DatabaseConnection', () => {
       // Should not throw
       await expect(DatabaseConnection.disconnect()).resolves.not.toThrow();
       
-      expect(mockPrisma.$disconnect).toHaveBeenCalledOnce();
+      expect(mockPrisma.$disconnect).toHaveBeenCalledTimes(1);
     });
   });
 
