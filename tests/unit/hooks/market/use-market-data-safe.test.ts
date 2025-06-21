@@ -1,6 +1,43 @@
 import { renderHook, act } from '@testing-library/react';
 import { useMarketDataSafe } from '@/hooks/market/use-market-data-safe';
 
+// Mock dependencies
+jest.mock('@/hooks/base/use-async-state', () => ({
+  useAsyncState: jest.fn(() => ({
+    data: {
+      symbol: 'BTCUSDT',
+      data: [],
+      lastUpdate: Date.now(),
+      isRealtime: false
+    },
+    loading: false,
+    error: null,
+    execute: jest.fn(),
+    reset: jest.fn()
+  }))
+}));
+
+jest.mock('@/lib/services/enhanced-market-data.service', () => ({
+  EnhancedMarketDataService: jest.fn().mockImplementation(() => ({
+    fetchMarketData: jest.fn().mockResolvedValue([])
+  }))
+}));
+
+jest.mock('@/lib/binance/websocket-manager', () => ({
+  binanceWS: {
+    subscribe: jest.fn().mockResolvedValue(jest.fn())
+  }
+}));
+
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
 describe('useMarketDataSafe', () => {
   const defaultOptions = {
     symbol: 'BTCUSDT',
@@ -17,7 +54,10 @@ describe('useMarketDataSafe', () => {
     const { result } = renderHook(() => useMarketDataSafe(defaultOptions));
     
     expect(result.current).toBeDefined();
-    expect(result.current.state).toBeDefined();
+    expect(result.current.data).toBeDefined();
+    expect(result.current.symbol).toBeDefined();
+    expect(result.current.lastUpdate).toBeDefined();
+    expect(result.current.isRealtime).toBeDefined();
     expect(result.current.loading).toBeDefined();
     expect(result.current.error).toBeDefined();
   });
@@ -34,7 +74,7 @@ describe('useMarketDataSafe', () => {
     });
     
     // After fetching
-    expect(result.current.state).toBeDefined();
+    expect(result.current.data).toBeDefined();
   });
 
   it('should handle symbol changes', () => {

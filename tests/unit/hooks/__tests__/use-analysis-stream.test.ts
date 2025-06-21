@@ -1,12 +1,11 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';;
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAnalysisStream } from '@/hooks/use-analysis-stream';
 import { useStreaming } from '@/hooks/base/use-streaming';
 import { logger } from '@/lib/utils/logger';
-import { streamUtils } from '@/lib/utils/stream-utils';
+import { streamToLines } from '@/lib/utils/stream-utils';
 import type { AnalysisProgressEvent, AnalysisStep } from '@/types/analysis-progress';
 
 // Mock dependencies
@@ -19,7 +18,9 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
-jest.mock('@/lib/utils/stream-utils');
+jest.mock('@/lib/utils/stream-utils', () => ({
+  streamToLines: jest.fn(),
+}));
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -34,6 +35,9 @@ describe('useAnalysisStream', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(useStreaming).mockReturnValue(mockStreamingHook);
+    // Reset Date.now mock to ensure unique session IDs
+    let mockTime = 1234567890000;
+    jest.spyOn(Date, 'now').mockImplementation(() => mockTime++);
   });
 
   describe('initialization', () => {
@@ -66,7 +70,7 @@ describe('useAnalysisStream', () => {
       const mockResponse = {
         ok: true,
         body: {},
-      };
+      } as Response;
       jest.mocked(fetch).mockResolvedValueOnce(mockResponse);
       jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
@@ -103,7 +107,7 @@ describe('useAnalysisStream', () => {
         });
       });
 
-      const mockResponse = { ok: true, body: {} };
+      const mockResponse = { ok: true, body: {} } as Response;
       jest.mocked(fetch).mockResolvedValueOnce(mockResponse);
       jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
@@ -141,7 +145,7 @@ describe('useAnalysisStream', () => {
     it('should generate unique session IDs', async () => {
       const { result } = renderHook(() => useAnalysisStream());
 
-      const mockResponse = { ok: true, body: {} };
+      const mockResponse = { ok: true, body: {} } as Response;
       jest.mocked(fetch).mockResolvedValue(mockResponse);
       jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
@@ -339,7 +343,7 @@ describe('useAnalysisStream', () => {
         { type: 'analysis:complete', data: { duration: 1000, proposalCount: 3, proposalGroupId: 'pg-123' } },
       ];
 
-      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} } as Response);
       jest.mocked(streamToLines).mockImplementation(async function* () {
         for (const event of mockEvents) {
           yield JSON.stringify(event);
@@ -363,7 +367,7 @@ describe('useAnalysisStream', () => {
     it('should handle JSON parsing errors in stream', async () => {
       const { result } = renderHook(() => useAnalysisStream());
 
-      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} } as Response);
       jest.mocked(streamToLines).mockImplementation(async function* () {
         yield 'invalid json';
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 1, proposalGroupId: 'pg-123' } });
@@ -384,8 +388,10 @@ describe('useAnalysisStream', () => {
       const onError = jest.fn();
       const { result } = renderHook(() => useAnalysisStream({ onError }));
 
-      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
-      jest.mocked(streamToLines).mockRejectedValueOnce(new Error('Stream error'));
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} } as Response);
+      jest.mocked(streamToLines).mockImplementation(async function* () {
+        throw new Error('Stream error');
+      });
 
       await act(async () => {
         await result.current.startAnalysis({

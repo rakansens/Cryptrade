@@ -1,8 +1,55 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useCandlestickDataDi } from '@/hooks/market/use-candlestick-data-di';
+import { useCandlestickData } from '@/hooks/market/use-candlestick-data-di';
 
-describe('useCandlestickDataDi', () => {
+// Mock dependencies
+jest.mock('@/lib/binance/binance-context', () => ({
+  useBinanceAPI: jest.fn(() => ({
+    getKlines: jest.fn().mockResolvedValue([])
+  }))
+}));
+
+jest.mock('@/lib/ws', () => ({
+  getBinanceConnection: jest.fn(() => ({
+    subscribeKline: jest.fn(() => jest.fn()),
+    subscribeTrade: jest.fn(() => jest.fn())
+  }))
+}));
+
+jest.mock('@/store/market.store', () => ({
+  useMarketActions: jest.fn(() => ({
+    setPriceData: jest.fn(),
+    updatePrice: jest.fn(),
+    addKline: jest.fn(),
+    updateLastKline: jest.fn(),
+    setConnectionError: jest.fn(),
+    setSymbolLoading: jest.fn()
+  })),
+  usePriceData: jest.fn(() => ({
+    price: 0,
+    change24h: 0,
+    volume24h: 0,
+    high24h: 0,
+    low24h: 0,
+    klines: []
+  })),
+  useSymbolLoading: jest.fn(() => false)
+}));
+
+jest.mock('@/hooks/use-is-client', () => ({
+  useIsClient: jest.fn(() => true)
+}));
+
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
+describe('useCandlestickData', () => {
   const defaultOptions = {
     symbol: 'BTCUSDT',
     interval: '1m',
@@ -14,7 +61,7 @@ describe('useCandlestickDataDi', () => {
   });
 
   it('should initialize with default values', () => {
-    const { result } = renderHook(() => useCandlestickDataDi(defaultOptions));
+    const { result } = renderHook(() => useCandlestickData(defaultOptions));
     
     expect(result.current).toBeDefined();
     expect(result.current.priceData).toBeDefined();
@@ -22,7 +69,7 @@ describe('useCandlestickDataDi', () => {
   });
 
   it('should handle data fetching', async () => {
-    const { result } = renderHook(() => useCandlestickDataDi(defaultOptions));
+    const { result } = renderHook(() => useCandlestickData(defaultOptions));
     
     await act(async () => {
       // Wait for initial data fetch
@@ -35,7 +82,7 @@ describe('useCandlestickDataDi', () => {
 
   it('should handle symbol changes', () => {
     const { result, rerender } = renderHook(
-      ({ symbol, interval }) => useCandlestickDataDi({ symbol, interval }),
+      ({ symbol, interval }) => useCandlestickData({ symbol, interval }),
       { initialProps: { symbol: 'BTCUSDT', interval: '1m' } }
     );
     

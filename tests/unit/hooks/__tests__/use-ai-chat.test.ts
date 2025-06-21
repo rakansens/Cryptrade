@@ -7,7 +7,7 @@ import { useChat } from '@/store/chat.store';
 import { useIsClient } from '@/hooks/use-is-client';
 import { logger } from '@/lib/utils/logger';
 import { safeParseOrWarn } from '@/lib/utils/validation';
-import { streamUtils } from '@/lib/utils/stream-utils';
+import { streamToLines } from '@/lib/utils/stream-utils';
 
 // Mock dependencies
 jest.mock('@/store/chat.store');
@@ -20,9 +20,14 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 jest.mock('@/lib/utils/validation', () => ({
-  safeParseOrWarn: jest.fn()
+  safeParseOrWarn: jest.fn(),
+  CommonSchemas: {
+    ChatMessage: { parse: jest.fn() }
+  }
 }));
-jest.mock('@/lib/utils/stream-utils');
+jest.mock('@/lib/utils/stream-utils', () => ({
+  streamToLines: jest.fn()
+}));
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -41,6 +46,10 @@ describe('useAIChat', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset mockChatStore to default state
+    mockChatStore.currentSessionId = 'session-123';
+    mockChatStore.messages = [];
+    mockChatStore.createSession.mockResolvedValue('new-session-123');
     jest.mocked(useChat).mockReturnValue(mockChatStore);
     jest.mocked(useIsClient).mockReturnValue(true);
     jest.mocked(safeParseOrWarn).mockImplementation((_schema, value) => value);
@@ -72,14 +81,20 @@ describe('useAIChat', () => {
     });
 
     it('should create session if none exists', async () => {
+      // Override the mock for this specific test
+      const mockChatStoreNoSession = {
+        ...mockChatStore,
+        currentSessionId: '',
+      };
+      jest.mocked(useChat).mockReturnValue(mockChatStoreNoSession);
+      
       const { result } = renderHook(() => useAIChat());
-      mockChatStore.currentSessionId = '';
 
       jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ message: 'Response from AI' }),
-      });
+      } as any);
 
       await act(async () => {
         await result.current.send('test message');
@@ -123,7 +138,10 @@ describe('useAIChat', () => {
       });
 
       expect(mockChatStore.addMessage).toHaveBeenCalledTimes(2);
-      expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith('session-123', 'AI response');
+      expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith('session-123', {
+        content: 'AI response',
+        isTyping: false,
+      });
       expect(mockChatStore.setLoading).toHaveBeenCalledWith(false);
       expect(mockChatStore.setStreaming).toHaveBeenCalledWith(false);
     });
@@ -156,6 +174,7 @@ describe('useAIChat', () => {
         content: 'トレンドライン候補を生成しました',
         type: 'proposal',
         proposalGroup: mockProposalResponse.proposalGroup,
+        isTyping: false,
       });
     });
 
@@ -187,7 +206,10 @@ describe('useAIChat', () => {
       });
 
       await waitFor(() => {
-        expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith('session-123', 'Hello from AI');
+        expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith('session-123', {
+          content: 'Hello from AI',
+          isTyping: false,
+        });
       });
     });
 
@@ -207,7 +229,10 @@ describe('useAIChat', () => {
       expect(mockChatStore.setError).toHaveBeenCalledWith('Failed to send message: Internal Server Error');
       expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith(
         'session-123',
-        'Sorry, I encountered an error: Internal Server Error'
+        {
+          content: 'Sorry, I encountered an error: Internal Server Error',
+          isTyping: false,
+        }
       );
     });
 
@@ -245,7 +270,10 @@ describe('useAIChat', () => {
       });
 
       await waitFor(() => {
-        expect(mockChatStore.updateLastMessage).toHaveBeenCalledWith('session-123', 'Partial ');
+        expect(mockChatStore.updateLastMessage).toHaveBeenNthCalledWith(1, 'session-123', {
+          content: 'Partial ',
+          isTyping: false,
+        });
       });
 
       expect(mockChatStore.setError).toHaveBeenCalledWith('Failed to send message: Stream interrupted');
@@ -358,6 +386,7 @@ describe('useAIChat', () => {
       expect(mockChatStore.addMessage).toHaveBeenNthCalledWith(2, 'session-123', {
         role: 'assistant',
         content: '',
+        isTyping: true,
       });
     });
 

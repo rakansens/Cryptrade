@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { useLineTracking } from '@/hooks/use-line-tracking';
+import { useLineTracking, usePriceStream } from '@/hooks/use-line-tracking';
 import { useAnalysisHistory, useAnalysisActions } from '@/store/analysis-history.store';
 import { logger } from '@/lib/utils/logger';
 
