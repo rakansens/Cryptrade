@@ -1,8 +1,8 @@
 /** @type {import('jest').Config} */
-const baseConfig = require('./config/jest/jest.config.base');
+const preset = require('./jest.preset');
 
 module.exports = {
-  ...baseConfig,
+  ...preset,
   
   // Ensure coverage provider is set
   coverageProvider: 'v8',
@@ -20,16 +20,16 @@ module.exports = {
         '<rootDir>/components/**/__tests__/**/*.test.[jt]s?(x)',
         '<rootDir>/store/**/__tests__/**/*.test.[jt]s?(x)',
       ],
-      transform: baseConfig.transform,
-      moduleNameMapper: baseConfig.moduleNameMapper,
+      transform: preset.transform,
+      moduleNameMapper: preset.moduleNameMapper,
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-      collectCoverageFrom: baseConfig.collectCoverageFrom,
-      coveragePathIgnorePatterns: baseConfig.coveragePathIgnorePatterns,
-      forceCoverageMatch: baseConfig.forceCoverageMatch,
-      snapshotResolver: baseConfig.snapshotResolver,
-      testPathIgnorePatterns: baseConfig.testPathIgnorePatterns,
-      moduleFileExtensions: baseConfig.moduleFileExtensions,
-      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+      collectCoverageFrom: preset.collectCoverageFrom,
+      coveragePathIgnorePatterns: preset.coveragePathIgnorePatterns,
+      forceCoverageMatch: preset.forceCoverageMatch,
+      snapshotResolver: preset.snapshotResolver,
+      testPathIgnorePatterns: preset.testPathIgnorePatterns,
+      moduleFileExtensions: preset.moduleFileExtensions,
+      transformIgnorePatterns: preset.transformIgnorePatterns,
       workerIdleMemoryLimit: '512MB',
     },
     {
@@ -39,16 +39,16 @@ module.exports = {
       testMatch: [
         '<rootDir>/tests/integration/**/*.test.[jt]s?(x)',
       ],
-      transform: baseConfig.transform,
-      moduleNameMapper: baseConfig.moduleNameMapper,
+      transform: preset.transform,
+      moduleNameMapper: preset.moduleNameMapper,
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-      collectCoverageFrom: baseConfig.collectCoverageFrom,
-      coveragePathIgnorePatterns: baseConfig.coveragePathIgnorePatterns,
-      forceCoverageMatch: baseConfig.forceCoverageMatch,
-      snapshotResolver: baseConfig.snapshotResolver,
-      testPathIgnorePatterns: baseConfig.testPathIgnorePatterns,
-      moduleFileExtensions: baseConfig.moduleFileExtensions,
-      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+      collectCoverageFrom: preset.collectCoverageFrom,
+      coveragePathIgnorePatterns: preset.coveragePathIgnorePatterns,
+      forceCoverageMatch: preset.forceCoverageMatch,
+      snapshotResolver: preset.snapshotResolver,
+      testPathIgnorePatterns: preset.testPathIgnorePatterns,
+      moduleFileExtensions: preset.moduleFileExtensions,
+      transformIgnorePatterns: preset.transformIgnorePatterns,
       workerIdleMemoryLimit: '512MB',
     },
   ],
@@ -65,13 +65,6 @@ module.exports = {
   // Coverage settings at root level
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['text', 'text-summary', 'lcov', 'html', 'json-summary', 'cobertura'],
-  
-  // Use collectCoverageFrom from base config
-  collectCoverageFrom: baseConfig.collectCoverageFrom,
-  coveragePathIgnorePatterns: baseConfig.coveragePathIgnorePatterns,
-  
-  // Force coverage to include all files
-  forceCoverageMatch: baseConfig.forceCoverageMatch,
   
   // Global coverage thresholds - start low and increase gradually
   coverageThreshold: {

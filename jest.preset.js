@@ -1,0 +1,88 @@
+// jest.preset.js
+// 共通 Jest 設定プリセット（各プロジェクト config から参照）
+// 変更点:
+// - 共通 transform / coverage 設定を集約
+// - moduleNameMapper は手動定義（tsconfig 依存を排除）
+
+// Note: tsconfig.json はコメントが含まれており Node の require では JSON パースに失敗するため
+// pathsToModuleNameMapper は使わず静的に定義する。
+
+/** @type {import('jest').Config} */
+module.exports = {
+  // TypeScript, JavaScript を ts-jest で変換
+  transform: {
+    '^.+\\.(ts|tsx|js|jsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.test.json',
+        useESM: false,
+      },
+    ],
+  },
+
+  // ESM modules that need to be transformed
+  transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$|@.*/|msw))'],
+
+  // パスエイリアス + 静的モック
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+    '^@/components/(.*)$': '<rootDir>/components/$1',
+    '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^@/app/(.*)$': '<rootDir>/app/$1',
+    '^@/types/(.*)$': '<rootDir>/types/$1',
+    '^@/store/(.*)$': '<rootDir>/store/$1',
+    '^@/utils/(.*)$': '<rootDir>/utils/$1',
+    '^@/config/(.*)$': '<rootDir>/config/$1',
+    // 深い相対パスを補正
+    '^(?:\\.\\./)+hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^(?:\\.\\./)+store/(.*)$': '<rootDir>/store/$1',
+    '^(?:\\.\\./)+tests/setup/(.*)$': '<rootDir>/tests/setup/$1',
+    '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',
+    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
+  },
+
+  // Coverage 対象ファイル
+  collectCoverageFrom: [
+    'app/**/*.{ts,tsx}',
+    'lib/**/*.{ts,tsx}',
+    'hooks/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
+    'store/**/*.{ts,tsx}',
+    // 除外
+    '!tests/**',
+    '!**/*.test.{ts,tsx}',
+    '!**/*.spec.{ts,tsx}',
+    '!**/__tests__/**',
+    '!**/__mocks__/**',
+    '!**/node_modules/**',
+    '!**/dist/**',
+    '!**/build/**',
+    '!**/*.d.ts',
+    '!**/types/**',
+    '!**/*.stories.{ts,tsx}',
+    '!**/middleware.ts',
+    '!**/layout.tsx',
+    '!**/page.tsx',
+  ],
+
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/tests/',
+    '/__tests__/',
+    '/__mocks__/',
+    '/coverage/',
+    '/types/',
+    '\\.test\\.',
+    '\\.spec\\.',
+    '\\.d\\.ts$',
+    'index\\.(ts|tsx)$',
+  ],
+
+  forceCoverageMatch: ['**/*.{ts,tsx}'],
+
+  snapshotResolver: '<rootDir>/config/jest/snapshot-resolver.js',
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/dist/', '/build/', '/.stryker-tmp/', '/coverage/'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  roots: ['<rootDir>'],
+}; 

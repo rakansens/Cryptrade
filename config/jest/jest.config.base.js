@@ -25,6 +25,10 @@ module.exports = {
     '^@/store/(.*)$': '<rootDir>/store/$1',
     '^@/utils/(.*)$': '<rootDir>/utils/$1',
     '^@/config/(.*)$': '<rootDir>/config/$1',
+    // Allow deep relative imports like "../../../hooks/..." to resolve to root hooks dir
+    '^(?:\.\.\/)+hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^(?:\.\.\/)+store/(.*)$': '<rootDir>/store/$1',
+    '^(?:\.\.\/)+tests/setup/(.*)$': '<rootDir>/tests/setup/$1',
     // CSS/スタイルファイルのモック
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',
     // 画像ファイルのモック
