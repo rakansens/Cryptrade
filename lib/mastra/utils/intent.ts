@@ -42,10 +42,10 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     detectShortInput,
     detectGreeting,  // Move greeting detection earlier
     detectEntryProposal,
+    detectDrawingProposal,  // Move before UI control to prioritize drawing proposals
+    detectProposalRequest,
     detectUIControl,
     detectPriceInquiry,
-    detectProposalRequest,
-    detectDrawingProposal,
     detectHelpRequest,
     detectMarketChat,  // Move before trading analysis to prioritize casual market chat
     detectTradingAnalysis,
@@ -301,14 +301,17 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     '将来性', '見通し', '予想', '買い時', '売り時',
     'どう思う', '判断', 'トレンド', '動向', '展望',
     'outlook', 'forecast', 'prediction', 'trend', 'analysis',
-    'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解', '詳しく', '詳細'
+    'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解', '詳しく', '詳細',
+    '買うべき', '売るべき', '教えて'
   ];
 
   // Check for explicit analysis requests
   const explicitAnalysisPatterns = [
     /(.+)を?分析/,
     /(.+)の?詳細な?分析/,
-    /(.+)について?詳しく/
+    /(.+)について?詳しく/,
+    /(.+)の?状況を?詳しく/,
+    /詳しく.*教えて/
   ];
 
   const hasAnalysisKeyword = analysisKeywords.some(keyword => queryLower.includes(keyword));

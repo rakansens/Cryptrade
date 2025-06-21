@@ -73,8 +73,9 @@ export const POST = createSSEHandler({
         logger.error('[AI Stream API] Request failed', { error });
         if (error instanceof z.ZodError) {
           stream.write({ data: { error: 'Invalid request data', details: error.errors } });
-        } else if (error instanceof AgentError || error instanceof ValidationError) {
-          stream.write({ data: { error: error.message } });
+        } else if (error && typeof error === 'object' && 'code' in error && 
+                   ((error as any).code === 'AGENT_EXECUTION_ERROR' || (error as any).code === 'VALIDATION_ERROR')) {
+          stream.write({ data: { error: (error as Error).message } });
         } else {
           stream.write({ data: { error: (error as Error).message } });
         }
