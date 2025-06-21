@@ -5,6 +5,8 @@ export const metrics = {
   incrementMetric: jest.fn(),
   setMetric: jest.fn(),
   observeMetric: jest.fn(),
+  recordAgentExecution: jest.fn(),
+  getCacheMetrics: jest.fn(() => ({ hitRate: 1 })),
 };
 
 export const incrementMetric = metrics.incrementMetric;

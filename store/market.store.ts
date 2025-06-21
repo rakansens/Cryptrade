@@ -450,3 +450,11 @@ export const useMarketActions = () => {
     reset,
   };
 };
+
+// ---------------------------------------------------------------------------
+// Legacy alias for tests expecting marketStore.reset()
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(useMarketStoreBase as any).reset = () => {
+  useMarketStoreBase.getState().reset();
+};

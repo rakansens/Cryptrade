@@ -786,3 +786,28 @@ if (typeof clearInterval === 'undefined') {
   // @ts-ignore
   global.clearInterval = () => {};
 }
+
+// ---------------------------------------------------------------------------
+// Library mocks to avoid missing module errors in unit tests
+// ---------------------------------------------------------------------------
+
+// axios mock (simple)
+jest.mock('axios', () => {
+  const fn = () => Promise.resolve({ data: {} });
+  fn.create = () => fn;
+  fn.get = jest.fn(() => Promise.resolve({ data: {} }));
+  fn.post = jest.fn(() => Promise.resolve({ data: {} }));
+  return { default: fn };
+});
+
+// nanoid non-secure mock
+jest.mock('nanoid/non-secure', () => ({ nanoid: () => 'test-id' }));
+
+// pg client mock to bypass database connections
+jest.mock('pg', () => ({
+  Client: jest.fn().mockImplementation(() => ({
+    connect: jest.fn(),
+    end: jest.fn(),
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+  })),
+}));

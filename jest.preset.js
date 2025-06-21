@@ -30,8 +30,9 @@ module.exports = {
   moduleNameMapper: {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/lib/mastra/entry-proposal-generation/(.*)$': '<rootDir>/lib/mastra/tools/entry-proposal-generation/$1',
     '^@/hooks/store/(.*)$': '<rootDir>/store/$1',
-    '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^@/hooks/hooks/(.*)$': '<rootDir>/hooks/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/types/(.*)$': '<rootDir>/types/$1',
     '^@/store/(.*)$': '<rootDir>/store/$1',
@@ -39,7 +40,7 @@ module.exports = {
     '^@/config/(.*)$': '<rootDir>/config/$1',
     '^@/tests/(.*)$': '<rootDir>/tests/$1',
     // 深い相対パスを補正 - パターンを拡張
-    '^(?:\\.\\./)+hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^(?:\\.\\./)+hooks/(.*)$': '<rootDir>/components/chart/hooks/$1',
     '^(?:\\.\\./)+store/(.*)$': '<rootDir>/store/$1',
     '^(?:\\.\\./)+tests/setup/(.*)$': '<rootDir>/tests/setup/$1',
     '^(?:\\.\\./)+lib/(.*)$': '<rootDir>/lib/$1',
