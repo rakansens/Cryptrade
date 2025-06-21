@@ -393,9 +393,12 @@ describe('Store: ConfigStore', () => {
         performance: { maxDataPoints: 500 }
       };
       
-      const success = result.current.importConfig(JSON.stringify(configToImport));
+      let success: boolean;
+      act(() => {
+        success = result.current.importConfig(JSON.stringify(configToImport));
+      });
       
-      expect(success).toBe(true);
+      expect(success!).toBe(true);
       expect(result.current.theme.mode).toBe('system');
       expect(result.current.theme.accentColor).toBe('orange');
       expect(result.current.chart.showGrid).toBe(false);
@@ -405,9 +408,12 @@ describe('Store: ConfigStore', () => {
     it('should reject invalid config', () => {
       const { result } = renderHook(() => useConfig());
       
-      const success = result.current.importConfig('invalid json');
+      let success: boolean;
+      act(() => {
+        success = result.current.importConfig('invalid json');
+      });
       
-      expect(success).toBe(false);
+      expect(success!).toBe(false);
     });
 
     it('should reject config without version', () => {
@@ -417,9 +423,12 @@ describe('Store: ConfigStore', () => {
         theme: { mode: 'light' }
       };
       
-      const success = result.current.importConfig(JSON.stringify(configWithoutVersion));
+      let success: boolean;
+      act(() => {
+        success = result.current.importConfig(JSON.stringify(configWithoutVersion));
+      });
       
-      expect(success).toBe(false);
+      expect(success!).toBe(false);
     });
   });
 
