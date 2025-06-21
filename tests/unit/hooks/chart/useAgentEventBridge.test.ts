@@ -1,9 +1,9 @@
 import { renderHook } from '@testing-library/react-hooks';
-import { useAgentEventBridge } from '../../../hooks/chart/useAgentEventBridge';
-import { useChartUIEventHandlers } from '../../../hooks/chart/useChartUIEventHandlers';
-import { useDrawingEventHandlers } from '../../../hooks/chart/useDrawingEventHandlers';
-import { usePatternEventHandlers } from '../../../hooks/chart/usePatternEventHandlers';
-import { useChartControlAgentEvents } from '../../../components/chart/hooks/useChartControlAgentEvents';
+import { useAgentEventBridge } from '@/hooks/chart/useAgentEventBridge';
+import { useChartUIEventHandlers } from '@/hooks/chart/useChartUIEventHandlers';
+import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
+import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
+import { useChartControlAgentEvents } from '@/components/chart/hooks/useChartControlAgentEvents';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 
 // Mock all the individual event handler hooks

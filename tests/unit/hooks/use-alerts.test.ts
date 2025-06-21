@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAlerts } from '../../../hooks/use-alerts';
-import { useSSEStream } from '../../../hooks/base/use-sse-stream';
-import { logger } from '../../../lib/utils/logger';
+import { useAlerts } from '@/hooks/use-alerts';
+import { useSSEStream } from '@/hooks/base/use-sse-stream';
+import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
 jest.mock('../../../hooks/base/use-sse-stream');

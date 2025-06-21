@@ -11,7 +11,7 @@ import {
   type RouteContext,
   type RouteHandler,
   type NextRouteHandler,
-} from '../../../app/api/types';
+} from '@/app/api/types';
 import { z } from 'zod';
 
 describe('API Types Regression Tests', () => {

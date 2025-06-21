@@ -1,9 +1,9 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { proposalGenerationTool } from '../../../lib/mastra/tools/proposal-generation.tool';
-import { memoryRecallTool } from '../../../lib/mastra/tools/memory-recall.tool';
-import { uiStateTool } from '../../../lib/mastra/tools/ui-state.tool';
-import { marketSnapshotTool } from '../../../lib/mastra/tools/market-snapshot.tool';
-import { agentSelectionTool } from '../../../lib/mastra/tools/agent-selection.tool';
+import { proposalGenerationTool } from '@/lib/mastra/tools/proposal-generation.tool';
+import { memoryRecallTool } from '@/lib/mastra/tools/memory-recall.tool';
+import { uiStateTool } from '@/lib/mastra/tools/ui-state.tool';
+import { marketSnapshotTool } from '@/lib/mastra/tools/market-snapshot.tool';
+import { agentSelectionTool } from '@/lib/mastra/tools/agent-selection.tool';
 import { 
   calculateConfidence,
   validateDrawing,
@@ -11,13 +11,13 @@ import {
   generateTrendline,
   generateFibonacci,
   generateSupportResistance,
-} from '../../../lib/mastra/tools/proposal-generation/index';
+} from '@/lib/mastra/tools/proposal-generation/index';
 import type { 
   ProposalGenerationInput,
   DrawingValidationInput,
   PatternGenerationInput,
   ConfidenceFactors,
-} from '../../../lib/mastra/tools/proposal-generation/types';
+} from '@/lib/mastra/tools/proposal-generation/types';
 
 // Mock dependencies
 jest.mock('../../../lib/services/chart-drawing.service');

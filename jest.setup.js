@@ -369,6 +369,23 @@ jest.mock('next/server', () => {
   };
 });
 
+// Mock @neondatabase/serverless
+jest.mock('@neondatabase/serverless', () => ({
+  neon: jest.fn(() => {
+    return jest.fn((sql) => Promise.resolve([]));
+  }),
+  Pool: jest.fn().mockImplementation(() => ({
+    connect: jest.fn(),
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    end: jest.fn(),
+  })),
+  Client: jest.fn().mockImplementation(() => ({
+    connect: jest.fn(),
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    end: jest.fn(),
+  })),
+}));
+
 // Mock API handler creation utilities
 jest.mock('@/lib/api/create-api-handler', () => {
   const { z } = require('zod');
@@ -808,6 +825,87 @@ jest.mock('@/lib/monitoring/metrics', () => ({
   },
 }));
 
+// Mock Mastra agent paths
+jest.mock('@/lib/mastra/agents/price-inquiry.agent', () => ({
+  priceInquiryAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        symbol: 'BTCUSDT',
+        price: '50000',
+        message: 'BTCの現在価格は50,000 USDTです'
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/trading-analysis.agent', () => ({
+  tradingAnalysisAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        symbol: 'BTCUSDT',
+        analysis: 'Bullish trend detected',
+        recommendations: []
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/support-resistance.agent', () => ({
+  supportResistanceAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        support: [45000, 42000],
+        resistance: [52000, 55000]
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/entry-proposal.agent', () => ({
+  entryProposalAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        proposals: []
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/indicator-analysis.agent', () => ({
+  indicatorAnalysisAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        indicators: {}
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/market-chat.agent', () => ({
+  marketChatAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        message: 'Market is looking good'
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/general-inquiry.agent', () => ({
+  generalInquiryAgent: {
+    execute: jest.fn().mockResolvedValue({
+      result: {
+        answer: 'This is a general response'
+      }
+    })
+  }
+}));
+
+jest.mock('@/lib/mastra/agents/register-agents', () => ({
+  registerAllAgents: jest.fn().mockResolvedValue(undefined),
+  getRegisteredAgents: jest.fn().mockReturnValue([])
+}));
+
 // Mock error classes
 jest.mock('@/lib/errors/base-error', () => ({
   AuthError: class AuthError extends Error {
@@ -927,6 +1025,35 @@ jest.mock('@/components/ui/separator', () => ({
 //     TooltipContent: ({ children }) => React.createElement('div', { 'data-testid': 'tooltip-content' }, children),
 //   };
 // })
+
+// Mock hooks that are commonly missing
+jest.mock('@/hooks/use-ui-event-stream', () => ({
+  useUIEventStream: jest.fn(() => ({
+    publish: jest.fn(),
+    subscribe: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/use-typed-ui-event-stream', () => ({
+  useTypedUIEventStream: jest.fn(() => ({
+    publish: jest.fn(),
+    subscribe: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/use-ui-event-stream', () => ({
+  useUiEventStream: jest.fn(() => ({
+    publish: jest.fn(),
+    subscribe: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/use-view-persistence-simple', () => ({
+  useViewPersistenceSimple: jest.fn(() => ({
+    viewState: {},
+    setViewState: jest.fn(),
+  }))
+}));
 
 // Clean up after each test
 afterEach(() => {

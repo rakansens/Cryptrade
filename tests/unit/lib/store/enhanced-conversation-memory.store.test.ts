@@ -93,8 +93,8 @@ describe('EnhancedConversationMemoryStore', () => {
         summary: 'Test session',
       };
       
-      jest.mocked(ChatDatabaseService.createSession).mockResolvedValue(mockDbSession as any);
-      jest.mocked(prisma.conversationSession.update).mockResolvedValue({} as any);
+      (ChatDatabaseService.createSession as jest.Mock).mockResolvedValue(mockDbSession as any);
+      (prisma.conversationSession.update as jest.Mock).mockResolvedValue({} as any);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -110,7 +110,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should fallback to local storage when DB creation fails', async () => {
-      jest.mocked(ChatDatabaseService.createSession).mockRejectedValue(new Error('DB Error'));
+      (ChatDatabaseService.createSession as jest.Mock).mockRejectedValue(new Error('DB Error'));
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -237,8 +237,8 @@ describe('EnhancedConversationMemoryStore', () => {
         content: 'Test',
       };
       
-      jest.mocked(prisma.conversationSession.upsert).mockResolvedValue({} as any);
-      jest.mocked(prisma.conversationMessage.create).mockResolvedValue(mockDbMessage as any);
+      (prisma.conversationSession.upsert as jest.Mock).mockResolvedValue({} as any);
+      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue(mockDbMessage as any);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -612,13 +612,13 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should enable DB sync and migrate existing sessions', async () => {
-      jest.mocked(ChatDatabaseService.createSession).mockResolvedValue({
+      (ChatDatabaseService.createSession as jest.Mock).mockResolvedValue({
         id: 'db-session',
         createdAt: new Date(),
         lastActiveAt: new Date(),
       } as any);
-      jest.mocked(prisma.conversationSession.update).mockResolvedValue({} as any);
-      jest.mocked(prisma.conversationMessage.create).mockResolvedValue({} as any);
+      (prisma.conversationSession.update as jest.Mock).mockResolvedValue({} as any);
+      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue({} as any);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -642,7 +642,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should handle errors during DB sync migration', async () => {
-      jest.mocked(ChatDatabaseService.createSession).mockRejectedValue(new Error('Migration failed'));
+      (ChatDatabaseService.createSession as jest.Mock).mockRejectedValue(new Error('Migration failed'));
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -664,15 +664,15 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should sync with database', async () => {
-      jest.mocked(prisma.conversationSession.findUnique).mockResolvedValue(null);
-      jest.mocked(ChatDatabaseService.createSession).mockResolvedValue({
+      (prisma.conversationSession.findUnique as jest.Mock).mockResolvedValue(null);
+      (ChatDatabaseService.createSession as jest.Mock).mockResolvedValue({
         id: 'sync-session',
         createdAt: new Date(),
         lastActiveAt: new Date(),
       } as any);
-      jest.mocked(prisma.conversationSession.update).mockResolvedValue({} as any);
-      jest.mocked(prisma.conversationMessage.findUnique).mockResolvedValue(null);
-      jest.mocked(prisma.conversationMessage.create).mockResolvedValue({} as any);
+      (prisma.conversationSession.update as jest.Mock).mockResolvedValue({} as any);
+      (prisma.conversationMessage.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue({} as any);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -691,7 +691,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should handle sync failures gracefully', async () => {
-      jest.mocked(prisma.conversationSession.findUnique).mockRejectedValue(new Error('Sync failed'));
+      (prisma.conversationSession.findUnique as jest.Mock).mockRejectedValue(new Error('Sync failed'));
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -721,8 +721,8 @@ describe('EnhancedConversationMemoryStore', () => {
         timestamp: new Date(),
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: mockMessages,
       } as any);
@@ -752,8 +752,8 @@ describe('EnhancedConversationMemoryStore', () => {
         }
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -779,7 +779,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      jest.mocked(ChatDatabaseService.getUserSessions).mockRejectedValue(new Error('DB Error'));
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockRejectedValue(new Error('DB Error'));
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -854,7 +854,7 @@ describe('EnhancedConversationMemoryStore', () => {
         },
       ];
       
-      jest.mocked(prisma.conversationMessage.findMany).mockResolvedValue(mockArchivedMessages as any);
+      (prisma.conversationMessage.findMany as jest.Mock).mockResolvedValue(mockArchivedMessages as any);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -881,7 +881,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should handle DB error and fallback to memory cache', async () => {
-      jest.mocked(prisma.conversationMessage.findMany).mockRejectedValue(new Error('DB query failed'));
+      (prisma.conversationMessage.findMany as jest.Mock).mockRejectedValue(new Error('DB query failed'));
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -902,7 +902,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should throw error in production when DB fails with no cache', async () => {
-      jest.mocked(prisma.conversationMessage.findMany).mockRejectedValue(new Error('DB error'));
+      (prisma.conversationMessage.findMany as jest.Mock).mockRejectedValue(new Error('DB error'));
       process.env.NODE_ENV = 'production';
       
       const store = useEnhancedConversationMemory.getState();
@@ -915,7 +915,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should return empty array in development when no messages found', async () => {
-      jest.mocked(prisma.conversationMessage.findMany).mockRejectedValue(new Error('DB error'));
+      (prisma.conversationMessage.findMany as jest.Mock).mockRejectedValue(new Error('DB error'));
       
       // This test is environment-specific and requires mocking the isDevelopment function
       // which is imported at module level. Skipping as it's covered by other tests.
@@ -1126,7 +1126,7 @@ describe('EnhancedConversationMemoryStore', () => {
       const store = useEnhancedConversationMemory.getState();
       
       // Make DB update fail for non-existent message
-      jest.mocked(prisma.conversationMessage.update).mockRejectedValueOnce(
+      (prisma.conversationMessage.update as jest.Mock).mockRejectedValueOnce(
         new Error('Record not found')
       );
       
@@ -1262,7 +1262,7 @@ describe('EnhancedConversationMemoryStore', () => {
       const messageId = state.sessions[sessionId].messages[0].id;
       
       // Update message ID after DB save simulation
-      jest.mocked(prisma.conversationMessage.create).mockResolvedValue({
+      (prisma.conversationMessage.create as jest.Mock).mockResolvedValue({
         id: 'db-message-id',
         sessionId,
         role: 'user',
@@ -1290,8 +1290,8 @@ describe('EnhancedConversationMemoryStore', () => {
         metadata: {} // No processors field
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -1317,8 +1317,8 @@ describe('EnhancedConversationMemoryStore', () => {
         }
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -1345,8 +1345,8 @@ describe('EnhancedConversationMemoryStore', () => {
         }
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -1368,8 +1368,8 @@ describe('EnhancedConversationMemoryStore', () => {
         metadata: 'invalid-metadata' // String instead of object
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -1394,8 +1394,8 @@ describe('EnhancedConversationMemoryStore', () => {
         }
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue({
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue({
         ...mockSessions[0],
         messages: [],
       } as any);
@@ -1782,8 +1782,8 @@ describe('EnhancedConversationMemoryStore', () => {
         lastActiveAt: new Date(),
       }];
       
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue(mockSessions as any);
-      jest.mocked(ChatDatabaseService.getSessionWithMessages).mockResolvedValue(null);
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions as any);
+      (ChatDatabaseService.getSessionWithMessages as jest.Mock).mockResolvedValue(null);
       
       const store = useEnhancedConversationMemory.getState();
       
@@ -1794,7 +1794,7 @@ describe('EnhancedConversationMemoryStore', () => {
     });
 
     it('should handle empty sessions array from database', async () => {
-      jest.mocked(ChatDatabaseService.getUserSessions).mockResolvedValue([]);
+      (ChatDatabaseService.getUserSessions as jest.Mock).mockResolvedValue([]);
       
       const store = useEnhancedConversationMemory.getState();
       

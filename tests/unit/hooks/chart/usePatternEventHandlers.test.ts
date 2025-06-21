@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import { usePatternEventHandlers } from '../../../hooks/chart/usePatternEventHandlers';
-import { chart } from '../../../store/chart';
-import { logger } from '../../../lib/utils/logger';
+import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
+import { chart } from '@/store/chart';
+import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 import { agentUtils } from '@/lib/chart/agent-utils';
 

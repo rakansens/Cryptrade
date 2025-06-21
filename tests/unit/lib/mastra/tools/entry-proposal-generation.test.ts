@@ -81,7 +81,7 @@ describe('entryProposalGenerationTool', () => {
     jest.clearAllMocks();
     
     // Setup binanceAPI mock
-    jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
+    (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
   });
 
   describe('Basic Functionality', () => {
@@ -106,7 +106,7 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should handle market data fetch failure', async () => {
-      jest.mocked(binanceAPI.fetchKlines).mockRejectedValue(new Error('API Error'));
+      (binanceAPI.fetchKlines as jest.Mock).mockRejectedValue(new Error('API Error'));
 
       const result = await entryProposalGenerationTool.execute!({
         context: {
@@ -128,7 +128,7 @@ describe('entryProposalGenerationTool', () => {
     });
 
     it('should handle insufficient market data', async () => {
-      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue([mockPriceData[0]] as any);
+      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue([mockPriceData[0]] as any);
 
       const result = await entryProposalGenerationTool.execute!({
         context: {
@@ -291,7 +291,7 @@ describe('entryProposalGenerationTool', () => {
       const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset binanceAPI mock to return valid data
-      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
+      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
       
       // Then mock the analyzer to throw an error
       analyzeMarketContext.mockRejectedValueOnce(new Error('Unexpected error'));
@@ -320,7 +320,7 @@ describe('entryProposalGenerationTool', () => {
       const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
       
       // Reset mocks to default behavior
-      jest.mocked(binanceAPI.fetchKlines).mockResolvedValue(mockPriceData);
+      (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockPriceData);
       analyzeMarketContext.mockResolvedValue({
         trend: 'bullish',
         volatility: 'normal',

@@ -2,14 +2,14 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import { NextRequest } from 'next/server';
 
 // Import route handlers
-import { GET as getKlines } from '../../../app/api/binance/klines/route';
-import { GET as getTicker } from '../../../app/api/binance/ticker/route';
-import { GET as getMemorySearch } from '../../../app/api/memory/search/route';
-import { GET as getHealthDb } from '../../../app/api/health/db/route';
-import { GET as getWsMetrics } from '../../../app/api/ws/metrics/route';
-import { POST as postEvents } from '../../../app/api/events/route';
-import { GET as getLogsStream } from '../../../app/api/logs/stream/route';
-import { POST as postAlerts } from '../../../app/api/alerts/route';
+import { GET as getKlines } from '@/app/api/binance/klines/route';
+import { GET as getTicker } from '@/app/api/binance/ticker/route';
+import { GET as getMemorySearch } from '@/app/api/memory/search/route';
+import { GET as getHealthDb } from '@/app/api/health/db/route';
+import { GET as getWsMetrics } from '@/app/api/ws/metrics/route';
+import { POST as postEvents } from '@/app/api/events/route';
+import { GET as getLogsStream } from '@/app/api/logs/stream/route';
+import { POST as postAlerts } from '@/app/api/alerts/route';
 
 // Mock dependencies
 jest.mock('../../../lib/services/database');

@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { AlertForm } from '../../../components/alerts/AlertForm';
-import { AlertList } from '../../../components/alerts/AlertList';
-import { MainLayout } from '../../../components/MainLayout';
+import { AlertForm } from '@/components/alerts/AlertForm';
+import { AlertList } from '@/components/alerts/AlertList';
+import { MainLayout } from '@/components/MainLayout';
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
 // Mock dependencies

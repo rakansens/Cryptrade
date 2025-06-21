@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useUiEventStream } from '../../../hooks/use-ui-event-stream';
+import { useUiEventStream } from '@/hooks/use-ui-event-stream';
 
 describe('useUIEventStream', () => {
   it('should initialize with default values', () => {

@@ -2,12 +2,12 @@
  * @jest-environment jsdom
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAIChat } from '../../../hooks/use-ai-chat';
-import * as chatstore from '../../../store/chat.store';
-import { useIsClient } from '../../../hooks/use-is-client';
-import { logger } from '../../../lib/utils/logger';
-import { validation } from '../../../lib/utils/validation';
-import { streamUtils } from '../../../lib/utils/stream-utils';
+import { useAIChat } from '@/hooks/use-ai-chat';
+import * as chatstore from '@/store/chat.store';
+import { useIsClient } from '@/hooks/use-is-client';
+import { logger } from '@/lib/utils/logger';
+import { validation } from '@/lib/utils/validation';
+import { streamUtils } from '@/lib/utils/stream-utils';
 
 // Mock dependencies
 jest.mock('../../../store/chat.store');

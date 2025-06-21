@@ -87,7 +87,7 @@ describe('UI Event Store', () => {
 
     it('should handle missing publish function', () => {
       // Temporarily mock to return no publish function
-      jest.mocked(require('@/hooks/use-ui-event-stream').useUIEventStream).mockReturnValueOnce({
+      (require('@/hooks/use-ui-event-stream' as jest.Mock).useUIEventStream).mockReturnValueOnce({
         publish: null,
       });
 

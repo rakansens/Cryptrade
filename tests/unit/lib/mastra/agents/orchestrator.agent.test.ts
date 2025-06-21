@@ -185,7 +185,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       contexts.forEach(({ expected, ...context }) => {
         const selectedModel = model(context);
         expect(selectedModel).toBeDefined();
-        expect(jest.mocked(openai)).toHaveBeenCalledWith(expected);
+        expect(openai as jest.Mock).toHaveBeenCalledWith(expected);
       });
     });
 
@@ -317,7 +317,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.analysis.intent).toBe('greeting');
-      expect(jest.mocked(Agent)).toHaveBeenCalled();
+      expect(Agent as jest.Mock).toHaveBeenCalled();
     });
 
     it('should use parallel orchestrator for complex queries', async () => {
@@ -326,14 +326,14 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       await executeImprovedOrchestrator(complexQuery);
       
-      expect(jest.mocked(parallelOrchestrator.execute)).toHaveBeenCalled();
+      expect(parallelOrchestrator.execute as jest.Mock).toHaveBeenCalled();
     });
 
     it('should handle session management properly', async () => {
       const sessionId = 'custom-session-id';
       await executeImprovedOrchestrator('BTCの価格', sessionId);
       
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       expect(memoryStore.addMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: expect.any(String),
@@ -372,17 +372,17 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
   describe('Error Handling and Fallbacks', () => {
     it('should handle agent execution failures gracefully', async () => {
       const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
-      jest.mocked(agentSelectionTool.execute).mockRejectedValueOnce(new Error('Agent failed'));
+      (agentSelectionTool.execute as jest.Mock).mockRejectedValueOnce(new Error('Agent failed'));
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
       expect(result.executionResult).toBeDefined();
-      expect(jest.mocked(logger.error)).toHaveBeenCalled();
+      expect(logger.error as jest.Mock).toHaveBeenCalled();
     });
 
     it('should handle memory recall failures', async () => {
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       memoryStore.getSessionContext = jest.fn().mockImplementation(() => {
         throw new Error('Memory error');
       });
@@ -394,14 +394,14 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should handle agent registration failures', async () => {
-      jest.mocked(registerAllAgents).mockImplementationOnce(() => {
+      (registerAllAgents as jest.Mock).mockImplementationOnce(() => {
         throw new Error('Registration failed');
       });
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
-      expect(jest.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect(logger.warn as jest.Mock).toHaveBeenCalledWith(
         expect.stringContaining('Agent registration failed'),
         expect.any(Object)
       );
@@ -409,13 +409,13 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
 
     it('should provide fallback response when agent returns no response', async () => {
       const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
-      jest.mocked(agentSelectionTool.execute).mockResolvedValueOnce({});
+      (agentSelectionTool.execute as jest.Mock).mockResolvedValueOnce({});
       
       const result = await executeImprovedOrchestrator('BTCの価格');
       
       expect(result.success).toBe(true);
       expect(result.executionResult).toBeDefined();
-      expect(jest.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect(logger.warn as jest.Mock).toHaveBeenCalledWith(
         expect.stringContaining('Agent returned no response'),
         expect.any(Object)
       );
@@ -439,7 +439,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should use memory recall tool for context-dependent queries', async () => {
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       memoryStore.getRecentMessages = jest.fn(() => [
         { role: 'user', content: 'BTCについて教えて', metadata: {} },
         { role: 'assistant', content: 'BTCは...', metadata: {} },
@@ -461,7 +461,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
   describe('Context and Memory Management', () => {
     it('should maintain conversation context across messages', async () => {
       const sessionId = 'test-session';
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       
       await executeImprovedOrchestrator('BTCについて教えて', sessionId);
       await executeImprovedOrchestrator('それは高い？', sessionId);
@@ -479,7 +479,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should extract metadata from queries', async () => {
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       
       await executeImprovedOrchestrator('BTCとETHの価格分析をお願いします');
       
@@ -589,7 +589,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should adapt response based on relationship level', async () => {
-      const memoryStore = jest.mocked(useEnhancedConversationMemory.getState)();
+      const memoryStore = useEnhancedConversationMemory.getState as jest.Mock();
       
       // New user (few messages)
       memoryStore.getMemoryStats = jest.fn(() => ({
@@ -600,7 +600,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const newUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
+      expect(Agent as jest.Mock).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('new:')
         })
@@ -615,7 +615,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const regularUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(jest.mocked(Agent)).toHaveBeenCalledWith(
+      expect(Agent as jest.Mock).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('regular:')
         })
