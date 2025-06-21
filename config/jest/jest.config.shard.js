@@ -1,4 +1,5 @@
-const baseConfig = require('./jest.config.js');
+// Use root-level jest.config.js as base after config cleanup
+const baseConfig = require('../../jest.config.js');
 
 // Get shard info from environment variables
 const shardIndex = parseInt(process.env.JEST_SHARD_INDEX || '1', 10);
