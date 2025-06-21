@@ -46,9 +46,9 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     detectPriceInquiry,
     detectProposalRequest,
     detectDrawingProposal,
-    detectTradingAnalysis,
     detectHelpRequest,
-    detectMarketChat,
+    detectMarketChat,  // Move before trading analysis to prioritize casual market chat
+    detectTradingAnalysis,
     detectSmallTalk,
   ];
 
@@ -329,7 +329,7 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
 
 export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
-    /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey|yo)[!！]?\.?$/i,
+    /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo)[!！]?\.?$/i,
     /^(お疲れ様|よろしく|どうも)\.?$/i
   ];
 

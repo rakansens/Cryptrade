@@ -69,19 +69,48 @@ jest.mock('@/lib/mastra/network/agent-registry', () => ({
 
 jest.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
   parallelOrchestrator: {
-    execute: jest.fn().mockResolvedValue({
-      analysis: {
-        intent: 'price_inquiry',
-        confidence: 0.9,
-        reasoning: 'Parallel processing',
-        analysisDepth: 'detailed'
-      },
-      executionResult: {
-        response: 'Parallel execution response',
-        data: {}
-      },
-      executionTime: 1500,
-      success: true
+    execute: jest.fn().mockImplementation(async (userQuery, sessionId) => {
+      // Simulate memory store operations that happen in parallel orchestrator
+      const memoryStore = (require('@/lib/store/enhanced-conversation-memory.store').useEnhancedConversationMemory.getState as jest.Mock)();
+      
+      // Add user message
+      await memoryStore.addMessage({
+        sessionId: sessionId || 'test-session-id',
+        role: 'user',
+        content: userQuery,
+        agentId: 'parallel-orchestrator',
+        metadata: {
+          symbols: ['BTC', 'ETH'],
+          topics: ['price', 'analysis']
+        }
+      });
+      
+      // Add assistant message
+      await memoryStore.addMessage({
+        sessionId: sessionId || 'test-session-id',
+        role: 'assistant',
+        content: 'Parallel execution response',
+        agentId: 'parallel-orchestrator',
+        metadata: {
+          symbols: ['BTC', 'ETH'],
+          topics: ['price', 'analysis']
+        }
+      });
+      
+      return {
+        analysis: {
+          intent: 'price_inquiry',
+          confidence: 0.9,
+          reasoning: 'Parallel processing',
+          analysisDepth: 'detailed'
+        },
+        executionResult: {
+          response: 'Parallel execution response',
+          data: {}
+        },
+        executionTime: 1500,
+        success: true
+      };
     })
   }
 }));
@@ -663,7 +692,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should handle proposal requests as trading analysis', async () => {
-      const { agentSelectionTool } = await import('@/lib/mastra/tools/agent-selection.tool');
+      const agentSelectionTool = require('@/lib/mastra/tools/agent-selection.tool').agentSelectionTool;
       
       await executeImprovedOrchestrator('トレンドラインの提案をして');
       

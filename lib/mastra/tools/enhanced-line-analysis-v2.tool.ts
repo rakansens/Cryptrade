@@ -393,8 +393,8 @@ function calculateMarketStructure(horizontalLines: EnhancedLineV2[], trendlines:
     currentPrice: latestPrice,
     currentTrend,
     trendStrength,
-    nearestSupport: nearestSupport?.price,
-    nearestResistance: nearestResistance?.price,
+    nearestSupport: nearestSupport?.price || null,
+    nearestResistance: nearestResistance?.price || null,
     distanceToSupport: nearestSupport ? ((latestPrice - nearestSupport.price) / latestPrice) * 100 : null,
     distanceToResistance: nearestResistance ? ((nearestResistance.price - latestPrice) / latestPrice) * 100 : null,
     keyLevels: [...supportLevels.slice(0, 3), ...resistanceLevels.slice(0, 3)]
@@ -524,7 +524,8 @@ function generateDrawingRecommendations(horizontalLines: EnhancedLineV2[], trend
           startPrice: line.coordinates.startPrice,
           endPrice: line.coordinates.endPrice,
           startTime: line.coordinates.startTime,
-          endTime: line.coordinates.endTime
+          endTime: line.coordinates.endTime,
+          ...(line.coordinates.slope !== undefined && { slope: line.coordinates.slope })
         },
         style: {
           color: line.coordinates.slope !== undefined && line.coordinates.slope > 0 ? '#00aa00' : '#aa0000',
@@ -579,6 +580,12 @@ function determineTrend(trendlines: EnhancedLineV2[], supportLevels: EnhancedLin
 
 function calculateDataQuality(multiTimeframeData: MultiTimeframeData): number {
   const timeframes = Object.values(multiTimeframeData.timeframes);
+  
+  // Handle empty timeframes
+  if (timeframes.length === 0) {
+    return 0.5; // Base quality for empty data
+  }
+  
   const totalCandles = timeframes.reduce((sum, tf) => sum + tf.data.length, 0);
   const avgCandles = totalCandles / timeframes.length;
   
