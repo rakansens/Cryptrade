@@ -21,7 +21,10 @@ jest.mock('@/lib/utils/logger', () => ({
 describe('useStreaming', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockReset();
+    // Reset fetch mock if it exists
+    if (typeof global.fetch === 'function' && 'mockReset' in global.fetch) {
+      (global.fetch as jest.Mock).mockReset();
+    }
     // Don't use fake timers for streaming tests
   });
 

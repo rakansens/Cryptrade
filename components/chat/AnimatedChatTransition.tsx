@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { HomeView } from '@/components/home/HomeView'
 import ChatLayout from './ChatLayout'
@@ -16,9 +16,9 @@ export function AnimatedChatTransition({}: AnimatedChatTransitionProps) {
     goToChat()
   }
 
-  const handleReturnToHome = () => {
+  const handleReturnToHome = useCallback(() => {
     goToHome()
-  }
+  }, [goToHome])
 
   // Expose the return function globally for child components
   useEffect(() => {

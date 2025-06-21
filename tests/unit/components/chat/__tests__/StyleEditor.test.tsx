@@ -16,43 +16,7 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }))
 
-jest.mock('@/components/ui/toast', () => ({
-  showToast: jest.fn(),
-}))
-
-// Mock Popover components
-jest.mock('@/components/ui/popover', () => ({
-  Popover: ({ children, open }: any) => <div data-testid="popover" data-open={open}>{children}</div>,
-  PopoverTrigger: ({ children }: any) => <div data-testid="popover-trigger">{children}</div>,
-  PopoverContent: ({ children }: any) => <div data-testid="popover-content">{children}</div>,
-}))
-
-// Mock other UI components
-jest.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children }: any) => <div data-testid="tabs">{children}</div>,
-  TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
-  TabsTrigger: ({ children, value }: any) => <button data-testid={`tab-${value}`}>{children}</button>,
-  TabsContent: ({ children, value }: any) => <div data-testid={`tab-content-${value}`}>{children}</div>,
-}))
-
-jest.mock('@/components/ui/select', () => ({
-  Select: ({ children, onValueChange }: any) => {
-    // Store the onValueChange handler for testing
-    (window as any).__selectOnValueChange = onValueChange;
-    return <div data-testid="select">{children}</div>;
-  },
-  SelectTrigger: ({ children }: any) => <button data-testid="select-trigger">{children}</button>,
-  SelectContent: ({ children }: any) => <div data-testid="select-content">{children}</div>,
-  SelectItem: ({ children, value }: any) => (
-    <button 
-      data-testid={`select-item-${value}`} 
-      onClick={() => (window as any).__selectOnValueChange?.(value)}
-    >
-      {children}
-    </button>
-  ),
-  SelectValue: () => <span data-testid="select-value" />,
-}))
+// All UI components are mocked via __mocks__ directory
 
 describe('StyleEditor', () => {
   const defaultProps = {
@@ -113,7 +77,13 @@ describe('StyleEditor', () => {
     it('handles color change', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
       // Find color input
       const colorInput = screen.getByPlaceholderText('#22c55e')
@@ -138,7 +108,13 @@ describe('StyleEditor', () => {
     it('validates hex color format', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
       const colorInput = screen.getByPlaceholderText('#22c55e')
       fireEvent.change(colorInput, { target: { value: 'invalid-color' } })
@@ -151,7 +127,13 @@ describe('StyleEditor', () => {
     it('handles line width change', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
       const rangeInput = screen.getByRole('slider')
       fireEvent.change(rangeInput, { target: { value: '5' } })
@@ -171,13 +153,28 @@ describe('StyleEditor', () => {
     it('handles line style change', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
       
-      // Click select trigger
-      fireEvent.click(screen.getByTestId('select-trigger'))
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
-      // Click dashed option
-      fireEvent.click(screen.getByTestId('select-item-dashed'))
+      // Find the dashed line button by looking for the SVG pattern
+      const buttons = screen.getAllByRole('button')
+      const dashedButton = buttons.find(button => {
+        // Look for the button containing dashed line SVG
+        const svg = button.querySelector('svg')
+        if (svg) {
+          const line = svg.querySelector('line')
+          return line?.getAttribute('stroke-dasharray') === '4 2'
+        }
+        return false
+      })
+      
+      expect(dashedButton).toBeTruthy()
+      fireEvent.click(dashedButton!)
       
       await waitFor(() => {
         expect(window.dispatchEvent).toHaveBeenCalledWith(
@@ -194,13 +191,20 @@ describe('StyleEditor', () => {
     it('handles show labels toggle', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
       
-      // Find the toggle button by its label
-      const labelText = screen.getByText('ラベルを表示')
-      const toggle = labelText.nextElementSibling as HTMLElement
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
-      fireEvent.click(toggle)
+      // Find the show labels toggle button
+      const labelText = screen.getByText('価格ラベルを表示')
+      const toggleButton = labelText.parentElement?.querySelector('button')
+      
+      expect(toggleButton).toBeTruthy()
+      fireEvent.click(toggleButton!)
       
       await waitFor(() => {
         expect(window.dispatchEvent).toHaveBeenCalledWith(
@@ -219,7 +223,13 @@ describe('StyleEditor', () => {
     it('applies preset style', async () => {
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       fireEvent.click(screen.getByTestId('tab-presets'))
       
       // Click on professional preset
@@ -255,7 +265,13 @@ describe('StyleEditor', () => {
       
       render(<StyleEditor {...patternProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       fireEvent.click(screen.getByTestId('tab-pattern'))
       
       const opacitySlider = screen.getAllByRole('slider')[0]
@@ -286,15 +302,18 @@ describe('StyleEditor', () => {
       
       render(<StyleEditor {...patternProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       fireEvent.click(screen.getByTestId('tab-pattern'))
       
-      // Find and click the select trigger for metric label position
-      const selectTriggers = screen.getAllByTestId('select-trigger')
-      fireEvent.click(selectTriggers[0]!)
-      
-      // Click left option
-      fireEvent.click(screen.getByTestId('select-item-left'))
+      // Find metric label position buttons
+      const leftButton = screen.getByText('左')
+      fireEvent.click(leftButton)
       
       await waitFor(() => {
         expect(window.dispatchEvent).toHaveBeenCalledWith(
@@ -317,7 +336,13 @@ describe('StyleEditor', () => {
       
       render(<StyleEditor {...defaultProps} />)
       
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const trigger = screen.getByTestId('popover-trigger')
+      fireEvent.click(trigger)
+      
+      // Wait for popover to open
+      await waitFor(() => {
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      })
       
       // Force an error by manipulating the event dispatch
       const originalDispatch = window.dispatchEvent;

@@ -60,9 +60,7 @@ describe('Store Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetAllStores();
-  });
-      usePatternStore.setState({ patterns: new Map() });
-    });
+    usePatternStore.setState({ patterns: new Map() });
   });
 
   describe('Chart and Drawing Integration', () => {

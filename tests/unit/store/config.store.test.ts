@@ -55,68 +55,60 @@ Object.defineProperty(window, 'localStorage', {
 import { resetAllStores } from '@/tests/setup/reset-stores';
 
 describe('Store: ConfigStore', () => {
-  // Helper to get initial state
-  const getInitialState = (store) => {
-    const state = store.getState();
-    const initialState = {};
-    for (const key in state) {
-      if (typeof state[key] !== 'function') {
-        initialState[key] = state[key];
-      }
-    }
-    return initialState;
-  };
+  // Helper to get initial state matching the actual store
+  const getInitialState = () => ({
+    theme: {
+      mode: 'dark' as const,
+      accentColor: 'blue' as const,
+    },
+    chart: {
+      showGrid: true,
+      showCrosshair: true,
+      showVolume: true,
+      candlestickStyle: 'candles' as const,
+      timeFormat: '24h' as const,
+      priceFormat: 'auto' as const,
+    },
+    indicators: {
+      showAdvancedIndicators: false,
+      defaultPeriods: {
+        rsi: 14,
+        macd: { short: 12, long: 26, signal: 9 },
+        ma: [10, 20, 50],
+        ema: [10, 20, 50],
+        bollinger: { period: 20, stdDev: 2 },
+      },
+      colors: {
+        bullish: '#16a34a',
+        bearish: '#dc2626',
+        neutral: '#6b7280',
+      },
+    },
+    app: {
+      locale: 'en-US',
+      currency: 'USD',
+      timezone: 'UTC',
+      autoRefresh: true,
+      refreshInterval: 1000,
+      soundEnabled: false,
+      notificationsEnabled: false,
+    },
+    performance: {
+      maxDataPoints: 1000,
+      batchSize: 10,
+      updateThrottle: 50,
+      enableAnimations: true,
+    },
+  });
 
   beforeEach(() => {
     // Clear all mocks
     jest.clearAllMocks();
     mockLocalStorage.clear();
     
-    // Reset store state using direct access
-    const store = useConfigStore;
-    if (store && store.setState) {
-      // Reset to initial state
-      store.setState({
-        theme: {
-          mode: 'dark',
-          accentColor: 'blue',
-          fontSize: 14,
-          fontFamily: 'Inter',
-        },
-        chart: {
-          showGrid: true,
-          showCrosshair: true,
-          showVolume: true,
-          showLegend: true,
-          candleColors: {
-            up: '#16a34a',
-            down: '#dc2626',
-          },
-        },
-        indicators: {
-          showAdvanced: false,
-          defaultEnabled: ['ma', 'volume'],
-          colors: {
-            ma: '#3b82f6',
-            ema: '#8b5cf6',
-            rsi: '#f59e0b',
-            macd: '#10b981',
-            bollinger: '#ec4899',
-          },
-        },
-        app: {
-          autoRefresh: true,
-          refreshInterval: 5000,
-          showNotifications: true,
-          language: 'en',
-        },
-        performance: {
-          enableGPU: true,
-          maxCandles: 1000,
-          updateThrottle: 100,
-        },
-      });
-    }
+    // Reset store state using setState with initial state
+    const initialState = getInitialState();
+    useConfigStore.setState(initialState);
   });
 
   describe('Initial State', () => {

@@ -51,10 +51,20 @@ export function validatePriceData(
 
   // 最大長チェック
   if (options.maxLength && data.length > options.maxLength) {
-    warnings.push(`Data exceeds maximum length: ${data.length} > ${options.maxLength}`);
+    return {
+      valid: false,
+      error: `Too much data: ${data.length} points provided, maximum is ${options.maxLength}`
+    };
   }
 
   // データポイントの検証
+  const nanIndices: number[] = [];
+  const infinityIndices: number[] = [];
+  const negativeIndices: number[] = [];
+  const timeSet = new Set<number>();
+  let duplicateCount = 0;
+  let allowedNaNCount = 0;
+  
   for (let i = 0; i < data.length; i++) {
     const point = data[i];
     
@@ -66,7 +76,7 @@ export function validatePriceData(
     }
 
     // Time検証
-    if (typeof point.time !== 'number' || point.time <= 0) {
+    if (typeof point.time !== 'number' || point.time < 0) {
       return {
         valid: false,
         error: `Invalid time at index ${i}: ${point.time}`
@@ -82,25 +92,61 @@ export function validatePriceData(
     }
 
     // NaN チェック
-    if (!options.allowNaN && isNaN(point.close)) {
-      return {
-        valid: false,
-        error: `NaN value detected at index ${i}`
-      };
+    if (isNaN(point.close)) {
+      if (!options.allowNaN) {
+        nanIndices.push(i);
+      } else {
+        allowedNaNCount++;
+      }
+      continue; // NaN の場合は他のチェックをスキップ
     }
 
     // Infinity チェック
-    if (!options.allowInfinity && !isFinite(point.close)) {
-      return {
-        valid: false,
-        error: `Infinity value detected at index ${i}`
-      };
+    if (!isFinite(point.close)) {
+      if (!options.allowInfinity) {
+        infinityIndices.push(i);
+      }
     }
 
     // 負の価格チェック
     if (point.close < 0) {
-      warnings.push(`Negative price at index ${i}: ${point.close}`);
+      negativeIndices.push(i);
     }
+    
+    // 重複タイムスタンプチェック
+    if (timeSet.has(point.time)) {
+      duplicateCount++;
+    } else {
+      timeSet.add(point.time);
+    }
+  }
+  
+  // エラーチェック
+  if (nanIndices.length > 0) {
+    return {
+      valid: false,
+      error: `Data contains NaN values at indices: ${nanIndices.join(', ')}`
+    };
+  }
+  
+  if (infinityIndices.length > 0) {
+    return {
+      valid: false,
+      error: `Data contains Infinity values at indices: ${infinityIndices.join(', ')}`
+    };
+  }
+  
+  // 警告チェック
+  if (options.allowNaN && allowedNaNCount > 0) {
+    warnings.push(`Data contains ${allowedNaNCount} NaN values`);
+  }
+  
+  if (negativeIndices.length > 0) {
+    warnings.push(`Data contains negative values at indices: ${negativeIndices.join(', ')}`);
+  }
+  
+  if (duplicateCount > 0) {
+    warnings.push(`Found ${duplicateCount} duplicate timestamps`);
   }
 
   // 単調性チェック（時間が順序通りか）
@@ -111,12 +157,36 @@ export function validatePriceData(
       if (current && previous && current.time <= previous.time) {
         return {
           valid: false,
-          error: `Time series is not monotonically increasing at index ${i}`
+          error: `Time values are not monotonically increasing`
         };
       }
     }
   }
 
+  // 異常値検出（統計的アプローチ）
+  const prices = data.map(d => d.close).filter(p => !isNaN(p) && isFinite(p));
+  if (prices.length > 3) {
+    // Use median and MAD for more robust outlier detection
+    const sortedPrices = [...prices].sort((a, b) => a - b);
+    const median = sortedPrices[Math.floor(sortedPrices.length / 2)]!;
+    const deviations = sortedPrices.map(p => Math.abs(p - median));
+    const mad = deviations.sort((a, b) => a - b)[Math.floor(deviations.length / 2)]!;
+    
+    // Modified Z-score using median and MAD
+    const threshold = 2.5; // Lower threshold for small datasets
+    if (mad > 0) {
+      for (let i = 0; i < data.length; i++) {
+        const price = data[i]!.close;
+        if (!isNaN(price) && isFinite(price)) {
+          const modifiedZScore = 0.6745 * Math.abs(price - median) / mad;
+          if (modifiedZScore > threshold) {
+            warnings.push(`Potential outlier detected at index ${i}: ${price.toFixed(2)} (median: ${median.toFixed(2)}, MAD: ${mad.toFixed(2)})`);
+          }
+        }
+      }
+    }
+  }
+  
   // カスタムバリデーター
   if (options.customValidator) {
     const customResult = options.customValidator(data);
@@ -128,9 +198,10 @@ export function validatePriceData(
     }
   }
 
-  return warnings.length > 0 
-    ? { valid: true as const, warnings }
-    : { valid: true as const };
+  if (warnings.length > 0) {
+    return { valid: true as const, warnings };
+  }
+  return { valid: true as const };
 }
 
 /**
@@ -159,14 +230,15 @@ export function validateNumberArray(
   }
 
   // 各値の検証
+  const nonNumericIndices: number[] = [];
+  const uniqueValues = new Set<number>();
+  
   for (let i = 0; i < data.length; i++) {
     const value = data[i];
 
     if (typeof value !== 'number') {
-      return {
-        valid: false,
-        error: `Invalid value at index ${i}: expected number, got ${typeof value}`
-      };
+      nonNumericIndices.push(i);
+      continue;
     }
 
     if (!options.allowNaN && isNaN(value)) {
@@ -182,11 +254,28 @@ export function validateNumberArray(
         error: `Infinity value detected at index ${i}`
       };
     }
+    
+    uniqueValues.add(value);
+  }
+  
+  // 非数値エラーチェック
+  if (nonNumericIndices.length > 0) {
+    return {
+      valid: false,
+      error: `Array contains non-numeric values at indices: ${nonNumericIndices.join(', ')}`
+    };
+  }
+  
+  // 定数値チェック
+  if (uniqueValues.size === 1 && data.length > 1) {
+    const constantValue = Array.from(uniqueValues)[0];
+    warnings.push(`All values are constant (${constantValue})`);
   }
 
-  return warnings.length > 0 
-    ? { valid: true as const, warnings }
-    : { valid: true as const };
+  if (warnings.length > 0) {
+    return { valid: true as const, warnings };
+  }
+  return { valid: true as const };
 }
 
 /**
@@ -240,24 +329,99 @@ export const validateNumericArray = validateNumberArray;
  * General indicator input validation
  */
 export function validateIndicatorInput(
-  data: any,
+  input: any,
   indicatorName: string,
   options: DataValidationOptions
 ): ValidationResult {
-  // If it's a price data array with time and close
-  if (Array.isArray(data) && data.length > 0 && 
-      data[0] && typeof data[0] === 'object' && 
-      'time' in data[0] && 'close' in data[0]) {
-    return validatePriceData(data as { time: number; close: number }[], options);
+  const warnings: string[] = [];
+  
+  // Check if input has data property
+  if (!input || typeof input !== 'object' || !input.data) {
+    return {
+      valid: false,
+      error: `Invalid input format for ${indicatorName} indicator`
+    };
   }
   
-  // If it's a simple number array
-  if (Array.isArray(data) && data.every(item => typeof item === 'number' || item === null || item === undefined)) {
-    return validateNumberArray(data.filter(item => item !== null && item !== undefined) as number[], options);
+  const { data } = input;
+  
+  // Basic validation for price data
+  const dataValidation = validatePriceData(data, options);
+  if (!dataValidation.valid) {
+    return dataValidation;
   }
   
-  return {
-    valid: false,
-    error: `Invalid input data format for ${indicatorName} indicator`
-  };
+  // Merge warnings from data validation
+  if (dataValidation.warnings) {
+    warnings.push(...dataValidation.warnings);
+  }
+  
+  // Indicator-specific validation
+  switch (indicatorName) {
+    case 'RSI':
+      if (!input.period || input.period <= 0) {
+        return {
+          valid: false,
+          error: 'RSI period must be positive'
+        };
+      }
+      break;
+      
+    case 'MACD':
+      if (!input.fastPeriod || !input.slowPeriod || !input.signalPeriod) {
+        return {
+          valid: false,
+          error: 'MACD requires fastPeriod, slowPeriod, and signalPeriod'
+        };
+      }
+      if (input.fastPeriod >= input.slowPeriod) {
+        return {
+          valid: false,
+          error: 'MACD fast period must be less than slow period'
+        };
+      }
+      if (data.length < input.slowPeriod + input.signalPeriod) {
+        return {
+          valid: false,
+          error: `Insufficient data for MACD: need at least ${input.slowPeriod + input.signalPeriod} points`
+        };
+      }
+      break;
+      
+    case 'BollingerBands':
+      if (!input.period || input.period <= 0) {
+        return {
+          valid: false,
+          error: 'Bollinger Bands period must be positive'
+        };
+      }
+      if (input.stdDev !== undefined && input.stdDev <= 0) {
+        return {
+          valid: false,
+          error: 'Standard deviation must be positive'
+        };
+      }
+      break;
+      
+    case 'SMA':
+    case 'EMA':
+      if (!input.period || input.period <= 0) {
+        return {
+          valid: false,
+          error: `${indicatorName} period must be positive`
+        };
+      }
+      break;
+      
+    default:
+      return {
+        valid: false,
+        error: `Unknown indicator: ${indicatorName}`
+      };
+  }
+  
+  if (warnings.length > 0) {
+    return { valid: true, warnings };
+  }
+  return { valid: true };
 }

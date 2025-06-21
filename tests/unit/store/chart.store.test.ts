@@ -38,13 +38,24 @@ jest.mock('@/lib/utils/zustand-helpers', () => ({
 }));
 
 // Import reset utility
-import { resetAllStores } from '@/tests/setup/reset-stores';
+import { resetAllStoresForTest, resetMultipleStores } from './store-test-helpers';
 
 describe('Chart Store', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    resetAllStores();
+    resetAllStoresForTest();
+    
+    // Reset all chart-related stores
+    resetMultipleStores([
+      [useChartBaseStore, 'ChartBaseStore'],
+      [useIndicatorStore, 'IndicatorStore'],
+      [useDrawingStore, 'DrawingStore'],
+      [usePatternStore, 'PatternStore'],
+    ]);
   });
+
+  describe('Base Chart Store', () => {
+    it('should have initial state', () => {
+      const { result } = renderHook(() => useChartBaseStore());
 
       expect(result.current.symbol).toBe('BTCUSDT');
       expect(result.current.timeframe).toBe('1h');

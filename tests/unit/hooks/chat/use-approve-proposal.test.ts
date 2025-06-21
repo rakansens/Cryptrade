@@ -3,14 +3,15 @@
  */
 import { renderHook, act } from '@testing-library/react';
 import { useApproveProposal } from '../../../../hooks/chat/use-approve-proposal';
-import * as analysishistorystore from '../../../store/analysis-history.store';
-import * as chatstore from '../../../store/chat.store';
-import * as proposalapprovalstore from '../../../store/proposal-approval.store';
-import * as uieventstore from '../../../store/ui-event.store';
-import { toast } from '../../../../lib/notifications/toast';
+import { useAnalysisActions } from '../../../../store/analysis-history.store';
+import { useChat } from '../../../../store/chat.store';
+import { useAddApprovedDrawing } from '../../../../store/proposal-approval.store';
+import { useUIEventPublisher } from '../../../../store/ui-event.store';
+import { toast, showProposalApprovalSuccess, showProposalApprovalError } from '../../../../lib/notifications/toast';
 import { logger } from '../../../../lib/utils/logger';
-import { proposals } from '../../../types/proposals';
-import { enums } from '../../../types/enums';
+import { ProposalType, ProposalStatus } from '../../../../types/enums';
+import type { DrawingProposalGroup, ChartDrawingData } from '../../../../types/proposals';
+import type { ChatMessageData } from '../../../../types/chat';
 
 // Mock dependencies
 jest.mock('../../../../store/analysis-history.store');
@@ -68,7 +69,7 @@ const mockProposalGroup: DrawingProposalGroup = {
   ],
 };
 
-const mockProposalMessage = {
+const mockProposalMessage: ChatMessageData = {
   id: 'message-1',
   role: 'assistant' as const,
   content: 'Test proposal',

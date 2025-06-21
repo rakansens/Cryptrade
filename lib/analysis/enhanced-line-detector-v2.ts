@@ -144,7 +144,7 @@ export class EnhancedLineDetectorV2 {
       touchFiltered: horizontalLines.filter(l => l.touchCount >= this.config.minTouchCount).length +
                      trendlines.filter(l => l.touchCount >= this.config.minTouchCount).length,
       finalLines: horizontalLines.length + trendlines.length,
-      processingTime
+      processingTime: processingTime
     };
     
     logger.info('[EnhancedLineDetectorV2] Detection completed', {

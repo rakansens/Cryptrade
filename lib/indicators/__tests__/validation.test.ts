@@ -249,8 +249,14 @@ describe('Indicator Validation', () => {
     });
 
     it('should validate MACD input', () => {
+      // Create enough data for MACD (need at least slowPeriod + signalPeriod = 35 points)
+      const extendedData = Array.from({ length: 40 }, (_, i) => ({
+        time: (i + 1) * 1000,
+        close: 100 + Math.random() * 10
+      }));
+      
       const result = validateIndicatorInput(
-        { data: mockPriceData, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+        { data: extendedData, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
         'MACD',
         defaultOptions
       );

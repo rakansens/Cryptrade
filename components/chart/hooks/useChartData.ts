@@ -166,7 +166,7 @@ export function useChartData({
         stack: error instanceof Error ? error.stack : undefined
       });
     }
-  }, [movingAverageData, bollingerBandsData, getSeries]);
+  }, [movingAverageData, bollingerBandsData, getSeries, formattedData.length]);
 
   // Function to update specific indicator data when newly enabled
   const updateIndicatorData = useCallback((indicatorType: keyof IndicatorOptions) => {

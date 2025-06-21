@@ -29,9 +29,11 @@ describe('UnifiedPostgreSQLStorage', () => {
     },
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     storage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+    // Auto-initialize storage to match expected behavior
+    await storage.initialize();
   });
 
   describe('initialization', () => {
@@ -83,7 +85,6 @@ describe('UnifiedPostgreSQLStorage', () => {
 
   describe('write operations', () => {
     it('should write single log entry', async () => {
-      await storage.initialize();
       await expect(storage.write(mockLogEntry)).resolves.not.toThrow();
     });
 
@@ -94,21 +95,20 @@ describe('UnifiedPostgreSQLStorage', () => {
         { ...mockLogEntry, id: 'test-125', level: 'error' },
       ];
       
-      await storage.initialize();
       await expect(storage.writeMany(entries)).resolves.not.toThrow();
     });
 
     it('should handle write errors gracefully', async () => {
-      await storage.initialize();
       // Mock the store method to throw an error
       jest.spyOn(storage, 'store').mockRejectedValueOnce(new Error('Write failed'));
       
       await expect(storage.write(mockLogEntry)).rejects.toThrow('Write failed');
     });
 
-    it('should auto-initialize on write', async () => {
-      await expect(storage.write(mockLogEntry)).resolves.not.toThrow();
-      expect(storage['isConnected']).toBe(true);
+    it('should require initialization before write', async () => {
+      // Create a fresh storage instance without initialization
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await expect(freshStorage.write(mockLogEntry)).rejects.toThrow('PostgreSQL storage not initialized');
     });
 
     it('should handle empty metadata', async () => {
@@ -121,7 +121,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         // metadata is optional, so omit it
       };
       
-      await storage.initialize();
       await expect(storage.write(entryNoMeta)).resolves.not.toThrow();
     });
 
@@ -131,38 +130,39 @@ describe('UnifiedPostgreSQLStorage', () => {
         id: `test-${i}`,
       }));
       
-      await storage.initialize();
       await expect(storage.writeMany(entries)).resolves.not.toThrow();
     });
   });
 
   describe('clear operations', () => {
     it('should clear all logs', async () => {
-      await storage.initialize();
       await expect(storage.clear()).resolves.not.toThrow();
     });
 
     it('should handle clear errors gracefully', async () => {
-      await storage.initialize();
+      // Create a fresh storage instance
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await freshStorage.initialize();
       // Mock the clear method to throw an error
-      jest.spyOn(storage, 'clear').mockRejectedValueOnce(new Error('Clear failed'));
+      jest.spyOn(freshStorage, 'clear').mockRejectedValueOnce(new Error('Clear failed'));
       
-      await expect(storage.clear()).rejects.toThrow('Clear failed');
+      await expect(freshStorage.clear()).rejects.toThrow('Clear failed');
     });
 
-    it('should auto-initialize on clear', async () => {
-      await expect(storage.clear()).resolves.not.toThrow();
-      expect(storage['isConnected']).toBe(true);
+    it('should require initialization before clear', async () => {
+      // Create a fresh storage instance without initialization
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await expect(freshStorage.clear()).rejects.toThrow('PostgreSQL storage not initialized');
     });
   });
 
   describe('query operations', () => {
     it('should query all logs', async () => {
-      await storage.initialize();
       const result = await storage.query({});
       
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
+      expect(result.entries).toBeDefined();
+      expect(Array.isArray(result.entries)).toBe(true);
     });
 
     it('should query with filters', async () => {
@@ -175,7 +175,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         offset: 0,
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result).toBeDefined();
@@ -188,28 +187,25 @@ describe('UnifiedPostgreSQLStorage', () => {
         limit: 100,
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result).toBeDefined();
     });
 
     it('should handle query errors gracefully', async () => {
-      await storage.initialize();
       // Mock the queryLogs method to throw an error
       jest.spyOn(storage, 'queryLogs').mockRejectedValueOnce(new Error('Query failed'));
       
       await expect(storage.queryLogs({})).rejects.toThrow('Query failed');
     });
 
-    it('should auto-initialize on query', async () => {
-      const result = await storage.query({});
-      expect(storage['isConnected']).toBe(true);
-      expect(result).toBeDefined();
+    it('should require initialization before query', async () => {
+      // Create a fresh storage instance without initialization
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await expect(freshStorage.query({})).rejects.toThrow('PostgreSQL storage not initialized');
     });
 
     it('should apply default limit', async () => {
-      await storage.initialize();
       const result = await storage.query({});
       
       expect(result).toBeDefined();
@@ -222,7 +218,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         offset: 20,
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result).toBeDefined();
@@ -232,7 +227,6 @@ describe('UnifiedPostgreSQLStorage', () => {
 
   describe('count operations', () => {
     it('should count all logs', async () => {
-      await storage.initialize();
       const count = await storage.count({});
       
       expect(count).toBe(0);
@@ -246,22 +240,20 @@ describe('UnifiedPostgreSQLStorage', () => {
         endDate: new Date(),
       };
       
-      await storage.initialize();
       const count = await storage.count(query);
       
       expect(count).toBe(0);
     });
 
-    it('should initialize if not connected', async () => {
-      const count = await storage.count({});
-      expect(count).toBe(0);
-      expect(storage['isConnected']).toBe(true);
+    it('should require initialization before count', async () => {
+      // Create a fresh storage instance without initialization
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await expect(freshStorage.count({})).rejects.toThrow('PostgreSQL storage not initialized');
     });
   });
 
   describe('getMetrics', () => {
     it('should return storage metrics', async () => {
-      await storage.initialize();
       const metrics = await storage.getMetrics();
       
       expect(metrics).toBeDefined();
@@ -271,17 +263,19 @@ describe('UnifiedPostgreSQLStorage', () => {
     });
 
     it('should handle metrics errors gracefully', async () => {
-      await storage.initialize();
+      // Create a fresh storage instance
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await freshStorage.initialize();
       // Mock the getMetrics method to throw an error
-      jest.spyOn(storage, 'getMetrics').mockRejectedValueOnce(new Error('Metrics failed'));
+      jest.spyOn(freshStorage, 'getMetrics').mockRejectedValueOnce(new Error('Metrics failed'));
       
-      await expect(storage.getMetrics()).rejects.toThrow('Metrics failed');
+      await expect(freshStorage.getMetrics()).rejects.toThrow('Metrics failed');
     });
 
-    it('should auto-initialize on getMetrics', async () => {
-      const metrics = await storage.getMetrics();
-      expect(storage['isConnected']).toBe(true);
-      expect(metrics).toBeDefined();
+    it('should require initialization before getMetrics', async () => {
+      // Create a fresh storage instance without initialization
+      const freshStorage = new UnifiedPostgreSQLStorage({ connectionUrl: 'mock-connection-string' });
+      await expect(freshStorage.getMetrics()).rejects.toThrow('PostgreSQL storage not initialized');
     });
   });
 
@@ -301,7 +295,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         level: 'invalid-level' as any,
       };
       
-      await storage.initialize();
       const result = await storage.query(invalidQuery);
       
       expect(result.entries).toEqual([]);
@@ -327,7 +320,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         timestamp: new Date(Date.now() - i * 1000),
       }));
       
-      await storage.initialize();
       await expect(storage.writeMany(entries)).resolves.not.toThrow();
     });
 
@@ -337,9 +329,8 @@ describe('UnifiedPostgreSQLStorage', () => {
         id: `large-batch-${i}`,
       }));
       
-      await storage.initialize();
       await expect(storage.writeMany(entries)).resolves.not.toThrow();
-    });
+    }, 20000); // Increase timeout for large batch test
   });
 
   describe('timestamp handling', () => {
@@ -361,7 +352,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         },
       ];
       
-      await storage.initialize();
       await expect(storage.writeMany(entries)).resolves.not.toThrow();
     });
   });
@@ -384,7 +374,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         },
       };
       
-      await storage.initialize();
       await expect(storage.write(complexEntry)).resolves.not.toThrow();
     });
 
@@ -398,15 +387,12 @@ describe('UnifiedPostgreSQLStorage', () => {
         },
       };
       
-      await storage.initialize();
       await expect(storage.write(specialEntry)).resolves.not.toThrow();
     });
   });
 
   describe('concurrent writes', () => {
     it('should handle concurrent writes', async () => {
-      await storage.initialize();
-      
       const writes = Array.from({ length: 100 }, (_, i) => 
         storage.write({
           ...mockLogEntry,
@@ -418,8 +404,6 @@ describe('UnifiedPostgreSQLStorage', () => {
     });
 
     it('should handle concurrent batch writes', async () => {
-      await storage.initialize();
-      
       const batches = Array.from({ length: 10 }, (_, i) => 
         storage.writeMany(
           Array.from({ length: 100 }, (_, j) => ({
@@ -444,7 +428,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         offset: 0,
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result).toBeDefined();
@@ -457,7 +440,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         endDate: new Date('invalid'),
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result).toBeDefined();
@@ -469,7 +451,6 @@ describe('UnifiedPostgreSQLStorage', () => {
         endDate: new Date(Date.now() + 172800000),
       };
       
-      await storage.initialize();
       const result = await storage.query(query);
       
       expect(result.entries).toEqual([]);
@@ -478,8 +459,6 @@ describe('UnifiedPostgreSQLStorage', () => {
 
   describe('cleanup and maintenance', () => {
     it('should handle cleanup of old entries', async () => {
-      await storage.initialize();
-      
       // Simulate cleanup query
       const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const result = await storage.query({

@@ -60,7 +60,7 @@ export function useChart(
         chartInstanceRef.current = null
       }
     }
-  }, [handleResize])
+  }, [handleResize, containerRef])
 
   return {
     chartInstance: chartInstanceRef.current,
@@ -100,6 +100,7 @@ export function useChartDataPreparation<T, R>(
       })
       return []
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawData, prepareFunction, ...dependencies])
 
   return preparedData()

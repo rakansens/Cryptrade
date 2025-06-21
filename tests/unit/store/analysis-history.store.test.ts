@@ -78,7 +78,7 @@ jest.mock('@/types/analysis-history', () => ({
   calculateAccuracy: jest.fn(() => 0.85)
 }));
 
-import { resetAllStores } from '@/tests/setup/reset-stores';
+import { resetAllStoresForTest, resetStore } from './store-test-helpers';
 
 describe('AnalysisHistoryStore', () => {
   const getInitialState = () => ({
@@ -95,8 +95,8 @@ describe('AnalysisHistoryStore', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    resetAllStores();
+    resetAllStoresForTest();
+    resetStore(useAnalysisHistoryBase, 'AnalysisHistoryStore');
   });
 
   afterEach(() => {
@@ -366,9 +366,81 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Filtering and Sorting', () => {
     beforeEach(() => {
-    jest.clearAllMocks();
-    resetAllStores();
-  });
+      jest.clearAllMocks();
+      
+      // Setup test data with various statuses and types
+      const testRecords = [
+        {
+          id: '1',
+          symbol: 'BTC/USDT',
+          interval: '1h' as const,
+          type: 'support_resistance' as const,
+          timestamp: Date.now() - 3600000,
+          proposal: { lines: [], confidence: 0.8, reasoning: 'Test' },
+          tracking: { status: 'active' as const, startTime: Date.now() - 3600000, touches: [] },
+          performance: { accuracy: 0.8 },
+        },
+        {
+          id: '2',
+          symbol: 'ETH/USDT',
+          interval: '4h' as const,
+          type: 'trendline' as const,
+          timestamp: Date.now() - 7200000,
+          proposal: { lines: [], confidence: 0.9, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 7200000, 
+            endTime: Date.now() - 3600000,
+            touches: [],
+            finalResult: 'success' as const
+          },
+          performance: { accuracy: 0.9 },
+        },
+        {
+          id: '3',
+          symbol: 'BTC/USDT',
+          interval: '1d' as const,
+          type: 'support_resistance' as const,
+          timestamp: Date.now() - 1800000,
+          proposal: { lines: [], confidence: 0.6, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 1800000,
+            endTime: Date.now() - 900000, 
+            touches: [],
+            finalResult: 'failure' as const
+          },
+          performance: { accuracy: 0.5 },
+        },
+        {
+          id: '4',
+          symbol: 'XRP/USDT',
+          interval: '15m' as const,
+          type: 'fibonacci' as const,
+          timestamp: Date.now() - 900000,
+          proposal: { lines: [], confidence: 0.7, reasoning: 'Test' },
+          tracking: { status: 'expired' as const, startTime: Date.now() - 900000, touches: [] },
+          performance: { accuracy: 0.7 },
+        },
+        {
+          id: '5',
+          symbol: 'ETH/USDT',
+          interval: '1h' as const,
+          type: 'pattern' as const,
+          timestamp: Date.now() - 600000,
+          proposal: { lines: [], confidence: 0.75, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 600000,
+            endTime: Date.now() - 300000,
+            touches: [],
+            finalResult: 'success' as const
+          },
+          performance: { accuracy: 0.85 },
+        },
+      ] as AnalysisRecord[];
+      
+      useAnalysisHistoryStore.setState({ records: testRecords });
     });
 
     it('should filter records by status', () => {
@@ -911,9 +983,81 @@ describe('AnalysisHistoryStore', () => {
 
   describe('Complex Filtering and Sorting', () => {
     beforeEach(() => {
-    jest.clearAllMocks();
-    resetAllStores();
-  });
+      jest.clearAllMocks();
+      
+      // Reuse the same test data setup from 'Filtering and Sorting'
+      const testRecords = [
+        {
+          id: '1',
+          symbol: 'BTC/USDT',
+          interval: '1h' as const,
+          type: 'support_resistance' as const,
+          timestamp: Date.now() - 3600000,
+          proposal: { lines: [], confidence: 0.8, reasoning: 'Test' },
+          tracking: { status: 'active' as const, startTime: Date.now() - 3600000, touches: [] },
+          performance: { accuracy: 0.8 },
+        },
+        {
+          id: '2',
+          symbol: 'ETH/USDT',
+          interval: '4h' as const,
+          type: 'trendline' as const,
+          timestamp: Date.now() - 7200000,
+          proposal: { lines: [], confidence: 0.9, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 7200000, 
+            endTime: Date.now() - 3600000,
+            touches: [],
+            finalResult: 'success' as const
+          },
+          performance: { accuracy: 0.9 },
+        },
+        {
+          id: '3',
+          symbol: 'BTC/USDT',
+          interval: '1d' as const,
+          type: 'support_resistance' as const,
+          timestamp: Date.now() - 1800000,
+          proposal: { lines: [], confidence: 0.6, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 1800000,
+            endTime: Date.now() - 900000, 
+            touches: [],
+            finalResult: 'failure' as const
+          },
+          performance: { accuracy: 0.5 },
+        },
+        {
+          id: '4',
+          symbol: 'XRP/USDT',
+          interval: '15m' as const,
+          type: 'fibonacci' as const,
+          timestamp: Date.now() - 900000,
+          proposal: { lines: [], confidence: 0.7, reasoning: 'Test' },
+          tracking: { status: 'expired' as const, startTime: Date.now() - 900000, touches: [] },
+          performance: { accuracy: 0.7 },
+        },
+        {
+          id: '5',
+          symbol: 'ETH/USDT',
+          interval: '1h' as const,
+          type: 'pattern' as const,
+          timestamp: Date.now() - 600000,
+          proposal: { lines: [], confidence: 0.75, reasoning: 'Test' },
+          tracking: { 
+            status: 'completed' as const, 
+            startTime: Date.now() - 600000,
+            endTime: Date.now() - 300000,
+            touches: [],
+            finalResult: 'success' as const
+          },
+          performance: { accuracy: 0.85 },
+        },
+      ] as AnalysisRecord[];
+      
+      useAnalysisHistoryStore.setState({ records: testRecords });
     });
 
     it('should filter by completed status', () => {
@@ -1008,7 +1152,6 @@ describe('AnalysisHistoryStore', () => {
       // Should maintain relative order when values are equal
       expect(sorted.map(r => r.id)).toEqual(['a1', 'a2', 'a3']);
     });
-  });
 
   describe('Database Sync Edge Cases', () => {
     it('should handle database sync failure during enable', async () => {

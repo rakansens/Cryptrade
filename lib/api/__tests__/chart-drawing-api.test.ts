@@ -320,22 +320,37 @@ describe('ChartDrawingAPI', () => {
     it('should handle API failure with retry', async () => {
       mockApiCache.get.mockReturnValue(null);
 
-      let attemptCount = 0;
+      // Mock withRetry to simulate retry behavior
       (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
-        attemptCount++;
-        if (attemptCount === 1) {
-          const error = new Error('Network error');
+        try {
+          // First attempt will fail
+          const result = await fn();
+          return result;
+        } catch (error) {
+          // Call onRetry callback
           if (options?.onRetry) {
-            options.onRetry(error, attemptCount);
+            options.onRetry(error, 1);
           }
-          throw error;
+          // Second attempt succeeds
+          try {
+            const result = await fn();
+            return result;
+          } catch (secondError) {
+            throw secondError;
+          }
         }
-        return fn();
       });
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ patterns: [] }),
+      let callCount = 0;
+      (global.fetch as jest.Mock).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.reject(new Error('Network error'));
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ patterns: [] }),
+        });
       });
 
       const result = await ChartDrawingAPI.loadPatterns('session-1');

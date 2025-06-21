@@ -209,7 +209,8 @@ export const responseHelpers = {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
+        // Ensure value is an ArrayBuffer or compatible type
+        const chunk = decoder.decode(value as ArrayBuffer);
         const lines = chunk.split('\n');
 
         for (const line of lines) {

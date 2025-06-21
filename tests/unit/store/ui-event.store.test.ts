@@ -16,7 +16,7 @@ jest.mock('@/hooks/use-ui-event-stream', () => ({
   }),
 }));
 
-import { resetAllStores } from '@/tests/setup/reset-stores';
+import { resetAllStoresForTest, resetStore } from './store-test-helpers';
 
 describe('UI Event Store', () => {
   // Helper to get initial state
@@ -32,24 +32,11 @@ describe('UI Event Store', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    resetAllStores();
-  });
+    resetAllStoresForTest();
+    resetStore(useUIEventStore, 'UIEventStore');
   });
 
   describe('UIEventStore', () => {
-  // Helper to get initial state
-  const getInitialState = (store) => {
-    const state = store.getState();
-    const initialState = {};
-    for (const key in state) {
-      if (typeof state[key] !== 'function') {
-        initialState[key] = state[key];
-      }
-    }
-    return initialState;
-  };
-
     it('should have initial state', () => {
       const { result } = renderHook(() => useUIEventStore());
 
@@ -100,8 +87,7 @@ describe('UI Event Store', () => {
 
     it('should handle missing publish function', () => {
       // Temporarily mock to return no publish function
-      const mockUseUIEventStream = jest.requireMock('@/hooks/use-ui-event-stream').useUIEventStream;
-      mockUseUIEventStream.mockReturnValueOnce({
+      jest.mocked(require('@/hooks/use-ui-event-stream').useUIEventStream).mockReturnValueOnce({
         publish: null,
       });
 

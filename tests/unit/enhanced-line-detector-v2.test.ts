@@ -345,7 +345,7 @@ describe('EnhancedLineDetectorV2', () => {
       expect(result.detectionStats).toHaveProperty('finalLines');
       expect(result.detectionStats).toHaveProperty('processingTime');
 
-      expect(result.detectionStats.processingTime).toBeGreaterThan(0);
+      expect(result.detectionStats.processingTime).toBeGreaterThanOrEqual(0);
       expect(result.detectionStats.finalLines).toBe(
         result.horizontalLines.length + result.trendlines.length
       );

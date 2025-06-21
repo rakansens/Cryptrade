@@ -407,13 +407,26 @@ jest.mock('@/lib/api/create-api-handler', () => {
   };
 });
 
-// Mock Zustand
+// Remove Zustand mock - use actual implementation with test helpers
+/*
 const createZustandMock = () => {
-  const storeCache = new Map();
+  // グローバルにキャッシュを保持して、resetAllStoresから参照できるようにする
+  if (!global.__zustand_store_cache__) {
+    global.__zustand_store_cache__ = new Map();
+  }
+  const storeCache = global.__zustand_store_cache__;
   
   const createStore = (stateCreator) => {
     let currentState = {};
     const listeners = new Set();
+    
+    // Create a hook function that returns the current state
+    const useStore = jest.fn((selector) => {
+      if (selector) {
+        return selector(currentState);
+      }
+      return currentState;
+    });
     
     const setState = jest.fn((updater) => {
       const previousState = currentState;
@@ -431,6 +444,14 @@ const createZustandMock = () => {
       // Notify listeners
       listeners.forEach(listener => {
         listener(currentState, previousState);
+      });
+      
+      // Update the hook's internal state to trigger re-renders
+      useStore.mockImplementation((selector) => {
+        if (selector) {
+          return selector(currentState);
+        }
+        return currentState;
       });
     });
     
@@ -454,15 +475,15 @@ const createZustandMock = () => {
     if (typeof stateCreator === 'function') {
       const initialState = stateCreator(setState, getState, store);
       currentState = initialState;
-    }
-    
-    // Create a hook function that returns the current state
-    const useStore = jest.fn((selector) => {
-      if (selector) {
-        return selector(currentState);
+      
+      // Store the initial state for reset functionality
+      store.initialState = {};
+      for (const key in initialState) {
+        if (typeof initialState[key] !== 'function') {
+          store.initialState[key] = initialState[key];
+        }
       }
-      return currentState;
-    });
+    }
     
     // Add store methods to the hook
     useStore.getState = getState;
@@ -472,24 +493,14 @@ const createZustandMock = () => {
     
     // Add reset method support
     useStore.getInitialState = jest.fn(() => {
-      // Return a fresh initial state by re-running the state creator
-      if (typeof stateCreator === 'function') {
-        // Create a temporary store to get initial state
-        const tempSetState = jest.fn();
-        const tempGetState = jest.fn(() => ({}));
-        const tempStore = { getState: tempGetState, setState: tempSetState };
-        
-        const freshState = stateCreator(tempSetState, tempGetState, tempStore);
-        // Extract only the state properties (not actions)
-        const stateOnly = {};
-        for (const key in freshState) {
-          if (typeof freshState[key] !== 'function') {
-            stateOnly[key] = freshState[key];
-          }
-        }
-        return stateOnly;
+      return store.initialState || {};
+    });
+    
+    // Add reset method
+    useStore.reset = jest.fn(() => {
+      if (store.initialState) {
+        setState(store.initialState);
       }
-      return {};
     });
     
     // Also expose them as properties for direct access
@@ -548,6 +559,7 @@ const createZustandMock = () => {
 };
 
 jest.mock('zustand', () => createZustandMock());
+*/
 
 jest.mock('zustand/middleware', () => ({
   createJSONStorage: jest.fn(() => ({
@@ -556,25 +568,8 @@ jest.mock('zustand/middleware', () => ({
     removeItem: jest.fn(),
   })),
   persist: jest.fn((stateCreator, options) => {
-    return (set, get, store) => {
-      const state = stateCreator(set, get, store);
-      // Mock persist functionality
-      const persistedState = {
-        ...state,
-        // Add persist-specific properties
-        persist: {
-          setOptions: jest.fn(),
-          clearStorage: jest.fn(),
-          rehydrate: jest.fn(),
-          hasHydrated: jest.fn(() => true),
-          onHydrate: jest.fn(),
-          onFinishHydration: jest.fn(),
-          getOptions: jest.fn(() => options),
-          ...(options || {})
-        }
-      };
-      return persistedState;
-    };
+    // persistミドルウェアは、stateCreatorをそのまま返す
+    return stateCreator;
   }),
   subscribeWithSelector: jest.fn((stateCreator) => stateCreator),
   devtools: jest.fn((stateCreator, options) => stateCreator),
@@ -729,6 +724,13 @@ jest.mock('@/lib/monitoring/metrics', () => ({
     recordHistogram: jest.fn(),
     recordGauge: jest.fn(),
     startTimer: jest.fn(() => jest.fn()),
+    recordAgentExecution: jest.fn(),
+    getCacheMetrics: jest.fn(() => ({
+      hits: 0,
+      misses: 0,
+      hitRate: 0,
+      size: 0
+    })),
   },
 }));
 
@@ -763,6 +765,94 @@ jest.mock('@/lib/errors/base-error', () => ({
     }
   },
 }));
+
+// Mock Next.js Image component
+jest.mock('next/image', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: function Image({ src, alt, width, height, ...props }) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return React.createElement('img', {
+        src,
+        alt,
+        width,
+        height,
+        ...props,
+      });
+    },
+  };
+});
+
+// Mock Next.js Link component
+jest.mock('next/link', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: function Link({ children, href, ...props }) {
+      return React.createElement('a', { href: href.toString(), ...props }, children);
+    },
+  };
+});
+
+// Mock common UI components
+jest.mock('@/components/ui/button', () => ({
+  Button: require('react').forwardRef(({ children, onClick, ...props }, ref) => 
+    require('react').createElement('button', { ref, onClick, 'data-testid': 'button', ...props }, children)
+  ),
+}))
+
+jest.mock('@/components/ui/card', () => ({
+  Card: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card', ...props }, children),
+  CardHeader: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-header', ...props }, children),
+  CardTitle: ({ children, ...props }) => require('react').createElement('h3', { 'data-testid': 'card-title', ...props }, children),
+  CardDescription: ({ children, ...props }) => require('react').createElement('p', { 'data-testid': 'card-description', ...props }, children),
+  CardContent: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-content', ...props }, children),
+  CardFooter: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'card-footer', ...props }, children),
+}))
+
+jest.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children, open }) => {
+    const React = require('react');
+    return open ? React.createElement('div', { 'data-testid': 'dialog' }, children) : null;
+  },
+  DialogTrigger: ({ children, asChild }) => {
+    const React = require('react');
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children);
+    }
+    return React.createElement('button', { 'data-testid': 'dialog-trigger' }, children);
+  },
+  DialogContent: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-content' }, children),
+  DialogHeader: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-header' }, children),
+  DialogTitle: ({ children }) => require('react').createElement('h2', { 'data-testid': 'dialog-title' }, children),
+  DialogDescription: ({ children }) => require('react').createElement('p', { 'data-testid': 'dialog-description' }, children),
+  DialogFooter: ({ children }) => require('react').createElement('div', { 'data-testid': 'dialog-footer' }, children),
+}))
+
+jest.mock('@/components/ui/scroll-area', () => ({
+  ScrollArea: ({ children, ...props }) => require('react').createElement('div', { 'data-testid': 'scroll-area', ...props }, children),
+}))
+
+jest.mock('@/components/ui/separator', () => ({
+  Separator: (props) => require('react').createElement('hr', { 'data-testid': 'separator', ...props }),
+}))
+
+// Tooltip mock is commented out temporarily
+// jest.mock('@/components/ui/tooltip', () => {
+//   const React = require('react');
+//   return {
+//     TooltipProvider: ({ children }) => children,
+//     Tooltip: ({ children }) => children,
+//     TooltipTrigger: ({ children, asChild }) => {
+//       if (asChild && React.isValidElement(children)) {
+//         return React.cloneElement(children);
+//       }
+//       return React.createElement('span', { 'data-testid': 'tooltip-trigger' }, children);
+//     },
+//     TooltipContent: ({ children }) => React.createElement('div', { 'data-testid': 'tooltip-content' }, children),
+//   };
+// })
 
 // Clean up after each test
 afterEach(() => {
