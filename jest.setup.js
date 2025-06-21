@@ -827,6 +827,21 @@ jest.mock('@/lib/monitoring/metrics', () => ({
 
 // Note: Mastra agent mocks are handled via automocking in the test files themselves
 
+// Mock chart agent utils
+jest.mock('@/lib/chart/agent-utils', () => ({
+  agentUtils: {
+    validateChartDrawing: jest.fn((drawing) => drawing),
+    prepareDrawingData: jest.fn((data) => data),
+    executeDrawingOperation: jest.fn(async (fn) => await fn()),
+    showAgentSuccess: jest.fn(),
+    handleAgentError: jest.fn(),
+    handleValidationError: jest.fn(),
+    validatePatternData: jest.fn((pattern) => pattern),
+    executePatternOperation: jest.fn(async (fn) => await fn()),
+    preparePatternData: jest.fn((data) => data),
+  }
+}));
+
 // Mock error classes
 jest.mock('@/lib/errors/base-error', () => ({
   AuthError: class AuthError extends Error {
@@ -952,6 +967,10 @@ jest.mock('@/hooks/use-ui-event-stream', () => ({
   useUIEventStream: jest.fn(() => ({
     publish: jest.fn(),
     subscribe: jest.fn(),
+  })),
+  useUiEventStream: jest.fn(() => ({
+    publish: jest.fn(),
+    subscribe: jest.fn(),
   }))
 }));
 
@@ -959,11 +978,8 @@ jest.mock('@/hooks/use-typed-ui-event-stream', () => ({
   useTypedUIEventStream: jest.fn(() => ({
     publish: jest.fn(),
     subscribe: jest.fn(),
-  }))
-}));
-
-jest.mock('@/hooks/use-ui-event-stream', () => ({
-  useUiEventStream: jest.fn(() => ({
+  })),
+  useTypedUiEventStream: jest.fn(() => ({
     publish: jest.fn(),
     subscribe: jest.fn(),
   }))
@@ -973,6 +989,27 @@ jest.mock('@/hooks/use-view-persistence-simple', () => ({
   useViewPersistenceSimple: jest.fn(() => ({
     viewState: {},
     setViewState: jest.fn(),
+  })),
+  useViewPersistence: jest.fn(() => ({
+    viewState: {},
+    setViewState: jest.fn(),
+    clearViewState: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/use-view-persistence', () => ({
+  useViewPersistence: jest.fn(() => ({
+    viewState: {},
+    setViewState: jest.fn(),
+    clearViewState: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/market/use-candlestick-data', () => ({
+  useCandlestickData: jest.fn(() => ({
+    priceData: [],
+    isLoading: false,
+    error: null,
   }))
 }));
 

@@ -778,3 +778,6 @@ export default useAnalysisHistoryBase;
 
 // Export for testing purposes
 export { useAnalysisHistoryBase };
+
+// Export with common name for compatibility
+export const useAnalysisHistory = useAnalysisHistoryBase;
