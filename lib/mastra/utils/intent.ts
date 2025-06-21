@@ -38,19 +38,15 @@ export interface IntentAnalysisResult {
 export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   const queryLower = userQuery.toLowerCase().trim();
 
-  // First, check if this should be handled as general conversation
-  // This helps reduce misclassification for tests expecting 'general_conversation'
-  const shouldBeGeneralConversation = isGeneralConversation(queryLower);
-  
   const detectors = [
     detectShortInput,
+    detectGreeting,  // Move greeting detection earlier
     detectEntryProposal,
     detectUIControl,
     detectPriceInquiry,
     detectProposalRequest,
     detectDrawingProposal,
     detectTradingAnalysis,
-    detectGreeting,
     detectHelpRequest,
     detectMarketChat,
     detectSmallTalk,
@@ -59,15 +55,6 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   for (const detector of detectors) {
     const result = detector(userQuery, queryLower);
     if (result) {
-      // If the test expects general_conversation, convert specific intents
-      if (shouldBeGeneralConversation && 
-          ['greeting', 'small_talk', 'market_chat', 'help_request'].includes(result.intent)) {
-        return {
-          ...result,
-          intent: 'conversational',
-          reasoning: result.reasoning + ' (一般会話として処理)',
-        };
-      }
       return result;
     }
   }
@@ -83,22 +70,6 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   };
 }
 
-/**
- * Check if the query should be treated as general conversation
- * This helps with test compatibility
- */
-function isGeneralConversation(queryLower: string): boolean {
-  // Common conversational patterns that tests expect as 'general_conversation'
-  const generalPatterns = [
-    /^(こんにちは|おはよう|こんばんは)$/,
-    /^(今日|昨日|明日).*天気/,
-    /^(元気|げんき|調子|ちょうし)/,
-    /^(ありがとう|どうも|すみません)/,
-    /^(そうですね|なるほど|わかりました)/,
-  ];
-  
-  return generalPatterns.some(pattern => pattern.test(queryLower));
-}
 
 export function detectShortInput(userQuery: string, _queryLower: string): IntentAnalysisResult | null {
   const shortInputExceptions = /^(hi|ok|はい|いえ|yes|no|分析|価格|値段)$/i;
@@ -151,11 +122,20 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /(.+)の?チャート/
   ];
 
+  // Check for specific UI control phrases
+  const specificUIPatterns = [
+    /チャートを(.+)に変更/,
+    /移動平均線を表示/,
+    /フィボナッチを引いて/
+  ];
+
   const hasUIKeyword = uiControlKeywords.some(keyword => queryLower.includes(keyword));
   const hasChartSwitchPattern = chartSwitchPatterns.some(pattern => pattern.test(queryLower));
+  const hasSpecificUIPattern = specificUIPatterns.some(pattern => pattern.test(queryLower));
   const symbolWithUIAction = extractSymbol(userQuery) && (hasUIKeyword || hasChartSwitchPattern);
 
-  if (symbolWithUIAction && !queryLower.includes('価格') && !queryLower.includes('いくら')) {
+  // More lenient UI control detection
+  if ((symbolWithUIAction || hasSpecificUIPattern) && !queryLower.includes('価格') && !queryLower.includes('いくら')) {
     const symbol = extractSymbol(userQuery);
     const result: IntentAnalysisResult = {
       intent: 'ui_control',
@@ -321,10 +301,20 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     '将来性', '見通し', '予想', '買い時', '売り時',
     'どう思う', '判断', 'トレンド', '動向', '展望',
     'outlook', 'forecast', 'prediction', 'trend', 'analysis',
-    'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解'
+    'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解', '詳しく', '詳細'
   ];
 
-  if (analysisKeywords.some(keyword => queryLower.includes(keyword))) {
+  // Check for explicit analysis requests
+  const explicitAnalysisPatterns = [
+    /(.+)を?分析/,
+    /(.+)の?詳細な?分析/,
+    /(.+)について?詳しく/
+  ];
+
+  const hasAnalysisKeyword = analysisKeywords.some(keyword => queryLower.includes(keyword));
+  const hasExplicitPattern = explicitAnalysisPatterns.some(pattern => pattern.test(queryLower));
+
+  if (hasAnalysisKeyword || hasExplicitPattern) {
     return {
       intent: 'trading_analysis',
       confidence: 0.85,
@@ -339,7 +329,7 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
 
 export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
-    /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey|yo)\.?$/i,
+    /^(こんにちは|おはよう|こんばんは|はじめまして|hello|hi|hey|yo)[!！]?\.?$/i,
     /^(お疲れ様|よろしく|どうも)\.?$/i
   ];
 

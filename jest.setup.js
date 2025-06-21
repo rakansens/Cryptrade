@@ -284,6 +284,7 @@ class MockEventSource {
     this.onopen = null;
     this.onmessage = null;
     this.onerror = null;
+    this._listeners = {};
     this.close = jest.fn(() => {
       this.readyState = 2; // CLOSED
     });
@@ -297,18 +298,48 @@ class MockEventSource {
     }, 0);
   }
   
+  addEventListener(type, handler) {
+    if (!this._listeners[type]) {
+      this._listeners[type] = [];
+    }
+    this._listeners[type].push(handler);
+  }
+  
+  removeEventListener(type, handler) {
+    if (this._listeners[type]) {
+      this._listeners[type] = this._listeners[type].filter(h => h !== handler);
+    }
+  }
+  
+  dispatchEvent(event) {
+    const type = event.type;
+    if (this._listeners[type]) {
+      this._listeners[type].forEach(handler => {
+        handler(event);
+      });
+    }
+    // Also trigger the on* handlers
+    if (type === 'message' && this.onmessage) {
+      this.onmessage(event);
+    } else if (type === 'error' && this.onerror) {
+      this.onerror(event);
+    } else if (type === 'open' && this.onopen) {
+      this.onopen(event);
+    }
+    return true;
+  }
+  
   // Helper method for tests to simulate messages
   simulateMessage(data) {
-    if (this.onmessage && this.readyState === 1) {
-      this.onmessage({ type: 'message', data });
-    }
+    const event = new MessageEvent('message', { data });
+    this.dispatchEvent(event);
   }
   
   // Helper method for tests to simulate errors
   simulateError(error) {
-    if (this.onerror) {
-      this.onerror({ type: 'error', error });
-    }
+    const event = new Event('error');
+    event.error = error;
+    this.dispatchEvent(event);
   }
 }
 

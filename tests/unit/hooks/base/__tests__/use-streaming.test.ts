@@ -811,19 +811,25 @@ describe('useSSE', () => {
     expect(result.current.isStreaming).toBe(false);
   });
 
-  it('should cleanup on unmount', () => {
+  it('should cleanup on unmount', async () => {
     const { result, unmount } = renderHook(() => 
       useSSE({
         endpoint: '/api/sse'
       })
     );
 
-    act(() => {
-      result.current.connect();
+    // Wait for auto-connect to complete
+    await waitFor(() => {
+      expect(result.current.eventSource).toBeTruthy();
     });
+
+    // Store reference to check if close was called
+    const eventSource = result.current.eventSource;
 
     unmount();
 
-    expect(result.current.eventSource).toBeNull();
+    // After unmount, we can't check result.current
+    // But we can verify close was called on the EventSource
+    expect(eventSource?.close).toHaveBeenCalled();
   });
 });

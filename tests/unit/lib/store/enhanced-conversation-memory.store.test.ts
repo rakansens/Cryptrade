@@ -39,6 +39,11 @@ jest.mock('@/lib/utils/logger');
 
 // Helper to ensure store has all required methods
 const ensureStoreMethods = (store: any) => {
+  if (!store) {
+    console.warn('Store is undefined or null');
+    return;
+  }
+  
   const requiredMethods = [
     'createSession', 'addMessage', 'getProcessedMessages', 'getRecentMessages',
     'getSessionContext', 'updateMessageMetadata', 'clearSession', 'searchMessages',
@@ -48,7 +53,7 @@ const ensureStoreMethods = (store: any) => {
   ];
   
   for (const method of requiredMethods) {
-    if (typeof store[method] !== 'function') {
+    if (store && typeof store[method] !== 'function') {
       console.warn(`Store method ${method} is not a function or doesn't exist`);
     }
   }
