@@ -50,7 +50,7 @@ describe('MarketDataCacheService', () => {
       getConnection: jest.fn().mockReturnValue(mockRedis)
     };
 
-    (getRedisConnectionManager as jest.Mock).mockResolvedValue(mockConnectionManager);
+    jest.mocked(getRedisConnectionManager).mockResolvedValue(mockConnectionManager);
 
     // Create cache service instance
     cacheService = new MarketDataCacheService({
@@ -80,7 +80,7 @@ describe('MarketDataCacheService', () => {
     });
 
     it('should handle Redis initialization failure gracefully', async () => {
-      (getRedisConnectionManager as jest.Mock).mockRejectedValue(new Error('Connection failed'));
+      jest.mocked(getRedisConnectionManager).mockRejectedValue(new Error('Connection failed'));
 
       await cacheService.initialize();
 

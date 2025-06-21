@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useStreaming, useSSE } from '@/hooks/base/use-streaming';
 import { logger } from '@/lib/utils/logger';
 

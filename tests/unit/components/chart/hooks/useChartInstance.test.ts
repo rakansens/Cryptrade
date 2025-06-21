@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useChartInstance } from '@/components/chart/hooks/useChartInstance';
 import { createChart } from 'lightweight-charts';
 import { ChartDrawingManager } from '@/lib/chart/drawing-primitives';
@@ -45,12 +46,12 @@ describe('useChartInstance', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (createChart as jest.Mock).mockReturnValue(mockChart);
+    jest.mocked(createChart).mockReturnValue(mockChart);
     (mockChart.addCandlestickSeries as jest.Mock).mockReturnValue(mockCandlestickSeries);
-    (ChartDrawingManager as jest.Mock).mockImplementation(() => mockDrawingManager);
-    (DrawingRenderer as jest.Mock).mockImplementation(() => mockDrawingRenderer);
-    (createPatternRendererWithAutoSelection as jest.Mock).mockReturnValue(mockPatternRenderer);
-    (isDrawingRendererEnabled as jest.Mock).mockReturnValue(true);
+    jest.mocked(ChartDrawingManager).mockImplementation(() => mockDrawingManager);
+    jest.mocked(DrawingRenderer).mockImplementation(() => mockDrawingRenderer);
+    jest.mocked(createPatternRendererWithAutoSelection).mockReturnValue(mockPatternRenderer);
+    jest.mocked(isDrawingRendererEnabled).mockReturnValue(true);
   });
 
   it('should initialize with default values', () => {
@@ -284,7 +285,7 @@ describe('useChartInstance', () => {
   });
 
   it('should not initialize drawing renderer when feature is disabled', () => {
-    (isDrawingRendererEnabled as jest.Mock).mockReturnValue(false);
+    jest.mocked(isDrawingRendererEnabled).mockReturnValue(false);
     
     const { result } = renderHook(() => useChartInstance({}));
     

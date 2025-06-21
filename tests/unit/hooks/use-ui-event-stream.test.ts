@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useUiEventStream } from '@/hooks/use-ui-event-stream';
 
 describe('useUIEventStream', () => {

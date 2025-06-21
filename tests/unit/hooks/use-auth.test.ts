@@ -1,4 +1,5 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import React from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { AuthProvider } from '@/app/providers/auth-provider';
@@ -9,7 +10,7 @@ import { createBrowserClient } from '@supabase/ssr';
 jest.mock('@supabase/ssr');
 
 // Get router mock from jest.setup.js
-const mockRouter = (useRouter as jest.Mock)();
+const mockRouter = jest.mocked(useRouter)();
 const mockPush = mockRouter.push;
 const mockReplace = mockRouter.replace;
 
@@ -37,7 +38,7 @@ const mockSupabaseClient = {
 describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (createBrowserClient as jest.Mock).mockReturnValue(mockSupabaseClient);
+    jest.mocked(createBrowserClient).mockReturnValue(mockSupabaseClient);
     
     // Default mock implementations
     mockGetSession.mockResolvedValue({ data: { session: null } });
@@ -79,7 +80,7 @@ describe('useAuth', () => {
       delete process.env.NEXT_PUBLIC_SUPABASE_URL;
       delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
-      (createBrowserClient as jest.Mock).mockReturnValue(null);
+      jest.mocked(createBrowserClient).mockReturnValue(null);
 
       const { result } = renderHook(() => useAuth(), { wrapper });
       
@@ -165,7 +166,7 @@ describe('useAuth', () => {
     });
 
     it('should handle missing Supabase client', async () => {
-      (createBrowserClient as jest.Mock).mockReturnValue(null);
+      jest.mocked(createBrowserClient).mockReturnValue(null);
       
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -359,7 +360,7 @@ describe('useAuth', () => {
       const originalWindow = global.window;
       delete (global as any).window;
 
-      (createBrowserClient as jest.Mock).mockReturnValue(null);
+      jest.mocked(createBrowserClient).mockReturnValue(null);
       
       const { result } = renderHook(() => useAuth(), { wrapper });
 

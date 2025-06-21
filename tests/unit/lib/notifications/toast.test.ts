@@ -378,7 +378,7 @@ describe('Toast Notifications', () => {
     it('handles errors in showToast gracefully', () => {
       // Since the functions don't have try-catch, they will throw
       // This test verifies the current behavior
-      (showToast as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(showToast).mockImplementationOnce(() => {
         throw new Error('Toast component error');
       });
 

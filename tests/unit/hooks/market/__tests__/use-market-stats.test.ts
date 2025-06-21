@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useMarketTicker } from '@/hooks/market/use-market-stats';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { useMarketStore } from '@/store/market.store';

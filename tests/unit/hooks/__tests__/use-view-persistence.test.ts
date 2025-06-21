@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useViewPersistence } from '@/hooks/use-view-persistence';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -35,8 +36,8 @@ describe('useViewPersistence', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
+    jest.mocked(useRouter).mockReturnValue(mockRouter);
+    jest.mocked(useSearchParams).mockReturnValue(mockSearchParams);
     localStorageMock.getItem.mockReturnValue(null);
   });
 
@@ -185,7 +186,7 @@ describe('useViewPersistence', () => {
     it('should handle missing router gracefully', () => {
       // Create a mock router without push method
       const brokenRouter = {};
-      (useRouter as jest.Mock).mockReturnValue(brokenRouter);
+      jest.mocked(useRouter).mockReturnValue(brokenRouter);
       
       const { result } = renderHook(() => useViewPersistence());
       
@@ -204,7 +205,7 @@ describe('useViewPersistence', () => {
     });
 
     it('should handle missing searchParams gracefully', () => {
-      (useSearchParams as jest.Mock).mockReturnValue(null);
+      jest.mocked(useSearchParams).mockReturnValue(null);
       
       const { result } = renderHook(() => useViewPersistence());
       
@@ -219,7 +220,7 @@ describe('useViewPersistence', () => {
 
     it('should handle hook errors gracefully', () => {
       // Mock useSearchParams to return null (simulating SSR)
-      (useSearchParams as jest.Mock).mockReturnValue(null);
+      jest.mocked(useSearchParams).mockReturnValue(null);
       
       // Should not throw
       const { result } = renderHook(() => useViewPersistence());

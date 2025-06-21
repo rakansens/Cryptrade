@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useCandlestickData } from '@/hooks/market/use-candlestick-data';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { getBinanceConnection } from '@/lib/ws';
@@ -46,11 +47,11 @@ describe('useCandlestickData', () => {
     jest.clearAllMocks();
     
     // Setup mocks
-    (useIsClient as jest.Mock).mockReturnValue(true);
-    (useMarketActions as jest.Mock).mockReturnValue(mockMarketActions);
-    (usePriceData as jest.Mock).mockReturnValue(mockKlines);
-    (useSymbolLoading as jest.Mock).mockReturnValue(false);
-    (getBinanceConnection as jest.Mock).mockReturnValue(mockBinanceConnection);
+    jest.mocked(useIsClient).mockReturnValue(true);
+    jest.mocked(useMarketActions).mockReturnValue(mockMarketActions);
+    jest.mocked(usePriceData).mockReturnValue(mockKlines);
+    jest.mocked(useSymbolLoading).mockReturnValue(false);
+    jest.mocked(getBinanceConnection).mockReturnValue(mockBinanceConnection);
     (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockKlines);
     
     // Default subscribe mock that returns unsubscribe function
@@ -83,7 +84,7 @@ describe('useCandlestickData', () => {
     });
 
     it('should not load data on server side', () => {
-      (useIsClient as jest.Mock).mockReturnValue(false);
+      jest.mocked(useIsClient).mockReturnValue(false);
 
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
@@ -464,7 +465,7 @@ describe('useCandlestickData', () => {
     });
 
     it('should return loading state from store', () => {
-      (useSymbolLoading as jest.Mock).mockReturnValue(true);
+      jest.mocked(useSymbolLoading).mockReturnValue(true);
 
       const { result } = renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',

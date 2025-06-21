@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useAnalysisStream } from '@/hooks/use-analysis-stream';
 import { useStreaming } from '@/hooks/base/use-streaming';
 import { logger } from '@/lib/utils/logger';
@@ -32,7 +33,7 @@ describe('useAnalysisStream', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useStreaming as jest.Mock).mockReturnValue(mockStreamingHook);
+    jest.mocked(useStreaming).mockReturnValue(mockStreamingHook);
   });
 
   describe('initialization', () => {
@@ -66,8 +67,8 @@ describe('useAnalysisStream', () => {
         ok: true,
         body: {},
       };
-      (fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(fetch).mockResolvedValueOnce(mockResponse);
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
       });
 
@@ -103,8 +104,8 @@ describe('useAnalysisStream', () => {
       });
 
       const mockResponse = { ok: true, body: {} };
-      (fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(fetch).mockResolvedValueOnce(mockResponse);
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
       });
 
@@ -123,7 +124,7 @@ describe('useAnalysisStream', () => {
       const onError = jest.fn();
       const { result } = renderHook(() => useAnalysisStream({ onError }));
 
-      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      jest.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
         await result.current.startAnalysis({
@@ -141,13 +142,13 @@ describe('useAnalysisStream', () => {
       const { result } = renderHook(() => useAnalysisStream());
 
       const mockResponse = { ok: true, body: {} };
-      (fetch as jest.Mock).mockResolvedValue(mockResponse);
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(fetch).mockResolvedValue(mockResponse);
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 5, proposalGroupId: 'pg-123' } });
       });
 
       const calls: string[] = [];
-      (fetch as jest.Mock).mockImplementation((_url, options) => {
+      jest.mocked(fetch).mockImplementation((_url, options) => {
         const body = JSON.parse(options.body);
         calls.push(body.sessionId);
         return Promise.resolve(mockResponse);
@@ -171,7 +172,7 @@ describe('useAnalysisStream', () => {
     let onMessage: (event: AnalysisProgressEvent) => void;
 
     beforeEach(() => {
-      (useStreaming as jest.Mock).mockImplementation((config) => {
+      jest.mocked(useStreaming).mockImplementation((config) => {
         onMessage = config.onMessage;
         return mockStreamingHook;
       });
@@ -338,8 +339,8 @@ describe('useAnalysisStream', () => {
         { type: 'analysis:complete', data: { duration: 1000, proposalCount: 3, proposalGroupId: 'pg-123' } },
       ];
 
-      (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, body: {} });
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         for (const event of mockEvents) {
           yield JSON.stringify(event);
         }
@@ -362,8 +363,8 @@ describe('useAnalysisStream', () => {
     it('should handle JSON parsing errors in stream', async () => {
       const { result } = renderHook(() => useAnalysisStream());
 
-      (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, body: {} });
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield 'invalid json';
         yield JSON.stringify({ type: 'analysis:complete', data: { duration: 1000, proposalCount: 1, proposalGroupId: 'pg-123' } });
       });
@@ -383,8 +384,8 @@ describe('useAnalysisStream', () => {
       const onError = jest.fn();
       const { result } = renderHook(() => useAnalysisStream({ onError }));
 
-      (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, body: {} });
-      (streamToLines as jest.Mock).mockRejectedValueOnce(new Error('Stream error'));
+      jest.mocked(fetch).mockResolvedValueOnce({ ok: true, body: {} });
+      jest.mocked(streamToLines).mockRejectedValueOnce(new Error('Stream error'));
 
       await act(async () => {
         await result.current.startAnalysis({
@@ -430,7 +431,7 @@ describe('useAnalysisStream', () => {
   describe('error state', () => {
     it('should return error from streaming hook', () => {
       const streamingError = new Error('Streaming error');
-      (useStreaming as jest.Mock).mockReturnValue({
+      jest.mocked(useStreaming).mockReturnValue({
         ...mockStreamingHook,
         error: streamingError,
       });
@@ -449,7 +450,7 @@ describe('useAnalysisStream', () => {
 
   describe('isAnalyzing state', () => {
     it('should reflect streaming state', () => {
-      (useStreaming as jest.Mock).mockReturnValue({
+      jest.mocked(useStreaming).mockReturnValue({
         ...mockStreamingHook,
         isStreaming: true,
       });

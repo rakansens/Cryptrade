@@ -29,15 +29,135 @@ if (typeof global.BroadcastChannel === 'undefined') {
   global.BroadcastChannel = BroadcastChannel;
 }
 
-// Polyfill fetch for Node.js (required for MSW) - must be done before any other imports
-// Commented out to use jest mock instead
-// if (typeof global.fetch === 'undefined') {
-//   const { fetch, Headers, Request, Response } = require('undici');
-//   global.fetch = fetch;
-//   global.Headers = Headers;
-//   global.Request = Request;
-//   global.Response = Response;
-// }
+// Polyfill Headers first
+if (typeof global.Headers === 'undefined') {
+  global.Headers = class Headers {
+    constructor(init = {}) {
+      this._headers = {};
+      if (init instanceof Headers) {
+        init.forEach((value, key) => {
+          this.append(key, value);
+        });
+      } else if (init) {
+        Object.entries(init).forEach(([key, value]) => {
+          this.append(key, value);
+        });
+      }
+    }
+    
+    append(name, value) {
+      name = name.toLowerCase();
+      if (!this._headers[name]) {
+        this._headers[name] = [];
+      }
+      this._headers[name].push(value);
+    }
+    
+    delete(name) {
+      delete this._headers[name.toLowerCase()];
+    }
+    
+    get(name) {
+      const values = this._headers[name.toLowerCase()];
+      return values ? values.join(', ') : null;
+    }
+    
+    has(name) {
+      return name.toLowerCase() in this._headers;
+    }
+    
+    set(name, value) {
+      this._headers[name.toLowerCase()] = [value];
+    }
+    
+    forEach(callback) {
+      Object.entries(this._headers).forEach(([key, values]) => {
+        callback(values.join(', '), key, this);
+      });
+    }
+    
+    entries() {
+      return Object.entries(this._headers).map(([key, values]) => [key, values.join(', ')]);
+    }
+    
+    keys() {
+      return Object.keys(this._headers);
+    }
+    
+    values() {
+      return Object.values(this._headers).map(values => values.join(', '));
+    }
+  };
+}
+
+// Polyfill Response/Request/Headers for MSW if not available
+if (typeof global.Response === 'undefined') {
+  // Simple Response polyfill for MSW tests
+  global.Response = class Response {
+    constructor(body, init = {}) {
+      this.body = body;
+      this.status = init.status || 200;
+      this.statusText = init.statusText || 'OK';
+      this.headers = new global.Headers(init.headers || {});
+      this.ok = this.status >= 200 && this.status < 300;
+      this.redirected = false;
+      this.type = 'basic';
+      this.url = '';
+      
+      this.json = async () => {
+        if (typeof this.body === 'string') {
+          return JSON.parse(this.body);
+        }
+        return this.body;
+      };
+      
+      this.text = async () => {
+        if (typeof this.body === 'string') {
+          return this.body;
+        }
+        return JSON.stringify(this.body);
+      };
+      
+      this.clone = () => {
+        return new Response(this.body, {
+          status: this.status,
+          statusText: this.statusText,
+          headers: this.headers
+        });
+      };
+    }
+  };
+}
+
+if (typeof global.Request === 'undefined') {
+  global.Request = class Request {
+    constructor(input, init = {}) {
+      this.url = input;
+      this.method = init.method || 'GET';
+      this.headers = new global.Headers(init.headers || {});
+      this.body = init.body || null;
+      
+      this.json = async () => {
+        if (this.body) {
+          return JSON.parse(this.body);
+        }
+        return {};
+      };
+      
+      this.text = async () => {
+        return this.body || '';
+      };
+      
+      this.clone = () => {
+        return new Request(this.url, {
+          method: this.method,
+          headers: this.headers,
+          body: this.body
+        });
+      };
+    }
+  };
+}
 
 // Import test environment setup before anything else
 require('./tests/setup/test-env');
@@ -1011,6 +1131,36 @@ jest.mock('@/hooks/market/use-candlestick-data', () => ({
     isLoading: false,
     error: null,
   }))
+}));
+
+jest.mock('@/hooks/chat/use-proposal-management', () => ({
+  useProposalManagement: jest.fn(() => ({
+    proposals: [],
+    addProposal: jest.fn(),
+    removeProposal: jest.fn(),
+    updateProposal: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/chat/use-message-handling', () => ({
+  useMessageHandling: jest.fn(() => ({
+    messages: [],
+    sendMessage: jest.fn(),
+    deleteMessage: jest.fn(),
+    editMessage: jest.fn(),
+  }))
+}));
+
+jest.mock('@/hooks/chart/useChartUIEventHandlers', () => ({
+  useChartUIEventHandlers: jest.fn()
+}));
+
+jest.mock('@/hooks/chart/useDrawingEventHandlers', () => ({
+  useDrawingEventHandlers: jest.fn()
+}));
+
+jest.mock('@/hooks/chart/usePatternEventHandlers', () => ({
+  usePatternEventHandlers: jest.fn()
 }));
 
 // Clean up after each test

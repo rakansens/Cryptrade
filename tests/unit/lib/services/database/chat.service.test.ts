@@ -84,8 +84,8 @@ describe('ChatDatabaseService', () => {
     (logger.error as jest.Mock).mockImplementation(() => {});
     (logger.warn as jest.Mock).mockImplementation(() => {});
     (logger.debug as jest.Mock).mockImplementation(() => {});
-    (enforceRateLimit as jest.Mock).mockResolvedValue(undefined);
-    (checkDatabaseHealth as jest.Mock).mockResolvedValue({ status: 'healthy' });
+    jest.mocked(enforceRateLimit).mockResolvedValue(undefined);
+    jest.mocked(checkDatabaseHealth).mockResolvedValue({ status: 'healthy' });
     // Reset cache mocks
     (chatCaches.sessions.get as jest.Mock).mockReturnValue(null);
     (chatCaches.messages.get as jest.Mock).mockReturnValue(null);
@@ -145,7 +145,7 @@ describe('ChatDatabaseService', () => {
     });
 
     it('should handle rate limit errors', async () => {
-      (enforceRateLimit as jest.Mock).mockRejectedValue(new Error('Rate limit exceeded'));
+      jest.mocked(enforceRateLimit).mockRejectedValue(new Error('Rate limit exceeded'));
 
       await expect(
         ChatDatabaseService.createSession('550e8400-e29b-41d4-a716-446655440000', 'Test')
@@ -188,7 +188,7 @@ describe('ChatDatabaseService', () => {
     });
 
     it('should handle database health check failures gracefully', async () => {
-      (checkDatabaseHealth as jest.Mock).mockRejectedValue(new Error('Health check failed'));
+      jest.mocked(checkDatabaseHealth).mockRejectedValue(new Error('Health check failed'));
       const mockCreate = jest.fn().mockResolvedValue(mockSession);
       (prisma.conversationSession as any) = { create: mockCreate };
 
@@ -209,7 +209,7 @@ describe('ChatDatabaseService', () => {
     const mockSessions = [mockSession];
 
     beforeEach(() => {
-      (withDatabase as jest.Mock).mockImplementation(async (operation) => operation());
+      jest.mocked(withDatabase).mockImplementation(async (operation) => operation());
     });
 
     it('should return user sessions from database', async () => {
@@ -280,10 +280,10 @@ describe('ChatDatabaseService', () => {
       const cachedSessions = [mockSession];
       
       // Reset the enforceRateLimit mock to succeed
-      (enforceRateLimit as jest.Mock).mockResolvedValue(undefined);
+      jest.mocked(enforceRateLimit).mockResolvedValue(undefined);
       
       // Mock withDatabase to call the fallback when operation fails
-      (withDatabase as jest.Mock).mockImplementation(async (operation, fallback) => {
+      jest.mocked(withDatabase).mockImplementation(async (operation, fallback) => {
         // Just call the fallback directly to simulate database failure
         if (fallback) {
           return await fallback();
@@ -362,7 +362,7 @@ describe('ChatDatabaseService', () => {
     const mockMessages = [mockMessage];
 
     beforeEach(() => {
-      (withDatabase as jest.Mock).mockImplementation(async (operation) => operation());
+      jest.mocked(withDatabase).mockImplementation(async (operation) => operation());
     });
 
     it('should return messages from database', async () => {
@@ -857,7 +857,7 @@ describe('ChatDatabaseService', () => {
       const mockFindMany = jest.fn().mockResolvedValue([mockSession]);
       (prisma.conversationSession as any) = { findMany: mockFindMany };
       (chatCaches.sessionLists.get as jest.Mock).mockReturnValue(null);
-      (withDatabase as jest.Mock).mockImplementation(async (operation) => operation());
+      jest.mocked(withDatabase).mockImplementation(async (operation) => operation());
 
       // Mock sessionQuery to be undefined
       (chatRateLimiters as any).sessionQuery = undefined;
@@ -872,7 +872,7 @@ describe('ChatDatabaseService', () => {
       const mockFindMany = jest.fn().mockResolvedValue([mockSession]);
       (prisma.conversationSession as any) = { findMany: mockFindMany };
       (chatCaches.sessionLists.get as jest.Mock).mockReturnValue(null);
-      (withDatabase as jest.Mock).mockImplementation(async (operation) => operation());
+      jest.mocked(withDatabase).mockImplementation(async (operation) => operation());
 
       // Expect the pagination validation to throw an error for limit > 100
       await expect(
@@ -883,7 +883,7 @@ describe('ChatDatabaseService', () => {
     });
 
     it('should handle database connection issues in health check', async () => {
-      (checkDatabaseHealth as jest.Mock).mockResolvedValue({
+      jest.mocked(checkDatabaseHealth).mockResolvedValue({
         status: 'unhealthy',
         error: 'Connection timeout',
       });

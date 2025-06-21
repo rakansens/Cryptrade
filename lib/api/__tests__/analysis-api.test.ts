@@ -31,9 +31,9 @@ describe('AnalysisAPI', () => {
     jest.clearAllMocks();
     (process.env as any).NODE_ENV = 'test';
     (global.fetch as jest.Mock).mockReset();
-    (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
+    jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
-    (createKey as jest.Mock).mockImplementation((prefix, params) => {
+    jest.mocked(createKey).mockImplementation((prefix, params) => {
       if (prefix === 'analysis_session' && params?.sessionId) {
         return `analysis_session_${params.sessionId}`;
       }
@@ -256,7 +256,7 @@ describe('AnalysisAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('analysis_session_session-1');
+      jest.mocked(createKey).mockReturnValue('analysis_session_session-1');
       mockApiCache.get.mockReturnValue(cachedRecords);
 
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
@@ -313,7 +313,7 @@ describe('AnalysisAPI', () => {
     it('should handle retry mechanism', async () => {
       mockApiCache.get.mockReturnValue(null);
 
-      (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
+      jest.mocked(withRetry).mockImplementation(async (fn, options) => {
         try {
           return await fn();
         } catch (error) {
@@ -367,7 +367,7 @@ describe('AnalysisAPI', () => {
         .mockReturnValueOnce(null) // Fresh cache
         .mockReturnValueOnce(staleRecords); // Stale cache
 
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
 
@@ -382,7 +382,7 @@ describe('AnalysisAPI', () => {
       (process.env as any).NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
 
@@ -398,7 +398,7 @@ describe('AnalysisAPI', () => {
       (process.env as any).NODE_ENV = 'production';
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       await expect(AnalysisAPI.getSessionAnalyses('session-1')).rejects.toThrow(
         'Failed to get session analyses for session-1: API Error'
@@ -538,7 +538,7 @@ describe('AnalysisAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('analysis_active_BTCUSDT');
+      jest.mocked(createKey).mockReturnValue('analysis_active_BTCUSDT');
       mockApiCache.get.mockReturnValue(cachedRecords);
 
       const result = await AnalysisAPI.getActiveAnalyses('BTCUSDT');
@@ -554,7 +554,7 @@ describe('AnalysisAPI', () => {
       (process.env as any).NODE_ENV = 'development';
 
       let attemptCount = 0;
-      (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
+      jest.mocked(withRetry).mockImplementation(async (fn, options) => {
         attemptCount++;
         if (attemptCount < 3) {
           const error = new Error(`Attempt ${attemptCount} failed`);
@@ -604,7 +604,7 @@ describe('AnalysisAPI', () => {
         .mockReturnValueOnce(null)
         .mockReturnValueOnce(staleRecords);
 
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('Network failure'));
 
       const result = await AnalysisAPI.getActiveAnalyses();
 
@@ -648,7 +648,7 @@ describe('AnalysisAPI', () => {
         tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
       };
 
-      (convertDbAnalysisRecord as jest.Mock).mockReturnValue(expectedRecord);
+      jest.mocked(convertDbAnalysisRecord).mockReturnValue(expectedRecord);
 
       const result = AnalysisAPI.convertToAnalysisRecord(dbRecord);
 
@@ -686,7 +686,7 @@ describe('AnalysisAPI', () => {
         tracking: { status: "active" as const, startTime: Date.now(), touches: [] },
       };
 
-      (convertDbAnalysisRecord as jest.Mock).mockReturnValue(expectedRecord);
+      jest.mocked(convertDbAnalysisRecord).mockReturnValue(expectedRecord);
 
       const result = AnalysisAPI.convertToAnalysisRecord(dbRecord);
 

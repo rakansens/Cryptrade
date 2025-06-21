@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import type { AnalysisRecord, TouchEvent, TrackingData } from '@/types/analysis-history';
 
 // Import JSDOM setup for this test

@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useViewPersistenceSimple } from '@/hooks/use-view-persistence-simple';
 
 describe('useViewPersistence', () => {

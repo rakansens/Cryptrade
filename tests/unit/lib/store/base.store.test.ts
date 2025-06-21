@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { createBaseStore } from '@/lib/store/base.store';
 
 // Import JSDOM setup for this test

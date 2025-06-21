@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
 import { useDrawingActions, useDrawingStore, useChartStore } from '@/store/chart';
 import { useCursor } from '@/hooks/chart/useCursor';
@@ -42,10 +43,10 @@ describe('useDrawingEventHandlers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useDrawingActions as jest.Mock).mockReturnValue(mockDrawingActions);
-    (useCursor as jest.Mock).mockReturnValue(mockCursor);
-    (useChartStore as jest.Mock).mockReturnValue(mockUndo);
-    (useChartStore as jest.Mock).mockImplementation((selector) => {
+    jest.mocked(useDrawingActions).mockReturnValue(mockDrawingActions);
+    jest.mocked(useCursor).mockReturnValue(mockCursor);
+    jest.mocked(useChartStore).mockReturnValue(mockUndo);
+    jest.mocked(useChartStore).mockImplementation((selector) => {
       if (selector.toString().includes('undo')) return mockUndo;
       if (selector.toString().includes('redo')) return mockRedo;
     });

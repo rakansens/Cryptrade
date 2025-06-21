@@ -239,7 +239,7 @@ describe('SharedDataStore', () => {
     });
 
     it('should return empty array for non-existent namespace in production', () => {
-      (isDevelopment as jest.Mock).mockReturnValue(false);
+      jest.mocked(isDevelopment).mockReturnValue(false);
       
       expect(() => SharedDataStore.getKeys('nonexistent')).toThrow(
         "Namespace 'nonexistent' does not exist in SharedDataStore"
@@ -247,7 +247,7 @@ describe('SharedDataStore', () => {
     });
 
     it('should return empty array for non-existent namespace in development', () => {
-      (isDevelopment as jest.Mock).mockReturnValue(true);
+      jest.mocked(isDevelopment).mockReturnValue(true);
       
       const keys = SharedDataStore.getKeys('nonexistent');
       

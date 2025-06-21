@@ -240,7 +240,7 @@ describe('PriceDisplay', () => {
     })
 
     it('shows --- when stats are null', () => {
-      ;(useMarketTicker as jest.Mock).mockReturnValue({
+      ;jest.mocked(useMarketTicker).mockReturnValue({
         high24h: null,
         low24h: null,
         volume: null

@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useApproveProposal } from '@/hooks/chat/use-approve-proposal';
 import { useAnalysisActions } from '@/store/analysis-history.store';
 import { useChat } from '@/store/chat.store';
@@ -78,10 +79,10 @@ describe('useApproveProposal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    (useAnalysisActions as jest.Mock).mockReturnValue(mockAnalysisActions);
-    (useChat as jest.Mock).mockReturnValue({ currentSessionId: 'session-1' });
-    (useAddApprovedDrawing as jest.Mock).mockReturnValue(mockAddApprovedDrawing);
-    (useUIEventPublisher as jest.Mock).mockReturnValue({ publish: mockPublish });
+    jest.mocked(useAnalysisActions).mockReturnValue(mockAnalysisActions);
+    jest.mocked(useChat).mockReturnValue({ currentSessionId: 'session-1' });
+    jest.mocked(useAddApprovedDrawing).mockReturnValue(mockAddApprovedDrawing);
+    jest.mocked(useUIEventPublisher).mockReturnValue({ publish: mockPublish });
   });
 
   it('should approve a proposal successfully', async () => {
@@ -188,7 +189,7 @@ describe('useApproveProposal', () => {
   });
 
   it('should handle missing required data', async () => {
-    (useChat as jest.Mock).mockReturnValue({ currentSessionId: null });
+    jest.mocked(useChat).mockReturnValue({ currentSessionId: null });
     const { result } = renderHook(() => useApproveProposal());
 
     await act(async () => {

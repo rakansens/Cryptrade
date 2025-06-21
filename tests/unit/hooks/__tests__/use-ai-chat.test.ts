@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useAIChat } from '@/hooks/use-ai-chat';
 import * as chatstore from '@/store/chat.store';
 import { useIsClient } from '@/hooks/use-is-client';
@@ -39,9 +40,9 @@ describe('useAIChat', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useChat as jest.Mock).mockReturnValue(mockChatStore);
-    (useIsClient as jest.Mock).mockReturnValue(true);
-    (safeParseOrWarn as jest.Mock).mockImplementation((_schema, value) => value);
+    jest.mocked(useChat).mockReturnValue(mockChatStore);
+    jest.mocked(useIsClient).mockReturnValue(true);
+    jest.mocked(safeParseOrWarn).mockImplementation((_schema, value) => value);
   });
 
   describe('send function', () => {
@@ -57,7 +58,7 @@ describe('useAIChat', () => {
     });
 
     it('should validate input message', async () => {
-      (safeParseOrWarn as jest.Mock).mockReturnValue(null);
+      jest.mocked(safeParseOrWarn).mockReturnValue(null);
       const { result } = renderHook(() => useAIChat());
 
       await act(async () => {
@@ -73,7 +74,7 @@ describe('useAIChat', () => {
       const { result } = renderHook(() => useAIChat());
       mockChatStore.currentSessionId = '';
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ message: 'Response from AI' }),
@@ -100,7 +101,7 @@ describe('useAIChat', () => {
         execution: { executionTime: 123 },
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockResponse,
@@ -140,7 +141,7 @@ describe('useAIChat', () => {
         },
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockProposalResponse,
@@ -168,13 +169,13 @@ describe('useAIChat', () => {
       ];
 
       // Mock streamToLines async generator
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         for (const data of mockStreamData) {
           yield JSON.stringify(data);
         }
       });
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'text/event-stream' }),
         body: {},
@@ -192,7 +193,7 @@ describe('useAIChat', () => {
     it('should handle HTTP errors', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 500,
         json: async () => ({ error: 'Internal Server Error' }),
@@ -212,7 +213,7 @@ describe('useAIChat', () => {
     it('should handle network errors', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      jest.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
         await result.current.send('test message');
@@ -227,12 +228,12 @@ describe('useAIChat', () => {
     it('should handle streaming errors', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield JSON.stringify({ content: 'Partial ' });
         yield JSON.stringify({ error: 'Stream interrupted' });
       });
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'text/event-stream' }),
         body: {},
@@ -252,12 +253,12 @@ describe('useAIChat', () => {
     it('should handle malformed JSON in stream', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (streamToLines as jest.Mock).mockImplementation(async function* () {
+      jest.mocked(streamToLines).mockImplementation(async function* () {
         yield 'not valid json';
         yield JSON.stringify({ content: 'Valid content', done: true });
       });
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'text/event-stream' }),
         body: {},
@@ -276,14 +277,14 @@ describe('useAIChat', () => {
 
   describe('isReady state', () => {
     it('should be false when not on client', () => {
-      (useIsClient as jest.Mock).mockReturnValue(false);
+      jest.mocked(useIsClient).mockReturnValue(false);
       const { result } = renderHook(() => useAIChat());
 
       expect(result.current.isReady).toBe(false);
     });
 
     it('should be true when on client', () => {
-      (useIsClient as jest.Mock).mockReturnValue(true);
+      jest.mocked(useIsClient).mockReturnValue(true);
       const { result } = renderHook(() => useAIChat());
 
       expect(result.current.isReady).toBe(true);
@@ -294,7 +295,7 @@ describe('useAIChat', () => {
     it('should apply retry middleware on failure', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock)
+      jest.mocked(fetch)
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce({
           ok: true,
@@ -316,7 +317,7 @@ describe('useAIChat', () => {
     it('should log trace information', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ message: 'Response' }),
@@ -338,7 +339,7 @@ describe('useAIChat', () => {
     it('should add both user and assistant messages optimistically', async () => {
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ message: 'AI response' }),
@@ -367,7 +368,7 @@ describe('useAIChat', () => {
 
       const { result } = renderHook(() => useAIChat());
       
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      jest.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ message: 'New response' }),

@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
 import { chart } from '@/store/chart';
 import { logger } from '@/lib/utils/logger';
@@ -43,8 +44,8 @@ describe('usePatternEventHandlers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (usePatternActions as jest.Mock).mockReturnValue(mockPatternActions);
-    (useChartBaseStore as jest.Mock).mockReturnValue({
+    jest.mocked(usePatternActions).mockReturnValue(mockPatternActions);
+    jest.mocked(useChartBaseStore).mockReturnValue({
       symbol: 'BTCUSDT',
       timeframe: '1h',
     });

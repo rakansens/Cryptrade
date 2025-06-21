@@ -101,7 +101,7 @@ describe('FallbackHandler', () => {
     describe('AI-generated responses', () => {
       it('should generate AI response when useStaticResponse is false', async () => {
         const mockResponse = { text: 'AI generated response' };
-        (generateText as jest.Mock).mockResolvedValue(mockResponse);
+        jest.mocked(generateText).mockResolvedValue(mockResponse);
 
         const config: FallbackConfig = {
           agentType: 'price_inquiry',
@@ -140,7 +140,7 @@ describe('FallbackHandler', () => {
           conversationHistory
         };
 
-        (generateText as jest.Mock).mockResolvedValue({ text: 'Response with context' });
+        jest.mocked(generateText).mockResolvedValue({ text: 'Response with context' });
 
         const config: FallbackConfig = {
           agentType: 'conversational',
@@ -162,7 +162,7 @@ describe('FallbackHandler', () => {
           agentState: { key: 'value', data: 123 }
         };
 
-        (generateText as jest.Mock).mockResolvedValue({ text: 'Response' });
+        jest.mocked(generateText).mockResolvedValue({ text: 'Response' });
 
         const config: FallbackConfig = {
           agentType: 'trading_analysis',
@@ -184,7 +184,7 @@ describe('FallbackHandler', () => {
           metadata: { source: 'test', timestamp: Date.now() }
         };
 
-        (generateText as jest.Mock).mockResolvedValue({ text: 'Response' });
+        jest.mocked(generateText).mockResolvedValue({ text: 'Response' });
 
         const config: FallbackConfig = {
           agentType: 'ui_control',
@@ -202,7 +202,7 @@ describe('FallbackHandler', () => {
       });
 
       it('should fall back to static response if AI generation fails', async () => {
-        (generateText as jest.Mock).mockRejectedValue(new Error('AI generation failed'));
+        jest.mocked(generateText).mockRejectedValue(new Error('AI generation failed'));
 
         const config: FallbackConfig = {
           agentType: 'price_inquiry',
@@ -226,7 +226,7 @@ describe('FallbackHandler', () => {
       it('should use appropriate prompts for each agent type', async () => {
         const agentTypes = ['price_inquiry', 'ui_control', 'trading_analysis', 'conversational'];
         
-        (generateText as jest.Mock).mockResolvedValue({ text: 'AI response' });
+        jest.mocked(generateText).mockResolvedValue({ text: 'AI response' });
 
         for (const agentType of agentTypes) {
           jest.clearAllMocks();
@@ -238,7 +238,7 @@ describe('FallbackHandler', () => {
 
           await FallbackHandler.handle(config);
 
-          const call = (generateText as jest.Mock).mock.calls[0][0];
+          const call = jest.mocked(generateText).mock.calls[0][0];
           expect(call.prompt).toContain('test query');
           
           // Check for agent-specific content
@@ -377,7 +377,7 @@ describe('FallbackHandler', () => {
         conversationHistory: longHistory
       };
 
-      (generateText as jest.Mock).mockResolvedValue({ text: 'Response' });
+      jest.mocked(generateText).mockResolvedValue({ text: 'Response' });
 
       const config: FallbackConfig = {
         agentType: 'conversational',
@@ -388,7 +388,7 @@ describe('FallbackHandler', () => {
       await FallbackHandler.handle(config);
 
       // Should only include last 3 messages
-      const call = (generateText as jest.Mock).mock.calls[0][0];
+      const call = jest.mocked(generateText).mock.calls[0][0];
       expect(call.prompt).toContain('Message 7');
       expect(call.prompt).toContain('Message 8');
       expect(call.prompt).toContain('Message 9');
@@ -401,7 +401,7 @@ describe('FallbackHandler', () => {
         agentState: { data: longData }
       };
 
-      (generateText as jest.Mock).mockResolvedValue({ text: 'Response' });
+      jest.mocked(generateText).mockResolvedValue({ text: 'Response' });
 
       const config: FallbackConfig = {
         agentType: 'conversational',
@@ -411,7 +411,7 @@ describe('FallbackHandler', () => {
 
       await FallbackHandler.handle(config);
 
-      const call = (generateText as jest.Mock).mock.calls[0][0];
+      const call = jest.mocked(generateText).mock.calls[0][0];
       expect(call.prompt).toContain('...');
       expect(call.prompt.length).toBeLessThan(1000);
     });
@@ -425,7 +425,7 @@ describe('FallbackHandler', () => {
         ]
       };
 
-      (generateText as jest.Mock).mockResolvedValue({ text: 'Response' });
+      jest.mocked(generateText).mockResolvedValue({ text: 'Response' });
 
       const config: FallbackConfig = {
         agentType: 'conversational',

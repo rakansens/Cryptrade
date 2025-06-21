@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useChartRangeStore, useChartRangeActions, useChartRange } from '@/store/chart-range.store';
 
 import { resetAllStores } from '@/tests/setup/reset-stores';

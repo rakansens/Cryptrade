@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useMarketStore, useMarketStoreBase, useMarketBatching, useMarketPriceActions } from '@/store/market.store';
 import type { BinanceTradeMessage } from '@/types/market';
 

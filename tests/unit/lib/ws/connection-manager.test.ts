@@ -31,7 +31,7 @@ describe('WebSocket Connection Manager', () => {
       destroy: jest.fn()
     } as any;
 
-    (WSManager as jest.Mock).mockImplementation(() => mockWSManager);
+    jest.mocked(WSManager).mockImplementation(() => mockWSManager);
     
     connectionManager = new ConnectionManager({
       maxReconnectAttempts: 5,

@@ -16,7 +16,7 @@ describe('ChartDrawingAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
-    (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
+    jest.mocked(withRetry).mockImplementation(async (fn) => fn());
   });
 
   describe('saveDrawings', () => {
@@ -97,7 +97,7 @@ describe('ChartDrawingAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('chart_drawings_session-1');
+      jest.mocked(createKey).mockReturnValue('chart_drawings_session-1');
       mockApiCache.get.mockReturnValue(cachedDrawings);
 
       const result = await ChartDrawingAPI.loadDrawings('session-1');
@@ -139,7 +139,7 @@ describe('ChartDrawingAPI', () => {
     it('should handle retry mechanism', async () => {
       mockApiCache.get.mockReturnValue(null);
 
-      (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
+      jest.mocked(withRetry).mockImplementation(async (fn, options) => {
         try {
           return await fn();
         } catch (error) {
@@ -182,7 +182,7 @@ describe('ChartDrawingAPI', () => {
         .mockReturnValueOnce(null) // Fresh cache
         .mockReturnValueOnce(staleDrawings); // Stale cache
 
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await ChartDrawingAPI.loadDrawings('session-1');
 
@@ -197,7 +197,7 @@ describe('ChartDrawingAPI', () => {
       Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await ChartDrawingAPI.loadDrawings('session-1');
 
@@ -212,7 +212,7 @@ describe('ChartDrawingAPI', () => {
       Object.defineProperty(process.env, "NODE_ENV", { value: 'production', writable: true, configurable: true });
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       await expect(ChartDrawingAPI.loadDrawings('session-1')).rejects.toThrow('Failed to load drawings: API Error');
 
@@ -283,7 +283,7 @@ describe('ChartDrawingAPI', () => {
         },
       ];
 
-      (createKey as jest.Mock).mockReturnValue('chart_patterns_session-1');
+      jest.mocked(createKey).mockReturnValue('chart_patterns_session-1');
       mockApiCache.get.mockReturnValue(cachedPatterns);
 
       const result = await ChartDrawingAPI.loadPatterns('session-1');
@@ -321,7 +321,7 @@ describe('ChartDrawingAPI', () => {
       mockApiCache.get.mockReturnValue(null);
 
       // Mock withRetry to simulate retry behavior
-      (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
+      jest.mocked(withRetry).mockImplementation(async (fn, options) => {
         try {
           // First attempt will fail
           const result = await fn();

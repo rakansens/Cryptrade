@@ -124,7 +124,7 @@ describe('enhancedLineAnalysisV2Tool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (enhancedMarketDataService.fetchMultiTimeframeData as jest.Mock).mockResolvedValue(mockMultiTimeframeData);
-    (enhancedLineDetectorV2 as jest.Mock).mockImplementation(() => mockDetector);
+    jest.mocked(enhancedLineDetectorV2).mockImplementation(() => mockDetector);
   });
 
   describe('tool configuration', () => {

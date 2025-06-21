@@ -72,7 +72,7 @@ describe('BinanceAPIService', () => {
 
     it('should fetch and process klines successfully', async () => {
       mockGet.mockResolvedValueOnce({ data: mockProcessedKlines });
-      (validateBinanceKlines as jest.Mock).mockReturnValue(mockProcessedKlines);
+      jest.mocked(validateBinanceKlines).mockReturnValue(mockProcessedKlines);
 
       const result = await service.fetchKlines('BTCUSDT', '1h', 100);
 
@@ -92,7 +92,7 @@ describe('BinanceAPIService', () => {
 
     it('should include optional time parameters', async () => {
       mockGet.mockResolvedValueOnce({ data: [] });
-      (validateBinanceKlines as jest.Mock).mockReturnValue([]);
+      jest.mocked(validateBinanceKlines).mockReturnValue([]);
 
       const startTime = 1640995200000;
       const endTime = 1641081600000;
@@ -127,7 +127,7 @@ describe('BinanceAPIService', () => {
       ];
 
       mockGet.mockResolvedValueOnce({ data: rawKlines });
-      (validateBinanceKlines as jest.Mock).mockReturnValue(mockProcessedKlines);
+      jest.mocked(validateBinanceKlines).mockReturnValue(mockProcessedKlines);
 
       const result = await service.fetchKlines('BTCUSDT', '1h');
 
@@ -155,7 +155,7 @@ describe('BinanceAPIService', () => {
     it('should log debug information about response', async () => {
       const mockData = [{ time: 1640995200000, open: 50000 }];
       mockGet.mockResolvedValueOnce({ data: mockData });
-      (validateBinanceKlines as jest.Mock).mockReturnValue(mockProcessedKlines);
+      jest.mocked(validateBinanceKlines).mockReturnValue(mockProcessedKlines);
 
       await service.fetchKlines('BTCUSDT', '1h');
 

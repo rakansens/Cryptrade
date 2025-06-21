@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 
 // Import the base store directly for testing
 import { useConfigStoreBase } from '@/store/config.store';

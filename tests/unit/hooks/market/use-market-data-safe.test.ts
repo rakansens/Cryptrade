@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useMarketDataSafe } from '../../../../hooks/use-market-data-safe';
 
 describe('useMarketDataSafe', () => {

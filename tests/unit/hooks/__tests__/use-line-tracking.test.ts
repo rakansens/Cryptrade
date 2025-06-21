@@ -1,7 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useLineTracking } from '@/hooks/use-line-tracking';
 import * as analysishistorystore from '@/store/analysis-history.store';
 import { logger } from '@/lib/utils/logger';
@@ -59,8 +60,8 @@ describe('useLineTracking', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAnalysisHistory as jest.Mock).mockReturnValue(mockRecords);
-    (useAnalysisActions as jest.Mock).mockReturnValue(mockActions);
+    jest.mocked(useAnalysisHistory).mockReturnValue(mockRecords);
+    jest.mocked(useAnalysisActions).mockReturnValue(mockActions);
   });
 
   describe('activeRecords', () => {
@@ -178,7 +179,7 @@ describe('useLineTracking', () => {
         },
       };
       
-      (useAnalysisHistory as jest.Mock).mockReturnValue([oldRecord]);
+      jest.mocked(useAnalysisHistory).mockReturnValue([oldRecord]);
       const { result } = renderHook(() => useLineTracking());
       
       act(() => {
@@ -253,8 +254,8 @@ describe('usePriceStream', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAnalysisHistory as jest.Mock).mockReturnValue([]);
-    (useAnalysisActions as jest.Mock).mockReturnValue({
+    jest.mocked(useAnalysisHistory).mockReturnValue([]);
+    jest.mocked(useAnalysisActions).mockReturnValue({
       addTouchEvent: jest.fn(),
       updateTrackingStatus: jest.fn(),
       completeTracking: jest.fn(),

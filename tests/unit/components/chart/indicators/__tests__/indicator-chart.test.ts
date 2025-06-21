@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { useIndicatorChartInit } from '@/components/chart/hooks/useIndicatorChartInit';
 import { useIndicatorChartData } from '@/components/chart/hooks/useIndicatorChartData';

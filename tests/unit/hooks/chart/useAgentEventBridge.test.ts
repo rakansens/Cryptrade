@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook  } from '@testing-library/react';
 import { useAgentEventBridge } from '@/hooks/chart/useAgentEventBridge';
 import { useChartUIEventHandlers } from '@/hooks/chart/useChartUIEventHandlers';
 import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
@@ -52,16 +52,16 @@ describe('useAgentEventBridge', () => {
     it('should call hooks in the correct order', () => {
       const callOrder: string[] = [];
 
-      (useChartControlAgentEvents as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(useChartControlAgentEvents).mockImplementationOnce(() => {
         callOrder.push('chartControl');
       });
-      (useChartUIEventHandlers as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(useChartUIEventHandlers).mockImplementationOnce(() => {
         callOrder.push('chartUI');
       });
-      (useDrawingEventHandlers as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(useDrawingEventHandlers).mockImplementationOnce(() => {
         callOrder.push('drawing');
       });
-      (usePatternEventHandlers as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(usePatternEventHandlers).mockImplementationOnce(() => {
         callOrder.push('pattern');
       });
 
@@ -73,10 +73,10 @@ describe('useAgentEventBridge', () => {
     it('should pass the same handlers reference to all hooks', () => {
       renderHook(() => useAgentEventBridge(mockHandlers));
 
-      const chartControlCall = (useChartControlAgentEvents as jest.Mock).mock.calls[0][0];
-      const chartUICall = (useChartUIEventHandlers as jest.Mock).mock.calls[0][0];
-      const drawingCall = (useDrawingEventHandlers as jest.Mock).mock.calls[0][0];
-      const patternCall = (usePatternEventHandlers as jest.Mock).mock.calls[0][0];
+      const chartControlCall = jest.mocked(useChartControlAgentEvents).mock.calls[0][0];
+      const chartUICall = jest.mocked(useChartUIEventHandlers).mock.calls[0][0];
+      const drawingCall = jest.mocked(useDrawingEventHandlers).mock.calls[0][0];
+      const patternCall = jest.mocked(usePatternEventHandlers).mock.calls[0][0];
 
       expect(chartControlCall).toBe(mockHandlers);
       expect(chartUICall).toBe(mockHandlers);
@@ -112,7 +112,7 @@ describe('useAgentEventBridge', () => {
 
   describe('Error isolation', () => {
     it('should not prevent other hooks from being called if one throws', () => {
-      (useChartControlAgentEvents as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(useChartControlAgentEvents).mockImplementationOnce(() => {
         throw new Error('Chart control error');
       });
 
@@ -151,10 +151,10 @@ describe('useAgentEventBridge', () => {
         pattern: jest.fn(),
       };
 
-      (useChartControlAgentEvents as jest.Mock).mockReturnValue(cleanupFns.chartControl);
-      (useChartUIEventHandlers as jest.Mock).mockReturnValue(cleanupFns.chartUI);
-      (useDrawingEventHandlers as jest.Mock).mockReturnValue(cleanupFns.drawing);
-      (usePatternEventHandlers as jest.Mock).mockReturnValue(cleanupFns.pattern);
+      jest.mocked(useChartControlAgentEvents).mockReturnValue(cleanupFns.chartControl);
+      jest.mocked(useChartUIEventHandlers).mockReturnValue(cleanupFns.chartUI);
+      jest.mocked(useDrawingEventHandlers).mockReturnValue(cleanupFns.drawing);
+      jest.mocked(usePatternEventHandlers).mockReturnValue(cleanupFns.pattern);
 
       const { unmount } = renderHook(() => useAgentEventBridge(mockHandlers));
 
@@ -175,20 +175,20 @@ describe('useAgentEventBridge', () => {
       );
 
       const initialCallCounts = {
-        chartControl: (useChartControlAgentEvents as jest.Mock).mock.calls.length,
-        chartUI: (useChartUIEventHandlers as jest.Mock).mock.calls.length,
-        drawing: (useDrawingEventHandlers as jest.Mock).mock.calls.length,
-        pattern: (usePatternEventHandlers as jest.Mock).mock.calls.length,
+        chartControl: jest.mocked(useChartControlAgentEvents).mock.calls.length,
+        chartUI: jest.mocked(useChartUIEventHandlers).mock.calls.length,
+        drawing: jest.mocked(useDrawingEventHandlers).mock.calls.length,
+        pattern: jest.mocked(usePatternEventHandlers).mock.calls.length,
       };
 
       // Re-render with same handlers
       rerender({ handlers: mockHandlers });
 
       // Hooks should be called again (React behavior)
-      expect((useChartControlAgentEvents as jest.Mock).mock.calls.length).toBe(initialCallCounts.chartControl + 1);
-      expect((useChartUIEventHandlers as jest.Mock).mock.calls.length).toBe(initialCallCounts.chartUI + 1);
-      expect((useDrawingEventHandlers as jest.Mock).mock.calls.length).toBe(initialCallCounts.drawing + 1);
-      expect((usePatternEventHandlers as jest.Mock).mock.calls.length).toBe(initialCallCounts.pattern + 1);
+      expect(jest.mocked(useChartControlAgentEvents).mock.calls.length).toBe(initialCallCounts.chartControl + 1);
+      expect(jest.mocked(useChartUIEventHandlers).mock.calls.length).toBe(initialCallCounts.chartUI + 1);
+      expect(jest.mocked(useDrawingEventHandlers).mock.calls.length).toBe(initialCallCounts.drawing + 1);
+      expect(jest.mocked(usePatternEventHandlers).mock.calls.length).toBe(initialCallCounts.pattern + 1);
     });
   });
 });

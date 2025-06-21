@@ -239,7 +239,7 @@ describe('ChartDrawingDatabaseService', () => {
 
     it('should handle database unavailability', async () => {
       const { withDatabase } = require('@/lib/utils/db-connection');
-      (withDatabase as jest.Mock).mockImplementationOnce(async (fn: any, fallbackFn: any) => {
+      jest.mocked(withDatabase).mockImplementationOnce(async (fn: any, fallbackFn: any) => {
         return fallbackFn();
       });
 
@@ -259,7 +259,7 @@ describe('ChartDrawingDatabaseService', () => {
 
     it('should throw error in production when database unavailable', async () => {
       const { withDatabase } = require('@/lib/utils/db-connection');
-      (withDatabase as jest.Mock).mockImplementationOnce(async (fn: any, fallbackFn: any) => {
+      jest.mocked(withDatabase).mockImplementationOnce(async (fn: any, fallbackFn: any) => {
         return fallbackFn();
       });
 

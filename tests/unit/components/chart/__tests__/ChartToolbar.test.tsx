@@ -183,7 +183,7 @@ describe('ChartToolbar', () => {
     })
 
     it('hides MA indicators when disabled', () => {
-      ;(useChart as jest.Mock).mockReturnValue({
+      ;jest.mocked(useChart).mockReturnValue({
         ...mockChartStore,
         indicators: { ...mockChartStore.indicators, ma: false }
       })
@@ -215,7 +215,7 @@ describe('ChartToolbar', () => {
     })
 
     it('shows --- when indicator value is null', () => {
-      ;(useIndicatorValues as jest.Mock).mockReturnValue({
+      ;jest.mocked(useIndicatorValues).mockReturnValue({
         ...mockIndicatorValues,
         ma7: null
       })
@@ -263,7 +263,7 @@ describe('ChartToolbar', () => {
       })
       
       // Negative histogram
-      ;(useIndicatorValues as jest.Mock).mockReturnValue({
+      ;jest.mocked(useIndicatorValues).mockReturnValue({
         ...mockIndicatorValues,
         macdHistogram: -23.45
       })
@@ -280,7 +280,7 @@ describe('ChartToolbar', () => {
 
   describe('Edge Cases', () => {
     it('handles missing symbol info gracefully', () => {
-      ;(useChart as jest.Mock).mockReturnValue({
+      ;jest.mocked(useChart).mockReturnValue({
         ...mockChartStore,
         symbol: 'UNKNOWN'
       })

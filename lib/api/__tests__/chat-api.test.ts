@@ -19,9 +19,9 @@ describe('ChatAPI', () => {
     // Reset fetch mock
     (global.fetch as jest.Mock).mockReset();
     // Mock withRetry to execute function immediately
-    (withRetry as jest.Mock).mockImplementation(async (fn) => fn());
+    jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
-    (createKey as jest.Mock).mockImplementation((prefix, params) => {
+    jest.mocked(createKey).mockImplementation((prefix, params) => {
       if (prefix === 'chat_sessions' && params?.userId) {
         return `chat_sessions_${params.userId}`;
       }
@@ -369,7 +369,7 @@ describe('ChatAPI', () => {
         .mockReturnValueOnce(staleSessions); // Second call - stale cache
 
       const error = new Error('API Error');
-      (withRetry as jest.Mock).mockRejectedValueOnce(error);
+      jest.mocked(withRetry).mockRejectedValueOnce(error);
 
       const result = await ChatAPI.getUserSessions('user-1');
 
@@ -385,7 +385,7 @@ describe('ChatAPI', () => {
       envModule.env.NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await ChatAPI.getUserSessions();
 
@@ -403,7 +403,7 @@ describe('ChatAPI', () => {
       envModule.env.NODE_ENV = 'production';
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       await expect(ChatAPI.getUserSessions()).rejects.toThrow('Failed to get sessions: API Error');
 
@@ -611,7 +611,7 @@ describe('ChatAPI', () => {
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce([]);
 
-      (withRetry as jest.Mock).mockImplementation(async (fn, options) => {
+      jest.mocked(withRetry).mockImplementation(async (fn, options) => {
         // Simulate retry behavior
         try {
           return await fn();
@@ -682,7 +682,7 @@ describe('ChatAPI', () => {
       envModule.env.NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
-      (withRetry as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
 
       const result = await ChatAPI.getSessionWithMessages('session-1');
 

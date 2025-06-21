@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import { logger } from '@/lib/utils/logger';
@@ -17,7 +18,7 @@ describe('useAIStream', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useSSEStream as jest.Mock).mockReturnValue(mockSSEStream);
+    jest.mocked(useSSEStream).mockReturnValue(mockSSEStream);
   });
 
   describe('Initial state', () => {
@@ -129,7 +130,7 @@ describe('useAIStream', () => {
     let onErrorHandler: (ev: Event) => void;
 
     beforeEach(() => {
-      (useSSEStream as jest.Mock).mockImplementation((config) => {
+      jest.mocked(useSSEStream).mockImplementation((config) => {
         onEventHandler = config.onEvent;
         onOpenHandler = config.onOpen;
         onErrorHandler = config.onError;

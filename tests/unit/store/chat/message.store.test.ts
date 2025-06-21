@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';;
 import { useChatStoreBase, useChatActions, useChatMessages, useChatMessagesBySession } from '@/store/chat';
 
 // Import JSDOM setup for this test

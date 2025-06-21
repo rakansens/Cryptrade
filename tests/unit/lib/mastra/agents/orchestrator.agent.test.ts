@@ -185,7 +185,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       contexts.forEach(({ expected, ...context }) => {
         const selectedModel = model(context);
         expect(selectedModel).toBeDefined();
-        expect(openai as jest.Mock).toHaveBeenCalledWith(expected);
+        expectjest.mocked(openai).toHaveBeenCalledWith(expected);
       });
     });
 
@@ -317,7 +317,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.analysis.intent).toBe('greeting');
-      expect(Agent as jest.Mock).toHaveBeenCalled();
+      expectjest.mocked(Agent).toHaveBeenCalled();
     });
 
     it('should use parallel orchestrator for complex queries', async () => {
@@ -394,7 +394,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
     });
 
     it('should handle agent registration failures', async () => {
-      (registerAllAgents as jest.Mock).mockImplementationOnce(() => {
+      jest.mocked(registerAllAgents).mockImplementationOnce(() => {
         throw new Error('Registration failed');
       });
       
@@ -600,7 +600,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const newUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(Agent as jest.Mock).toHaveBeenCalledWith(
+      expectjest.mocked(Agent).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('new:')
         })
@@ -615,7 +615,7 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       }));
       
       const regularUserResult = await executeImprovedOrchestrator('こんにちは');
-      expect(Agent as jest.Mock).toHaveBeenCalledWith(
+      expectjest.mocked(Agent).toHaveBeenCalledWith(
         expect.objectContaining({
           instructions: expect.stringContaining('regular:')
         })

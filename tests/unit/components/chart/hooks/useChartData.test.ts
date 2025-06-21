@@ -64,7 +64,7 @@ describe('useChartData', () => {
     mockGetSeries.mockReturnValue(mockSeriesRefs);
     
     // Mock chart data preparation
-    (prepareLightweightChartsData as jest.Mock).mockImplementation((data) => 
+    jest.mocked(prepareLightweightChartsData).mockImplementation((data) => 
       data.map((d: any) => ({ ...d, time: d.time }))
     );
     

@@ -1,4 +1,5 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';;
 import { useAlerts } from '@/hooks/use-alerts';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import { logger } from '@/lib/utils/logger';
@@ -121,7 +122,7 @@ describe('useAlerts', () => {
 
   it('should handle SSE events for matching userId', () => {
     const mockOnEvent = jest.fn();
-    (useSSEStream as jest.Mock).mockImplementation(({ onEvent }) => {
+    jest.mocked(useSSEStream).mockImplementation(({ onEvent }) => {
       mockOnEvent.mockImplementation(onEvent);
     });
 
@@ -143,7 +144,7 @@ describe('useAlerts', () => {
 
   it('should ignore SSE events for different userId', () => {
     const mockOnEvent = jest.fn();
-    (useSSEStream as jest.Mock).mockImplementation(({ onEvent }) => {
+    jest.mocked(useSSEStream).mockImplementation(({ onEvent }) => {
       mockOnEvent.mockImplementation(onEvent);
     });
 
@@ -162,7 +163,7 @@ describe('useAlerts', () => {
 
   it('should handle invalid SSE event data', () => {
     const mockOnEvent = jest.fn();
-    (useSSEStream as jest.Mock).mockImplementation(({ onEvent }) => {
+    jest.mocked(useSSEStream).mockImplementation(({ onEvent }) => {
       mockOnEvent.mockImplementation(onEvent);
     });
 

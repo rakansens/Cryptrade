@@ -39,8 +39,8 @@ describe('AI Stream API Route', () => {
         }
       };
 
-      (streamText as jest.Mock).mockResolvedValueOnce(mockStream);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockResolvedValueOnce(mockStream);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -119,8 +119,8 @@ describe('AI Stream API Route', () => {
 
     it('should handle stream errors gracefully', async () => {
       const mockError = new Error('Stream generation failed');
-      (streamText as jest.Mock).mockRejectedValueOnce(mockError);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockRejectedValueOnce(mockError);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -142,8 +142,8 @@ describe('AI Stream API Route', () => {
     it('should handle rate limit errors', async () => {
       const rateLimitError = new Error('Rate limit exceeded');
       rateLimitError.name = 'RateLimitError';
-      (streamText as jest.Mock).mockRejectedValueOnce(rateLimitError);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockRejectedValueOnce(rateLimitError);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -170,8 +170,8 @@ describe('AI Stream API Route', () => {
         }
       };
 
-      (streamText as jest.Mock).mockResolvedValueOnce(mockStream);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockResolvedValueOnce(mockStream);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -203,8 +203,8 @@ describe('AI Stream API Route', () => {
         }
       };
 
-      (streamText as jest.Mock).mockResolvedValueOnce(mockStream);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockResolvedValueOnce(mockStream);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -238,8 +238,8 @@ describe('AI Stream API Route', () => {
         }
       };
 
-      (streamText as jest.Mock).mockResolvedValueOnce(mockStream);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockResolvedValueOnce(mockStream);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',
@@ -279,8 +279,8 @@ describe('AI Stream API Route', () => {
         }
       };
 
-      (streamText as jest.Mock).mockResolvedValueOnce(mockStream);
-      (openai as jest.Mock).mockReturnValue('gpt-4-turbo-preview');
+      jest.mocked(streamText).mockResolvedValueOnce(mockStream);
+      jest.mocked(openai).mockReturnValue('gpt-4-turbo-preview');
 
       const request = new NextRequest('http://localhost:3000/api/ai/stream', {
         method: 'POST',

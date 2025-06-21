@@ -426,7 +426,7 @@ describe('PatternGenerator', () => {
       const keyIndices = [20, 50, 80];
       
       // Mock candle pattern detection
-      (detectCandlePatterns as jest.Mock).mockReturnValue(['doji', 'hammer']);
+      jest.mocked(detectCandlePatterns).mockReturnValue(['doji', 'hammer']);
       
       const confidence = generator['calculatePatternConfidence'](
         data,
@@ -446,7 +446,7 @@ describe('PatternGenerator', () => {
       keyIndices.forEach(idx => {
         data[idx]!.volume = 10000000;
       });
-      (detectCandlePatterns as jest.Mock).mockReturnValue(['doji', 'hammer', 'engulfing']);
+      jest.mocked(detectCandlePatterns).mockReturnValue(['doji', 'hammer', 'engulfing']);
       
       const confidence = generator['calculatePatternConfidence'](
         data,
@@ -553,7 +553,7 @@ describe('PatternGenerator', () => {
       jest.spyOn(generator as any, 'detectChannels').mockReturnValue([]);
       
       // Mock generateProposalId to return excluded IDs for first two calls
-      (generateProposalId as jest.Mock)
+      jest.mocked(generateProposalId)
         .mockReturnValueOnce(excludedIds[0])
         .mockReturnValueOnce('pattern_double_bottom_789')
         .mockReturnValueOnce(excludedIds[1]);
