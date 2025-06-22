@@ -1,322 +1,192 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { MainLayout } from '@/components/MainLayout'
-import { useRouter } from 'next/navigation'
 
 // Mock dependencies
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
-  usePathname: jest.fn(() => '/'),
-  useSearchParams: jest.fn(() => new URLSearchParams()),
-}))
-jest.mock('@/hooks/use-media-query', () => ({
-  useMediaQuery: jest.fn(() => false), // Default to desktop
+jest.mock('@/store/chart.store', () => ({
+  useChart: jest.fn(() => ({
+    indicators: {},
+    symbol: 'BTCUSDT',
+    interval: '1h',
+    setSymbol: jest.fn(),
+    setInterval: jest.fn(),
+  })),
+  useChartDrawings: jest.fn(() => ({
+    drawings: [],
+    addDrawing: jest.fn(),
+    removeDrawing: jest.fn(),
+    updateDrawing: jest.fn(),
+  }))
 }))
 
 jest.mock('@/components/chart/core/CandlestickChart', () => ({
-  CandlestickChart: React.forwardRef(() => <div data-testid="candlestick-chart">Chart</div>)
+  __esModule: true,
+  default: React.forwardRef(() => <div data-testid="candlestick-chart">Chart</div>)
 }))
 
-jest.mock('@/components/chat/ChatPanel', () => ({
-  ChatPanel: ({ isOpen }: any) => (
-    <div data-testid="chat-panel" data-open={isOpen}>Chat Panel</div>
+jest.mock('@/components/chart/toolbar/ChartToolbar', () => ({
+  __esModule: true,
+  default: () => <div data-testid="chart-toolbar">Chart Toolbar</div>
+}))
+
+jest.mock('@/components/chart/indicators/IndicatorPanel', () => ({
+  __esModule: true,
+  default: ({ children, title }: any) => (
+    <div data-testid="indicator-panel" data-title={title}>
+      {children}
+    </div>
   )
 }))
 
-jest.mock('@/components/ui/resizable', () => ({
-  ResizablePanelGroup: ({ children, ...props }: any) => (
-    <div data-testid="resizable-panel-group" {...props}>{children}</div>
-  ),
-  ResizablePanel: ({ children, ...props }: any) => (
-    <div data-testid="resizable-panel" {...props}>{children}</div>
-  ),
-  ResizableHandle: (props: any) => (
-    <div data-testid="resizable-handle" {...props} />
-  ),
+jest.mock('@/components/chart/indicators/RsiChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="rsi-chart">RSI Chart</div>
 }))
 
-const mockPush = jest.fn()
-const mockUseRouter = useRouter as jest.Mock
+jest.mock('@/components/chart/indicators/MacdChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="macd-chart">MACD Chart</div>
+}))
+
+jest.mock('@/components/ui/resizable', () => ({
+  ResizablePanelGroup: ({ children, direction, className }: any) => (
+    <div data-testid="resizable-panel-group" data-direction={direction} className={className}>
+      {children}
+    </div>
+  ),
+  ResizablePanel: ({ children, defaultSize, minSize, maxSize, className }: any) => (
+    <div 
+      data-testid="resizable-panel" 
+      data-default-size={defaultSize}
+      data-min-size={minSize}
+      data-max-size={maxSize}
+      className={className}
+    >
+      {children}
+    </div>
+  ),
+  ResizableHandle: ({ className }: any) => (
+    <div data-testid="resizable-handle" className={className} />
+  ),
+}))
 
 describe('MainLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      pathname: '/',
-      query: {},
-      asPath: '/',
-    })
   })
 
-  it('renders main layout structure', () => {
+  it('renders main layout structure without children', () => {
     render(<MainLayout />)
     
     expect(screen.getByTestId('candlestick-chart')).toBeInTheDocument()
-    expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
-    expect(screen.getByRole('navigation')).toBeInTheDocument()
+    expect(screen.getByTestId('chart-toolbar')).toBeInTheDocument()
+    // There are multiple resizable panel groups (horizontal and vertical)
+    const panelGroups = screen.getAllByTestId('resizable-panel-group')
+    expect(panelGroups.length).toBeGreaterThan(0)
   })
 
-  it('displays navigation header', () => {
-    render(<MainLayout />)
+  it('renders main layout structure with children', () => {
+    render(
+      <MainLayout>
+        <div data-testid="chat-content">Chat Content</div>
+      </MainLayout>
+    )
     
-    expect(screen.getByText(/cryptrade/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument()
+    expect(screen.getByTestId('candlestick-chart')).toBeInTheDocument()
+    expect(screen.getByTestId('chart-toolbar')).toBeInTheDocument()
+    expect(screen.getByTestId('chat-content')).toBeInTheDocument()
   })
 
-  it('toggles chat panel visibility', async () => {
-    const user = userEvent.setup()
+  it('displays chart toolbar', () => {
     render(<MainLayout />)
     
-    const chatPanel = screen.getByTestId('chat-panel')
-    const toggleButton = screen.getByRole('button', { name: /toggle chat/i })
-    
-    // Chat should be open by default
-    expect(chatPanel).toHaveAttribute('data-open', 'true')
-    
-    // Click to close
-    await user.click(toggleButton)
-    expect(chatPanel).toHaveAttribute('data-open', 'false')
-    
-    // Click to open again
-    await user.click(toggleButton)
-    expect(chatPanel).toHaveAttribute('data-open', 'true')
+    expect(screen.getByTestId('chart-toolbar')).toBeInTheDocument()
   })
 
-  it('handles responsive layout on mobile', async () => {
-    const { useMediaQuery } = require('@/hooks/use-media-query')
-    useMediaQuery.mockReturnValue(true) // Mobile view
-    
-    render(<MainLayout />)
-    
-    // On mobile, should show mobile-specific layout
-    expect(screen.getByTestId('mobile-layout')).toBeInTheDocument()
-    expect(screen.queryByTestId('resizable-panel-group')).not.toBeInTheDocument()
-  })
-
-  it('shows indicator toolbar', () => {
-    render(<MainLayout />)
-    
-    expect(screen.getByRole('button', { name: /add indicator/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /drawing tools/i })).toBeInTheDocument()
-  })
-
-  it('handles symbol selection', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    const symbolSelector = screen.getByRole('combobox', { name: /select symbol/i })
-    await user.click(symbolSelector)
-    
-    // Should show symbol options
-    await waitFor(() => {
-      expect(screen.getByText('BTCUSDT')).toBeInTheDocument()
-      expect(screen.getByText('ETHUSDT')).toBeInTheDocument()
+  it('renders indicator panels when indicators are enabled', () => {
+    const { useChart } = require('@/store/chart.store')
+    useChart.mockReturnValue({
+      indicators: {
+        rsi: true,
+        macd: true
+      },
+      symbol: 'BTCUSDT',
+      interval: '1h'
     })
     
-    await user.click(screen.getByText('ETHUSDT'))
-    expect(symbolSelector).toHaveTextContent('ETHUSDT')
-  })
-
-  it('handles timeframe selection', async () => {
-    const user = userEvent.setup()
     render(<MainLayout />)
     
-    const timeframeButtons = screen.getAllByRole('button', { name: /[1-9][mhDWM]/ })
+    // Check for indicator panels
+    const panels = screen.getAllByTestId('indicator-panel')
+    expect(panels).toHaveLength(2)
     
-    // Click on 4H timeframe
-    const fourHourButton = timeframeButtons.find(btn => btn.textContent === '4H')
-    if (fourHourButton) {
-      await user.click(fourHourButton)
-      expect(fourHourButton).toHaveClass('active')
-    }
+    // Check for RSI panel
+    const rsiPanel = panels.find(p => p.getAttribute('data-title') === 'RSI (14)')
+    expect(rsiPanel).toBeInTheDocument()
+    expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
+    
+    // Check for MACD panel
+    const macdPanel = panels.find(p => p.getAttribute('data-title') === 'MACD (12, 26, 9)')
+    expect(macdPanel).toBeInTheDocument()
+    expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
   })
 
-  it('opens settings dialog', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    await user.click(screen.getByRole('button', { name: /settings/i }))
-    
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText('Application Settings')).toBeInTheDocument()
+  it('does not render indicator panels when indicators are disabled', () => {
+    const { useChart } = require('@/store/chart.store')
+    useChart.mockReturnValue({
+      indicators: {
+        rsi: false,
+        macd: false
+      },
+      symbol: 'BTCUSDT',
+      interval: '1h'
     })
-  })
-
-  it('handles keyboard shortcuts', async () => {
-    const user = userEvent.setup()
+    
     render(<MainLayout />)
     
-    // Test chat toggle shortcut (Ctrl/Cmd + /)
-    await user.keyboard('{Control>/}')
-    
-    const chatPanel = screen.getByTestId('chat-panel')
-    expect(chatPanel).toHaveAttribute('data-open', 'false')
-    
-    // Toggle back
-    await user.keyboard('{Control>/}')
-    expect(chatPanel).toHaveAttribute('data-open', 'true')
+    expect(screen.queryByTestId('rsi-chart')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('macd-chart')).not.toBeInTheDocument()
   })
 
-  it('preserves layout state on re-render', () => {
+  it('renders resizable panels', () => {
+    render(<MainLayout />)
+    
+    const panels = screen.getAllByTestId('resizable-panel')
+    expect(panels.length).toBeGreaterThan(0)
+  })
+
+  it('renders resizable handles when children are provided', () => {
+    render(
+      <MainLayout>
+        <div>Chat</div>
+      </MainLayout>
+    )
+    
+    const handles = screen.getAllByTestId('resizable-handle')
+    expect(handles.length).toBeGreaterThan(0)
+  })
+
+  it('adjusts panel sizes based on children presence', () => {
     const { rerender } = render(<MainLayout />)
     
-    // Initial render
-    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-open', 'true')
+    // Without children, chart panel should be 100%
+    let chartPanel = screen.getAllByTestId('resizable-panel').find(
+      panel => panel.getAttribute('data-default-size') === '100'
+    )
+    expect(chartPanel).toBeInTheDocument()
     
-    // Re-render
-    rerender(<MainLayout />)
+    // With children, panels should be split
+    rerender(
+      <MainLayout>
+        <div>Chat</div>
+      </MainLayout>
+    )
     
-    // State should be preserved
-    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-open', 'true')
-  })
-
-  it('shows connection status', () => {
-    render(<MainLayout />)
+    const panels = screen.getAllByTestId('resizable-panel')
+    const chatPanel = panels.find(p => p.getAttribute('data-default-size') === '25')
+    const chartPanelWithChat = panels.find(p => p.getAttribute('data-default-size') === '75')
     
-    expect(screen.getByTestId('connection-status')).toBeInTheDocument()
-    expect(screen.getByText(/connected/i)).toBeInTheDocument()
-  })
-
-  it('handles panel resizing', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    const resizeHandle = screen.getByTestId('resizable-handle')
-    
-    // Simulate drag
-    await user.pointer([
-      { target: resizeHandle, keys: '[MouseLeft>]', coords: { x: 0, y: 0 } },
-      { coords: { x: 100, y: 0 } },
-      { keys: '[/MouseLeft]' }
-    ])
-    
-    // Panel sizes should update (mocked in this test)
-    expect(resizeHandle).toBeInTheDocument()
-  })
-
-  it('shows loading state initially', () => {
-    render(<MainLayout isLoading />)
-    
-    expect(screen.getByTestId('layout-skeleton')).toBeInTheDocument()
-    expect(screen.queryByTestId('candlestick-chart')).not.toBeInTheDocument()
-  })
-
-  it('handles error state', () => {
-    render(<MainLayout error="Failed to load market data" />)
-    
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('Failed to load market data')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
-  })
-
-  it('supports fullscreen mode', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    const fullscreenButton = screen.getByRole('button', { name: /fullscreen/i })
-    await user.click(fullscreenButton)
-    
-    expect(document.body).toHaveClass('fullscreen-mode')
-    
-    // Exit fullscreen
-    await user.click(screen.getByRole('button', { name: /exit fullscreen/i }))
-    expect(document.body).not.toHaveClass('fullscreen-mode')
-  })
-
-  it('displays market stats', () => {
-    render(<MainLayout />)
-    
-    expect(screen.getByText(/24h volume/i)).toBeInTheDocument()
-    expect(screen.getByText(/24h change/i)).toBeInTheDocument()
-    expect(screen.getByText(/last price/i)).toBeInTheDocument()
-  })
-
-  it('handles theme switching', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    const themeToggle = screen.getByRole('button', { name: /toggle theme/i })
-    
-    // Click to switch theme
-    await user.click(themeToggle)
-    
-    expect(document.documentElement).toHaveClass('dark')
-    
-    // Switch back
-    await user.click(themeToggle)
-    expect(document.documentElement).not.toHaveClass('dark')
-  })
-
-  it('shows account info when authenticated', () => {
-    render(<MainLayout isAuthenticated user={{ email: 'test@example.com' }} />)
-    
-    expect(screen.getByText('test@example.com')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument()
-  })
-
-  it('shows login button when not authenticated', () => {
-    render(<MainLayout isAuthenticated={false} />)
-    
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /logout/i })).not.toBeInTheDocument()
-  })
-
-  it('preserves user preferences', async () => {
-    const user = userEvent.setup()
-    
-    // Mock localStorage
-    const getItemSpy = jest.spyOn(Storage.prototype, 'getItem')
-    const setItemSpy = jest.spyOn(Storage.prototype, 'setItem')
-    
-    render(<MainLayout />)
-    
-    // Toggle chat panel
-    await user.click(screen.getByRole('button', { name: /toggle chat/i }))
-    
-    // Should save preference
-    expect(setItemSpy).toHaveBeenCalledWith('chat-panel-open', 'false')
-    
-    // Clean up
-    getItemSpy.mockRestore()
-    setItemSpy.mockRestore()
-  })
-
-  it('handles workspace switching', async () => {
-    const user = userEvent.setup()
-    render(<MainLayout />)
-    
-    const workspaceSelector = screen.getByRole('button', { name: /workspace/i })
-    await user.click(workspaceSelector)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Trading')).toBeInTheDocument()
-      expect(screen.getByText('Analysis')).toBeInTheDocument()
-      expect(screen.getByText('Research')).toBeInTheDocument()
-    })
-    
-    await user.click(screen.getByText('Analysis'))
-    
-    // Layout should update for analysis workspace
-    expect(screen.getByTestId('analysis-layout')).toBeInTheDocument()
-  })
-
-  it('supports custom layout configurations', () => {
-    const customConfig = {
-      panels: {
-        chart: { minSize: 40, defaultSize: 60 },
-        chat: { minSize: 20, defaultSize: 40 },
-      },
-      showIndicatorPanel: true,
-    }
-    
-    render(<MainLayout layoutConfig={customConfig} />)
-    
-    expect(screen.getByTestId('indicator-panel')).toBeInTheDocument()
+    expect(chatPanel).toBeInTheDocument()
+    expect(chartPanelWithChat).toBeInTheDocument()
   })
 })

@@ -8,24 +8,33 @@ import { useCursor } from '@/hooks/chart/useCursor';
 describe('useCursor', () => {
   // Save original body style
   let originalBodyStyle: CSSStyleDeclaration;
+  let mockBodyStyle: { cursor: string };
 
   beforeEach(() => {
-    // Mock document.body.style
-    originalBodyStyle = document.body.style;
-    Object.defineProperty(document.body, 'style', {
-      value: { cursor: '' },
-      writable: true,
-      configurable: true,
-    });
+    // Create a mock style object
+    mockBodyStyle = { cursor: '' };
+    
+    // Check if document.body exists
+    if (document.body) {
+      originalBodyStyle = document.body.style;
+      // Mock document.body.style
+      Object.defineProperty(document.body, 'style', {
+        value: mockBodyStyle,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   afterEach(() => {
     // Restore original
-    Object.defineProperty(document.body, 'style', {
-      value: originalBodyStyle,
-      writable: true,
-      configurable: true,
-    });
+    if (document.body && originalBodyStyle) {
+      Object.defineProperty(document.body, 'style', {
+        value: originalBodyStyle,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   describe('setCursor', () => {
@@ -149,6 +158,10 @@ describe('useCursor', () => {
     });
 
     it('should handle missing body element', () => {
+      // First render the hook normally
+      const { result } = renderHook(() => useCursor());
+
+      // Then temporarily mock document.body to null
       const originalBody = document.body;
       Object.defineProperty(document, 'body', {
         value: null,
@@ -156,12 +169,19 @@ describe('useCursor', () => {
         configurable: true,
       });
 
-      const { result } = renderHook(() => useCursor());
-
-      // Should not throw
+      // Now test setCursor when body is null - should not throw
       expect(() => {
         act(() => {
           result.current.setCursor('pointer');
+        });
+      }).not.toThrow();
+
+      // Also test other cursor methods
+      expect(() => {
+        act(() => {
+          result.current.resetCursor();
+          result.current.setDrawingCursor();
+          result.current.setPointerCursor();
         });
       }).not.toThrow();
 

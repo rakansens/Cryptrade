@@ -159,10 +159,12 @@ describe('Input', () => {
     render(<Input onPaste={handlePaste} />)
     const input = screen.getByRole('textbox')
 
-    const pasteEvent = new ClipboardEvent('paste', {
-      clipboardData: new DataTransfer(),
+    fireEvent.paste(input, {
+      clipboardData: {
+        getData: jest.fn(() => 'pasted text'),
+        types: ['text/plain']
+      }
     })
-    fireEvent(input, pasteEvent)
 
     expect(handlePaste).toHaveBeenCalled()
   })

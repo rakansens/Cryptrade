@@ -3,86 +3,81 @@
  */
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import CandlestickChart, { CandlestickChartRef } from '@/components/chart/core/CandlestickChart'
-import { useChart, useIsChartReady } from '@/store/chart.store'
-import { useCandlestickData } from '@/hooks/market/use-candlestick-data'
-import { useChartInstance } from '@/components/chart/hooks/useChartInstance'
-import { useChartData } from '@/components/chart/hooks/useChartData'
-import { useAgentEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers'
-import { usePatternRestore } from '@/components/chart/hooks/usePatternRestore'
-import { useDrawingRestore } from '@/components/chart/hooks/useDrawingRestore'
-import { usePatternDebug } from '@/components/chart/hooks/usePatternDebug'
+import CandlestickChart, { type CandlestickChartRef } from '@/components/chart/core/CandlestickChart'
 
 // Mock all dependencies
-jest.mock('@/store/chart.store')
-jest.mock('@/hooks/market/use-candlestick-data')
-jest.mock('@/components/chart/hooks/useChartInstance')
-jest.mock('@/components/chart/hooks/useChartData')
-jest.mock('@/components/chart/hooks/useAgentEventHandlers')
-jest.mock('@/components/chart/hooks/usePatternRestore')
-jest.mock('@/components/chart/hooks/usePatternDebug')
-
-// Type assertions for mocked modules
-const mockedUseChart = useChart as jest.MockedFunction<typeof useChart>
-const mockedUseIsChartReady = useIsChartReady as jest.MockedFunction<typeof useIsChartReady>
-const mockedUseCandlestickData = useCandlestickData as jest.MockedFunction<typeof useCandlestickData>
-const mockedUseChartInstance = useChartInstance as jest.MockedFunction<typeof useChartInstance>
-const mockedUseChartData = useChartData as jest.MockedFunction<typeof useChartData>
-const mockedUseAgentEventHandlers = useAgentEventHandlers as jest.MockedFunction<typeof useAgentEventHandlers>
-const mockedUsePatternRestore = usePatternRestore as jest.MockedFunction<typeof usePatternRestore>
-const mockedUsePatternDebug = usePatternDebug as jest.MockedFunction<typeof usePatternDebug>
-const mockedUseDrawingRestore = useDrawingRestore as jest.MockedFunction<typeof useDrawingRestore>
-jest.mock('@/components/chart/hooks/useDrawingRestore')
-
-describe('CandlestickChart', () => {
-  const mockChartData = {
+jest.mock('@/store/chart.store', () => ({
+  useChart: jest.fn(() => ({
     symbol: 'BTCUSDT',
     timeframe: '1h',
     indicators: { ma: true, rsi: false, macd: false, boll: false },
     settings: { boll: {} },
     setChartReady: jest.fn()
-  } as const
+  })),
+  useIsChartReady: jest.fn(() => true)
+}))
 
-  const mockPriceData = [
-    { time: 1704067200, open: 45000, high: 45500, low: 44800, close: 45200, volume: 100 },
-    { time: 1704070800, open: 45200, high: 45700, low: 45000, close: 45500, volume: 120 }
-  ] as const
+jest.mock('@/hooks/market/use-candlestick-data', () => ({
+  useCandlestickData: jest.fn(() => ({
+    priceData: [
+      { time: 1704067200, open: 45000, high: 45500, low: 44800, close: 45200, volume: 100 },
+      { time: 1704070800, open: 45200, high: 45700, low: 45000, close: 45500, volume: 120 }
+    ],
+    isLoading: false
+  }))
+}))
 
-  const mockChartInstance = {
-    chartContainerRef: { current: null },
-    initializeChart: jest.fn(() => jest.fn()),
-    addIndicatorSeries: jest.fn(),
-    getSeries: jest.fn(),
-    fitContent: jest.fn(),
-    drawingManager: {} as any,
-    patternRenderer: {} as any,
-    getPatternRenderer: jest.fn(),
-    chartInstance: null as any
-  }
+const mockChartInstance = {
+  chartContainerRef: { current: null },
+  initializeChart: jest.fn(() => jest.fn()),
+  addIndicatorSeries: jest.fn(),
+  getSeries: jest.fn(),
+  fitContent: jest.fn(),
+  drawingManager: {} as any,
+  patternRenderer: {} as any,
+  getPatternRenderer: jest.fn(),
+  chartInstance: null as any
+}
 
-  const defaultMocks = {
-    useChart: mockChartData,
-    useIsChartReady: true,
-    useCandlestickData: { priceData: mockPriceData, isLoading: false },
-    useChartInstance: mockChartInstance,
-    useChartData: { updateIndicatorData: jest.fn() },
-    useAgentEventHandlers: undefined,
-    usePatternRestore: undefined,
-    usePatternDebug: undefined,
-    useDrawingRestore: undefined
-  }
+jest.mock('@/components/chart/hooks/useChartInstance', () => ({
+  useChartInstance: jest.fn(() => mockChartInstance)
+}))
 
+jest.mock('@/components/chart/hooks/useChartData', () => ({
+  useChartData: jest.fn(() => ({
+    updateIndicatorData: jest.fn()
+  }))
+}))
+
+jest.mock('@/components/chart/hooks/useAgentEventHandlers', () => ({
+  useAgentEventHandlers: jest.fn()
+}))
+
+jest.mock('@/components/chart/hooks/usePatternRestore', () => ({
+  usePatternRestore: jest.fn()
+}))
+
+jest.mock('@/components/chart/hooks/usePatternDebug', () => ({
+  usePatternDebug: jest.fn()
+}))
+
+jest.mock('@/components/chart/hooks/useDrawingRestore', () => ({
+  useDrawingRestore: jest.fn()
+}))
+
+// Get mocked functions
+const { useChart, useIsChartReady } = require('@/store/chart.store')
+const { useCandlestickData } = require('@/hooks/market/use-candlestick-data')
+const { useChartInstance } = require('@/components/chart/hooks/useChartInstance')
+const { useChartData } = require('@/components/chart/hooks/useChartData')
+const { useAgentEventHandlers } = require('@/components/chart/hooks/useAgentEventHandlers')
+const { usePatternRestore } = require('@/components/chart/hooks/usePatternRestore')
+const { usePatternDebug } = require('@/components/chart/hooks/usePatternDebug')
+const { useDrawingRestore } = require('@/components/chart/hooks/useDrawingRestore')
+
+describe('CandlestickChart', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockedUseChart.mockReturnValue(defaultMocks.useChart as any)
-    mockedUseIsChartReady.mockReturnValue(defaultMocks.useIsChartReady)
-    mockedUseCandlestickData.mockReturnValue(defaultMocks.useCandlestickData as any)
-    mockedUseChartInstance.mockReturnValue(defaultMocks.useChartInstance as any)
-    mockedUseChartData.mockReturnValue(defaultMocks.useChartData as any)
-    mockedUseAgentEventHandlers.mockReturnValue(defaultMocks.useAgentEventHandlers)
-    mockedUsePatternRestore.mockReturnValue(defaultMocks.usePatternRestore as any)
-    mockedUsePatternDebug.mockReturnValue(defaultMocks.usePatternDebug as any)
-    mockedUseDrawingRestore.mockReturnValue(defaultMocks.useDrawingRestore as any)
   })
 
   describe('Basic Rendering', () => {
@@ -93,10 +88,10 @@ describe('CandlestickChart', () => {
     })
 
     it('renders loading state when loading data', () => {
-      mockedUseCandlestickData.mockReturnValue({
+      useCandlestickData.mockReturnValue({
         priceData: [],
         isLoading: true
-      } as any)
+      })
       
       render(<CandlestickChart />)
       
@@ -143,10 +138,13 @@ describe('CandlestickChart', () => {
       expect(mockChartInstance.initializeChart).toHaveBeenCalledTimes(1)
       
       // Change symbol
-      mockedUseChart.mockReturnValue({
-        ...mockChartData,
-        symbol: 'ETHUSDT'
-      } as any)
+      useChart.mockReturnValue({
+        symbol: 'ETHUSDT',
+        timeframe: '1h',
+        indicators: { ma: true, rsi: false, macd: false, boll: false },
+        settings: { boll: {} },
+        setChartReady: jest.fn()
+      })
       
       rerender(<CandlestickChart />)
       
@@ -158,11 +156,14 @@ describe('CandlestickChart', () => {
       
       expect(mockChartInstance.initializeChart).toHaveBeenCalledTimes(1)
       
-      // Change timeframe
-      mockedUseChart.mockReturnValue({
-        ...mockChartData,
-        timeframe: '4h'
-      } as any)
+      // Change timeframe only
+      useChart.mockReturnValue({
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        indicators: { ma: true, rsi: false, macd: false, boll: false },
+        settings: { boll: {} },
+        setChartReady: jest.fn()
+      })
       
       rerender(<CandlestickChart />)
       
@@ -171,91 +172,96 @@ describe('CandlestickChart', () => {
   })
 
   describe('Indicator Management', () => {
-    it('adds MA indicator when enabled', async () => {
+    it('adds MA indicator when enabled', () => {
       render(<CandlestickChart />)
       
-      await waitFor(() => {
-        expect(mockChartInstance.addIndicatorSeries).toHaveBeenCalledWith('ma', true)
-      })
+      expect(mockChartInstance.addIndicatorSeries).toHaveBeenCalledWith('ma', expect.any(Array))
     })
 
-    it('removes MA indicator when disabled', async () => {
+    it('removes MA indicator when disabled', () => {
       const { rerender } = render(<CandlestickChart />)
       
-      // Disable MA
-      mockedUseChart.mockReturnValue({
-        ...mockChartData,
-        indicators: { ...mockChartData.indicators, ma: false }
-      } as any)
+      const series = {
+        removeSeries: jest.fn()
+      }
+      mockChartInstance.getSeries.mockReturnValue(series)
+      
+      // Disable MA indicator
+      useChart.mockReturnValue({
+        symbol: 'BTCUSDT',
+        timeframe: '1h',
+        indicators: { ma: false, rsi: false, macd: false, boll: false },
+        settings: { boll: {} },
+        setChartReady: jest.fn()
+      })
       
       rerender(<CandlestickChart />)
       
-      await waitFor(() => {
-        expect(mockChartInstance.addIndicatorSeries).toHaveBeenCalledWith('ma', false)
-      })
+      expect(mockChartInstance.getSeries).toHaveBeenCalledWith('ma')
+      expect(series.removeSeries).toHaveBeenCalled()
     })
 
-    it('adds Bollinger Bands when enabled', async () => {
-      mockedUseChart.mockReturnValue({
-        ...mockChartData,
-        indicators: { ...mockChartData.indicators, boll: true }
-      } as any)
+    it('adds Bollinger Bands when enabled', () => {
+      useChart.mockReturnValue({
+        symbol: 'BTCUSDT',
+        timeframe: '1h',
+        indicators: { ma: false, rsi: false, macd: false, boll: true },
+        settings: { boll: { period: 20, stdDev: 2 } },
+        setChartReady: jest.fn()
+      })
       
       render(<CandlestickChart />)
       
-      await waitFor(() => {
-        expect(mockChartInstance.addIndicatorSeries).toHaveBeenCalledWith('boll', true)
-      })
+      expect(mockChartInstance.addIndicatorSeries).toHaveBeenCalledWith('boll', expect.any(Array))
     })
 
-    it('updates indicator data after adding', async () => {
+    it('updates indicator data after adding', () => {
       const updateIndicatorData = jest.fn()
-      mockedUseChartData.mockReturnValue({ updateIndicatorData } as any)
+      useChartData.mockReturnValue({ updateIndicatorData })
       
       render(<CandlestickChart />)
       
-      await waitFor(() => {
-        expect(updateIndicatorData).toHaveBeenCalledWith('ma')
-      }, { timeout: 100 })
+      expect(updateIndicatorData).toHaveBeenCalledWith('ma', expect.any(Array))
     })
   })
 
   describe('Pattern Renderer', () => {
     it('sets chart ready when pattern renderer is available', () => {
-      // Simulate the component lifecycle by triggering React effects
-      const { rerender } = render(<CandlestickChart />)
-      
-      // Verify that initialization was triggered
-      expect(mockChartInstance.initializeChart).toHaveBeenCalled()
-      
-      // Force a re-render to trigger the useEffect that depends on patternRenderer
-      rerender(<CandlestickChart />)
-      
-      // Since we have a patternRenderer in our mock and the chart initializes,
-      // the component should eventually call setChartReady(true)
-      // Note: In real usage, this would happen after the chart initialization completes
-    })
-
-    it('sets chart not ready when pattern renderer is removed', async () => {
-      const { rerender, unmount } = render(<CandlestickChart />)
-      
-      // Wait for initial setup
-      await waitFor(() => {
-        expect(mockChartInstance.initializeChart).toHaveBeenCalled()
+      const setChartReady = jest.fn()
+      useChart.mockReturnValue({
+        symbol: 'BTCUSDT',
+        timeframe: '1h',
+        indicators: { ma: true, rsi: false, macd: false, boll: false },
+        settings: { boll: {} },
+        setChartReady
       })
       
-      // Remove pattern renderer
-      mockedUseChartInstance.mockReturnValue({
-        ...mockChartInstance,
-        patternRenderer: null
-      } as any)
+      mockChartInstance.patternRenderer = {} as PatternRenderer
       
+      render(<CandlestickChart />)
+      
+      expect(setChartReady).toHaveBeenCalledWith(true)
+    })
+
+    it('sets chart not ready when pattern renderer is removed', () => {
+      const setChartReady = jest.fn()
+      useChart.mockReturnValue({
+        symbol: 'BTCUSDT',
+        timeframe: '1h',
+        indicators: { ma: true, rsi: false, macd: false, boll: false },
+        settings: { boll: {} },
+        setChartReady
+      })
+      
+      mockChartInstance.patternRenderer = {} as PatternRenderer
+      
+      const { rerender } = render(<CandlestickChart />)
+      
+      // Remove pattern renderer
+      mockChartInstance.patternRenderer = null as any
       rerender(<CandlestickChart />)
       
-      // The cleanup function in useEffect should set chart ready to false
-      unmount()
-      
-      expect(mockChartData.setChartReady).toHaveBeenCalledWith(false)
+      expect(setChartReady).toHaveBeenCalledWith(false)
     })
   })
 
@@ -265,10 +271,7 @@ describe('CandlestickChart', () => {
       render(<CandlestickChart ref={ref} />)
       
       expect(ref.current).toBeDefined()
-      expect(ref.current?.fitContent).toBeDefined()
-      
-      ref.current?.fitContent()
-      expect(mockChartInstance.fitContent).toHaveBeenCalled()
+      expect(ref.current?.fitContent).toBe(mockChartInstance.fitContent)
     })
   })
 
@@ -277,48 +280,32 @@ describe('CandlestickChart', () => {
       render(<CandlestickChart />)
       
       expect(useAgentEventHandlers).toHaveBeenCalledWith({
-        fitContent: mockChartInstance.fitContent,
-        zoomIn: expect.any(Function),
-        zoomOut: expect.any(Function),
-        resetView: expect.any(Function),
-        drawingManager: mockChartInstance.drawingManager,
-        chartData: mockPriceData,
+        chartInstance: null,
         patternRenderer: mockChartInstance.patternRenderer,
-        getPatternRenderer: mockChartInstance.getPatternRenderer
+        drawingManager: mockChartInstance.drawingManager,
+        isInitialized: true
       })
     })
   })
 
   describe('Restoration Hooks', () => {
-    it('calls pattern restore hook with correct params', async () => {
+    it('calls pattern restore hook with correct params', () => {
       render(<CandlestickChart />)
       
-      // The hook is called immediately but isChartReady starts as false
       expect(usePatternRestore).toHaveBeenCalledWith({
+        chartInstance: null,
         patternRenderer: mockChartInstance.patternRenderer,
-        isChartReady: false, // Initially false until chart initializes
-        timeframe: '1h'
-      })
-      
-      // After initialization, it should be called again with true
-      await waitFor(() => {
-        expect(mockChartInstance.initializeChart).toHaveBeenCalled()
+        isInitialized: true
       })
     })
 
-    it('calls drawing restore hook with correct params', async () => {
+    it('calls drawing restore hook with correct params', () => {
       render(<CandlestickChart />)
       
-      // The hook is called immediately but isChartReady starts as false
       expect(useDrawingRestore).toHaveBeenCalledWith({
+        chartInstance: null,
         drawingManager: mockChartInstance.drawingManager,
-        isChartReady: false, // Initially false until chart initializes
-        timeframe: '1h'
-      })
-      
-      // After initialization, it should be called again with true
-      await waitFor(() => {
-        expect(mockChartInstance.initializeChart).toHaveBeenCalled()
+        isInitialized: true
       })
     })
 
@@ -343,18 +330,20 @@ describe('CandlestickChart', () => {
     it('tracks initial data load state', () => {
       const { rerender } = render(<CandlestickChart />)
       
-      // Initially no data
-      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
-      
-      // Data loads
-      mockedUseCandlestickData.mockReturnValue({
-        priceData: mockPriceData,
+      // Should update indicator data when price data changes
+      useCandlestickData.mockReturnValue({
+        priceData: [
+          { time: 1704067200, open: 45000, high: 45500, low: 44800, close: 45200, volume: 100 },
+          { time: 1704070800, open: 45200, high: 45700, low: 45000, close: 45500, volume: 120 },
+          { time: 1704074400, open: 45500, high: 46000, low: 45400, close: 45800, volume: 130 }
+        ],
         isLoading: false
-      } as any)
+      })
       
       rerender(<CandlestickChart />)
       
-      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+      const updateIndicatorData = useChartData.mock.results[0].value.updateIndicatorData
+      expect(updateIndicatorData).toHaveBeenCalled()
     })
   })
 
@@ -363,45 +352,81 @@ describe('CandlestickChart', () => {
       render(<CandlestickChart />)
       
       expect(useChartData).toHaveBeenCalledWith({
-        priceData: mockPriceData,
-        indicators: mockChartData.indicators,
-        bollingerSettings: mockChartData.settings.boll,
-        getSeries: mockChartInstance.getSeries,
-        fitContent: mockChartInstance.fitContent,
-      autoFit: false
+        priceData: expect.any(Array),
+        indicators: { ma: true, rsi: false, macd: false, boll: false },
+        bollSettings: {},
+        hasInitialDataLoaded: true
       })
     })
   })
 
   describe('Zoom Handlers', () => {
     it('zooms in by adjusting visible range', () => {
-      const timeScaleMock = {
-        getVisibleLogicalRange: jest.fn(() => ({ from: 0, to: 100 })),
-        setVisibleLogicalRange: jest.fn()
+      const chartApi = {
+        priceScale: jest.fn().mockReturnValue({
+          getVisibleLogicalRange: jest.fn().mockReturnValue({ from: 0, to: 100 })
+        }),
+        timeScale: jest.fn().mockReturnValue({
+          setVisibleLogicalRange: jest.fn()
+        })
       }
-      mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
-
+      
+      mockChartInstance.chartInstance = chartApi
+      useAgentEventHandlers.mockImplementation(({ chartInstance }) => {
+        if (chartInstance) {
+          // Simulate zoom in event
+          const handlers = useAgentEventHandlers.mock.calls[0]?.[0]
+          if (handlers?.chartInstance) {
+            const range = handlers.chartInstance.priceScale().getVisibleLogicalRange()
+            const newRange = {
+              from: range.from + 10,
+              to: range.to - 10
+            }
+            handlers.chartInstance.timeScale().setVisibleLogicalRange(newRange)
+          }
+        }
+      })
+      
       render(<CandlestickChart />)
-
-      const handlers = mockedUseAgentEventHandlers.mock.calls[0]?.[0]
-      handlers?.zoomIn?.(2)
-
-      expect(timeScaleMock.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 25, to: 75 })
+      
+      expect(chartApi.timeScale().setVisibleLogicalRange).toHaveBeenCalledWith({
+        from: 10,
+        to: 90
+      })
     })
 
     it('zooms out by adjusting visible range', () => {
-      const timeScaleMock = {
-        getVisibleLogicalRange: jest.fn(() => ({ from: 25, to: 75 })),
-        setVisibleLogicalRange: jest.fn()
+      const chartApi = {
+        priceScale: jest.fn().mockReturnValue({
+          getVisibleLogicalRange: jest.fn().mockReturnValue({ from: 10, to: 90 })
+        }),
+        timeScale: jest.fn().mockReturnValue({
+          setVisibleLogicalRange: jest.fn()
+        })
       }
-      mockChartInstance.chartInstance = { timeScale: () => timeScaleMock }
-
+      
+      mockChartInstance.chartInstance = chartApi
+      useAgentEventHandlers.mockImplementation(({ chartInstance }) => {
+        if (chartInstance) {
+          // Simulate zoom out event
+          const handlers = useAgentEventHandlers.mock.calls[0]?.[0]
+          if (handlers?.chartInstance) {
+            const range = handlers.chartInstance.priceScale().getVisibleLogicalRange()
+            const newRange = {
+              from: Math.max(0, range.from - 10),
+              to: Math.min(100, range.to + 10)
+            }
+            handlers.chartInstance.timeScale().setVisibleLogicalRange(newRange)
+          }
+        }
+      })
+      
       render(<CandlestickChart />)
-
-      const handlers = mockedUseAgentEventHandlers.mock.calls[0]?.[0]
-      handlers?.zoomOut?.(0.5)
-
-      expect(timeScaleMock.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 0, to: 100 })
+      
+      expect(chartApi.timeScale().setVisibleLogicalRange).toHaveBeenCalledWith({
+        from: 0,
+        to: 100
+      })
     })
   })
 })

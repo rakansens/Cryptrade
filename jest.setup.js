@@ -1177,6 +1177,36 @@ jest.mock('@/store/chart', () => ({
     removePattern: jest.fn(),
     clearPatterns: jest.fn(),
     getPattern: jest.fn()
+  })),
+  // Convenience hooks
+  useChartSymbol: jest.fn(() => 'BTCUSDT'),
+  useChartTimeframe: jest.fn(() => '1h'),
+  useChartIndicators: jest.fn(() => ({ ma: false, rsi: false, macd: false, boll: false })),
+  useChartSettings: jest.fn(() => ({ ma: { ma1: 20, ma2: 50, ma3: 100 }, boll: { period: 20, stdDev: 2 }, rsi: { period: 14 }, macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } })),
+  useIsChartReady: jest.fn(() => true),
+  useChartDrawings: jest.fn(() => []),
+  useChartPatterns: jest.fn(() => new Map()),
+  useDrawingMode: jest.fn(() => null),
+  useSelectedDrawing: jest.fn(() => null),
+  useIsDrawing: jest.fn(() => false),
+  useChart: jest.fn(() => ({
+    symbol: 'BTCUSDT',
+    timeframe: '1h',
+    indicators: { ma: false, rsi: false, macd: false, boll: false },
+    settings: { ma: { ma1: 20, ma2: 50, ma3: 100 }, boll: { period: 20, stdDev: 2 }, rsi: { period: 14 }, macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } },
+    isChartReady: true,
+    setSymbol: jest.fn(),
+    setTimeframe: jest.fn(),
+    setIndicators: jest.fn(),
+    updateIndicator: jest.fn(),
+    setIndicatorEnabled: jest.fn(),
+    setIndicatorSetting: jest.fn(),
+    setSettings: jest.fn(),
+    updateSetting: jest.fn(),
+    setChartReady: jest.fn(),
+    setLoading: jest.fn(),
+    setError: jest.fn(),
+    reset: jest.fn()
   }))
 }));
 
@@ -1298,17 +1328,23 @@ jest.mock('@/hooks/use-view-persistence-simple', () => ({
     setViewState: jest.fn(),
   })),
   useViewPersistence: jest.fn(() => ({
-    viewState: {},
-    setViewState: jest.fn(),
-    clearViewState: jest.fn(),
+    currentView: 'home',
+    showHome: true,
+    showChat: false,
+    setView: jest.fn(),
+    goToChat: jest.fn(),
+    goToHome: jest.fn(),
   }))
 }));
 
 jest.mock('@/hooks/use-view-persistence', () => ({
   useViewPersistence: jest.fn(() => ({
-    viewState: {},
-    setViewState: jest.fn(),
-    clearViewState: jest.fn(),
+    currentView: 'home',
+    showHome: true,
+    showChat: false,
+    setView: jest.fn(),
+    goToChat: jest.fn(),
+    goToHome: jest.fn(),
   }))
 }));
 

@@ -1,6 +1,9 @@
 /**
  * @jest-environment jsdom
  */
+// Unmock the store to use actual implementation
+jest.unmock('@/store/chart');
+
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
 import { 

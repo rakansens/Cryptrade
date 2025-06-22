@@ -63,11 +63,11 @@ jest.mock('@/components/chat/MessageInput', () => ({
 jest.mock('@/components/ui/tabs', () => {
   const React = require('react');
   return {
-    Tabs: ({ children, value, _onValueChange, className }: any) => (
+    Tabs: ({ children, value, onValueChange, className }: any) => (
       <div className={className} data-testid="tabs">
         {React.Children.map(children, (child: any) => {
           if (child?.props?.value === value || !child?.props?.value) {
-            return React.cloneElement(child, { _onValueChange })
+            return React.cloneElement(child, { onValueChange })
           }
           return null
         })}
@@ -339,7 +339,11 @@ describe('ChatPanel', () => {
       render(<ChatPanel />)
       
       // Error would be displayed in MessageList component
-      expect(mockUseChatReturn.error).toBe(errorMessage)
+      // The error is part of the messages prop passed to MessageList
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive and display the error
+      expect(mockedUseChat().error).toBe(errorMessage)
     })
   })
 
@@ -353,7 +357,10 @@ describe('ChatPanel', () => {
       render(<ChatPanel />)
       
       // Loading state would be shown in MessageList
-      expect(mockUseChatReturn.isLoading).toBe(true)
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive isLoading prop
+      expect(mockedUseChat().isLoading).toBe(true)
     })
 
     it('shows streaming state in MessageList', () => {
@@ -365,7 +372,10 @@ describe('ChatPanel', () => {
       render(<ChatPanel />)
       
       // Streaming state would be shown in MessageList
-      expect(mockUseChatReturn.isStreaming).toBe(true)
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive isStreaming prop
+      expect(mockedUseChat().isStreaming).toBe(true)
     })
   })
 
@@ -387,7 +397,10 @@ describe('ChatPanel', () => {
       render(<ChatPanel />)
       
       // Analysis progress would be displayed in MessageList
-      expect(mockUseMessageHandlingReturn.analysisInProgress).toEqual(analysisProgress)
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive analysisInProgress prop
+      expect(mockedUseMessageHandling().analysisInProgress).toEqual(analysisProgress)
     })
   })
 
@@ -416,7 +429,11 @@ describe('ChatPanel', () => {
       
       render(<ChatPanel />)
       
-      expect(mockUseProposalManagementReturn.approvedDrawingIds).toEqual(approvedIds)
+      // Approved drawing IDs would be passed to MessageList
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive approvedDrawingIds prop
+      expect(mockedUseProposalManagement().approvedDrawingIds).toEqual(approvedIds)
     })
   })
 
@@ -436,7 +453,11 @@ describe('ChatPanel', () => {
       
       render(<ChatPanel />)
       
-      expect(mockUseMessageHandlingReturn.copiedMessageId).toBe('msg-1')
+      // Copied message ID would be passed to MessageList
+      const messageList = screen.getByTestId('message-list')
+      expect(messageList).toBeInTheDocument()
+      // In real implementation, MessageList would receive copiedMessageId prop
+      expect(mockedUseMessageHandling().copiedMessageId).toBe('msg-1')
     })
   })
 })

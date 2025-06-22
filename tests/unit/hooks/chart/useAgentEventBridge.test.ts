@@ -147,6 +147,13 @@ describe('useAgentEventBridge', () => {
 
   describe('Minimal handlers', () => {
     it('should work with minimal handler object', () => {
+      // Reset mocks and ensure they don't throw errors
+      jest.clearAllMocks();
+      jest.mocked(useChartControlAgentEvents).mockImplementation(() => {});
+      jest.mocked(useChartUIEventHandlers).mockImplementation(() => {});
+      jest.mocked(useDrawingEventHandlers).mockImplementation(() => {});
+      jest.mocked(usePatternEventHandlers).mockImplementation(() => {});
+      
       const minimalHandlers = {} as ChartEventHandlers;
 
       renderHook(() => useAgentEventBridge(minimalHandlers));

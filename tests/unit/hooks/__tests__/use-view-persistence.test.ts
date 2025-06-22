@@ -1,16 +1,50 @@
 /**
  * @jest-environment jsdom
  */
+import React from 'react';
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
-import { useViewPersistence } from '@/hooks/use-view-persistence';
+import { act } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-// Mock Next.js navigation
-jest.mock('next/navigation', () => ({
-  useSearchParams: jest.fn(),
-  useRouter: jest.fn(),
+// Clear the mock to use actual implementation
+jest.unmock('@/hooks/use-view-persistence');
+
+// Import after unmocking
+import { useViewPersistence } from '@/hooks/use-view-persistence';
+
+// Mock the logger to avoid errors
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    warn: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
 }));
+
+// Create stable mock objects
+const mockSearchParamsObject = {
+  get: jest.fn(),
+  toString: jest.fn(() => ''),
+};
+
+const mockRouterObject = {
+  push: jest.fn(),
+};
+
+// Add URL global object mock for searchParams
+global.URL = global.URL || URL;
+global.URLSearchParams = global.URLSearchParams || URLSearchParams;
+
+// Mock Next.js navigation
+jest.mock('next/navigation', () => {
+  const actualNav = jest.requireActual('next/navigation');
+  return {
+    ...actualNav,
+    useSearchParams: jest.fn(() => mockSearchParamsObject),
+    useRouter: jest.fn(() => mockRouterObject),
+  };
+});
 
 // Mock localStorage
 const localStorageMock = {
@@ -25,26 +59,53 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 describe('useViewPersistence', () => {
-  const mockRouter = {
-    push: jest.fn(),
-  };
-
-  const mockSearchParams = {
-    get: jest.fn(),
-    toString: jest.fn(() => ''),
-  };
+  let mockRouter: any;
+  let mockSearchParams: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useRouter).mockReturnValue(mockRouter as any);
-    jest.mocked(useSearchParams).mockReturnValue(mockSearchParams as any);
+    
+    // Reset mock implementations
+    mockSearchParamsObject.get.mockReset();
+    mockSearchParamsObject.toString.mockReset();
+    mockSearchParamsObject.toString.mockReturnValue('');
+    mockRouterObject.push.mockReset();
+    
+    // Set mockRouter and mockSearchParams to point to the stable objects
+    mockRouter = mockRouterObject;
+    mockSearchParams = mockSearchParamsObject;
+    
     localStorageMock.getItem.mockReturnValue(null);
     mockSearchParams.get.mockReturnValue(null);
   });
 
   describe('initialization', () => {
     it('should default to home view when no persisted state', () => {
+      // Create a wrapper component to help debug
+      const TestComponent = () => {
+        const viewPersistence = useViewPersistence();
+        // Log the result
+        if (viewPersistence) {
+          console.log('Hook returned:', viewPersistence);
+        } else {
+          console.log('Hook returned undefined');
+        }
+        return null;
+      };
+
+      // Try rendering the test component first
+      renderHook(() => TestComponent());
+      
+      // Now render the actual hook
       const { result } = renderHook(() => useViewPersistence());
+      
+      // Check if result.current exists
+      expect(result.current).toBeDefined();
+      
+      // If current is defined but properties are not, log what we have
+      if (result.current && !result.current.currentView) {
+        console.log('result.current exists but missing properties:', Object.keys(result.current));
+      }
       
       expect(result.current.currentView).toBe('home');
       expect(result.current.showHome).toBe(true);

@@ -316,9 +316,9 @@ describe('ProposalCard', () => {
               metadata: {
                 patternType: 'head-and-shoulders',
                 metrics: {
-                  breakoutLevel: 48000,
-                  targetLevel: 52000,
-                  stopLoss: 46000
+                  breakout_level: 48000,
+                  target_level: 52000,
+                  stop_loss: 46000
                 },
                 tradingImplication: 'bullish' as const
               }

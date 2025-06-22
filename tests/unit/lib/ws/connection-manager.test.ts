@@ -1,10 +1,7 @@
 import { ConnectionManager } from '@/lib/ws/connection-manager';
-import { WSManager } from '@/lib/ws/WSManager';
 import { logger } from '@/lib/utils/logger';
-import type { WSMessage } from '@/lib/ws/types';
 
 // Mock dependencies
-jest.mock('@/lib/ws/WSManager');
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -14,485 +11,417 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
+// Mock WebSocket
+class MockWebSocket {
+  addEventListener = jest.fn();
+  removeEventListener = jest.fn();
+  close = jest.fn();
+  send = jest.fn();
+  readyState: number;
+  onopen = null;
+  onclose = null;
+  onmessage = null;
+  onerror = null;
+  
+  constructor(public url: string) {
+    this.readyState = WebSocket.OPEN;
+  }
+}
+
+global.WebSocket = MockWebSocket as any;
+
 describe('WebSocket Connection Manager', () => {
   let connectionManager: ConnectionManager;
-  let mockWSManager: jest.Mocked<WSManager>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Create mock WSManager
-    mockWSManager = {
-      subscribe: jest.fn(),
-      getActiveStreams: jest.fn(),
-      getMetrics: jest.fn(),
-      getExtendedMetrics: jest.fn(),
-      getConnectionState: jest.fn(),
-      destroy: jest.fn()
-    } as any;
-
-    jest.mocked(WSManager).mockImplementation(() => mockWSManager);
-    
-    connectionManager = new ConnectionManager({
-      maxReconnectAttempts: 5,
-      reconnectInterval: 1000,
-      heartbeatInterval: 30000,
-      messageQueueSize: 100
-    });
+    jest.useFakeTimers();
+    connectionManager = new ConnectionManager();
   });
 
   afterEach(() => {
-    connectionManager.destroy();
+    connectionManager.destroyAll();
+    jest.useRealTimers();
   });
 
   describe('Connection Management', () => {
-    it('should establish connection to stream', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockReturnValue({
-          unsubscribe: jest.fn()
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
-
-      expect(mockWSManager.subscribe).toHaveBeenCalledWith(streamId);
-      expect(connectionManager.isConnected(streamId)).toBe(true);
-    });
-
-    it('should handle multiple stream connections', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockReturnValue({
-          unsubscribe: jest.fn()
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streams = ['btcusdt@kline_1h', 'ethusdt@kline_1h', 'bnbusdt@kline_1h'];
+    it('should create a new WebSocket connection', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
       
-      await Promise.all(streams.map(stream => connectionManager.connect(stream)));
-
-      expect(mockWSManager.subscribe).toHaveBeenCalledTimes(3);
-      streams.forEach(stream => {
-        expect(connectionManager.isConnected(stream)).toBe(true);
-      });
-    });
-
-    it('should disconnect from stream', async () => {
-      const unsubscribeMock = jest.fn();
-      const mockObservable = {
-        subscribe: jest.fn().mockReturnValue({
-          unsubscribe: unsubscribeMock
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
+      const ws = connectionManager.createConnection(id, url);
       
-      connectionManager.disconnect(streamId);
-
-      expect(unsubscribeMock).toHaveBeenCalled();
-      expect(connectionManager.isConnected(streamId)).toBe(false);
-    });
-
-    it('should handle connection errors', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          setTimeout(() => {
-            observer.error(new Error('Connection failed'));
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      
-      await expect(connectionManager.connect(streamId)).rejects.toThrow('Connection failed');
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Connection error'),
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('Message Handling', () => {
-    it('should process incoming messages', async () => {
-      const messages: WSMessage[] = [];
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          // Simulate incoming messages
-          setTimeout(() => {
-            observer.next({ e: 'kline', s: 'BTCUSDT', k: { c: '50000' } });
-            observer.next({ e: 'kline', s: 'BTCUSDT', k: { c: '50100' } });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      connectionManager.onMessage(streamId, (msg) => {
-        messages.push(msg);
-      });
-
-      await connectionManager.connect(streamId);
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      expect(messages).toHaveLength(2);
-      expect(messages[0]).toEqual({ e: 'kline', s: 'BTCUSDT', k: { c: '50000' } });
-      expect(messages[1]).toEqual({ e: 'kline', s: 'BTCUSDT', k: { c: '50100' } });
-    });
-
-    it('should queue messages when disconnected', async () => {
-      const streamId = 'btcusdt@kline_1h';
-      
-      // Send messages before connection
-      connectionManager.send(streamId, { action: 'subscribe', symbol: 'BTCUSDT' });
-      connectionManager.send(streamId, { action: 'subscribe', symbol: 'ETHUSDT' });
-
-      expect(connectionManager.getQueuedMessages(streamId)).toBe(2);
-
-      // Connect and verify messages are sent
-      const sentMessages: any[] = [];
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          return {
-            unsubscribe: jest.fn(),
-            next: (msg: any) => sentMessages.push(msg)
-          };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      await connectionManager.connect(streamId);
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      expect(connectionManager.getQueuedMessages(streamId)).toBe(0);
-    });
-
-    it('should handle message queue overflow', () => {
-      const streamId = 'btcusdt@kline_1h';
-      
-      // Fill queue beyond capacity
-      for (let i = 0; i < 150; i++) {
-        connectionManager.send(streamId, { id: i });
-      }
-
-      // Should only keep last 100 messages (based on config)
-      expect(connectionManager.getQueuedMessages(streamId)).toBe(100);
-    });
-
-    it('should broadcast messages to multiple listeners', async () => {
-      const listeners = [jest.fn(), jest.fn(), jest.fn()];
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          setTimeout(() => {
-            observer.next({ e: 'trade', s: 'BTCUSDT', p: '50000' });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@trade';
-      
-      listeners.forEach(listener => {
-        connectionManager.onMessage(streamId, listener);
-      });
-
-      await connectionManager.connect(streamId);
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      listeners.forEach(listener => {
-        expect(listener).toHaveBeenCalledWith({ e: 'trade', s: 'BTCUSDT', p: '50000' });
-      });
-    });
-  });
-
-  describe('Heartbeat and Health Checks', () => {
-    it('should send heartbeat messages', async () => {
-      jest.useFakeTimers();
-      
-      const sentMessages: any[] = [];
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation(() => {
-          return {
-            unsubscribe: jest.fn(),
-            next: (msg: any) => sentMessages.push(msg)
-          };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
-
-      // Fast-forward time to trigger heartbeat
-      jest.advanceTimersByTime(30000);
-
-      const heartbeatMessages = sentMessages.filter(msg => msg.ping !== undefined);
-      expect(heartbeatMessages.length).toBeGreaterThan(0);
-
-      jest.useRealTimers();
-    });
-
-    it('should detect stale connections', async () => {
-      jest.useFakeTimers();
-      
-      const mockObservable = {
-        subscribe: jest.fn().mockReturnValue({
-          unsubscribe: jest.fn()
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
-
-      // Simulate no messages for extended period
-      jest.advanceTimersByTime(120000); // 2 minutes
-
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Connection appears stale'),
-        expect.any(Object)
-      );
-
-      jest.useRealTimers();
-    });
-
-    it('should handle heartbeat responses', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          // Simulate pong response
-          setTimeout(() => {
-            observer.next({ pong: Date.now() });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      const health = connectionManager.getConnectionHealth(streamId);
-      expect(health.lastPong).toBeGreaterThan(0);
-      expect(health.isHealthy).toBe(true);
-    });
-  });
-
-  describe('Reconnection Logic', () => {
-    it('should attempt automatic reconnection', async () => {
-      let connectionAttempts = 0;
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          connectionAttempts++;
-          if (connectionAttempts === 1) {
-            // First connection fails
-            setTimeout(() => observer.error(new Error('Connection lost')), 10);
-          } else {
-            // Subsequent connection succeeds
-            setTimeout(() => observer.next({ connected: true }), 10);
-          }
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      
-      try {
-        await connectionManager.connect(streamId);
-      } catch (error) {
-        // Expected error on first attempt
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      expect(connectionAttempts).toBeGreaterThan(1);
-      expect(connectionManager.isConnected(streamId)).toBe(true);
-    });
-
-    it('should respect max reconnection attempts', async () => {
-      let connectionAttempts = 0;
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          connectionAttempts++;
-          setTimeout(() => observer.error(new Error('Connection failed')), 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
-      
-      try {
-        await connectionManager.connect(streamId);
-      } catch (error) {
-        // Expected
-      }
-
-      // Wait for all reconnection attempts
-      await new Promise(resolve => setTimeout(resolve, 6000));
-
-      expect(connectionAttempts).toBeLessThanOrEqual(6); // Initial + 5 retries
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Max reconnection attempts reached'),
-        expect.any(Object)
+      expect(ws).toBeInstanceOf(MockWebSocket);
+      expect(ws?.url).toBe(url);
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ConnectionManager] Created connection',
+        { id, url }
       );
     });
 
-    it('should reset reconnection count on successful connection', async () => {
-      let connectionAttempts = 0;
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          connectionAttempts++;
-          if (connectionAttempts <= 2) {
-            setTimeout(() => observer.error(new Error('Connection failed')), 10);
-          } else if (connectionAttempts === 3) {
-            // Success on third attempt
-            setTimeout(() => observer.next({ connected: true }), 10);
-          } else {
-            // Fail again after success
-            setTimeout(() => observer.error(new Error('Connection lost again')), 10);
-          }
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
+    it('should close existing connection when creating new one with same id', () => {
+      const id = 'test-connection';
+      const url1 = 'wss://example.com/stream1';
+      const url2 = 'wss://example.com/stream2';
       
-      try {
-        await connectionManager.connect(streamId);
-      } catch (error) {
-        // Expected
-      }
+      const ws1 = connectionManager.createConnection(id, url1);
+      const ws2 = connectionManager.createConnection(id, url2);
+      
+      expect(ws1?.close).toHaveBeenCalled();
+      expect(ws2).toBeInstanceOf(MockWebSocket);
+    });
 
-      // Wait for reconnections
-      await new Promise(resolve => setTimeout(resolve, 4000));
+    it('should close connection properly', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      
+      const ws = connectionManager.createConnection(id, url);
+      connectionManager.closeConnection(id);
+      
+      expect(ws?.close).toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ConnectionManager] Closing connection',
+        { id }
+      );
+    });
 
-      // Should continue attempting after successful connection
-      expect(connectionAttempts).toBeGreaterThan(3);
+    it('should handle closing non-existent connection', () => {
+      // Should not throw
+      expect(() => {
+        connectionManager.closeConnection('non-existent');
+      }).not.toThrow();
+    });
+  });
+
+  describe('Event Listener Management', () => {
+    it('should add event listeners to WebSocket', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const handler = jest.fn();
+      
+      const ws = connectionManager.createConnection(id, url);
+      connectionManager.addEventListener(id, 'message', handler);
+      
+      expect(ws?.addEventListener).toHaveBeenCalledWith('message', handler);
+    });
+
+    it('should not add listener if connection does not exist', () => {
+      const handler = jest.fn();
+      
+      // Should not throw
+      expect(() => {
+        connectionManager.addEventListener('non-existent', 'message', handler);
+      }).not.toThrow();
+    });
+
+    it('should remove event listeners on close', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const handler1 = jest.fn();
+      const handler2 = jest.fn();
+      
+      const ws = connectionManager.createConnection(id, url);
+      connectionManager.addEventListener(id, 'message', handler1);
+      connectionManager.addEventListener(id, 'error', handler2);
+      
+      connectionManager.closeConnection(id);
+      
+      expect(ws?.removeEventListener).toHaveBeenCalledWith('message', handler1);
+      expect(ws?.removeEventListener).toHaveBeenCalledWith('error', handler2);
+      expect(ws?.onopen).toBeNull();
+      expect(ws?.onclose).toBeNull();
+      expect(ws?.onmessage).toBeNull();
+      expect(ws?.onerror).toBeNull();
+    });
+  });
+
+  describe('Timers and Intervals', () => {
+    it('should set reconnect timeout', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.setReconnectTimeout(id, callback, 1000);
+      
+      expect(callback).not.toHaveBeenCalled();
+      
+      jest.advanceTimersByTime(1000);
+      
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clear existing timeout when setting new one', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback1 = jest.fn();
+      const callback2 = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.setReconnectTimeout(id, callback1, 1000);
+      connectionManager.setReconnectTimeout(id, callback2, 2000);
+      
+      jest.advanceTimersByTime(1000);
+      expect(callback1).not.toHaveBeenCalled();
+      
+      jest.advanceTimersByTime(1000);
+      expect(callback2).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set heartbeat interval', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.setHeartbeatInterval(id, callback, 5000);
+      
+      jest.advanceTimersByTime(5000);
+      expect(callback).toHaveBeenCalledTimes(1);
+      
+      jest.advanceTimersByTime(5000);
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it('should clear heartbeat interval on close', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.setHeartbeatInterval(id, callback, 5000);
+      
+      jest.advanceTimersByTime(5000);
+      expect(callback).toHaveBeenCalledTimes(1);
+      
+      connectionManager.closeConnection(id);
+      
+      jest.advanceTimersByTime(5000);
+      expect(callback).toHaveBeenCalledTimes(1); // Should not be called again
+    });
+
+    it('should not set timers for destroyed connections', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.closeConnection(id);
+      
+      connectionManager.setReconnectTimeout(id, callback, 1000);
+      connectionManager.setHeartbeatInterval(id, callback, 5000);
+      
+      jest.advanceTimersByTime(10000);
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Pause and Resume', () => {
+    it('should pause all connections', () => {
+      const id1 = 'connection-1';
+      const id2 = 'connection-2';
+      const url = 'wss://example.com/stream';
+      const callback1 = jest.fn();
+      const callback2 = jest.fn();
+      
+      connectionManager.createConnection(id1, url);
+      connectionManager.createConnection(id2, url);
+      connectionManager.setHeartbeatInterval(id1, callback1, 1000);
+      connectionManager.setHeartbeatInterval(id2, callback2, 1000);
+      
+      jest.advanceTimersByTime(1000);
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(1);
+      
+      connectionManager.pauseAll();
+      
+      jest.advanceTimersByTime(2000);
+      // Callbacks should not be called after pause
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(1);
+      
+      expect(logger.info).toHaveBeenCalledWith('[ConnectionManager] Pausing all connections');
+    });
+
+    it('should resume all connections', () => {
+      connectionManager.resumeAll();
+      
+      expect(logger.info).toHaveBeenCalledWith('[ConnectionManager] Resuming all connections');
     });
   });
 
   describe('Resource Cleanup', () => {
-    it('should clean up all connections on destroy', async () => {
-      const unsubscribeMocks = [jest.fn(), jest.fn(), jest.fn()];
-      let index = 0;
+    it('should clean up all connections on destroyAll', () => {
+      const connections = [
+        { id: 'conn-1', url: 'wss://example.com/stream1' },
+        { id: 'conn-2', url: 'wss://example.com/stream2' },
+        { id: 'conn-3', url: 'wss://example.com/stream3' }
+      ];
       
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation(() => {
-          return { unsubscribe: unsubscribeMocks[index++] };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streams = ['stream1', 'stream2', 'stream3'];
-      await Promise.all(streams.map(stream => connectionManager.connect(stream)));
-
-      connectionManager.destroy();
-
-      unsubscribeMocks.forEach(mock => {
-        expect(mock).toHaveBeenCalled();
+      const websockets = connections.map(({ id, url }) => {
+        return connectionManager.createConnection(id, url);
       });
-      expect(mockWSManager.destroy).toHaveBeenCalled();
+      
+      connectionManager.destroyAll();
+      
+      // All connections should be closed
+      websockets.forEach(ws => {
+        expect(ws?.close).toHaveBeenCalled();
+      });
+      
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ConnectionManager] Destroying all connections',
+        { count: 3 }
+      );
     });
 
-    it('should remove message listeners on cleanup', async () => {
-      const listener = jest.fn();
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          setTimeout(() => {
-            observer.next({ test: 'message' });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
+    it('should not create connections after destroyAll', () => {
+      connectionManager.destroyAll();
+      
+      const ws = connectionManager.createConnection('test', 'wss://example.com');
+      
+      expect(ws).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[ConnectionManager] Manager is destroyed, not creating connection',
+        { id: 'test' }
+      );
+    });
 
-      const streamId = 'btcusdt@kline_1h';
-      connectionManager.onMessage(streamId, listener);
+    it('should prevent duplicate destroyAll calls', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
       
-      await connectionManager.connect(streamId);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      const ws = connectionManager.createConnection(id, url);
       
-      expect(listener).toHaveBeenCalledTimes(1);
+      connectionManager.destroyAll();
+      connectionManager.destroyAll(); // Second call
       
-      // Remove listener and send another message
-      connectionManager.offMessage(streamId, listener);
-      
-      const mockObservable2 = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          setTimeout(() => {
-            observer.next({ test: 'message2' });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable2 as any);
-      
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Listener should not be called again
-      expect(listener).toHaveBeenCalledTimes(1);
+      // Close should only be called once
+      expect(ws?.close).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('Connection State Management', () => {
-    it('should track connection states accurately', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockReturnValue({
-          unsubscribe: jest.fn()
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
-
-      const streamId = 'btcusdt@kline_1h';
+  describe('Connection Statistics', () => {
+    it('should provide connection statistics', () => {
+      const connections = [
+        { id: 'conn-1', url: 'wss://example.com/stream1' },
+        { id: 'conn-2', url: 'wss://example.com/stream2' },
+        { id: 'conn-3', url: 'wss://example.com/stream3' }
+      ];
       
-      expect(connectionManager.getConnectionState(streamId)).toBe('disconnected');
+      connections.forEach(({ id, url }) => {
+        connectionManager.createConnection(id, url);
+      });
       
-      const connectPromise = connectionManager.connect(streamId);
-      expect(connectionManager.getConnectionState(streamId)).toBe('connecting');
+      // Set up some state
+      connectionManager.setReconnectTimeout('conn-1', jest.fn(), 1000);
+      connectionManager.setHeartbeatInterval('conn-2', jest.fn(), 5000);
       
-      await connectPromise;
-      expect(connectionManager.getConnectionState(streamId)).toBe('connected');
+      const stats = connectionManager.getStats();
       
-      connectionManager.disconnect(streamId);
-      expect(connectionManager.getConnectionState(streamId)).toBe('disconnected');
+      expect(stats.activeConnections).toBe(3); // All mocked as OPEN
+      expect(stats.connections).toHaveLength(3);
+      expect(stats.connections[0]).toMatchObject({
+        id: 'conn-1',
+        url: 'wss://example.com/stream1',
+        readyState: WebSocket.OPEN,
+        hasReconnectTimeout: true,
+        hasHeartbeat: false
+      });
+      expect(stats.connections[1]).toMatchObject({
+        id: 'conn-2',
+        url: 'wss://example.com/stream2',
+        readyState: WebSocket.OPEN,
+        hasReconnectTimeout: false,
+        hasHeartbeat: true
+      });
     });
 
-    it('should provide connection statistics', async () => {
-      const mockObservable = {
-        subscribe: jest.fn().mockImplementation((observer) => {
-          // Send some messages
-          setTimeout(() => {
-            observer.next({ e: 'kline', s: 'BTCUSDT' });
-            observer.next({ e: 'kline', s: 'BTCUSDT' });
-            observer.next({ e: 'kline', s: 'BTCUSDT' });
-          }, 10);
-          return { unsubscribe: jest.fn() };
-        })
-      };
-      mockWSManager.subscribe.mockReturnValue(mockObservable as any);
+    it('should track closed connections in stats', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      
+      const ws = connectionManager.createConnection(id, url) as MockWebSocket;
+      
+      // Ensure the WebSocket instance is properly mocked
+      expect(ws).toBeInstanceOf(MockWebSocket);
+      
+      // Change readyState to CLOSED
+      ws.readyState = WebSocket.CLOSED;
+      
+      const stats = connectionManager.getStats();
+      
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.connections).toHaveLength(1);
+      expect(stats.connections[0]).toMatchObject({
+        id,
+        url,
+        readyState: WebSocket.CLOSED
+      });
+    });
+  });
 
-      const streamId = 'btcusdt@kline_1h';
-      await connectionManager.connect(streamId);
+  describe('Browser Event Handlers', () => {
+    let originalAddEventListener: any;
+    let originalRemoveEventListener: any;
+    let visibilityChangeHandler: any;
+
+    beforeEach(() => {
+      // Mock document properties
+      Object.defineProperty(document, 'hidden', {
+        value: false,
+        writable: true,
+        configurable: true
+      });
       
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Store original methods
+      originalAddEventListener = document.addEventListener;
+      originalRemoveEventListener = document.removeEventListener;
       
-      const stats = connectionManager.getConnectionStats(streamId);
-      expect(stats.messagesReceived).toBe(3);
-      expect(stats.connectionTime).toBeGreaterThan(0);
-      expect(stats.reconnectCount).toBe(0);
+      // Mock addEventListener to capture the visibility change handler
+      document.addEventListener = jest.fn((event, handler) => {
+        if (event === 'visibilitychange') {
+          visibilityChangeHandler = handler;
+        }
+      });
+      document.removeEventListener = jest.fn();
+      
+      // Re-create connectionManager to register handlers
+      connectionManager.destroyAll();
+      connectionManager = new ConnectionManager();
+    });
+
+    afterEach(() => {
+      // Restore original methods
+      document.addEventListener = originalAddEventListener;
+      document.removeEventListener = originalRemoveEventListener;
+    });
+
+    it('should handle visibility changes', () => {
+      const id = 'test-connection';
+      const url = 'wss://example.com/stream';
+      const callback = jest.fn();
+      
+      connectionManager.createConnection(id, url);
+      connectionManager.setHeartbeatInterval(id, callback, 1000);
+      
+      expect(visibilityChangeHandler).toBeDefined();
+      
+      // Simulate page becoming hidden
+      (document as any).hidden = true;
+      visibilityChangeHandler();
+      
+      expect(logger.info).toHaveBeenCalledWith('[ConnectionManager] Pausing all connections');
+      
+      // Heartbeat should be cleared
+      jest.advanceTimersByTime(2000);
+      expect(callback).not.toHaveBeenCalled();
+      
+      // Simulate page becoming visible
+      (document as any).hidden = false;
+      visibilityChangeHandler();
+      
+      expect(logger.info).toHaveBeenCalledWith('[ConnectionManager] Resuming all connections');
     });
   });
 });

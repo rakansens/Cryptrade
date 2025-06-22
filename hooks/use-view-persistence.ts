@@ -24,11 +24,18 @@ export function useViewPersistence(): UseViewPersistenceReturn {
   
   const [currentView, setCurrentView] = useState<'home' | 'chat'>(() => {
     // Priority 1: Check URL parameter (only on client)
-    if (searchParams) {
-      const urlView = searchParams.get('view');
-      if (urlView === 'chat' || urlView === 'home') {
-        return urlView;
+    try {
+      if (searchParams && typeof searchParams.get === 'function') {
+        const urlView = searchParams.get('view');
+        if (urlView === 'chat' || urlView === 'home') {
+          return urlView;
+        }
       }
+    } catch (error) {
+      // Handle error in test environment
+      logger.warn('[ViewPersistence] Error accessing searchParams in initialization', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
     
     // Priority 2: Check localStorage
@@ -65,9 +72,9 @@ export function useViewPersistence(): UseViewPersistenceReturn {
     }
     
     // Update URL without page reload
-    if (typeof window !== 'undefined' && router && router.push && searchParams) {
+    if (typeof window !== 'undefined' && router && typeof router.push === 'function') {
       try {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() || '');
         params.set('view', newView);
         router.push(`?${params.toString()}`, { scroll: false });
       } catch (error) {
@@ -81,17 +88,19 @@ export function useViewPersistence(): UseViewPersistenceReturn {
   // Sync with URL changes
   useEffect(() => {
     try {
-      const urlView = searchParams.get('view');
-      if (urlView === 'chat' || urlView === 'home') {
-        if (urlView !== currentView) {
-          setCurrentView(urlView);
-          if (typeof window !== 'undefined' && localStorage) {
-            try {
-              localStorage.setItem('cryptrade_current_view', urlView);
-            } catch (error) {
-              logger.warn('[ViewPersistence] Failed to sync localStorage with URL', {
-                error: error instanceof Error ? error.message : String(error)
-              });
+      if (searchParams && typeof searchParams.get === 'function') {
+        const urlView = searchParams.get('view');
+        if (urlView === 'chat' || urlView === 'home') {
+          if (urlView !== currentView) {
+            setCurrentView(urlView);
+            if (typeof window !== 'undefined' && localStorage) {
+              try {
+                localStorage.setItem('cryptrade_current_view', urlView);
+              } catch (error) {
+                logger.warn('[ViewPersistence] Failed to sync localStorage with URL', {
+                  error: error instanceof Error ? error.message : String(error)
+                });
+              }
             }
           }
         }

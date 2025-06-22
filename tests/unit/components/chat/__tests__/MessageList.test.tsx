@@ -189,26 +189,21 @@ describe('MessageList', () => {
   })
 
   describe('Loading States', () => {
-    it('shows typing indicator when loading', () => {
+    it('shows messages even when loading', () => {
       render(<MessageList {...defaultProps} isLoading={true} />)
       
-      // Check for animated dots
-      const dots = screen.getAllByRole('generic').filter(el => 
-        el.className.includes('animate-bounce')
-      )
-      expect(dots.length).toBe(3)
+      // Since typing indicator was removed, check that messages are still displayed
+      expect(screen.getByText('Content: Hello AI')).toBeInTheDocument()
     })
 
-    it('does not show typing indicator when streaming', () => {
+    it('shows messages when streaming', () => {
       render(<MessageList {...defaultProps} isLoading={true} isStreaming={true} />)
       
-      const dots = screen.queryAllByRole('generic').filter(el => 
-        el.className.includes('animate-bounce')
-      )
-      expect(dots.length).toBe(0)
+      // Messages should be visible during streaming
+      expect(screen.getByText('Content: Hello AI')).toBeInTheDocument()
     })
 
-    it('does not show typing indicator when analysis in progress', () => {
+    it('shows analysis progress when analysis is in progress', () => {
       const propsWithAnalysis = {
         ...defaultProps,
         isLoading: true,
@@ -222,10 +217,8 @@ describe('MessageList', () => {
       
       render(<MessageList {...propsWithAnalysis} />)
       
-      const dots = screen.queryAllByRole('generic').filter(el => 
-        el.className.includes('animate-bounce')
-      )
-      expect(dots.length).toBe(0)
+      // Should show analysis progress component
+      expect(screen.getByTestId('analysis-progress')).toBeInTheDocument()
     })
   })
 
@@ -359,10 +352,15 @@ describe('MessageList', () => {
   })
 
   describe('AI Avatar', () => {
-    it('shows AI avatar for typing indicator', () => {
-      render(<MessageList {...defaultProps} isLoading={true} />)
+    it('shows AI avatar in empty state', () => {
+      const emptyProps = {
+        ...defaultProps,
+        messages: []
+      }
+      render(<MessageList {...emptyProps} />)
       
-      const aiAvatar = screen.getAllByText('AI')[0]!
+      const aiAvatar = screen.getByText('AI')
+      expect(aiAvatar).toBeInTheDocument()
       expect(aiAvatar.parentElement!).toHaveClass('bg-gradient-to-br')
       expect(aiAvatar.parentElement!).toHaveClass('from-[hsl(var(--color-accent))]')
       expect(aiAvatar.parentElement!).toHaveClass('to-[hsl(var(--color-profit))]')

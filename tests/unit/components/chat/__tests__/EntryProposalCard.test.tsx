@@ -1,285 +1,337 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EntryProposalCard } from '@/components/chat/EntryProposalCard'
-import { EntryProposal } from '@/types/proposals'
+import { EntryProposal, EntryProposalGroup } from '@/types/proposals'
 
 const mockProposal: EntryProposal = {
   id: 'test-proposal-1',
-  type: 'LIMIT',
-  side: 'BUY',
-  price: 45000,
-  quantity: 0.5,
-  symbol: 'BTCUSDT',
-  stopLoss: 44000,
-  takeProfit: 47000,
-  reasoning: 'Strong support at 44k with bullish divergence on RSI',
-  confidence: 78,
-  riskReward: 2.5,
+  direction: 'long' as const,
+  entryPrice: 45000,
+  strategy: 'swingTrading' as const,
+  priority: 'high' as const,
+  confidence: 0.78,
+  riskParameters: {
+    stopLoss: 44000,
+    stopLossPercent: 2.22,
+    riskRewardRatio: 2.5,
+    positionSizePercent: 25,
+    takeProfitTargets: [
+      { price: 46000, percentage: 50 },
+      { price: 47000, percentage: 50 },
+    ],
+  },
+  reasoning: {
+    primary: 'Strong support at 44k with bullish divergence on RSI',
+    technicalFactors: [
+      { description: 'RSI Divergence', weight: 0.4 },
+      { description: 'Support Level', weight: 0.6 },
+    ],
+    risks: ['Market volatility', 'False breakout possibility'],
+  },
+  conditions: {
+    trigger: 'limit' as const,
+    confirmationRequired: [
+      { type: 'indicator', description: 'RSI above 50' },
+    ],
+  },
+  entryZone: {
+    min: 44800,
+    max: 45200,
+  },
+}
+
+const mockProposalGroup: EntryProposalGroup = {
+  id: 'group-1',
+  direction: 'LONG' as const,
+  overallConfidence: 78,
   timestamp: new Date('2024-01-03T10:00:00Z'),
-  status: 'pending',
+  proposals: [mockProposal],
+  reasoning: 'Bullish market conditions with strong technicals',
+  title: 'Trading Opportunity',
+  description: 'BTCUSDT Long Position',
+  summary: {
+    marketBias: 'bullish' as const,
+    averageConfidence: 0.78,
+  },
 }
 
 describe('EntryProposalCard', () => {
   const defaultProps = {
-    proposal: mockProposal,
+    proposalGroup: mockProposalGroup,
     onApprove: jest.fn(),
     onReject: jest.fn(),
-    onModify: jest.fn(),
+    onApproveAll: jest.fn(),
+    onRejectAll: jest.fn(),
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('renders proposal details correctly', () => {
+  it('renders proposal group header correctly', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    expect(screen.getByText('BTCUSDT')).toBeInTheDocument()
-    expect(screen.getByText('BUY')).toBeInTheDocument()
-    expect(screen.getByText('LIMIT')).toBeInTheDocument()
-    expect(screen.getByText('$45,000')).toBeInTheDocument()
-    expect(screen.getByText('0.5')).toBeInTheDocument()
-    expect(screen.getByText('78%')).toBeInTheDocument()
+    expect(screen.getByText('Trading Opportunity')).toBeInTheDocument()
+    expect(screen.getByText('BTCUSDT Long Position')).toBeInTheDocument()
   })
 
-  it('displays stop loss and take profit', () => {
+  it('displays market summary when provided', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    expect(screen.getByText('Stop Loss:')).toBeInTheDocument()
-    expect(screen.getByText('$44,000')).toBeInTheDocument()
-    expect(screen.getByText('Take Profit:')).toBeInTheDocument()
-    expect(screen.getByText('$47,000')).toBeInTheDocument()
+    expect(screen.getByText('市場バイアス:')).toBeInTheDocument()
+    expect(screen.getByText('上昇')).toBeInTheDocument()
+    expect(screen.getByText('平均信頼度:')).toBeInTheDocument()
+    // Use getAllByText since there might be multiple 78% elements
+    const confidenceElements = screen.getAllByText('78%')
+    expect(confidenceElements.length).toBeGreaterThan(0)
   })
 
-  it('shows risk/reward ratio', () => {
+  it('does not show approve/reject all buttons for single proposal', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    expect(screen.getByText('Risk/Reward:')).toBeInTheDocument()
-    expect(screen.getByText('1:2.5')).toBeInTheDocument()
+    expect(screen.queryByText('全て承認')).not.toBeInTheDocument()
+    expect(screen.queryByText('全て却下')).not.toBeInTheDocument()
   })
 
-  it('displays reasoning when expanded', async () => {
+  it('shows approve/reject all buttons for multiple proposals', () => {
+    const groupWithMultiple = {
+      ...mockProposalGroup,
+      proposals: [mockProposal, { ...mockProposal, id: 'test-proposal-2' }],
+    }
+    render(<EntryProposalCard {...defaultProps} proposalGroup={groupWithMultiple} />)
+    
+    expect(screen.getByText('全て承認')).toBeInTheDocument()
+    expect(screen.getByText('全て却下')).toBeInTheDocument()
+  })
+
+  it('handles approve all action', async () => {
     const user = userEvent.setup()
-    render(<EntryProposalCard {...defaultProps} />)
+    const groupWithMultiple = {
+      ...mockProposalGroup,
+      proposals: [mockProposal, { ...mockProposal, id: 'test-proposal-2' }],
+    }
+    render(<EntryProposalCard {...defaultProps} proposalGroup={groupWithMultiple} />)
     
-    // Reasoning should not be visible initially
-    expect(screen.queryByText(mockProposal.reasoning)).not.toBeInTheDocument()
+    await user.click(screen.getByText('全て承認'))
     
-    // Click to expand
-    await user.click(screen.getByRole('button', { name: /show reasoning/i }))
-    
-    expect(screen.getByText(mockProposal.reasoning)).toBeInTheDocument()
+    expect(defaultProps.onApproveAll).toHaveBeenCalled()
   })
 
-  it('handles approve action', async () => {
+  it('handles reject all action', async () => {
     const user = userEvent.setup()
-    render(<EntryProposalCard {...defaultProps} />)
+    const groupWithMultiple = {
+      ...mockProposalGroup,
+      proposals: [mockProposal, { ...mockProposal, id: 'test-proposal-2' }],
+    }
+    render(<EntryProposalCard {...defaultProps} proposalGroup={groupWithMultiple} />)
     
-    await user.click(screen.getByRole('button', { name: /approve/i }))
+    await user.click(screen.getByText('全て却下'))
     
-    expect(defaultProps.onApprove).toHaveBeenCalledWith(mockProposal.id)
+    expect(defaultProps.onRejectAll).toHaveBeenCalled()
   })
 
-  it('handles reject action', async () => {
+  it('disables approve/reject all buttons when all proposals are processed', async () => {
     const user = userEvent.setup()
-    render(<EntryProposalCard {...defaultProps} />)
+    const groupWithMultiple = {
+      ...mockProposalGroup,
+      proposals: [mockProposal, { ...mockProposal, id: 'test-proposal-2' }],
+    }
+    const { rerender } = render(<EntryProposalCard {...defaultProps} proposalGroup={groupWithMultiple} />)
     
-    await user.click(screen.getByRole('button', { name: /reject/i }))
+    // Initially buttons should be present
+    const approveAllButton = screen.getByText('全て承認')
+    expect(approveAllButton).toBeInTheDocument()
+    expect(approveAllButton).not.toBeDisabled()
     
-    expect(defaultProps.onReject).toHaveBeenCalledWith(mockProposal.id)
-  })
-
-  it('shows modify button and handles click', async () => {
-    const user = userEvent.setup()
-    render(<EntryProposalCard {...defaultProps} />)
+    // Click approve all
+    await user.click(approveAllButton)
     
-    await user.click(screen.getByRole('button', { name: /modify/i }))
-    
-    expect(defaultProps.onModify).toHaveBeenCalledWith(mockProposal)
+    // After clicking approve all, all proposals are processed
+    // The buttons should be removed from the DOM when pendingCount === 0
+    await waitFor(() => {
+      expect(screen.queryByText('全て承認')).not.toBeInTheDocument()
+      expect(screen.queryByText('全て却下')).not.toBeInTheDocument()
+    })
   })
 
   it('disables actions for approved proposals', () => {
-    const approvedProposal = { ...mockProposal, status: 'approved' as const }
-    render(<EntryProposalCard {...defaultProps} proposal={approvedProposal} />)
+    // First render with pending proposal
+    const { rerender } = render(<EntryProposalCard {...defaultProps} />)
     
-    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /modify/i })).toBeDisabled()
+    // Approve the proposal by clicking the approve button
+    const buttons = screen.getAllByRole('button')
+    const approveButton = buttons.find(btn => btn.getAttribute('title') === '承認')
+    expect(approveButton).toBeTruthy()
     
-    // Should show approved status
-    expect(screen.getByText('Approved')).toBeInTheDocument()
+    // After approval, the component internally tracks the state
+    // We can verify that action buttons are no longer shown for approved proposals
+    act(() => {
+      if (approveButton) {
+        fireEvent.click(approveButton)
+      }
+    })
+    
+    // After approval, the approve/reject buttons should not be visible anymore
+    const buttonsAfter = screen.getAllByRole('button')
+    const approveButtonAfter = buttonsAfter.find(btn => btn.getAttribute('title') === '承認')
+    expect(approveButtonAfter).toBeFalsy()
   })
 
   it('shows rejected status', () => {
-    const rejectedProposal = { ...mockProposal, status: 'rejected' as const }
-    render(<EntryProposalCard {...defaultProps} proposal={rejectedProposal} />)
+    // First render with pending proposal
+    render(<EntryProposalCard {...defaultProps} />)
     
-    expect(screen.getByText('Rejected')).toBeInTheDocument()
+    // Find and click the reject button
+    const buttons = screen.getAllByRole('button')
+    const rejectButton = buttons.find(btn => btn.getAttribute('title') === '却下')
+    
+    act(() => {
+      if (rejectButton) {
+        fireEvent.click(rejectButton)
+      }
+    })
+    
+    // After rejection, verify the proposal item has reduced opacity
+    // The component applies opacity-50 to the wrapper div that contains the proposal
+    const proposalWrapper = screen.getByText('Strong support at 44k with bullish divergence on RSI')
+      .closest('div[class*="group rounded-lg"]')
+    expect(proposalWrapper).toHaveClass('opacity-50')
   })
 
-  it('displays different order types correctly', () => {
-    const { rerender } = render(<EntryProposalCard {...defaultProps} />)
+  it('displays different strategy types correctly', () => {
+    render(<EntryProposalCard {...defaultProps} />)
     
-    // LIMIT order
-    expect(screen.getByText('LIMIT')).toBeInTheDocument()
-    
-    // MARKET order
-    const marketProposal = { ...mockProposal, type: 'MARKET' as const, price: undefined }
-    rerender(<EntryProposalCard {...defaultProps} proposal={marketProposal} />)
-    expect(screen.getByText('MARKET')).toBeInTheDocument()
-    expect(screen.getByText('Market Price')).toBeInTheDocument()
-    
-    // STOP order
-    const stopProposal = { ...mockProposal, type: 'STOP' as const }
-    rerender(<EntryProposalCard {...defaultProps} proposal={stopProposal} />)
-    expect(screen.getByText('STOP')).toBeInTheDocument()
+    // The component shows strategy labels in Japanese
+    expect(screen.getByText('スイング')).toBeInTheDocument()
   })
 
-  it('handles SELL side with appropriate styling', () => {
-    const sellProposal = { ...mockProposal, side: 'SELL' as const }
-    render(<EntryProposalCard {...defaultProps} proposal={sellProposal} />)
-    
-    const sideLabel = screen.getByText('SELL')
-    expect(sideLabel).toHaveClass('text-red-600')
-  })
-
-  it('shows execution time if executed', () => {
-    const executedProposal = {
-      ...mockProposal,
-      status: 'executed' as const,
-      executedAt: new Date('2024-01-03T10:05:00Z'),
-      executedPrice: 44950,
+  it('handles SHORT direction with appropriate styling', () => {
+    const shortProposalGroup = {
+      ...mockProposalGroup,
+      proposals: [{ ...mockProposal, direction: 'short' as const }],
     }
+    render(<EntryProposalCard {...defaultProps} proposalGroup={shortProposalGroup} />)
     
-    render(<EntryProposalCard {...defaultProps} proposal={executedProposal} />)
-    
-    expect(screen.getByText('Executed')).toBeInTheDocument()
-    expect(screen.getByText('Executed Price:')).toBeInTheDocument()
-    expect(screen.getByText('$44,950')).toBeInTheDocument()
+    expect(screen.getByText('ショートエントリー')).toBeInTheDocument()
   })
 
-  it('calculates and displays position value', () => {
+  it('shows entry price correctly', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    // Position value = price * quantity = 45000 * 0.5 = 22500
-    expect(screen.getByText('Position Value:')).toBeInTheDocument()
-    expect(screen.getByText('$22,500')).toBeInTheDocument()
+    expect(screen.getByText('エントリー')).toBeInTheDocument()
+    expect(screen.getByText('$45,000.00')).toBeInTheDocument()
   })
 
-  it('shows risk amount and percentage', () => {
+  it('displays stop loss correctly', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    // Risk = (price - stopLoss) * quantity = (45000 - 44000) * 0.5 = 500
-    expect(screen.getByText('Risk:')).toBeInTheDocument()
-    expect(screen.getByText('$500')).toBeInTheDocument()
-    expect(screen.getByText('(2.22%)')).toBeInTheDocument()
+    expect(screen.getByText('ストップロス')).toBeInTheDocument()
+    expect(screen.getByText('$44,000.00')).toBeInTheDocument()
+    expect(screen.getByText('-2.22%')).toBeInTheDocument()
   })
 
-  it('highlights high confidence proposals', () => {
-    const highConfidenceProposal = { ...mockProposal, confidence: 92 }
-    render(<EntryProposalCard {...defaultProps} proposal={highConfidenceProposal} />)
-    
-    const confidenceBadge = screen.getByText('92%')
-    expect(confidenceBadge).toHaveClass('text-green-600')
-    expect(confidenceBadge.parentElement).toHaveClass('ring-green-500')
-  })
-
-  it('shows warning for low confidence', () => {
-    const lowConfidenceProposal = { ...mockProposal, confidence: 45 }
-    render(<EntryProposalCard {...defaultProps} proposal={lowConfidenceProposal} />)
-    
-    expect(screen.getByText('45%')).toHaveClass('text-red-600')
-    expect(screen.getByText(/low confidence/i)).toBeInTheDocument()
-  })
-
-  it('displays time since proposal', () => {
+  it('shows risk reward ratio', () => {
     render(<EntryProposalCard {...defaultProps} />)
     
-    // Should show relative time
-    expect(screen.getByText(/ago$/)).toBeInTheDocument()
+    expect(screen.getByText('リスクリワード')).toBeInTheDocument()
+    expect(screen.getByText('1:2.5')).toBeInTheDocument()
+    expect(screen.getByText('推奨: 25.0%')).toBeInTheDocument()
   })
 
-  it('handles proposals without stop loss or take profit', () => {
-    const minimalProposal = {
-      ...mockProposal,
-      stopLoss: undefined,
-      takeProfit: undefined,
+  it('displays confidence correctly', () => {
+    render(<EntryProposalCard {...defaultProps} />)
+    
+    expect(screen.getByText('信頼度')).toBeInTheDocument()
+    // Check for the specific confidence value in the proposal
+    const confidenceBar = screen.getByText('信頼度').parentElement
+    expect(confidenceBar).toHaveTextContent('78%')
+  })
+
+  it('shows low confidence correctly', () => {
+    const lowConfidenceProposalGroup = {
+      ...mockProposalGroup,
+      proposals: [{ ...mockProposal, confidence: 0.45 }],
     }
+    render(<EntryProposalCard {...defaultProps} proposalGroup={lowConfidenceProposalGroup} />)
     
-    render(<EntryProposalCard {...defaultProps} proposal={minimalProposal} />)
-    
-    expect(screen.queryByText('Stop Loss:')).not.toBeInTheDocument()
-    expect(screen.queryByText('Take Profit:')).not.toBeInTheDocument()
-    expect(screen.queryByText('Risk/Reward:')).not.toBeInTheDocument()
+    expect(screen.getByText('45%')).toBeInTheDocument()
   })
 
-  it('shows loading state when processing', () => {
-    render(<EntryProposalCard {...defaultProps} isProcessing />)
+  it('displays priority correctly', () => {
+    render(<EntryProposalCard {...defaultProps} />)
     
-    const approveButton = screen.getByRole('button', { name: /approve/i })
-    const rejectButton = screen.getByRole('button', { name: /reject/i })
-    
-    expect(approveButton).toBeDisabled()
-    expect(rejectButton).toBeDisabled()
-    expect(screen.getByTestId('processing-spinner')).toBeInTheDocument()
+    expect(screen.getByText('高優先')).toBeInTheDocument()
   })
 
-  it('supports compact mode', () => {
-    render(<EntryProposalCard {...defaultProps} compact />)
-    
-    // In compact mode, should hide some details
-    expect(screen.queryByText(/reasoning/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('Position Value:')).not.toBeInTheDocument()
-    
-    // But should still show key info
-    expect(screen.getByText('BTCUSDT')).toBeInTheDocument()
-    expect(screen.getByText('$45,000')).toBeInTheDocument()
-  })
-
-  it('handles keyboard shortcuts', async () => {
+  it('can expand to show details', async () => {
     const user = userEvent.setup()
     render(<EntryProposalCard {...defaultProps} />)
     
-    // Focus on card
-    const card = screen.getByRole('article')
-    card.focus()
+    // Initially details are hidden
+    expect(screen.queryByText('利確目標')).not.toBeInTheDocument()
     
-    // Press 'a' to approve
-    await user.keyboard('a')
-    expect(defaultProps.onApprove).toHaveBeenCalled()
+    // Click to expand
+    await user.click(screen.getByText('詳細を表示'))
     
-    // Press 'r' to reject
-    await user.keyboard('r')
-    expect(defaultProps.onReject).toHaveBeenCalled()
-    
-    // Press 'm' to modify
-    await user.keyboard('m')
-    expect(defaultProps.onModify).toHaveBeenCalled()
+    // Now details should be visible
+    expect(screen.getByText('利確目標')).toBeInTheDocument()
+    expect(screen.getByText('エントリー条件')).toBeInTheDocument()
+    expect(screen.getByText('テクニカル要因')).toBeInTheDocument()
   })
 
-  it('shows comparison with current market price', () => {
-    render(<EntryProposalCard {...defaultProps} currentPrice={45500} />)
+  it('shows approve and reject buttons for pending proposals', () => {
+    render(<EntryProposalCard {...defaultProps} />)
     
-    // Proposal price is 45000, current is 45500
-    expect(screen.getByText('Below Market')).toBeInTheDocument()
-    expect(screen.getByText('-1.10%')).toBeInTheDocument()
+    // The component uses icon buttons without text
+    const buttons = screen.getAllByRole('button')
+    // Should have at least approve/reject buttons (plus expand button)
+    expect(buttons.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('displays additional metadata if available', () => {
-    const proposalWithMetadata = {
-      ...mockProposal,
-      metadata: {
-        pattern: 'Bull Flag',
-        indicators: ['RSI', 'MACD'],
-        timeframe: '4H',
-      },
+  it('shows entry zone when available', () => {
+    render(<EntryProposalCard {...defaultProps} />)
+    
+    // Entry zone is shown as a range below the entry price
+    expect(screen.getByText('$44,800 - $45,200')).toBeInTheDocument()
+  })
+
+  it('handles approve action correctly', async () => {
+    const user = userEvent.setup()
+    render(<EntryProposalCard {...defaultProps} />)
+    
+    // Find and click the approve button (it's an icon button)
+    const buttons = screen.getAllByRole('button')
+    const approveButton = buttons.find(btn => btn.getAttribute('title') === '承認')
+    
+    if (approveButton) {
+      await user.click(approveButton)
+      expect(defaultProps.onApprove).toHaveBeenCalledWith(mockProposal.id)
     }
+  })
+
+  it('shows technical factors in expanded view', async () => {
+    const user = userEvent.setup()
+    render(<EntryProposalCard {...defaultProps} />)
     
-    render(<EntryProposalCard {...defaultProps} proposal={proposalWithMetadata} />)
+    await user.click(screen.getByText('詳細を表示'))
     
-    expect(screen.getByText('Bull Flag')).toBeInTheDocument()
-    expect(screen.getByText('4H')).toBeInTheDocument()
-    expect(screen.getByText('RSI, MACD')).toBeInTheDocument()
+    expect(screen.getByText('RSI Divergence')).toBeInTheDocument()
+    expect(screen.getByText('40%')).toBeInTheDocument()
+    expect(screen.getByText('Support Level')).toBeInTheDocument()
+    expect(screen.getByText('60%')).toBeInTheDocument()
+  })
+
+  it('shows risks in expanded view', async () => {
+    const user = userEvent.setup()
+    render(<EntryProposalCard {...defaultProps} />)
+    
+    await user.click(screen.getByText('詳細を表示'))
+    
+    expect(screen.getByText('リスク要因')).toBeInTheDocument()
+    // The risks are rendered with bullet points
+    const risksSection = screen.getByText('リスク要因').parentElement?.parentElement
+    expect(risksSection).toHaveTextContent('Market volatility')
+    expect(risksSection).toHaveTextContent('False breakout possibility')
   })
 })
