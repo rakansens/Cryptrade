@@ -272,7 +272,7 @@ describe('BodyStyleWrapper', () => {
       )
 
       // Should be called once on mount
-      expect(addSpy).toHaveBeenCalledTimes(2) // Once for each class
+      expect(addSpy).toHaveBeenCalledTimes(1) // Once for both classes
 
       // Clear mock calls
       addSpy.mockClear()

@@ -29,6 +29,111 @@ jest.mock('@/config/env', () => ({
   },
 }));
 
+// Mock trace manager
+jest.mock('@/lib/monitoring/trace', () => ({
+  traceManager: {
+    startTrace: jest.fn().mockReturnValue({ correlationId: 'test-trace' }),
+    endTrace: jest.fn(),
+  }
+}));
+
+// Mock intent analysis
+jest.mock('@/lib/mastra/utils/intent', () => ({
+  analyzeIntent: jest.fn((query: string) => {
+    if (query.includes('エントリー')) {
+      return {
+        intent: 'proposal_request',
+        confidence: 0.9,
+        reasoning: 'エントリー提案のリクエスト',
+        analysisDepth: 'detailed',
+        extractedSymbol: 'BTCUSDT',
+        isProposalMode: true,
+        proposalType: 'entry',
+        isEntryProposal: true,
+      };
+    }
+    return {
+      intent: 'unknown',
+      confidence: 0.5,
+      reasoning: 'Unknown intent',
+      analysisDepth: 'basic',
+    };
+  }),
+  extractSymbol: jest.fn((query: string) => {
+    if (query.includes('BTCUSDT')) return 'BTCUSDT';
+    if (query.includes('ETHUSDT')) return 'ETHUSDT';
+    return 'BTCUSDT';
+  }),
+}));
+
+// Mock memory store
+jest.mock('@/lib/store/enhanced-conversation-memory.store', () => ({
+  useEnhancedConversationMemory: {
+    getState: jest.fn().mockReturnValue({
+      currentSessionId: 'test-session',
+      addMessage: jest.fn().mockResolvedValue(undefined),
+      getSessionContext: jest.fn().mockReturnValue('test context'),
+      getMemoryStats: jest.fn().mockReturnValue({
+        totalMessages: 5,
+        processedMessages: 5,
+        estimatedTokens: 100,
+        processors: [],
+      }),
+      getRecentMessages: jest.fn().mockReturnValue([]),
+    }),
+  },
+  createEnhancedSession: jest.fn().mockResolvedValue('test-session'),
+}));
+
+// Mock agent selection tool
+jest.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
+  agentSelectionTool: {
+    execute: jest.fn().mockImplementation(async ({ context }) => {
+      if (context.agentType === 'trading_analysis') {
+        return {
+          success: true,
+          selectedAgent: 'tradingAnalysisAgent',
+          executionResult: {
+            response: 'エントリー提案を生成しました。',
+            proposalGroup: {
+              id: 'epg_test_123',
+              type: 'entry',
+              proposals: [{
+                id: 'ep_test_1',
+                type: 'entry',
+                symbol: 'BTCUSDT',
+                direction: 'long',
+                entryPrice: 100500,
+                entryZone: { min: 100000, max: 101000 },
+                reasons: ['テストエントリー理由'],
+                confidence: 0.85,
+                priority: 'high',
+                riskParameters: {
+                  stopLoss: 99500,
+                  takeProfit: [102000, 103000],
+                  takeProfitTargets: [102000, 103000],
+                  positionSize: 0.1,
+                  riskAmount: 100,
+                  riskRewardRatio: 3,
+                },
+                metadata: {
+                  interval: '1h',
+                  analysisTimestamp: Date.now(),
+                  marketCondition: 'bullish',
+                },
+              }],
+            },
+          },
+        };
+      }
+      return {
+        success: false,
+        error: 'Unknown agent type',
+      };
+    }),
+  },
+}));
+
 // Mock API and services
 jest.mock('@/lib/binance/api-service', () => ({
   binanceAPI: {
@@ -244,7 +349,7 @@ describe('Entry Proposal End-to-End Integration', () => {
 
     it('should handle multiple entry proposals', async () => {
       // Mock multiple proposals
-      const { calculateEntryPoints } = require('../tools/entry-proposal-generation/calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValueOnce([
         {
           price: 100500,

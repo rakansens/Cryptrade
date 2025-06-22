@@ -16,6 +16,10 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }))
 
+jest.mock('@/components/ui/toast', () => ({
+  showToast: jest.fn(),
+}))
+
 // All UI components are mocked via __mocks__ directory
 
 describe('StyleEditor', () => {
@@ -37,6 +41,9 @@ describe('StyleEditor', () => {
     jest.clearAllMocks()
     // Clear any window event listeners
     window.dispatchEvent = jest.fn()
+    // Ensure showToast is mocked
+    const toast = require('@/components/ui/toast');
+    toast.showToast = jest.fn();
   })
 
   it('renders the style editor button', () => {

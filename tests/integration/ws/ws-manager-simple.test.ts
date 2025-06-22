@@ -290,7 +290,7 @@ describe('WSManager E2E Integration Tests', () => {
       expect(connection1).toBeDefined();
 
       // Test runtime switching
-      const migration = require('../migration').connectionMigration;
+      const migration = require('@/lib/ws/migration').connectionMigration;
       
       const impl1 = migration.getCurrentImplementation();
       expect(['Legacy', 'WSManager']).toContain(impl1);
@@ -304,7 +304,7 @@ describe('WSManager E2E Integration Tests', () => {
     });
 
     it('should provide performance metrics for both implementations', () => {
-      const migration = require('../migration').connectionMigration;
+      const migration = require('@/lib/ws/migration').connectionMigration;
       
       // Test with WSManager
       migration.enableWSManager();

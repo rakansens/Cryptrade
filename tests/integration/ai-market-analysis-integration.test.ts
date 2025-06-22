@@ -6,7 +6,7 @@
 import { WSManager } from '@/lib/ws/WSManager';
 import { useMarketStore } from '@/store/market.store';
 import { useChatStore } from '@/store/chat.store';
-import { useChartStore } from '@/store/chart';
+import { useChartStore, useChartStoreBase, useDrawingStore } from '@/store/chart';
 import { useProposalApprovalStore } from '@/store/proposal-approval.store';
 // import { mastra } from '@/lib/mastra/mastra';
 import { MockWebSocket, setupWebSocketMocking } from '@/tests/helpers/websocket-mock';
@@ -21,46 +21,143 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-// Mock OpenAI for AI responses
-jest.mock('openai', () => ({
-  default: jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: jest.fn().mockResolvedValue({
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                analysis: 'Bullish trend detected with strong support at 50000',
-                proposals: [{
-                  type: 'trendline',
-                  confidence: 0.85,
-                  points: [
-                    { time: Date.now() / 1000 - 3600, value: 50000 },
-                    { time: Date.now() / 1000, value: 51000 }
-                  ]
-                }]
-              })
-            }
-          }]
-        })
-      }
-    }
-  }))
+// Mock Mastra agents
+jest.mock('@/lib/mastra/mastra', () => ({
+  mastra: {
+    getAgent: jest.fn().mockResolvedValue({
+      generate: jest.fn().mockResolvedValue({
+        analysis: 'Bullish trend detected with strong support at 50000',
+        proposals: [{
+          type: 'trendline',
+          confidence: 0.85,
+          points: [
+            { time: Date.now() / 1000 - 3600, value: 50000 },
+            { time: Date.now() / 1000, value: 51000 }
+          ]
+        }]
+      })
+    })
+  }
 }));
 
 // Setup WebSocket mocking
 const cleanupMock = setupWebSocketMocking();
+
+// Mock stores
+jest.mock('@/store/market.store', () => {
+  const mockMarketData: Record<string, any[]> = {};
+  return {
+    useMarketStore: {
+      getState: () => ({
+        klines: mockMarketData,
+        addKline: jest.fn((symbol: string, kline: any) => {
+          const key = `${symbol}_1m`;
+          if (!mockMarketData[key]) {
+            mockMarketData[key] = [];
+          }
+          mockMarketData[key].push(kline);
+        }),
+        reset: jest.fn(() => {
+          Object.keys(mockMarketData).forEach(key => delete mockMarketData[key]);
+        })
+      })
+    }
+  };
+});
+
+jest.mock('@/store/chat.store', () => {
+  const mockMessages: any[] = [];
+  return {
+    useChatStore: {
+      getState: () => ({
+        messages: mockMessages,
+        addMessage: jest.fn((message: any) => {
+          mockMessages.push(message);
+        }),
+        reset: jest.fn(() => {
+          mockMessages.length = 0;
+        })
+      })
+    }
+  };
+});
+
+jest.mock('@/store/proposal-approval.store', () => {
+  const mockProposals: any[] = [];
+  return {
+    useProposalApprovalStore: {
+      getState: () => ({
+        proposals: mockProposals,
+        addProposal: jest.fn((proposal: any) => {
+          mockProposals.push(proposal);
+        }),
+        approveProposal: jest.fn(async (id: string) => {
+          const proposal = mockProposals.find(p => p.id === id);
+          if (proposal) {
+            proposal.status = 'approved';
+            // Add drawing when proposal is approved
+            if (proposal.drawing) {
+              mockDrawings.push({
+                ...proposal.drawing,
+                id: `drawing-${Date.now()}`
+              });
+            }
+          }
+        }),
+        rejectProposal: jest.fn(async (id: string, reason: string) => {
+          const proposal = mockProposals.find(p => p.id === id);
+          if (proposal) {
+            proposal.status = 'rejected';
+            proposal.rejectionReason = reason;
+          }
+        }),
+        getPendingProposals: jest.fn(() => mockProposals.filter(p => p.status === 'pending')),
+        reset: jest.fn(() => {
+          mockProposals.length = 0;
+        })
+      })
+    }
+  };
+});
+
+// Mock chart store first
+let mockDrawings: any[] = [];
+jest.mock('@/store/chart', () => ({
+  useChartStore: jest.fn(() => ({})),
+  useChartStoreBase: {
+    getState: () => ({
+      symbol: 'BTCUSDT',
+      timeframe: '1m',
+      reset: jest.fn()
+    })
+  },
+  useDrawingStore: {
+    getState: () => ({
+      get drawings() { return mockDrawings; },
+      addDrawing: jest.fn((drawing: any) => {
+        mockDrawings.push(drawing);
+      }),
+      reset: jest.fn(() => {
+        mockDrawings = [];
+      })
+    })
+  }
+}));
 
 describe('AI Chat + Market Analysis Integration', () => {
   let wsManager: WSManager;
   let marketStore: any;
   let chatStore: any;
   let chartStore: any;
+  let drawingStore: any;
   let proposalStore: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     MockWebSocket.clearInstances();
+    
+    // Reset mockDrawings array
+    mockDrawings = [];
     
     // Initialize components
     wsManager = new WSManager({
@@ -68,18 +165,18 @@ describe('AI Chat + Market Analysis Integration', () => {
       debug: false
     });
     
-    // @ts-ignore
-    marketStore = useMarketStore.getState ? useMarketStore.getState() : {};
-    // @ts-ignore
-    chatStore = useChatStore.getState ? useChatStore.getState() : {};
-    chartStore = useChartStore(state => state);
+    // Get store states
+    marketStore = useMarketStore.getState();
+    chatStore = useChatStore.getState();
+    chartStore = useChartStoreBase.getState();
+    drawingStore = useDrawingStore.getState();
     proposalStore = useProposalApprovalStore.getState();
     
     // Reset stores
     marketStore.reset();
     chatStore.reset();
-    chartStore.reset();
     proposalStore.reset();
+    drawingStore.reset();
   });
 
   afterEach(() => {
@@ -330,7 +427,7 @@ describe('AI Chat + Market Analysis Integration', () => {
       expect(approved?.status).toBe('approved');
       
       // Verify drawing was added to chart
-      const drawings = chartStore.getDrawings();
+      const drawings = drawingStore?.drawings || [];
       expect(drawings.length).toBe(1);
       expect(drawings[0].type).toBe('trendline');
       
@@ -375,7 +472,7 @@ describe('AI Chat + Market Analysis Integration', () => {
       expect(rejected?.rejectionReason).toBe('Not relevant to current strategy');
       
       // Verify no drawing was added
-      expect(chartStore.getDrawings().length).toBe(0);
+      expect(drawingStore?.drawings?.length || 0).toBe(0);
       
       // Add feedback to chat
       chatStore.addMessage({

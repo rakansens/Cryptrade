@@ -1007,6 +1007,179 @@ jest.mock('@/lib/chart/agent-utils', () => ({
   }
 }));
 
+// Mock chart stores
+jest.mock('@/store/chart', () => ({
+  useChartBaseStore: jest.fn((selector) => {
+    const state = {
+      symbol: 'BTCUSDT',
+      timeframe: '1h',
+      setSymbol: jest.fn(),
+      setTimeframe: jest.fn(),
+      patterns: new Map(),
+      reset: jest.fn(),
+      isChartReady: true,
+      isLoading: false,
+      error: null,
+      setChartReady: jest.fn(),
+      setLoading: jest.fn(),
+      setError: jest.fn()
+    };
+    return selector ? selector(state) : state;
+  }),
+  useChartStoreBase: jest.fn((selector) => {
+    const state = {
+      symbol: 'BTCUSDT', 
+      timeframe: '1h',
+      setSymbol: jest.fn(),
+      setTimeframe: jest.fn(),
+      patterns: new Map(),
+      reset: jest.fn(),
+      drawings: [],
+      indicators: {},
+      drawingMode: null,
+      selectedDrawingId: null,
+      isDrawing: false,
+      undoStack: [],
+      redoStack: [],
+      settings: {}
+    };
+    return selector ? selector(state) : state;
+  }),
+  useIndicatorStore: jest.fn((selector) => {
+    const state = {
+      indicators: {},
+      settings: {},
+      setIndicators: jest.fn(),
+      updateIndicator: jest.fn(),
+      setIndicatorEnabled: jest.fn(),
+      setIndicatorSetting: jest.fn(),
+      setSettings: jest.fn(),
+      updateSetting: jest.fn()
+    };
+    return selector ? selector(state) : state;
+  }),
+  useDrawingStore: jest.fn((selector) => {
+    const state = {
+      drawingMode: null,
+      drawings: [],
+      selectedDrawingId: null,
+      isDrawing: false,
+      undoStack: [],
+      redoStack: [],
+      setDrawingMode: jest.fn(),
+      addDrawing: jest.fn(),
+      addDrawingAsync: jest.fn(),
+      updateDrawing: jest.fn(),
+      deleteDrawing: jest.fn(),
+      deleteDrawingAsync: jest.fn(),
+      selectDrawing: jest.fn(),
+      clearAllDrawings: jest.fn(),
+      setIsDrawing: jest.fn(),
+      undo: jest.fn(),
+      redo: jest.fn(),
+      initializeDrawings: jest.fn(),
+      pushToUndoStack: jest.fn(),
+      clearRedoStack: jest.fn()
+    };
+    return selector ? selector(state) : state;
+  }),
+  usePatternStore: jest.fn((selector) => {
+    const state = {
+      patterns: new Map(),
+      addPattern: jest.fn(),
+      removePattern: jest.fn(),
+      clearPatterns: jest.fn(),
+      getPattern: jest.fn()
+    };
+    return selector ? selector(state) : state;
+  }),
+  useChartStore: jest.fn((selector) => {
+    const state = {
+      symbol: 'BTCUSDT',
+      timeframe: '1h',
+      isChartReady: true,
+      isLoading: false,
+      error: null,
+      indicators: {},
+      settings: {},
+      drawingMode: null,
+      drawings: [],
+      selectedDrawingId: null,
+      isDrawing: false,
+      undoStack: [],
+      redoStack: [],
+      patterns: new Map(),
+      // All actions
+      setSymbol: jest.fn(),
+      setTimeframe: jest.fn(),
+      setChartReady: jest.fn(),
+      setLoading: jest.fn(),
+      setError: jest.fn(),
+      reset: jest.fn(),
+      setIndicators: jest.fn(),
+      updateIndicator: jest.fn(),
+      setIndicatorEnabled: jest.fn(),
+      setIndicatorSetting: jest.fn(),
+      setSettings: jest.fn(),
+      updateSetting: jest.fn(),
+      setDrawingMode: jest.fn(),
+      addDrawing: jest.fn(),
+      addDrawingAsync: jest.fn(),
+      updateDrawing: jest.fn(),
+      deleteDrawing: jest.fn(),
+      deleteDrawingAsync: jest.fn(),
+      selectDrawing: jest.fn(),
+      clearAllDrawings: jest.fn(),
+      setIsDrawing: jest.fn(),
+      undo: jest.fn(),
+      redo: jest.fn(),
+      initializeDrawings: jest.fn(),
+      addPattern: jest.fn(),
+      removePattern: jest.fn(),
+      clearPatterns: jest.fn(),
+      getPattern: jest.fn(),
+      pushToUndoStack: jest.fn(),
+      clearRedoStack: jest.fn()
+    };
+    return selector ? selector(state) : state;
+  }),
+  useChartActions: jest.fn(() => ({
+    setSymbol: jest.fn(),
+    setTimeframe: jest.fn(),
+    setIndicators: jest.fn(),
+    updateIndicator: jest.fn(),
+    setIndicatorEnabled: jest.fn(),
+    setIndicatorSetting: jest.fn(),
+    setSettings: jest.fn(),
+    updateSetting: jest.fn(),
+    setChartReady: jest.fn(),
+    setLoading: jest.fn(),
+    setError: jest.fn(),
+    reset: jest.fn()
+  })),
+  useDrawingActions: jest.fn(() => ({
+    setDrawingMode: jest.fn(),
+    addDrawing: jest.fn(),
+    updateDrawing: jest.fn(),
+    deleteDrawing: jest.fn(),
+    selectDrawing: jest.fn(),
+    clearAllDrawings: jest.fn(),
+    setIsDrawing: jest.fn(),
+    getDrawing: jest.fn((id) => {
+      if (id === 'drawing-456') {
+        return { id, type: 'trendline', style: { color: '#22c55e', lineWidth: 2 } };
+      }
+      return null;
+    })
+  })),
+  usePatternActions: jest.fn(() => ({
+    addPattern: jest.fn(),
+    removePattern: jest.fn(),
+    clearPatterns: jest.fn(),
+    getPattern: jest.fn()
+  }))
+}));
+
 // Mock error classes
 jest.mock('@/lib/errors/base-error', () => ({
   AuthError: class AuthError extends Error {
@@ -1191,6 +1364,51 @@ if (typeof window !== 'undefined' && !window.location) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   window.location = new URL('http://localhost/');
+}
+
+// Mock ClipboardEvent for tests
+if (typeof global.ClipboardEvent === 'undefined') {
+  global.ClipboardEvent = class ClipboardEvent extends Event {
+    constructor(type, eventInitDict) {
+      super(type, eventInitDict);
+      this.clipboardData = eventInitDict?.clipboardData || {
+        getData: jest.fn(() => ''),
+        setData: jest.fn(),
+        items: [],
+        types: [],
+        files: []
+      };
+    }
+  };
+}
+
+// Mock DataTransfer for tests
+if (typeof global.DataTransfer === 'undefined') {
+  global.DataTransfer = class DataTransfer {
+    constructor() {
+      this.items = [];
+      this.types = [];
+      this.files = [];
+      this.effectAllowed = 'all';
+      this.dropEffect = 'none';
+    }
+    
+    getData(format) {
+      return '';
+    }
+    
+    setData(format, data) {
+      // Mock implementation
+    }
+    
+    clearData(format) {
+      // Mock implementation
+    }
+    
+    setDragImage(image, x, y) {
+      // Mock implementation
+    }
+  };
 }
 
 // Timer functions polyfill for jsdom environment

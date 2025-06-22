@@ -8,7 +8,7 @@ import { uiControlAgent } from '@/lib/mastra/agents/ui-control.agent';
 import { logger } from '@/lib/utils/logger';
 
 // Mock external dependencies
-jest.mock('@/lib/services/market-data.service');
+jest.mock('@/lib/services/enhanced-market-data.service');
 jest.mock('@/lib/services/database/chat.service');
 jest.mock('@/lib/utils/logger');
 

@@ -77,7 +77,7 @@ describe('Input', () => {
     expect(input).toHaveAttribute('type', 'email')
 
     rerender(<Input type="password" />)
-    input = screen.getByLabelText('', { selector: 'input' })
+    input = screen.getByTestId('input')
     expect(input).toHaveAttribute('type', 'password')
 
     rerender(<Input type="number" />)
