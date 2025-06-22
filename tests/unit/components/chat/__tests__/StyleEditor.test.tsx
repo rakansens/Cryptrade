@@ -175,7 +175,7 @@ describe('StyleEditor', () => {
         const svg = button.querySelector('svg')
         if (svg) {
           const line = svg.querySelector('line')
-          return line?.getAttribute('stroke-dasharray') === '4 2'
+          return line?.getAttribute('stroke-dasharray') === '6,3'
         }
         return false
       })

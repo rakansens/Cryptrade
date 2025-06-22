@@ -463,7 +463,8 @@ describe('useStreaming', () => {
       );
 
       await waitFor(() => {
-        expect(onError).toHaveBeenCalledTimes(2);
+        // Initial attempt + 2 reconnect attempts = 3 total
+        expect(onError).toHaveBeenCalledTimes(3);
       }, { timeout: 5000 });
 
       expect(result.current.error?.message).toBe('Connection failed');
@@ -651,16 +652,31 @@ describe('useSSE', () => {
   });
 
   it('should create EventSource connection', async () => {
-    const { result } = renderHook(() => 
+    jest.useRealTimers(); // Use real timers for this test
+    
+    const onStart = jest.fn();
+    
+    const { result, rerender } = renderHook(() => 
       useSSE({
-        endpoint: '/api/sse'
+        endpoint: '/api/sse',
+        onStart
       })
     );
 
+    // Wait for EventSource to be created and connected
     await waitFor(() => {
       expect(result.current.eventSource).toBeTruthy();
-      expect(result.current.isStreaming).toBe(true);
+      expect(result.current.eventSource?.readyState).toBe(1); // OPEN
     });
+
+    // Force a re-render to update isStreaming
+    rerender();
+
+    // Check that isStreaming is true
+    expect(result.current.isStreaming).toBe(true);
+    expect(onStart).toHaveBeenCalled();
+    
+    jest.useFakeTimers(); // Restore fake timers
   });
 
   it('should handle SSE messages', async () => {

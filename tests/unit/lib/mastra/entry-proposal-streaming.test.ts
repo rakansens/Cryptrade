@@ -107,7 +107,7 @@ describe('Entry Proposal Streaming Response', () => {
       };
 
       // Mock streaming execution
-      const simulateStreaming = async () => {
+      const simulateStreaming = () => {
         const textChunks = [
           'エントリー提案を',
           '分析中です...\n',
@@ -119,12 +119,12 @@ describe('Entry Proposal Streaming Response', () => {
 
         for (const chunk of textChunks) {
           streamingResponse.onChunk(chunk);
-          await new Promise(resolve => setTimeout(resolve, 10));
+          jest.advanceTimersByTime(10);
         }
         streamingResponse.onComplete();
       };
 
-      await simulateStreaming();
+      simulateStreaming();
 
       expect(chunks).toHaveLength(6);
       expect(chunks[0]).toBe('エントリー提案を');
@@ -277,6 +277,8 @@ describe('Entry Proposal Streaming Response', () => {
     });
 
     it('should fallback to non-streaming on connection issues', async () => {
+      jest.useRealTimers(); // Use real timers for async operations
+      
       const mockStreamingAttempt = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('Connection failed'));
       const mockNonStreamingFallback = jest.fn<() => Promise<unknown>>().mockResolvedValue({
         text: 'Fallback response',
@@ -296,6 +298,8 @@ describe('Entry Proposal Streaming Response', () => {
         text: 'Fallback response',
         proposalGroup: { id: 'epg_fallback' },
       });
+      
+      jest.useFakeTimers(); // Restore fake timers
     });
   });
 
@@ -327,7 +331,7 @@ describe('Entry Proposal Streaming Response', () => {
       expect(avgDelta).toBeLessThan(50); // Should not be too slow
     });
 
-    it('should buffer chunks efficiently', async () => {
+    it('should buffer chunks efficiently', () => {
       const buffer: string[] = [];
       const mockBufferHandler = jest.fn((chunk: string) => {
         buffer.push(chunk);
@@ -340,7 +344,7 @@ describe('Entry Proposal Streaming Response', () => {
       });
 
       const chunks = ['小さな', 'チャンク', 'を', 'バッファ', 'リング', 'します'];
-      const flushResults = [];
+      const flushResults: string[] = [];
 
       for (const chunk of chunks) {
         const result = mockBufferHandler(chunk);

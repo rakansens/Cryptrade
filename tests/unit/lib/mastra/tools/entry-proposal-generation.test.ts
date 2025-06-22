@@ -14,9 +14,14 @@ jest.mock('@/lib/utils/logger', () => ({
     debug: jest.fn(),
   },
 }));
+jest.mock('@/lib/utils/ui-event-dispatcher', () => ({
+  uiEventDispatcher: {
+    dispatchProposalGenerated: jest.fn(),
+  },
+}));
 
 // Mock the analyzers and calculators
-jest.mock('@/lib/mastra/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
   analyzeMarketContext: jest.fn().mockImplementation(() => Promise.resolve({
     trend: 'bullish',
     volatility: 'normal',
@@ -26,7 +31,7 @@ jest.mock('@/lib/mastra/entry-proposal-generation/analyzers/market-context-analy
   })),
 }));
 
-jest.mock('@/lib/mastra/entry-proposal-generation/analyzers/condition-evaluator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
   evaluateEntryConditions: jest.fn().mockImplementation(() => Promise.resolve({
     conditions: [
       { type: 'price_level', met: true, description: 'Price near support' },
@@ -37,7 +42,7 @@ jest.mock('@/lib/mastra/entry-proposal-generation/analyzers/condition-evaluator'
   })),
 }));
 
-jest.mock('@/lib/mastra/entry-proposal-generation/calculators/entry-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator', () => ({
   calculateEntryPoints: jest.fn().mockImplementation(() => Promise.resolve([
     {
       price: 100500,
@@ -57,7 +62,7 @@ jest.mock('@/lib/mastra/entry-proposal-generation/calculators/entry-calculator',
   ])),
 }));
 
-jest.mock('@/lib/mastra/entry-proposal-generation/calculators/risk-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn().mockImplementation(() => Promise.resolve({
     stopLoss: 99500,
     takeProfit: [102000, 103000],

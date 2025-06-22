@@ -36,9 +36,10 @@ describe('useViewPersistence', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useRouter).mockReturnValue(mockRouter);
-    jest.mocked(useSearchParams).mockReturnValue(mockSearchParams);
+    jest.mocked(useRouter).mockReturnValue(mockRouter as any);
+    jest.mocked(useSearchParams).mockReturnValue(mockSearchParams as any);
     localStorageMock.getItem.mockReturnValue(null);
+    mockSearchParams.get.mockReturnValue(null);
   });
 
   describe('initialization', () => {

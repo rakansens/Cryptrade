@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { act } from 'react';
 import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
 import { useDrawingActions, useDrawingStore, useChartStore } from '@/store/chart';
 import { useCursor } from '@/hooks/chart/useCursor';
@@ -10,8 +10,36 @@ import { agentUtils } from '@/lib/chart/agent-utils';
 // Mock dependencies
 jest.mock('@/store/chart');
 jest.mock('@/hooks/chart/useCursor');
-jest.mock('@/lib/utils/logger');
-jest.mock('@/lib/chart/agent-utils');
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+jest.mock('@/lib/chart/agent-utils', () => ({
+  agentUtils: {
+    validateChartDrawing: jest.fn((drawing) => drawing),
+    prepareDrawingData: jest.fn((data) => data),
+    executeDrawingOperation: jest.fn(async (fn) => await fn()),
+    showAgentSuccess: jest.fn(),
+    handleAgentError: jest.fn(),
+    handleValidationError: jest.fn()
+  },
+  validateChartDrawing: jest.fn((drawing) => drawing),
+  handleAgentError: jest.fn(),
+  showAgentSuccess: jest.fn(),
+  handleValidationError: jest.fn(),
+  executeDrawingOperation: jest.fn(async (fn) => await fn()),
+  prepareDrawingData: jest.fn((data) => data)
+}));
+jest.mock('@/types/events/drawing-events', () => ({
+  validateDrawingEvent: jest.fn((eventType, detail) => ({
+    success: true,
+    data: { type: eventType, data: detail }
+  }))
+}));
 
 describe('useDrawingEventHandlers', () => {
   const mockHandlers: ChartEventHandlers = {
@@ -50,19 +78,12 @@ describe('useDrawingEventHandlers', () => {
       if (selector.toString().includes('undo')) return mockUndo;
       if (selector.toString().includes('redo')) return mockRedo;
     });
-    (useDrawingStore.getState as jest.Mock).mockReturnValue({
+    // Mock useDrawingStore.getState as a static method
+    (useDrawingStore as any).getState = jest.fn().mockReturnValue({
       drawings: [
         { id: 'drawing1', type: 'line', style: { color: '#ff0000', lineWidth: 2, lineStyle: 'solid' } },
       ],
     });
-    
-    // Mock agent utils
-    (agentUtils.validateChartDrawing as jest.Mock).mockImplementation((drawing) => drawing);
-    (agentUtils.prepareDrawingData as jest.Mock).mockImplementation((data) => data);
-    (agentUtils.executeDrawingOperation as jest.Mock).mockImplementation(async (fn) => await fn());
-    (agentUtils.showAgentSuccess as jest.Mock).mockImplementation(() => {});
-    (agentUtils.handleAgentError as jest.Mock).mockImplementation(() => {});
-    (agentUtils.handleValidationError as jest.Mock).mockImplementation(() => {});
   });
 
   afterEach(() => {

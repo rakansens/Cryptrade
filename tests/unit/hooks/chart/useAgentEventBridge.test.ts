@@ -112,20 +112,36 @@ describe('useAgentEventBridge', () => {
 
   describe('Error isolation', () => {
     it('should not prevent other hooks from being called if one throws', () => {
-      jest.mocked(useChartControlAgentEvents).mockImplementationOnce(() => {
+      // Reset all mocks first
+      jest.clearAllMocks();
+      
+      // Setup console error spy
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      // Mock the first hook to throw
+      jest.mocked(useChartControlAgentEvents).mockImplementation(() => {
         throw new Error('Chart control error');
       });
+      
+      // The other hooks should use default mock implementation
+      jest.mocked(useChartUIEventHandlers).mockImplementation(() => {});
+      jest.mocked(useDrawingEventHandlers).mockImplementation(() => {});
+      jest.mocked(usePatternEventHandlers).mockImplementation(() => {});
 
-      // The hook should still try to call the remaining hooks
+      // The hook should throw the error
       expect(() => {
         renderHook(() => useAgentEventBridge(mockHandlers));
       }).toThrow('Chart control error');
 
-      // Due to the error, subsequent hooks won't be called in this implementation
-      // This test documents the current behavior
+      // First hook should have been called before throwing
+      expect(useChartControlAgentEvents).toHaveBeenCalledWith(mockHandlers);
+      
+      // Due to the error, subsequent hooks won't be called
       expect(useChartUIEventHandlers).not.toHaveBeenCalled();
       expect(useDrawingEventHandlers).not.toHaveBeenCalled();
       expect(usePatternEventHandlers).not.toHaveBeenCalled();
+      
+      consoleErrorSpy.mockRestore();
     });
   });
 

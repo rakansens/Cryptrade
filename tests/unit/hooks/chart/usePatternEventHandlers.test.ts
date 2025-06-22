@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
-import { usePatternActions, useChartBaseStore } from '@/store/chart';
+import { usePatternActions, useChartBaseStore, usePatternStore } from '@/store/chart';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 import { agentUtils } from '@/lib/chart/agent-utils';
@@ -8,10 +8,35 @@ import { agentUtils } from '@/lib/chart/agent-utils';
 // Mock dependencies
 jest.mock('@/store/chart', () => ({
   usePatternActions: jest.fn(),
-  useChartBaseStore: jest.fn()
+  useChartBaseStore: jest.fn(),
+  usePatternStore: jest.fn()
 }));
-jest.mock('@/lib/utils/logger');
-jest.mock('@/lib/chart/agent-utils');
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+jest.mock('@/lib/chart/agent-utils', () => ({
+  agentUtils: {
+    handleValidationError: jest.fn(),
+    handleAgentError: jest.fn(),
+    showAgentSuccess: jest.fn(),
+    getPatternRenderer: jest.fn()
+  },
+  handleValidationError: jest.fn(),
+  handleAgentError: jest.fn(),
+  showAgentSuccess: jest.fn(),
+  getPatternRenderer: jest.fn()
+}));
+jest.mock('@/types/events/pattern-events', () => ({
+  validatePatternEvent: jest.fn((eventType, detail) => ({
+    success: true,
+    data: { type: eventType, data: detail }
+  }))
+}));
 
 describe('usePatternEventHandlers', () => {
   const mockHandlers: ChartEventHandlers = {
@@ -51,15 +76,10 @@ describe('usePatternEventHandlers', () => {
       symbol: 'BTCUSDT',
       timeframe: '1h',
     });
-    (usePatternStore.getState as jest.Mock).mockReturnValue({
+    // Mock usePatternStore.getState as a static method
+    (usePatternStore as any).getState = jest.fn().mockReturnValue({
       patterns: mockPatterns,
     });
-    
-    // Mock agent utils
-    (agentUtils.handleValidationError as jest.Mock).mockImplementation(() => {});
-    (agentUtils.handleAgentError as jest.Mock).mockImplementation(() => {});
-    (agentUtils.showAgentSuccess as jest.Mock).mockImplementation(() => {});
-    (agentUtils.getPatternRenderer as jest.Mock).mockReturnValue(mockHandlers.patternRenderer);
   });
 
   afterEach(() => {

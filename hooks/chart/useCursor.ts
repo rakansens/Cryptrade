@@ -17,7 +17,7 @@ export interface UseCursorReturn {
 
 export function useCursor(): UseCursorReturn {
   const setCursor = useCallback((cursorType: CursorType) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && document.body) {
       document.body.style.cursor = cursorType;
     }
   }, []);

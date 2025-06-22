@@ -2,15 +2,37 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
 import { useEnhancedConversationMemory } from '@/lib/store/enhanced-conversation-memory.store';
 import { agentNetwork } from '@/lib/mastra/network/message-router';
-import { priceInquiryAgent } from '@/lib/mastra/agents/price-inquiry.agent';
-import { tradingAnalysisAgent } from '@/lib/mastra/agents/trading-analysis.agent';
-import { uiControlAgent } from '@/lib/mastra/agents/ui-control.agent';
 import { logger } from '@/lib/utils/logger';
 
 // Mock external dependencies
 jest.mock('@/lib/services/enhanced-market-data.service');
 jest.mock('@/lib/services/database/chat.service');
 jest.mock('@/lib/utils/logger');
+
+// Create mock agents for testing
+const mockPriceInquiryAgent = {
+  name: 'priceInquiryAgent',
+  execute: jest.fn().mockResolvedValue({
+    response: 'BTC is currently trading at $50,000',
+    data: { price: 50000, symbol: 'BTCUSDT' }
+  })
+};
+
+const mockTradingAnalysisAgent = {
+  name: 'tradingAnalysisAgent',
+  execute: jest.fn().mockResolvedValue({
+    response: 'BTCの詳細な分析: 上昇トレンドです',
+    data: { trend: 'bullish', confidence: 0.85 }
+  })
+};
+
+const mockUiControlAgent = {
+  name: 'uiControlAgent',
+  execute: jest.fn().mockResolvedValue({
+    response: 'チャートを表示しました',
+    data: { action: 'showChart' }
+  })
+};
 
 describe('Enhanced Conversation Flow Integration Tests', () => {
   let sessionId: string;
@@ -28,12 +50,13 @@ describe('Enhanced Conversation Flow Integration Tests', () => {
     });
     
     // Create test session
-    sessionId = await useEnhancedConversationMemory.getState().createSession();
+    const { createSession } = useEnhancedConversationMemory.getState();
+    sessionId = await createSession();
     
-    // Register agents in network
-    agentNetwork.registerAgent('priceInquiryAgent', priceInquiryAgent as any, ['price'], 'Price inquiry');
-    agentNetwork.registerAgent('tradingAnalysisAgent', tradingAnalysisAgent as any, ['analysis'], 'Trading analysis');
-    agentNetwork.registerAgent('uiControlAgent', uiControlAgent as any, ['ui'], 'UI control');
+    // Register mock agents in network
+    agentNetwork.registerAgent('priceInquiryAgent', mockPriceInquiryAgent as any, ['price'], 'Price inquiry');
+    agentNetwork.registerAgent('tradingAnalysisAgent', mockTradingAnalysisAgent as any, ['analysis'], 'Trading analysis');
+    agentNetwork.registerAgent('uiControlAgent', mockUiControlAgent as any, ['ui'], 'UI control');
   });
 
   afterEach(() => {

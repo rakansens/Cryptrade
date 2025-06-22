@@ -1,8 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';;
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useCandlestickData } from '@/hooks/market/use-candlestick-data';
 import { binanceAPI } from '@/lib/binance/api-service';
 import { getBinanceConnection } from '@/lib/ws';
@@ -12,7 +11,11 @@ import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline, BinanceKlineMessage } from '@/types/market';
 
 // Mock dependencies
-jest.mock('@/lib/binance/api-service');
+jest.mock('@/lib/binance/api-service', () => ({
+  binanceAPI: {
+    fetchKlines: jest.fn(),
+  },
+}));
 jest.mock('@/lib/ws');
 jest.mock('@/store/market.store');
 jest.mock('@/hooks/use-is-client');
@@ -47,40 +50,96 @@ describe('useCandlestickData', () => {
     jest.clearAllMocks();
     
     // Setup mocks
-    jest.mocked(useIsClient).mockReturnValue(true);
+    jest.mocked(useIsClient).mockImplementation(() => {
+      console.log('useIsClient called, returning true');
+      return true;
+    });
     jest.mocked(useMarketActions).mockReturnValue(mockMarketActions);
-    jest.mocked(usePriceData).mockReturnValue(mockKlines);
+    // usePriceData should initially return empty array, then return mockKlines after setPriceData is called
+    jest.mocked(usePriceData).mockReturnValue([]);
     jest.mocked(useSymbolLoading).mockReturnValue(false);
-    jest.mocked(getBinanceConnection).mockReturnValue(mockBinanceConnection);
-    (binanceAPI.fetchKlines as jest.Mock).mockResolvedValue(mockKlines);
+    jest.mocked(getBinanceConnection).mockReturnValue(mockBinanceConnection as any);
+    
+    // Mock binanceAPI.fetchKlines to return our mock data
+    (binanceAPI.fetchKlines as jest.Mock).mockImplementation((...args) => {
+      console.log('fetchKlines called with:', args);
+      return Promise.resolve(mockKlines);
+    });
+    
+    // Add logging to debug
+    (logger.info as jest.Mock).mockImplementation((...args) => {
+      console.log('logger.info:', ...args);
+    });
+    (logger.error as jest.Mock).mockImplementation((...args) => {
+      console.log('logger.error:', ...args);
+    });
     
     // Default subscribe mock that returns unsubscribe function
     mockBinanceConnection.subscribe.mockReturnValue(jest.fn());
   });
+  
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+  });
 
   describe('initialization', () => {
     it('should load initial data on mount', async () => {
-      renderHook(() => useCandlestickData({
+      const { result, rerender } = renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
         limit: 1000,
       }));
 
-      await waitFor(() => {
-        expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);
-        expect(mockMarketActions.setPriceData).toHaveBeenCalledWith('BTCUSDT', mockKlines);
+      // Initial state
+      expect(result.current.priceData).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+
+      // Force a rerender to ensure effects run
+      await act(async () => {
+        rerender();
+        // Give time for effects to execute
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
+
+      // Check if the hook attempted to load data
+      if ((binanceAPI.fetchKlines as jest.Mock).mock.calls.length === 0) {
+        console.log('fetchKlines was not called. Checking hook state...');
+        console.log('result.current:', result.current);
+        console.log('useIsClient mock calls:', (useIsClient as jest.Mock).mock.calls.length);
+      }
+
+      expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);
+      expect(mockMarketActions.setPriceData).toHaveBeenCalledWith('BTCUSDT', mockKlines);
+      expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', true);
+      expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', false);
+      expect(logger.info).toHaveBeenCalledWith(
+        '[CandlestickData] Loading initial data',
+        expect.objectContaining({ symbol: 'BTCUSDT', interval: '1h', limit: 1000 })
+      );
     });
 
     it('should use default limit if not provided', async () => {
+      jest.useRealTimers();
+      
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);
       });
+      
+      expect(result.current.priceData).toEqual(mockKlines);
+      expect(result.current.isLoading).toBe(false);
+      
+      jest.useFakeTimers();
     });
 
     it('should not load data on server side', () => {
@@ -95,27 +154,38 @@ describe('useCandlestickData', () => {
     });
 
     it('should set loading state during initial load', async () => {
+      jest.useRealTimers();
+      
       let resolvePromise: (value: ProcessedKline[]) => void;
       const promise = new Promise<ProcessedKline[]>((resolve) => {
         resolvePromise = resolve;
       });
-      (binanceAPI.fetchKlines as jest.Mock).mockReturnValue(promise);
+      binanceAPI.fetchKlines.mockReturnValue(promise);
 
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', true);
 
       await act(async () => {
         resolvePromise!(mockKlines);
+        await new Promise(resolve => setTimeout(resolve, 0));
       });
 
       expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', false);
+      
+      jest.useFakeTimers();
     });
 
     it('should handle initial load errors', async () => {
+      jest.useRealTimers();
+      
       const error = new Error('Failed to fetch');
       (binanceAPI.fetchKlines as jest.Mock).mockRejectedValue(error);
 
@@ -123,6 +193,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(logger.error).toHaveBeenCalledWith(
@@ -134,13 +208,21 @@ describe('useCandlestickData', () => {
           'Failed to load chart data for BTCUSDT'
         );
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should only load initial data once', async () => {
+      jest.useRealTimers();
+      
       const { rerender } = renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledTimes(1);
@@ -151,15 +233,23 @@ describe('useCandlestickData', () => {
 
       // Should not fetch again
       expect(binanceAPI.fetchKlines).toHaveBeenCalledTimes(1);
+      
+      jest.useFakeTimers();
     });
   });
 
   describe('websocket subscription', () => {
     it('should subscribe to kline stream', async () => {
+      jest.useRealTimers();
+      
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalledWith(
@@ -167,9 +257,13 @@ describe('useCandlestickData', () => {
           expect.any(Function)
         );
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should handle closed klines', async () => {
+      jest.useRealTimers();
+      
       let messageHandler: (data: BinanceKlineMessage) => void;
       mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
@@ -180,6 +274,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalled();
@@ -222,9 +320,13 @@ describe('useCandlestickData', () => {
         close: 103500,
         volume: 1800,
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should handle updating klines', async () => {
+      jest.useRealTimers();
+      
       let messageHandler: (data: BinanceKlineMessage) => void;
       mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
@@ -235,6 +337,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalled();
@@ -277,9 +383,13 @@ describe('useCandlestickData', () => {
         close: 103200,
         volume: 1500,
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should filter messages by symbol', async () => {
+      jest.useRealTimers();
+      
       let messageHandler: (data: BinanceKlineMessage) => void;
       mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
@@ -290,6 +400,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalled();
@@ -326,9 +440,13 @@ describe('useCandlestickData', () => {
 
       expect(mockMarketActions.addKline).not.toHaveBeenCalled();
       expect(mockMarketActions.updateLastKline).not.toHaveBeenCalled();
+      
+      jest.useFakeTimers();
     });
 
     it('should handle websocket errors', async () => {
+      jest.useRealTimers();
+      
       let messageHandler: (data: unknown) => void;
       mockBinanceConnection.subscribe.mockImplementation((_stream, handler) => {
         messageHandler = handler;
@@ -339,6 +457,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalled();
@@ -365,9 +487,13 @@ describe('useCandlestickData', () => {
       expect(mockMarketActions.setConnectionError).toHaveBeenCalledWith(
         'Failed to process kline data for BTCUSDT'
       );
+      
+      jest.useFakeTimers();
     });
 
     it('should cleanup subscription on unmount', async () => {
+      jest.useRealTimers();
+      
       const unsubscribe = jest.fn();
       mockBinanceConnection.subscribe.mockReturnValue(unsubscribe);
 
@@ -375,6 +501,10 @@ describe('useCandlestickData', () => {
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalled();
@@ -387,15 +517,23 @@ describe('useCandlestickData', () => {
         '[CandlestickData] Cleaning up kline stream',
         { symbol: 'BTCUSDT', interval: '1h' }
       );
+      
+      jest.useFakeTimers();
     });
   });
 
   describe('symbol and interval changes', () => {
     it('should reload data when symbol changes', async () => {
+      jest.useRealTimers();
+      
       const { rerender } = renderHook(
         ({ symbol, interval }) => useCandlestickData({ symbol, interval }),
         { initialProps: { symbol: 'BTCUSDT', interval: '1h' } }
       );
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);
@@ -403,16 +541,28 @@ describe('useCandlestickData', () => {
 
       rerender({ symbol: 'ETHUSDT', interval: '1h' });
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('ETHUSDT', '1h', 1000);
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should reload data when interval changes', async () => {
+      jest.useRealTimers();
+      
       const { rerender } = renderHook(
         ({ symbol, interval }) => useCandlestickData({ symbol, interval }),
         { initialProps: { symbol: 'BTCUSDT', interval: '1h' } }
       );
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);
@@ -420,12 +570,20 @@ describe('useCandlestickData', () => {
 
       rerender({ symbol: 'BTCUSDT', interval: '4h' });
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '4h', 1000);
       });
+      
+      jest.useFakeTimers();
     });
 
     it('should update websocket subscription when params change', async () => {
+      jest.useRealTimers();
+      
       const unsubscribe = jest.fn();
       mockBinanceConnection.subscribe.mockReturnValue(unsubscribe);
 
@@ -433,6 +591,10 @@ describe('useCandlestickData', () => {
         ({ symbol, interval }) => useCandlestickData({ symbol, interval }),
         { initialProps: { symbol: 'BTCUSDT', interval: '1h' } }
       );
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(mockBinanceConnection.subscribe).toHaveBeenCalledWith(
@@ -443,6 +605,10 @@ describe('useCandlestickData', () => {
 
       rerender({ symbol: 'ETHUSDT', interval: '4h' });
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       expect(unsubscribe).toHaveBeenCalled();
       
       await waitFor(() => {
@@ -451,20 +617,32 @@ describe('useCandlestickData', () => {
           expect.any(Function)
         );
       });
+      
+      jest.useFakeTimers();
     });
   });
 
   describe('return values', () => {
-    it('should return price data from store', () => {
+    it('should return price data from store', async () => {
+      jest.useRealTimers();
+      
       const { result } = renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       expect(result.current.priceData).toBe(mockKlines);
+      
+      jest.useFakeTimers();
     });
 
-    it('should return loading state from store', () => {
+    it('should return loading state from store', async () => {
+      jest.useRealTimers();
+      
       jest.mocked(useSymbolLoading).mockReturnValue(true);
 
       const { result } = renderHook(() => useCandlestickData({
@@ -472,7 +650,13 @@ describe('useCandlestickData', () => {
         interval: '1h',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       expect(result.current.isLoading).toBe(true);
+      
+      jest.useFakeTimers();
     });
 
     it('should always return null error', () => {
@@ -485,10 +669,16 @@ describe('useCandlestickData', () => {
     });
 
     it('should provide refresh function', async () => {
+      jest.useRealTimers();
+      
       const { result } = renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(binanceAPI.fetchKlines).toHaveBeenCalledTimes(1);
@@ -502,38 +692,62 @@ describe('useCandlestickData', () => {
       });
 
       expect(binanceAPI.fetchKlines).toHaveBeenCalledTimes(1);
+      
+      jest.useFakeTimers();
     });
   });
 
   describe('edge cases', () => {
-    it('should handle empty symbol', () => {
+    it('should handle empty symbol', async () => {
+      jest.useRealTimers();
+      
       renderHook(() => useCandlestickData({
         symbol: '',
         interval: '1h',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       // The hook still attempts to fetch even with empty symbol
       // This is the actual behavior of the hook - it doesn't check for empty values
       expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('', '1h', 1000);
+      
+      jest.useFakeTimers();
     });
 
-    it('should handle empty interval', () => {
+    it('should handle empty interval', async () => {
+      jest.useRealTimers();
+      
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '',
       }));
 
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
       // The hook still attempts to fetch even with empty interval
       // This is the actual behavior of the hook - it doesn't check for empty values
       expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '', 1000);
+      
+      jest.useFakeTimers();
     });
 
     it('should log appropriate messages', async () => {
+      jest.useRealTimers();
+      
       renderHook(() => useCandlestickData({
         symbol: 'BTCUSDT',
         interval: '1h',
         limit: 500,
       }));
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(logger.info).toHaveBeenCalledWith(
@@ -549,6 +763,8 @@ describe('useCandlestickData', () => {
           { symbol: 'BTCUSDT', interval: '1h', streamKey: 'btcusdt@kline_1h' }
         );
       });
+      
+      jest.useFakeTimers();
     });
   });
 });

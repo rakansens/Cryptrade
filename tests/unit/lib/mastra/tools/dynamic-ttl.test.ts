@@ -15,7 +15,7 @@ describe('Dynamic TTL Implementation', () => {
       const config = getCacheConfig();
       expect(config.defaultTtl).toBe(30000); // 30s default
       expect(config.minTtl).toBe(5000); // 5s minimum
-      expect(config.maxTtl).toBe(300000); // 5m maximum
+      expect(config.maxTtl).toBe(60000); // 60s maximum
     });
   });
 

@@ -15,9 +15,53 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }))
 
+jest.mock('@/types/events/pattern-events', () => ({
+  validatePatternEvent: jest.fn((eventType, detail) => ({
+    success: true,
+    data: { type: eventType, data: detail }
+  }))
+}))
+
+jest.mock('@/lib/chart/agent-utils', () => ({
+  agentUtils: {
+    handleValidationError: jest.fn(),
+    handleAgentError: jest.fn(),
+    showAgentSuccess: jest.fn(),
+    getPatternRenderer: jest.fn(() => ({
+      renderPattern: jest.fn(),
+      removePattern: jest.fn(),
+    }))
+  },
+}))
+
+// Mock the store
+let mockPatterns = new Map()
+
+jest.mock('@/store/chart', () => ({
+  usePatternStore: {
+    setState: jest.fn((newState) => {
+      if (newState.patterns) {
+        mockPatterns = newState.patterns
+      }
+    }),
+    getState: jest.fn(() => ({ patterns: mockPatterns })),
+    subscribe: jest.fn(),
+  },
+  usePatternActions: jest.fn(() => ({
+    addPattern: jest.fn(),
+    removePattern: jest.fn(),
+    clearPatterns: jest.fn(),
+  })),
+  useChartBaseStore: jest.fn(() => ({
+    symbol: 'BTCUSDT',
+    timeframe: '1h',
+  })),
+}))
+
 describe('usePatternEventHandlers lineStyles', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockPatterns = new Map()
     usePatternStore.setState({ patterns: new Map() })
   })
 
@@ -72,9 +116,13 @@ describe('usePatternEventHandlers lineStyles', () => {
     renderHook(() => usePatternEventHandlers(handlers as any))
 
     const updateEvent = {
-      patternId,
-      lineStyles: [{ lineId: 'line1', style: { color: '#f00', lineWidth: 3 } }],
-      immediate: true,
+      type: 'chart:updatePatternStyle',
+      timestamp: Date.now(),
+      data: {
+        patternId,
+        lineStyles: [{ lineId: 'line1', style: { color: '#f00', lineWidth: 3 } }],
+        immediate: true,
+      }
     }
     window.dispatchEvent(new CustomEvent('chart:updatePatternStyle', { detail: updateEvent }))
 

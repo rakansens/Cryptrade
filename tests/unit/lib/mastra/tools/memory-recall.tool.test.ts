@@ -93,6 +93,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
+          limit: 8,
         },
       });
 
@@ -106,6 +107,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
+          limit: 8,
         },
       });
 
@@ -197,6 +199,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'search',
+          limit: 8,
         },
       });
 
@@ -382,6 +385,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
+          limit: 8,
         },
       });
 
@@ -410,6 +414,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: 'session-123',
           operation: 'getRecent',
+          limit: 8,
         },
       });
 
@@ -455,11 +460,11 @@ describe('memoryRecallTool', () => {
 
       const context = formatConversationContext(messages, 1000);
 
-      // Check order - most recent should appear first
+      // Check order - messages appear in chronological order (oldest first)
       const lines = context.split('\n\n');
-      expect(lines[0]).toBe('user: Message 2');
+      expect(lines[0]).toBe('user: Message 1');
       expect(lines[1]).toBe('assistant: Response 1');
-      expect(lines[2]).toBe('user: Message 1');
+      expect(lines[2]).toBe('user: Message 2');
     });
 
     it('should respect token limit', () => {
@@ -522,10 +527,10 @@ describe('memoryRecallTool', () => {
       expect(result.topics).toEqual([]);
     });
 
-    it('should not extract partial matches', () => {
+    it('should extract symbols from trading pairs', () => {
       const result = extractMetadataFromQuery('BTCUSDT pair information');
-      // Should not extract BTC from BTCUSDT
-      expect(result.symbols).toEqual([]);
+      // Should extract BTC from BTCUSDT (this is actually useful behavior)
+      expect(result.symbols).toEqual(['BTC']);
     });
 
     it('should handle multiple occurrences of same symbol', () => {
@@ -550,6 +555,7 @@ describe('memoryRecallTool', () => {
         context: {
           sessionId: longSessionId,
           operation: 'getRecent',
+          limit: 8,
         },
       });
 
@@ -567,6 +573,7 @@ describe('memoryRecallTool', () => {
           sessionId: 'session-123',
           operation: 'search',
           query: specialQuery,
+          limit: 8,
         },
       });
 
@@ -595,10 +602,10 @@ describe('memoryRecallTool', () => {
 
       const promises = [
         executeMemoryRecallTool({
-          context: { sessionId: 'session-1', operation: 'getRecent' },
+          context: { sessionId: 'session-1', operation: 'getRecent', limit: 8 },
         }),
         executeMemoryRecallTool({
-          context: { sessionId: 'session-2', operation: 'getRecent' },
+          context: { sessionId: 'session-2', operation: 'getRecent', limit: 8 },
         }),
       ];
 

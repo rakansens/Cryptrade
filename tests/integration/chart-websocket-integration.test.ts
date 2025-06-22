@@ -123,11 +123,57 @@ describe('Chart + WebSocket Integration', () => {
       return instances.filter(ws => ws.readyState === WebSocket.OPEN).length;
     });
     
-    // Access store states directly
-    const baseStore = useChartBaseStore.getState();
-    const indicatorStore = useIndicatorStore.getState();
-    const drawingStore = useDrawingStore.getState();
-    const patternStore = usePatternStore.getState();
+    // Create merged store state for the mock
+    const baseStore = {
+      symbol: 'BTCUSDT',
+      timeframe: '1h',
+      isChartReady: true,
+      isLoading: false,
+      error: null,
+      setSymbol: jest.fn(),
+      setTimeframe: jest.fn(),
+      setChartReady: jest.fn(),
+      setLoading: jest.fn(),
+      setError: jest.fn(),
+      reset: jest.fn()
+    };
+    
+    const indicatorStore = {
+      indicators: {},
+      settings: {},
+      setIndicators: jest.fn(),
+      updateIndicator: jest.fn(),
+      setIndicatorEnabled: jest.fn(),
+      setIndicatorSetting: jest.fn(),
+      setSettings: jest.fn(),
+      updateSetting: jest.fn()
+    };
+    
+    const drawingStore = {
+      drawingMode: null,
+      drawings: [],
+      selectedDrawingId: null,
+      isDrawing: false,
+      undoStack: [],
+      redoStack: [],
+      setDrawingMode: jest.fn(),
+      addDrawing: jest.fn(),
+      updateDrawing: jest.fn(),
+      deleteDrawing: jest.fn(),
+      selectDrawing: jest.fn(),
+      clearAllDrawings: jest.fn(),
+      setIsDrawing: jest.fn(),
+      undo: jest.fn(),
+      redo: jest.fn()
+    };
+    
+    const patternStore = {
+      patterns: new Map(),
+      addPattern: jest.fn(),
+      removePattern: jest.fn(),
+      clearPatterns: jest.fn(),
+      getPattern: jest.fn()
+    };
     
     chartStore = {
       ...baseStore,
@@ -176,7 +222,9 @@ describe('Chart + WebSocket Integration', () => {
   afterEach(() => {
     wsManager.destroy();
     MockWebSocket.clearInstances();
-    seriesRegistry.dispose();
+    if (seriesRegistry && typeof seriesRegistry.dispose === 'function') {
+      seriesRegistry.dispose();
+    }
   });
 
   afterAll(() => {
