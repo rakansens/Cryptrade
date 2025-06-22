@@ -38,8 +38,10 @@ describe('ProposalApprovalStore', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resetAllStores();
-  });
+    // Reset the store to initial state
+    act(() => {
+      useProposalApprovalStore.getState().reset();
+    });
   });
 
   afterEach(() => {

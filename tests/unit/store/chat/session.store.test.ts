@@ -27,10 +27,20 @@ jest.mock('@/lib/utils/zustand-helpers', () => ({
 // Mock chat API
 jest.mock('@/lib/api/chat-api', () => ({
   ChatAPI: {
-    createSession: jest.fn(),
-    updateSessionTitle: jest.fn(),
-    deleteSession: jest.fn(),
-    getSessions: jest.fn(),
+    createSession: jest.fn().mockImplementation(() => {
+      const id = `mock-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return Promise.resolve({
+        id,
+        title: 'New Conversation',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }),
+    updateSessionTitle: jest.fn().mockResolvedValue(undefined),
+    deleteSession: jest.fn().mockResolvedValue(undefined),
+    getSessions: jest.fn().mockResolvedValue([]),
+    getSessionWithMessages: jest.fn().mockResolvedValue({ messages: [] }),
+    getUserSessions: jest.fn().mockResolvedValue([]),
   }
 }));
 
@@ -51,8 +61,10 @@ describe('Chat Session Store', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resetAllStores();
-  });
+    // Reset the store to initial state
+    act(() => {
+      useChatStoreBase.getState().reset();
+    });
   });
 
   it('should have initial state', () => {
@@ -63,13 +75,13 @@ describe('Chat Session Store', () => {
     expect(currentSessionResult.current).toBeNull();
   });
 
-  it('should create a new session', () => {
+  it('should create a new session', async () => {
     const { result: sessionsResult } = renderHook(() => useChatSessions());
     const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
     const { result: actionsResult } = renderHook(() => useChatActions());
     
-    act(() => {
-      actionsResult.current.createSession();
+    await act(async () => {
+      await actionsResult.current.createSession();
     });
     
     const sessions = Object.keys(sessionsResult.current);
@@ -82,7 +94,7 @@ describe('Chat Session Store', () => {
     });
   });
 
-  it('should switch between sessions', () => {
+  it('should switch between sessions', async () => {
     const { result: sessionsResult } = renderHook(() => useChatSessions());
     const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
     const { result: actionsResult } = renderHook(() => useChatActions());
@@ -91,48 +103,45 @@ describe('Chat Session Store', () => {
     let session1: string;
     let session2: string;
     
-    act(() => {
-      actionsResult.current.createSession();
-      session1 = currentSessionResult.current!;
-      actionsResult.current.createSession();
-      session2 = currentSessionResult.current!;
+    await act(async () => {
+      session1 = await actionsResult.current.createSession();
+      session2 = await actionsResult.current.createSession();
     });
     
     expect(Object.keys(sessionsResult.current)).toHaveLength(2);
     expect(currentSessionResult.current).toBe(session2);
     
     // Switch back to first session
-    act(() => {
-      actionsResult.current.switchSession(session1);
+    await act(async () => {
+      await actionsResult.current.switchSession(session1);
     });
     
     expect(currentSessionResult.current).toBe(session1);
   });
 
-  it('should rename a session', () => {
+  it('should rename a session', async () => {
     const { result: sessionsResult } = renderHook(() => useChatSessions());
     const { result: actionsResult } = renderHook(() => useChatActions());
     
     // Create a session
     let sessionId: string;
-    act(() => {
-      actionsResult.current.createSession();
-      sessionId = Object.keys(sessionsResult.current)[0];
+    await act(async () => {
+      sessionId = await actionsResult.current.createSession();
     });
     
     // Rename it
     const newTitle = 'Updated Conversation';
-    act(() => {
-      actionsResult.current.renameSession(sessionId, newTitle);
+    await act(async () => {
+      await actionsResult.current.renameSession(sessionId!, newTitle);
     });
     
-    expect(sessionsResult.current[sessionId].title).toBe(newTitle);
-    expect(sessionsResult.current[sessionId].updatedAt).toBeGreaterThan(
-      sessionsResult.current[sessionId].createdAt
+    expect(sessionsResult.current[sessionId!].title).toBe(newTitle);
+    expect(sessionsResult.current[sessionId!].updatedAt).toBeGreaterThan(
+      sessionsResult.current[sessionId!].createdAt
     );
   });
 
-  it('should delete a session', () => {
+  it('should delete a session', async () => {
     const { result: sessionsResult } = renderHook(() => useChatSessions());
     const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
     const { result: actionsResult } = renderHook(() => useChatActions());
@@ -141,16 +150,14 @@ describe('Chat Session Store', () => {
     let session1: string;
     let session2: string;
     
-    act(() => {
-      actionsResult.current.createSession();
-      session1 = currentSessionResult.current!;
-      actionsResult.current.createSession();
-      session2 = currentSessionResult.current!;
+    await act(async () => {
+      session1 = await actionsResult.current.createSession();
+      session2 = await actionsResult.current.createSession();
     });
     
     // Delete the current session
-    act(() => {
-      actionsResult.current.deleteSession(session2);
+    await act(async () => {
+      await actionsResult.current.deleteSession(session2);
     });
     
     expect(Object.keys(sessionsResult.current)).toHaveLength(1);
@@ -158,23 +165,23 @@ describe('Chat Session Store', () => {
     expect(currentSessionResult.current).toBe(session1); // Should switch to remaining session
   });
 
-  it('should delete all sessions', () => {
+  it('should delete all sessions', async () => {
     const { result: sessionsResult } = renderHook(() => useChatSessions());
     const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
     const { result: actionsResult } = renderHook(() => useChatActions());
     
     // Create multiple sessions
-    act(() => {
-      actionsResult.current.createSession();
-      actionsResult.current.createSession();
-      actionsResult.current.createSession();
+    await act(async () => {
+      await actionsResult.current.createSession();
+      await actionsResult.current.createSession();
+      await actionsResult.current.createSession();
     });
     
     expect(Object.keys(sessionsResult.current)).toHaveLength(3);
     
     // Delete all
-    act(() => {
-      actionsResult.current.deleteAllSessions();
+    await act(async () => {
+      await actionsResult.current.deleteAllSessions();
     });
     
     expect(sessionsResult.current).toEqual({});

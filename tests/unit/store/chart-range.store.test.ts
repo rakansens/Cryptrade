@@ -9,7 +9,6 @@ describe('Store: useChartRangeStore', () => {
     jest.clearAllMocks();
     resetAllStores();
   });
-  });
 
   it('should have initial state', () => {
     const { result } = renderHook(() => useChartRange());

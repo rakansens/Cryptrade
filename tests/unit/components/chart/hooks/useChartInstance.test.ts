@@ -11,7 +11,7 @@ jest.mock('lightweight-charts');
 jest.mock('@/lib/chart/drawing-primitives');
 jest.mock('@/lib/chart/drawing-renderer');
 jest.mock('@/lib/chart/PatternRendererAdapter');
-jest.mock('./useChartSync', () => ({
+jest.mock('@/components/chart/hooks/useChartSync', () => ({
   useChartSync: () => ({
     registerChart: jest.fn(),
     unregisterChart: jest.fn(),
@@ -132,7 +132,7 @@ describe('useChartInstance', () => {
     
     expect(createChart).toHaveBeenCalledWith(mockDiv, expect.objectContaining({
       layout: expect.objectContaining({
-        background: { type: expect.any(Number), color: '#ffffff' },
+        background: { type: 'solid', color: '#ffffff' },
         textColor: '#000000',
       }),
     }));

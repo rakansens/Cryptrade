@@ -272,14 +272,14 @@ describe('Market Store Batching Tests', () => {
 
     it('should maintain state consistency during batching', async () => {
       const { result: actionsResult } = renderHook(() => useMarketPriceActions());
-      const { result: storeResult } = renderHook(() => 
-        useMarketStore(state => ({ 
-          currentPrices: state.currentPrices,
-          lastUpdateTime: state.lastUpdateTime,
-        }))
+      const { result: currentPricesResult } = renderHook(() => 
+        useMarketStore(state => state.currentPrices)
+      );
+      const { result: lastUpdateTimeResult } = renderHook(() => 
+        useMarketStore(state => state.lastUpdateTime)
       );
 
-      const initialUpdateTime = storeResult.current.lastUpdateTime;
+      const initialUpdateTime = lastUpdateTimeResult.current;
 
       const trades = [
         createMockTradeData('BTCUSDT', '50000.00', Date.now()),
@@ -298,9 +298,9 @@ describe('Market Store Batching Tests', () => {
       });
 
       // Verify state consistency
-      const finalUpdateTime = storeResult.current.lastUpdateTime;
+      const finalUpdateTime = lastUpdateTimeResult.current;
       expect(finalUpdateTime).toBeGreaterThan(initialUpdateTime);
-      expect(Object.keys(storeResult.current.currentPrices)).toHaveLength(2);
+      expect(Object.keys(currentPricesResult.current)).toHaveLength(2);
     });
   });
 
@@ -327,9 +327,12 @@ describe('Market Store Batching Tests', () => {
     });
 
     it('should handle missing requestAnimationFrame gracefully', async () => {
-      // Temporarily remove requestAnimationFrame
+      // Mock requestAnimationFrame to immediately execute
       const originalRAF = global.requestAnimationFrame;
-      delete (global as any).requestAnimationFrame;
+      global.requestAnimationFrame = ((callback: any) => {
+        callback();
+        return 1;
+      }) as any;
 
       const { result: actionsResult } = renderHook(() => useMarketPriceActions());
 

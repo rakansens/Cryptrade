@@ -8,6 +8,7 @@ export interface MessageSlice {
   addMessage: (sessionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<void>;
   updateLastMessage: (sessionId: string, contentOrMessage: string | Partial<ChatMessage>) => void;
   clearMessages: (sessionId: string) => void;
+  resetMessages: () => void;
 }
 
 const debug = createStoreDebugger('ChatMessageSlice');
@@ -140,6 +141,13 @@ export const createMessageSlice = (set: any, get: any): MessageSlice => ({
       },
     }));
     logger.info('[ChatStore] Messages cleared', { sessionId });
+  },
+
+  resetMessages: () => {
+    debug('resetMessages');
+    set({
+      messagesBySession: {},
+    });
   },
 });
 

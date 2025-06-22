@@ -51,8 +51,10 @@ describe('Chat UI Store', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resetAllStores();
-  });
+    // Reset the store to initial state
+    act(() => {
+      useChatStoreBase.getState().reset();
+    });
   });
 
   it('should have initial state', () => {
@@ -67,7 +69,7 @@ describe('Chat UI Store', () => {
     expect(openResult.current).toBe(false);
     expect(streamingResult.current).toBe(false);
     expect(loadingResult.current).toBe(false);
-    expect(sidebarResult.current).toBe(false);
+    expect(sidebarResult.current).toBe(true); // isSidebarOpen default is true
     expect(collapsedResult.current).toBe(false);
     expect(inputResult.current).toBe('');
     expect(errorResult.current).toBeNull();

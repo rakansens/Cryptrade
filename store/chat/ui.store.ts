@@ -21,7 +21,7 @@ export interface UISlice {
 
 const debug = createStoreDebugger('ChatUISlice');
 
-export const createUISlice = (set: any): UISlice => ({
+export const createUISlice = (set: any, get: any): UISlice => ({
   isOpen: false,
   isStreaming: false,
   isLoading: false,
@@ -67,6 +67,7 @@ export const createUISlice = (set: any): UISlice => ({
 
   reset: () => {
     debug('reset');
+    // Reset UI state
     set({
       isOpen: false,
       isStreaming: false,
@@ -74,8 +75,13 @@ export const createUISlice = (set: any): UISlice => ({
       isSidebarOpen: true,
       isCollapsed: false,
       inputValue: '',
+      isInputFromHomeScreen: false,
       error: null,
     });
+    // Also reset sessions and messages
+    const state = get();
+    if (state.resetSessions) state.resetSessions();
+    if (state.resetMessages) state.resetMessages();
   },
 });
 

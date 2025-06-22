@@ -1,6 +1,5 @@
 // Import test environment setup first
 import '@/tests/setup/test-env';
-import { resetTestEnvironment } from '@/tests/setup/test-env';
 import { createMockEmbeddingResponse, createMockErrorResponse, generateMockEmbedding } from '@/tests/setup/mock-openai';
 import { createMockBaseServiceClass } from '@/tests/setup/mock-base-service';
 
@@ -33,9 +32,6 @@ describe('SemanticEmbeddingService', () => {
   let mockPost: jest.Mock<any>;
   
   beforeEach(() => {
-    // Reset environment to ensure clean state
-    resetTestEnvironment();
-    
     jest.clearAllMocks();
     // Reset singleton instance
     (SemanticEmbeddingService as any).instance = null;

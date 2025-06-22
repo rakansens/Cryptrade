@@ -9,6 +9,16 @@ import { useChartDrawings, useChartPatterns, useDrawingActions, usePatternAction
 // Mock dependencies
 jest.mock('@/store/chart.store')
 
+// Mock lucide-react icons
+jest.mock('lucide-react', () => ({
+  List: ({ className }: any) => <svg className={className} data-testid="list-icon" />,
+  Trash2: ({ className }: any) => <svg className={className} data-testid="trash-icon" />,
+  X: ({ className }: any) => <svg className={className} data-testid="x-icon" />,
+  Palette: ({ className }: any) => <svg className={className} data-testid="palette-icon" />,
+  ArrowUpRight: ({ className }: any) => <svg className={className} data-testid="arrow-up-right" />,
+  ArrowDownRight: ({ className }: any) => <svg className={className} data-testid="arrow-down-right" />
+}))
+
 // Type assertions for mocked modules
 const mockedUseChartDrawings = useChartDrawings as jest.MockedFunction<typeof useChartDrawings>
 const mockedUseChartPatterns = useChartPatterns as jest.MockedFunction<typeof useChartPatterns>
@@ -176,20 +186,34 @@ describe('DrawingManager', () => {
       render(<DrawingManager />)
       
       // First drawing goes from 45000 to 47000 (up)
-      const upArrows = screen.getAllByRole('generic').filter(el => 
-        el.className.includes('text-green-400')
-      )
+      // Look for SVG elements with the green color class
+      const containers = screen.getAllByTestId('popover-content')
+      const mainContainer = containers[0] // Main popover content
+      const upArrows = mainContainer.querySelectorAll('svg.text-green-400')
       expect(upArrows.length).toBeGreaterThan(0)
+      
+      // Verify it's shown for the first drawing
+      const itemsContainer = mainContainer.querySelector('.space-y-1')
+      const drawingItems = itemsContainer!.querySelectorAll(':scope > div')
+      expect(drawingItems[0]).toHaveTextContent('TL 1')
+      expect(drawingItems[0].querySelector('svg.text-green-400')).toBeInTheDocument()
     })
 
     it('shows downward arrow for descending trendlines', () => {
       render(<DrawingManager />)
       
       // Second drawing goes from 47000 to 45000 (down)
-      const downArrows = screen.getAllByRole('generic').filter(el => 
-        el.className.includes('text-red-400')
-      )
+      // Look for SVG elements with the red color class
+      const containers = screen.getAllByTestId('popover-content')
+      const mainContainer = containers[0] // Main popover content
+      const downArrows = mainContainer.querySelectorAll('svg.text-red-400')
       expect(downArrows.length).toBeGreaterThan(0)
+      
+      // Verify it's shown for the second drawing
+      const itemsContainer = mainContainer.querySelector('.space-y-1')
+      const drawingItems = itemsContainer!.querySelectorAll(':scope > div')
+      expect(drawingItems[1]).toHaveTextContent('TL 2')
+      expect(drawingItems[1].querySelector('svg.text-red-400')).toBeInTheDocument()
     })
 
     it('shows color swatch for drawings', () => {
@@ -316,8 +340,11 @@ describe('DrawingManager', () => {
     it('toggles popover open state', () => {
       render(<DrawingManager />)
       
-      const popover = screen.getByTestId('popover')
-      expect(popover).toHaveAttribute('data-open', 'false')
+      // There are multiple popovers (main one and style editor ones)
+      // Get the main popover (first one)
+      const popovers = screen.getAllByTestId('popover')
+      const mainPopover = popovers[0]
+      expect(mainPopover).toHaveAttribute('data-open', 'false')
       
       const listButton = screen.getByTitle('描画一覧')
       fireEvent.click(listButton)

@@ -281,7 +281,7 @@ describe('Store Integration Tests', () => {
 
       // Track approved drawing
       act(() => {
-        proposalStore.current.addApprovedDrawing(messageId, proposalId, drawingId, 'drawing');
+        proposalStore.current.addApprovedDrawing(messageId, proposalId, drawingId, drawingType);
       });
 
       // Publish approval event
@@ -551,7 +551,7 @@ describe('Error Handling Across Stores', () => {
           const promise = drawingStore.current.addDrawingAsync({
             id: `concurrent-drawing-${i}`,
             type: 'trendline',
-            points: [{ time: i * 1000, value: i * 100 }, { time: (i + 1) * 1000, value: (i + 1) * 100 }],
+            points: [{ time: (i + 1) * 1000, value: i * 100 }, { time: (i + 2) * 1000, value: (i + 1) * 100 }],
             style: {
               color: '#ff0000',
               lineWidth: 2,
@@ -562,6 +562,15 @@ describe('Error Handling Across Stores', () => {
             interactive: true,
           });
           drawingPromises.push(promise);
+        }
+      });
+
+      // Manually fire the drawing added events to resolve the promises
+      act(() => {
+        for (let i = 0; i < 10; i++) {
+          window.dispatchEvent(new CustomEvent('chart:drawingAdded', {
+            detail: { id: `concurrent-drawing-${i}` }
+          }));
         }
       });
 
@@ -643,7 +652,7 @@ describe('Error Handling Across Stores', () => {
           drawingStore.current.addDrawing({
             id: `perf-drawing-${i}`,
             type: 'trendline',
-            points: [{ time: i * 1000, value: i * 100 }, { time: (i + 1) * 1000, value: (i + 1) * 100 }],
+            points: [{ time: (i + 1) * 1000, value: i * 100 }, { time: (i + 2) * 1000, value: (i + 1) * 100 }],
             style: {
               color: '#ff0000',
               lineWidth: 2,
@@ -690,7 +699,8 @@ describe('Error Handling Across Stores', () => {
       // Reset all stores
       act(() => {
         chartStore.current.reset();
-        drawingStore.current.clearAllDrawings();
+        // Call the store's reset method instead of just clearAllDrawings
+        drawingStore.current.reset();
         patternStore.current.clearPatterns();
         chatStore.current.reset();
       });

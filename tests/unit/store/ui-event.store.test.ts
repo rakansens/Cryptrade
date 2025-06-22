@@ -4,20 +4,19 @@
 
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';;
-import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
 
 // Import JSDOM setup for this test
 require('@/tests/setup/jsdom-environment');
 
 // Mock the useUIEventStream hook
 const mockPublish = jest.fn();
-const mockUseUIEventStream = jest.fn(() => ({
-  publish: mockPublish,
+jest.mock('@/hooks/use-ui-event-stream', () => ({
+  useUIEventStream: jest.fn(() => ({
+    publish: mockPublish,
+  })),
 }));
 
-jest.mock('@/hooks/use-ui-event-stream', () => ({
-  useUIEventStream: mockUseUIEventStream,
-}));
+import { useUIEventStore, useUIEventPublisher } from '@/store/ui-event.store';
 
 import { resetAllStoresForTest, resetStore } from './store-test-helpers';
 
@@ -90,7 +89,8 @@ describe('UI Event Store', () => {
 
     it('should handle missing publish function', () => {
       // Temporarily mock to return no publish function
-      mockUseUIEventStream.mockReturnValueOnce({
+      const useUIEventStream = require('@/hooks/use-ui-event-stream').useUIEventStream;
+      useUIEventStream.mockReturnValueOnce({
         publish: null,
       });
 

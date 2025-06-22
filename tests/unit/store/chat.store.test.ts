@@ -43,11 +43,14 @@ jest.mock('@/lib/utils/zustand-helpers', () => ({
 // Mock ChatAPI
 jest.mock('@/lib/api/chat-api', () => ({
   ChatAPI: {
-    createSession: jest.fn().mockResolvedValue({
-      id: 'mock-session-id',
-      title: 'New Conversation',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+    createSession: jest.fn().mockImplementation(() => {
+      const id = `mock-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return Promise.resolve({
+        id,
+        title: 'New Conversation',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
     }),
     updateSession: jest.fn().mockResolvedValue(undefined),
     deleteSession: jest.fn().mockResolvedValue(undefined),
@@ -96,9 +99,13 @@ describe('Chat Store', () => {
     jest.clearAllMocks();
     localStorageMock.clear();
     
-    // Reset store state manually without using resetAllStores
+    // Reset store state using the reset function
     const initialState = getInitialState();
     useChatStoreBase.setState(initialState);
+    // Also call reset to ensure all slices are reset
+    act(() => {
+      useChatStoreBase.getState().reset();
+    });
   });
 
   describe('Session Management', () => {
@@ -216,8 +223,8 @@ describe('Chat Store', () => {
         sessionId2 = await result.current.createSession();
       });
 
-      act(() => {
-        result.current.deleteSession(sessionId2);
+      await act(async () => {
+        await result.current.deleteSession(sessionId2);
       });
 
       const { result: sessionsResult } = renderHook(() => useChatSessions());
@@ -230,13 +237,13 @@ describe('Chat Store', () => {
       expect(currentSessionResult.current).toBe(sessionId1);
     });
 
-    it('should delete all sessions', () => {
+    it('should delete all sessions', async () => {
       const { result } = renderHook(() => useChatActions());
 
-      act(() => {
-        result.current.createSession();
-        result.current.createSession();
-        result.current.createSession();
+      await act(async () => {
+        await result.current.createSession();
+        await result.current.createSession();
+        await result.current.createSession();
       });
 
       act(() => {
@@ -248,7 +255,7 @@ describe('Chat Store', () => {
 
       const { result: currentSessionResult } = renderHook(() => useChatCurrentSession());
       expect(currentSessionResult.current).toBeNull();
-    });
+    })
 
     it('should handle deleting the current session', async () => {
       const { result } = renderHook(() => useChatActions());
@@ -263,8 +270,8 @@ describe('Chat Store', () => {
       });
 
       // Delete current session (sessionId3)
-      act(() => {
-        result.current.deleteSession(sessionId3);
+      await act(async () => {
+        await result.current.deleteSession(sessionId3);
       });
 
       // Should switch to first remaining session

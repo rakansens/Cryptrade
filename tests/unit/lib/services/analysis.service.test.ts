@@ -300,9 +300,14 @@ describe('AnalysisService', () => {
       const result = await AnalysisService.recordTouchEvent(mockData);
 
       expect(prisma.touchEvent.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          volume: undefined,
-        }),
+        data: {
+          recordId: mockData.recordId,
+          timestamp: expect.any(BigInt),
+          price: mockData.price,
+          result: mockData.result,
+          strength: mockData.strength,
+          // volume is not included when not provided
+        },
       });
 
       expect(result.volume).toBeNull();

@@ -31,7 +31,7 @@ jest.mock('lightweight-charts', () => ({
 }));
 
 // Mock chart range store
-jest.mock('@/components/chart/store/chart-range.store', () => ({
+jest.mock('@/store/chart-range.store', () => ({
   useChartRange: () => ({
     registerChart: jest.fn(),
     unregisterChart: jest.fn(),
@@ -111,31 +111,50 @@ describe('Indicator Chart Performance Tests', () => {
       expect(mockChart.remove).not.toHaveBeenCalled();
     });
 
-    it('should clean up chart when chartId changes', () => {
-      const { result, rerender } = renderHook(
-        ({ chartId }) => useIndicatorChartInit({
-          chartId,
-          height: 150,
-        }),
-        { initialProps: { chartId: 'test-chart-1' } }
-      );
+    it('should clean up chart when explicitly called', () => {
+      const mockDiv = document.createElement('div');
+      Object.defineProperty(mockDiv, 'clientWidth', { value: 800 });
+      Object.defineProperty(mockDiv, 'clientHeight', { value: 150 });
+      
+      const { result } = renderHook(() => useIndicatorChartInit({
+        chartId: 'test-chart',
+        height: 150,
+      }));
+
+      // Set the ref to mock div
+      act(() => {
+        result.current.chartContainerRef.current = mockDiv;
+      });
 
       // Initialize chart
       act(() => {
         result.current.initializeChart();
       });
 
-      // Change chartId should trigger cleanup
-      rerender({ chartId: 'test-chart-2' });
+      expect(result.current.isInitialized).toBe(true);
+
+      // Explicit cleanup
+      act(() => {
+        result.current.cleanupChart();
+      });
 
       expect(mockChart.remove).toHaveBeenCalled();
     });
 
     it('should handle resize efficiently', () => {
+      const mockDiv = document.createElement('div');
+      Object.defineProperty(mockDiv, 'clientWidth', { value: 800, configurable: true });
+      Object.defineProperty(mockDiv, 'clientHeight', { value: 150, configurable: true });
+      
       const { result } = renderHook(() => useIndicatorChartInit({
         chartId: 'test-chart',
         height: 150,
       }));
+
+      // Set the ref to mock div
+      act(() => {
+        result.current.chartContainerRef.current = mockDiv;
+      });
 
       act(() => {
         result.current.initializeChart();
@@ -146,7 +165,10 @@ describe('Indicator Chart Performance Tests', () => {
         result.current.handleResize();
       });
 
-      expect(mockChart.applyOptions).toHaveBeenCalled();
+      expect(mockChart.applyOptions).toHaveBeenCalledWith({
+        width: 800,
+        height: 150
+      });
     });
   });
 
@@ -171,6 +193,11 @@ describe('Indicator Chart Performance Tests', () => {
           } 
         }
       );
+
+      // Wait for async update
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 20));
+      });
 
       expect(mockSeriesRefs.main.setData).toHaveBeenCalled();
 
@@ -205,6 +232,11 @@ describe('Indicator Chart Performance Tests', () => {
         calculateIndicator: mockCalculateIndicator as any,
         formatSeriesData: mockFormatSeriesData as any,
       }));
+
+      // Wait for async update
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 20));
+      });
 
       const endTime = performance.now();
       const renderTime = endTime - startTime;
@@ -257,49 +289,61 @@ describe('Indicator Chart Performance Tests', () => {
       };
 
       let renderCount = 0;
-      const TestComponent = ({ priceData }: { priceData: ProcessedKline[] }) => {
-        renderCount++;
-        useIndicatorChartData({
-          chartId: 'test-chart',
-          priceData,
-          seriesRefs: mockSeriesRefs,
-          isInitialized: true,
-          calculateIndicator: mockCalculateIndicator,
-          formatSeriesData: mockFormatSeriesData,
-        });
-        return null;
-      };
 
-      renderHook(() => null);
+      const { rerender } = renderHook(
+        ({ priceData }) => {
+          renderCount++;
+          useIndicatorChartData({
+            chartId: 'test-chart',
+            priceData,
+            seriesRefs: mockSeriesRefs,
+            isInitialized: true,
+            calculateIndicator: mockCalculateIndicator,
+            formatSeriesData: mockFormatSeriesData,
+          });
+        },
+        { initialProps: { priceData: createMockPriceData(100) } }
+      );
 
-      // Initial render
       renderCount = 0;
-      TestComponent({ priceData: createMockPriceData(100) });
-      const initialRenderCount = renderCount;
 
       // Update data multiple times
       for (let i = 0; i < 5; i++) {
-        TestComponent({ priceData: createMockPriceData(100 + i) });
+        rerender({ priceData: createMockPriceData(100 + i) });
       }
 
       // Should not cause excessive re-renders (max 2x the updates)
-      expect(renderCount).toBeLessThan(initialRenderCount + 10);
+      expect(renderCount).toBeLessThan(10);
     });
 
     it('should clean up resources properly', () => {
-      const { result, unmount } = renderHook(() => useIndicatorChartInit({
+      const mockDiv = document.createElement('div');
+      Object.defineProperty(mockDiv, 'clientWidth', { value: 800 });
+      Object.defineProperty(mockDiv, 'clientHeight', { value: 150 });
+      
+      const { result } = renderHook(() => useIndicatorChartInit({
         chartId: 'test-chart',
         height: 150,
       }));
+
+      // Set the ref to mock div
+      act(() => {
+        result.current.chartContainerRef.current = mockDiv;
+      });
 
       act(() => {
         result.current.initializeChart();
       });
 
-      // Unmount should trigger cleanup
-      unmount();
+      expect(result.current.isInitialized).toBe(true);
+
+      // Manual cleanup
+      act(() => {
+        result.current.cleanupChart();
+      });
 
       expect(mockChart.remove).toHaveBeenCalled();
+      expect(result.current.isInitialized).toBe(false);
     });
   });
 

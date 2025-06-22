@@ -12,7 +12,7 @@ export const useChatStoreBase = create<ChatStore>()(
     subscribeWithSelector<ChatStore>((set, get) => ({
       ...createSessionSlice(set, get),
       ...createMessageSlice(set, get),
-      ...createUISlice(set),
+      ...createUISlice(set, get),
     })),
     {
       name: 'chat-storage',

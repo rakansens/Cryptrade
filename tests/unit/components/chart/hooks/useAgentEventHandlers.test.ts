@@ -1,27 +1,50 @@
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
 import { useAgentEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
 
+// Mock the delegation hook
+jest.mock('@/hooks/chart/useAgentEventBridge');
+
 describe('useAgentEventHandlers', () => {
-  it('should initialize with default values', () => {
-    const { result } = renderHook(() => useAgentEventHandlers());
-    
-    expect(result.current).toBeDefined();
+  const mockHandlers = {
+    fitContent: jest.fn(),
+    zoomIn: jest.fn(),
+    zoomOut: jest.fn(),
+    resetView: jest.fn(),
+    drawingManager: null,
+    chartData: [],
+    patternRenderer: null,
+    getPatternRenderer: jest.fn()
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should handle state updates', async () => {
-    const { result } = renderHook(() => useAgentEventHandlers());
+  it('should accept handlers and delegate to useAgentEventBridge', () => {
+    const { useAgentEventBridge } = require('@/hooks/chart/useAgentEventBridge');
     
-    await act(async () => {
-      // Add state update logic here
-    });
+    renderHook(() => useAgentEventHandlers(mockHandlers));
     
-    // Add assertions here
+    expect(useAgentEventBridge).toHaveBeenCalledWith(mockHandlers);
   });
 
-  it('should handle edge cases', () => {
-    const { result } = renderHook(() => useAgentEventHandlers());
+  it('should handle empty handlers object', () => {
+    const { useAgentEventBridge } = require('@/hooks/chart/useAgentEventBridge');
     
-    // Test edge cases like null, undefined, empty arrays
+    renderHook(() => useAgentEventHandlers({}));
+    
+    expect(useAgentEventBridge).toHaveBeenCalledWith({});
+  });
+
+  it('should handle partial handlers', () => {
+    const { useAgentEventBridge } = require('@/hooks/chart/useAgentEventBridge');
+    const partialHandlers = {
+      fitContent: jest.fn(),
+      chartData: []
+    };
+    
+    renderHook(() => useAgentEventHandlers(partialHandlers));
+    
+    expect(useAgentEventBridge).toHaveBeenCalledWith(partialHandlers);
   });
 });

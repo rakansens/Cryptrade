@@ -19,6 +19,7 @@ export interface SessionSlice {
   disableDbSync: () => void;
   syncWithDatabase: () => Promise<void>;
   loadFromDatabase: () => Promise<void>;
+  resetSessions: () => void;
 }
 
 const debug = createStoreDebugger('ChatSessionSlice');
@@ -320,6 +321,17 @@ export const createSessionSlice = (
       logger.error('[ChatStore] Failed to load from database', { error });
       set({ isLoading: false, error: 'Failed to load from database' } as any);
     }
+  },
+
+  resetSessions: () => {
+    debug('resetSessions');
+    set({
+      sessions: {},
+      currentSessionId: null,
+      isDbEnabled: true,
+      isSyncing: false,
+      lastSyncTime: null,
+    });
   },
 });
 

@@ -49,8 +49,10 @@ describe('Chat Message Store', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resetAllStores();
-  });
+    // Reset the store to initial state
+    act(() => {
+      useChatStoreBase.getState().reset();
+    });
   });
 
   it('should have initial state', () => {
