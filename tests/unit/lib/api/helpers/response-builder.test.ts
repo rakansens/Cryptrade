@@ -52,7 +52,6 @@ describe('response-builder', () => {
           reasoning: 'User requested market analysis',
           analysisDepth: 'deep',
           isProposalMode: false,
-          proposalType: null,
         },
         execution: {
           success: true,
@@ -227,7 +226,8 @@ describe('response-builder', () => {
 
       expect(result).toEqual({
         message: 'This is the response message',
-        proposalGroup: null
+        proposalGroup: null,
+        entryProposalGroup: null
       });
     });
 
@@ -249,7 +249,8 @@ describe('response-builder', () => {
 
       expect(result).toEqual({
         message: 'Nested response',
-        proposalGroup: null
+        proposalGroup: null,
+        entryProposalGroup: null
       });
     });
 
@@ -269,7 +270,8 @@ describe('response-builder', () => {
 
       expect(result).toEqual({
         message: 'Message field response',
-        proposalGroup: null
+        proposalGroup: null,
+        entryProposalGroup: null
       });
     });
 
@@ -287,7 +289,8 @@ describe('response-builder', () => {
 
       expect(result).toEqual({
         message: 'トレンドラインの提案を生成しました。',
-        proposalGroup: null
+        proposalGroup: null,
+        entryProposalGroup: null
       });
     });
 
@@ -305,7 +308,8 @@ describe('response-builder', () => {
 
       expect(result).toEqual({
         message: 'Intent: unknown (0.3)',
-        proposalGroup: null
+        proposalGroup: null,
+        entryProposalGroup: null
       });
     });
 

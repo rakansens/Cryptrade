@@ -1,7 +1,9 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createApiHandler } from '@/lib/api/create-api-handler';
 import { metricsCollector } from '@/lib/monitoring/metrics';
-import { NextResponse } from 'next/server';
+import { logger } from '@/lib/utils/logger';
+import { applyCorsHeaders, applySecurityHeaders } from '@/lib/api/middleware';
+import { createErrorResponse } from '@/lib/api/helpers/error-handler';
 
 // Request validation schema
 const metricsQuerySchema = z.object({
@@ -11,21 +13,44 @@ const metricsQuerySchema = z.object({
 /**
  * Prometheus metrics endpoint
  * GET /api/metrics
+ * 
+ * Note: This endpoint doesn't use createApiHandler because it needs
+ * to return raw text for Prometheus format, not JSON.
  */
-export const GET = createApiHandler({
-  schema: metricsQuerySchema,
-  handler: async ({ data }) => {
-    const format = data.format || 'prometheus';
+export async function GET(request: NextRequest) {
+  try {
+    // Parse query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const queryData = {
+      format: searchParams.get('format') || undefined,
+    };
 
-    if (format === 'json') {
-      return metricsCollector.toJSON();
+    // Validate query parameters
+    let validated;
+    try {
+      validated = metricsQuerySchema.parse(queryData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse('Invalid query parameters', 400, { errors: error.errors });
+      }
+      throw error;
     }
 
-    // For Prometheus format, we need to return a raw NextResponse
-    // since createApiHandler wraps responses in JSON by default
-    const metrics = metricsCollector.export();
-    
-    return new NextResponse(metrics, {
+    const format = validated.format || 'prometheus';
+
+    logger.info('[Metrics] Exporting metrics', { format });
+
+    if (format === 'json') {
+      // Return JSON format with standard headers
+      const jsonMetrics = metricsCollector.toJSON();
+      const response = NextResponse.json(jsonMetrics);
+      return applyCorsHeaders(applySecurityHeaders(response));
+    }
+
+    // Return Prometheus format as plain text
+    const prometheusMetrics = metricsCollector.export();
+    const response = new NextResponse(prometheusMetrics, {
+      status: 200,
       headers: {
         'Content-Type': 'text/plain; version=0.0.4',
         'Access-Control-Allow-Origin': '*',
@@ -33,5 +58,13 @@ export const GET = createApiHandler({
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
+    
+    return applySecurityHeaders(response);
+  } catch (error) {
+    logger.error('[Metrics] Failed to export metrics', { error });
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to export metrics',
+      500
+    );
   }
-});
+}

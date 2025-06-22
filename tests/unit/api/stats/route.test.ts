@@ -158,7 +158,10 @@ describe('Logs Stats API Route', () => {
         level: ['error', 'warn'],
         source: 'api',
         agentName: 'orchestrator',
-        timeRange: { from: '2024-01-01T00:00:00Z' }
+        timeRange: { 
+          from: '2024-01-01T00:00:00Z',
+          to: expect.any(Date)
+        }
       });
     });
 

@@ -113,16 +113,16 @@ test_metric 100`;
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toMatchObject({
-        error: 'Invalid request data',
-        details: {
-          errors: expect.arrayContaining([
-            expect.objectContaining({
-              path: ['format']
-            })
-          ])
-        }
-      });
+      expect(data.error).toBe('Invalid query parameters');
+      expect(data.details).toBeDefined();
+      expect(data.details.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['format'],
+            message: expect.stringContaining("Expected 'prometheus' | 'json'")
+          })
+        ])
+      );
     });
 
     it('should include CORS headers for all formats', async () => {

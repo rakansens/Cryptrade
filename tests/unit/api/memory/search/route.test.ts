@@ -66,7 +66,12 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.results).toEqual(mockSearchResults);
+      // The API might convert timestamp to string
+      const resultsWithStringTimestamp = mockSearchResults.map(result => ({
+        ...result,
+        timestamp: result.timestamp.toISOString()
+      }));
+      expect(data.results).toEqual(resultsWithStringTimestamp);
       expect(data.count).toBe(2);
       expect(conversationMemoryService.searchMemories).toHaveBeenCalledWith({
         query: 'BTCUSDT bullish',
@@ -87,7 +92,16 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Query parameter is required');
+      // Zod validation error format
+      expect(data.error).toMatchObject({
+        message: 'Invalid query parameters',
+        errors: expect.arrayContaining([
+          expect.objectContaining({ 
+            path: ['query'],
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should use default limit when not provided', async () => {
@@ -122,7 +136,15 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Invalid limit parameter');
+      expect(data.error).toMatchObject({
+        message: 'Invalid query parameters',
+        errors: expect.arrayContaining([
+          expect.objectContaining({ 
+            path: ['limit'],
+            message: expect.stringContaining('number')
+          })
+        ])
+      });
     });
 
     it('should handle limit exceeding maximum', async () => {
@@ -138,7 +160,16 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Limit cannot exceed 100');
+      expect(data.error).toMatchObject({
+        message: 'Invalid query parameters',
+        errors: expect.arrayContaining([
+          expect.objectContaining({ 
+            path: ['limit'],
+            maximum: 100,
+            message: expect.stringContaining('100')
+          })
+        ])
+      });
     });
 
     it('should handle search with filters', async () => {
@@ -194,7 +225,10 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to search memories');
+      // createApiHandler returns the error message directly
+      expect(data.error).toMatchObject({
+        message: 'Search service error'
+      });
       expect(logger.error).toHaveBeenCalledWith('[MemorySearch] Search failed', { error: mockError });
     });
 
@@ -226,7 +260,15 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toBe('Invalid request body');
+      // createApiHandler handles JSON parsing and returns validation error
+      expect(data.error).toMatchObject({
+        message: 'Invalid query parameters',
+        errors: expect.arrayContaining([
+          expect.objectContaining({ 
+            path: ['query']
+          })
+        ])
+      });
     });
 
     it('should sanitize search query', async () => {

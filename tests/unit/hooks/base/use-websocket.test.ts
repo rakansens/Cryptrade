@@ -1,15 +1,9 @@
 import { renderHook, act } from '@testing-library/react';
-import { useWebSocket } from '@/hooks/base/use-websocket';
+import { useWebSocket, useMultiWebSocket } from '@/hooks/base/use-websocket';
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger
 jest.mock('@/lib/utils/logger');
-
-// Mock useMultiWebSocket (not implemented yet)
-const useMultiWebSocket = jest.fn(({ connections }) => {
-  logger.warn('[useMultiWebSocket] Multi-connection management needs custom implementation', { connections });
-  return {};
-});
 
 describe('useWebSocket', () => {
   let mockWebSocket: any;

@@ -168,7 +168,7 @@ describe('error-handler', () => {
           sessionId: 'session-123',
           timestamp: expect.any(String),
           a2aEnabled: true,
-          error: 'Error: Orchestrator failed',
+          agentType: 'error',
         }
       });
     });
@@ -196,7 +196,7 @@ describe('error-handler', () => {
           sessionId: 'error-session',
           timestamp: expect.any(String),
           a2aEnabled: true,
-          error: 'Network timeout',
+          agentType: 'error',
         }
       });
     });

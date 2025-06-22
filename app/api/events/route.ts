@@ -16,7 +16,21 @@ export interface BroadcastPayload {
 }
 
 // Broadcast channel for all event subscribers
-const eventBroadcast = new SSEBroadcast();
+export const eventBroadcast = new SSEBroadcast();
+
+// Function to broadcast events to all connected clients
+export function broadcastEvent(payload: BroadcastPayload) {
+  const event = {
+    type: payload.type,
+    data: payload.data,
+    timestamp: payload.timestamp || Date.now()
+  };
+  
+  eventBroadcast.broadcast({
+    event: payload.type,
+    data: event
+  });
+}
 
 export const GET = createSSEHandler({
   handler: {

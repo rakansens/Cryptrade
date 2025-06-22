@@ -209,8 +209,8 @@ export const responseHelpers = {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // Ensure value is an ArrayBuffer or compatible type
-        const chunk = decoder.decode(value as ArrayBuffer);
+        // value is a Uint8Array from the ReadableStream
+        const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
 
         for (const line of lines) {

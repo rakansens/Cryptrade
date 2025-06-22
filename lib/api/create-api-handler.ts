@@ -185,6 +185,26 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
         return createErrorResponse(error.message, 400, error.details);
       }
 
+      // Import base errors for type checking
+      const { MastraBaseError, ApiError } = await import('@/lib/errors/base-error');
+      
+      // Handle MastraBaseError instances
+      if (error instanceof MastraBaseError) {
+        // Extract status code from ApiError
+        let statusCode = 500;
+        if (error instanceof ApiError && error.data && typeof error.data === 'object' && 'statusCode' in error.data) {
+          statusCode = error.data.statusCode as number;
+        }
+        
+        // Return just the message with the serialized error as details
+        const errorDetails = error.toJSON();
+        return createErrorResponse(
+          error.message,
+          statusCode,
+          errorDetails as unknown as Record<string, unknown>
+        );
+      }
+
       // Generic error response
       return createErrorResponse(
         error instanceof Error ? error.message : 'Internal server error',

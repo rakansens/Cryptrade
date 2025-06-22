@@ -10,23 +10,23 @@ jest.mock('@/hooks/use-ui-event-stream', () => ({
   useUIEventStream: jest.fn()
 }))
 
+// Import the mocked module to get the mock function
+import { useUIEventStream } from '@/hooks/use-ui-event-stream'
+const mockUseUIEventStream = useUIEventStream as jest.MockedFunction<typeof useUIEventStream>
+
 // Mock console.log
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation()
 
 describe('UIEventProvider', () => {
-  let mockUseUIEventStream: jest.MockedFunction<any>
-
   beforeEach(() => {
     jest.clearAllMocks()
-    
-    // Get mocked function
-    const hookModule = require('@/hooks/use-ui-event-stream')
-    mockUseUIEventStream = hookModule.useUIEventStream as jest.MockedFunction<any>
+    // Setup default mock implementation - do nothing
+    mockUseUIEventStream.mockImplementation(() => {})
   })
 
   afterEach(() => {
     mockConsoleLog.mockClear()
-    mockUseUIEventStream?.mockReset()
+    mockUseUIEventStream.mockReset()
   })
 
   describe('Component Rendering', () => {
@@ -82,16 +82,15 @@ describe('UIEventProvider', () => {
       expect(mockUseUIEventStream).toHaveBeenCalled()
     })
 
-    it('calls useUIEventStream only once', () => {
+    it('calls useUIEventStream on every render', () => {
       const { rerender } = render(
         <UIEventProvider>
           <div>Child</div>
         </UIEventProvider>
       )
 
-      // Get the initial call count and clear the mock
-      const initialCallCount = mockUseUIEventStream.mock.calls.length;
-      mockUseUIEventStream.mockClear();
+      // Should be called once initially
+      expect(mockUseUIEventStream).toHaveBeenCalledTimes(1)
 
       // Re-render with different children
       rerender(
@@ -101,7 +100,7 @@ describe('UIEventProvider', () => {
       )
 
       // Hook should be called on every render
-      expect(mockUseUIEventStream).toHaveBeenCalledTimes(1)
+      expect(mockUseUIEventStream).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -226,6 +225,32 @@ describe('UIEventProvider', () => {
 
   describe('Error Handling', () => {
     it('handles hook errors gracefully', () => {
+      // Create an error boundary to catch the error
+      class ErrorBoundary extends React.Component<
+        { children: React.ReactNode },
+        { hasError: boolean; error: Error | null }
+      > {
+        constructor(props: { children: React.ReactNode }) {
+          super(props)
+          this.state = { hasError: false, error: null }
+        }
+
+        static getDerivedStateFromError(error: Error) {
+          return { hasError: true, error }
+        }
+
+        componentDidCatch(error: Error) {
+          // Error caught
+        }
+
+        render() {
+          if (this.state.hasError) {
+            return <div data-testid="error-boundary">Error: {this.state.error?.message}</div>
+          }
+          return this.props.children
+        }
+      }
+
       // Suppress console.error for this test
       const originalError = console.error
       console.error = jest.fn()
@@ -235,14 +260,19 @@ describe('UIEventProvider', () => {
         throw new Error('Hook error')
       })
 
-      // Component should throw when hook throws
-      expect(() => {
-        render(
+      // Render with error boundary
+      render(
+        <ErrorBoundary>
           <UIEventProvider>
             <div data-testid="child">Child Content</div>
           </UIEventProvider>
-        )
-      }).toThrow()
+        </ErrorBoundary>
+      )
+
+      // Should show error message
+      expect(screen.getByTestId('error-boundary')).toBeInTheDocument()
+      expect(screen.getByText('Error: Hook error')).toBeInTheDocument()
+      expect(screen.queryByTestId('child')).not.toBeInTheDocument()
 
       // Restore console.error
       console.error = originalError

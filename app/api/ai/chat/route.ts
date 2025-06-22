@@ -52,7 +52,14 @@ export const POST = createApiHandler<ChatRequest>({
       
       const orchestratorResponse = await executeImprovedOrchestrator(
         userMessage,
-        sessionId
+        sessionId,
+        {
+          queryComplexity: data.context?.analysisDepth === 'comprehensive' ? 'complex' : 'simple',
+          isProposalMode: false,
+          userTier: 'free',
+          userLevel: 'intermediate',
+          marketStatus: 'open'
+        }
       );
 
       // Convert OrchestratorExecutionResponse to OrchestratorResult

@@ -1,5 +1,7 @@
 // Mock dependencies first
-jest.mock('ioredis');
+jest.mock('ioredis', () => ({
+  Redis: jest.fn()
+}));
 jest.mock('@/lib/logging');
 jest.mock('@/config/env', () => ({
   env: {
@@ -13,7 +15,7 @@ jest.mock('@/config/env', () => ({
 
 // Import after mocking
 import { RedisRateLimiter, createRedisRateLimitMiddleware } from '@/lib/api/redis-rate-limiter';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { logger } from '@/lib/logging';
 
 describe('Redis Rate Limiter', () => {
@@ -43,7 +45,7 @@ describe('Redis Rate Limiter', () => {
     } as any;
 
     // Mock Redis constructor
-    (Redis as any).mockImplementation(() => mockRedis);
+    (Redis as jest.MockedClass<typeof Redis>).mockImplementation(() => mockRedis);
     
     rateLimiter = new RedisRateLimiter();
   });
@@ -77,7 +79,7 @@ describe('Redis Rate Limiter', () => {
       
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to connect'),
-        expect.any(Error)
+        { error: expect.any(Error) }
       );
     });
 
@@ -170,8 +172,9 @@ describe('Redis Rate Limiter', () => {
     });
 
     it('should fail open when configured', async () => {
-      const { env } = require('@/config/env');
-      env.RATE_LIMIT_FAIL_OPEN = 'true';
+      // Mock process.env directly
+      const originalEnv = process.env.RATE_LIMIT_FAIL_OPEN;
+      process.env.RATE_LIMIT_FAIL_OPEN = 'true';
       
       mockRedis.pipeline().exec.mockRejectedValue(new Error('Redis error'));
       
@@ -182,6 +185,13 @@ describe('Redis Rate Limiter', () => {
       
       expect(result.success).toBe(true);
       expect(result.remainingRequests).toBe(10);
+      
+      // Restore original env
+      if (originalEnv !== undefined) {
+        process.env.RATE_LIMIT_FAIL_OPEN = originalEnv;
+      } else {
+        delete process.env.RATE_LIMIT_FAIL_OPEN;
+      }
     });
   });
 
@@ -233,6 +243,11 @@ describe('Redis Rate Limiter', () => {
   describe('Health Monitoring', () => {
     beforeEach(async () => {
       await rateLimiter.connect();
+      // Trigger the ready event to set isConnected = true
+      const readyHandler = mockRedis.on.mock.calls.find(call => call[0] === 'ready')?.[1];
+      if (readyHandler) {
+        readyHandler();
+      }
     });
 
     it('should perform health checks', async () => {
@@ -254,7 +269,7 @@ describe('Redis Rate Limiter', () => {
       expect(health.healthy).toBe(false);
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Health check failed'),
-        expect.any(Error)
+        { error: expect.any(Error) }
       );
     });
 
@@ -309,7 +324,7 @@ describe('Redis Rate Limiter', () => {
       expect(cleaned).toBe(0);
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Cleanup failed'),
-        expect.any(Error)
+        { error: expect.any(Error) }
       );
     });
   });

@@ -341,14 +341,23 @@ async function fetchCandlestickData(symbol: string, timeframe: string, limit: nu
   
   const data = await response.json() as Array<[number, string, string, string, string, string]>;
   
-  return data.map((candle) => ({
-    time: candle[0], // Open time
-    open: parseFloat(candle[1]),
-    high: parseFloat(candle[2]),
-    low: parseFloat(candle[3]),
-    close: parseFloat(candle[4]),
-    volume: parseFloat(candle[5]),
-  }));
+  return data.map((candle) => {
+    const open = parseFloat(candle[1]);
+    const high = parseFloat(candle[2]);
+    const low = parseFloat(candle[3]);
+    const close = parseFloat(candle[4]);
+    const volume = parseFloat(candle[5]);
+    
+    // Replace NaN values with 0 or skip the candle
+    return {
+      time: candle[0], // Open time
+      open: isNaN(open) ? 0 : open,
+      high: isNaN(high) ? 0 : high,
+      low: isNaN(low) ? 0 : low,
+      close: isNaN(close) ? 0 : close,
+      volume: isNaN(volume) ? 0 : volume,
+    };
+  }).filter(candle => candle.open > 0 && candle.high > 0 && candle.low > 0 && candle.close > 0);
 }
 
 /**
