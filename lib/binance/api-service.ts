@@ -204,6 +204,6 @@ try {
 export const binanceAPI = binanceAPIInstance || ({} as BinanceAPIService);
 
 // Export standalone functions for convenience
-export const fetchKlines = binanceAPIInstance ? binanceAPIInstance.fetchKlines.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
-export const fetchTicker24hr = binanceAPIInstance ? binanceAPIInstance.fetchTicker24hr.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
-export const isValidSymbol = binanceAPIInstance ? binanceAPIInstance.isValidSymbol.bind(binanceAPIInstance) : (() => false);
+export const fetchKlines = binanceAPIInstance?.fetchKlines ? binanceAPIInstance.fetchKlines.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
+export const fetchTicker24hr = binanceAPIInstance?.fetchTicker24hr ? binanceAPIInstance.fetchTicker24hr.bind(binanceAPIInstance) : (() => Promise.reject(new Error('BinanceAPIService not initialized')));
+export const isValidSymbol = binanceAPIInstance?.isValidSymbol ? binanceAPIInstance.isValidSymbol.bind(binanceAPIInstance) : (() => false);

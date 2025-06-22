@@ -17,7 +17,7 @@ jest.mock('@/lib/binance/connection-manager', () => ({
   }
 }));
 
-jest.mock('@/lib/compat-shim', () => ({
+jest.mock('@/lib/ws/compat-shim', () => ({
   binanceConnectionManagerShim: {
     subscribe: jest.fn(),
     getConnectionStatus: jest.fn(),

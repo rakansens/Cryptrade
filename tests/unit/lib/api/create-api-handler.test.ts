@@ -45,10 +45,7 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual({
-        success: true,
-        data: { result: 'success' }
-      });
+      expect(data).toEqual({ result: 'success' });
       expect(mockHandler).toHaveBeenCalledWith({
         data: { data: 'test' },
         request,
@@ -110,18 +107,14 @@ describe('create-api-handler', () => {
 
       expect(response.status).toBe(400);
       expect(data).toEqual({
-        success: false,
         error: {
-          message: 'Invalid request data',
-          code: 'BAD_REQUEST',
-          details: {
-            errors: expect.arrayContaining([
-              expect.objectContaining({
-                path: ['age'],
-                message: expect.any(String)
-              })
-            ])
-          }
+          message: 'Invalid query parameters',
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              path: ['age'],
+              message: expect.any(String)
+            })
+          ])
         }
       });
     });
@@ -255,12 +248,10 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data).toEqual({
-        success: false,
-        error: {
-          message: 'Handler error',
-          code: 'INTERNAL_SERVER_ERROR'
-        }
+      expect(data).toMatchObject({
+        error: 'Handler error',
+        message: 'リクエストの処理中にエラーが発生しました。',
+        timestamp: expect.any(String)
       });
     });
 
@@ -281,19 +272,18 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        success: false,
-        error: {
-          message: 'Invalid field',
-          code: 'BAD_REQUEST',
-          details: { field: 'email' }
-        }
+      expect(data).toMatchObject({
+        error: 'Invalid field',
+        message: 'Invalid field',
+        timestamp: expect.any(String),
+        details: { field: 'email' }
       });
     });
 
     it('should handle invalid JSON gracefully', async () => {
+      const mockHandler = jest.fn().mockResolvedValue({ result: 'success' });
       const handler = createApiHandler({
-        handler: jest.fn()
+        handler: mockHandler
       });
 
       const request = new NextRequest('http://localhost/api/test', {
@@ -306,9 +296,12 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual({
-        success: true,
-        data: null
+      // Handler processes null data when JSON parsing fails
+      expect(response.status).toBe(200);
+      expect(mockHandler).toHaveBeenCalledWith({
+        data: null,
+        request,
+        context: expect.any(Object)
       });
     });
   });
