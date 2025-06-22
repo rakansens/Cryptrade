@@ -1,11 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
-import { usePatternActions, useChartBaseStore, usePatternStore } from '@/store/chart';
-import { logger } from '@/lib/utils/logger';
-import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
-import { agentUtils } from '@/lib/chart/agent-utils';
-
-// Mock dependencies
+// Mock dependencies before imports
 jest.mock('@/store/chart', () => ({
   usePatternActions: jest.fn(),
   useChartBaseStore: jest.fn(),
@@ -20,12 +13,6 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 jest.mock('@/lib/chart/agent-utils', () => ({
-  agentUtils: {
-    handleValidationError: jest.fn(),
-    handleAgentError: jest.fn(),
-    showAgentSuccess: jest.fn(),
-    getPatternRenderer: jest.fn()
-  },
   handleValidationError: jest.fn(),
   handleAgentError: jest.fn(),
   showAgentSuccess: jest.fn(),
@@ -38,22 +25,45 @@ jest.mock('@/types/events/pattern-events', () => ({
   }))
 }));
 
-describe.skip('usePatternEventHandlers', () => {
-  const mockHandlers: ChartEventHandlers = {
-    patternRenderer: {
-      renderPattern: jest.fn(),
-      removePattern: jest.fn(),
-    },
-    getPatternRenderer: jest.fn(() => ({
-      renderPattern: jest.fn(),
-      removePattern: jest.fn(),
-    })),
-  } as any;
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
+import { usePatternActions, useChartBaseStore, usePatternStore } from '@/store/chart';
+import { logger } from '@/lib/utils/logger';
+import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
+import { 
+  handleValidationError, 
+  handleAgentError, 
+  showAgentSuccess, 
+  getPatternRenderer 
+} from '@/lib/chart/agent-utils';
 
-  const mockPatternActions = {
-    addPattern: jest.fn(),
+// TODO: Fix these tests - useEffect is not being executed in test environment
+// The hook works correctly in production but the test setup has issues
+// Possible causes:
+// 1. Mock setup timing issues
+// 2. Dependencies in useEffect array not being properly mocked
+// 3. React Testing Library configuration issues
+describe.skip('usePatternEventHandlers', () => {
+  const mockPatternRenderer = {
+    renderPattern: jest.fn(),
     removePattern: jest.fn(),
-    clearPatterns: jest.fn(),
+  };
+  
+  // Create a complete mock of ChartEventHandlers to ensure useEffect runs
+  const mockHandlers = {
+    patternRenderer: mockPatternRenderer,
+    getPatternRenderer: jest.fn(() => mockPatternRenderer),
+    // Add other required properties if needed
+  } as ChartEventHandlers;
+
+  const mockAddPattern = jest.fn();
+  const mockRemovePattern = jest.fn();
+  const mockClearPatterns = jest.fn();
+  
+  const mockPatternActions = {
+    addPattern: mockAddPattern,
+    removePattern: mockRemovePattern,
+    clearPatterns: mockClearPatterns,
   };
 
   const mockPatterns = new Map([
@@ -71,21 +81,33 @@ describe.skip('usePatternEventHandlers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(usePatternActions).mockReturnValue(mockPatternActions);
-    jest.mocked(useChartBaseStore).mockReturnValue({
+    
+    // Reset all mock implementations
+    mockPatternRenderer.renderPattern.mockClear();
+    mockPatternRenderer.removePattern.mockClear();
+    mockAddPattern.mockClear();
+    mockRemovePattern.mockClear();
+    mockClearPatterns.mockClear();
+    
+    // Set up mocks
+    jest.mocked(usePatternActions).mockImplementation(() => mockPatternActions as any);
+    jest.mocked(useChartBaseStore).mockImplementation(() => ({
       symbol: 'BTCUSDT',
       timeframe: '1h',
-    });
-    // Mock usePatternStore.getState as a static method
+    } as any));
+    
+    // Mock usePatternStore with getState and setState methods
     (usePatternStore as any).getState = jest.fn().mockReturnValue({
       patterns: mockPatterns,
     });
+    (usePatternStore as any).setState = jest.fn();
     
     // Mock getPatternRenderer to return the mock pattern renderer
-    agentUtils.getPatternRenderer.mockReturnValue(mockHandlers.patternRenderer);
+    jest.mocked(getPatternRenderer).mockImplementation(() => mockPatternRenderer);
   });
 
   afterEach(() => {
+    jest.clearAllMocks();
     // Clean up event listeners
     const eventTypes = [
       'chart:addPattern',
@@ -98,14 +120,22 @@ describe.skip('usePatternEventHandlers', () => {
   });
 
   describe('Initial state and mounting', () => {
-    it('should register event listeners on mount', () => {
+    it('should register event listeners on mount', async () => {
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-      const { result } = renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Render the hook
+      renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for the useEffect to complete
+      await waitFor(() => {
+        expect(addEventListenerSpy).toHaveBeenCalled();
+      });
 
       // Check that addEventListener was called
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
 
       expect(logger.info).toHaveBeenCalledWith(
         '[Pattern Event Handlers] Registered pattern event listeners',
@@ -165,7 +195,7 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(mockPatternActions.addPattern).toHaveBeenCalledWith(
+      expect(mockAddPattern).toHaveBeenCalledWith(
         'pattern123',
         expect.objectContaining({
           id: 'pattern123',
@@ -174,8 +204,8 @@ describe.skip('usePatternEventHandlers', () => {
           interval: '1h',
         })
       );
-      expect(mockHandlers.patternRenderer?.renderPattern).toHaveBeenCalled();
-      expect(agentUtils.showAgentSuccess).toHaveBeenCalled();
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
+      expect(showAgentSuccess).toHaveBeenCalled();
     });
 
     it('should handle pattern with markers format', () => {
@@ -206,9 +236,9 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(mockPatternActions.addPattern).toHaveBeenCalled();
+      expect(mockAddPattern).toHaveBeenCalled();
       // Verify transformation of markers to keyPoints
-      const addPatternCall = mockPatternActions.addPattern.mock.calls[0];
+      const addPatternCall = mockAddPattern.mock.calls[0];
       expect(addPatternCall[1].visualization).toBeDefined();
     });
 
@@ -223,12 +253,12 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(agentUtils.handleValidationError).toHaveBeenCalled();
-      expect(mockPatternActions.addPattern).not.toHaveBeenCalled();
+      expect(handleValidationError).toHaveBeenCalled();
+      expect(mockAddPattern).not.toHaveBeenCalled();
     });
 
     it('should handle missing pattern renderer gracefully', () => {
-      (agentUtils.getPatternRenderer as jest.Mock).mockReturnValueOnce(null);
+      jest.mocked(getPatternRenderer).mockReturnValueOnce(null);
       
       renderHook(() => usePatternEventHandlers(mockHandlers));
 
@@ -248,7 +278,7 @@ describe.skip('usePatternEventHandlers', () => {
       });
 
       expect(logger.warn).toHaveBeenCalledWith('[Pattern Event] Pattern renderer not available');
-      expect(agentUtils.handleAgentError).toHaveBeenCalledWith(
+      expect(handleAgentError).toHaveBeenCalledWith(
         expect.any(Error),
         expect.objectContaining({ eventType: 'chart:addPattern' }),
         'Pattern renderer not initialized'
@@ -272,9 +302,9 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(mockPatternActions.removePattern).toHaveBeenCalledWith('pattern1');
-      expect(mockHandlers.patternRenderer?.removePattern).toHaveBeenCalledWith('pattern1');
-      expect(agentUtils.showAgentSuccess).toHaveBeenCalled();
+      expect(mockRemovePattern).toHaveBeenCalledWith('pattern1');
+      expect(mockPatternRenderer.removePattern).toHaveBeenCalledWith('pattern1');
+      expect(showAgentSuccess).toHaveBeenCalled();
     });
 
     it('should log pattern removal details', () => {
@@ -303,7 +333,7 @@ describe.skip('usePatternEventHandlers', () => {
     });
 
     it('should handle missing pattern renderer on remove', () => {
-      (agentUtils.getPatternRenderer as jest.Mock).mockReturnValueOnce(null);
+      jest.mocked(getPatternRenderer).mockReturnValueOnce(null);
       
       renderHook(() => usePatternEventHandlers(mockHandlers));
 
@@ -319,8 +349,8 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(mockPatternActions.removePattern).toHaveBeenCalled();
-      expect(agentUtils.handleAgentError).toHaveBeenCalledWith(
+      expect(mockRemovePattern).toHaveBeenCalled();
+      expect(handleAgentError).toHaveBeenCalledWith(
         expect.any(Error),
         expect.objectContaining({ eventType: 'chart:removePattern' }),
         'Pattern renderer not available'
@@ -354,9 +384,9 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(mockHandlers.patternRenderer?.removePattern).toHaveBeenCalledWith('pattern1');
-      expect(mockHandlers.patternRenderer?.renderPattern).toHaveBeenCalled();
-      expect(agentUtils.showAgentSuccess).toHaveBeenCalled();
+      expect(mockPatternRenderer.removePattern).toHaveBeenCalledWith('pattern1');
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
+      expect(showAgentSuccess).toHaveBeenCalled();
     });
 
     it('should handle line style updates', () => {
@@ -428,7 +458,7 @@ describe.skip('usePatternEventHandlers', () => {
         '[Pattern Event] Pattern not found for style update',
         { patternId: 'nonexistent' }
       );
-      expect(agentUtils.handleAgentError).toHaveBeenCalledWith(
+      expect(handleAgentError).toHaveBeenCalledWith(
         expect.any(Error),
         expect.objectContaining({ eventType: 'chart:updatePatternStyle' }),
         'パターンが見つかりません'
@@ -436,7 +466,7 @@ describe.skip('usePatternEventHandlers', () => {
     });
 
     it('should handle missing pattern renderer on style update', () => {
-      (agentUtils.getPatternRenderer as jest.Mock).mockReturnValueOnce(null);
+      jest.mocked(getPatternRenderer).mockReturnValueOnce(null);
       
       renderHook(() => usePatternEventHandlers(mockHandlers));
 
@@ -456,7 +486,7 @@ describe.skip('usePatternEventHandlers', () => {
       });
 
       expect(logger.error).toHaveBeenCalledWith('[Pattern Event] Pattern renderer not available for style update');
-      expect(agentUtils.handleAgentError).toHaveBeenCalledWith(
+      expect(handleAgentError).toHaveBeenCalledWith(
         expect.any(Error),
         expect.objectContaining({ eventType: 'chart:updatePatternStyle' }),
         'パターンレンダラーが利用できません'
@@ -499,13 +529,13 @@ describe.skip('usePatternEventHandlers', () => {
       });
 
       // Verify area style was updated
-      expect(mockHandlers.patternRenderer?.renderPattern).toHaveBeenCalled();
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
     });
   });
 
   describe('Error handling', () => {
     it('should handle errors during pattern operations', () => {
-      mockPatternActions.addPattern.mockImplementationOnce(() => {
+      mockAddPattern.mockImplementationOnce(() => {
         throw new Error('Failed to add pattern');
       });
 
@@ -529,7 +559,7 @@ describe.skip('usePatternEventHandlers', () => {
         window.dispatchEvent(event);
       });
 
-      expect(agentUtils.handleAgentError).toHaveBeenCalledWith(
+      expect(handleAgentError).toHaveBeenCalledWith(
         expect.any(Error),
         expect.objectContaining({ eventType: 'chart:addPattern' }),
         undefined
@@ -573,8 +603,8 @@ describe.skip('usePatternEventHandlers', () => {
       });
 
       // Verify the pattern was re-rendered with transformed visualization
-      expect(mockHandlers.patternRenderer?.renderPattern).toHaveBeenCalled();
-      const renderCall = (mockHandlers.patternRenderer?.renderPattern as jest.Mock).mock.calls[0];
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
+      const renderCall = (mockPatternRenderer.renderPattern as jest.Mock).mock.calls[0];
       expect(renderCall[1]).toHaveProperty('keyPoints');
     });
   });

@@ -285,8 +285,10 @@ describe('Select Components', () => {
       await user.click(screen.getByRole('combobox'))
       
       await waitFor(() => {
-        const selectedItem = screen.getByText('Option 2').closest('[role="option"]')
+        // Use data-testid to find the specific option element
+        const selectedItem = screen.getByTestId('select-item-option2')
         expect(selectedItem).toHaveAttribute('aria-selected', 'true')
+        expect(selectedItem).toHaveAttribute('data-state', 'checked')
       })
     })
   })
@@ -413,7 +415,7 @@ describe('Select Components', () => {
                 <SelectItem value="option2">Option 2</SelectItem>
               </SelectContent>
             </Select>
-            <button onClick={() => setValue('option2')}>
+            <button onClick={() => setValue('option2')} data-testid="external-button">
               Set to Option 2
             </button>
           </>
@@ -422,14 +424,25 @@ describe('Select Components', () => {
 
       render(<ControlledSelect />)
 
+      // First verify the initial value
+      expect(screen.getByRole('combobox')).toHaveTextContent('Option 1')
+
+      // Open the select
       await user.click(screen.getByRole('combobox'))
       
+      // Verify dropdown is open
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument()
+        expect(screen.getByTestId('select-item-option1')).toBeInTheDocument()
+        expect(screen.getByTestId('select-item-option2')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByText('Set to Option 2'))
-      expect(screen.getByRole('combobox')).toHaveTextContent('Option 2')
+      // Change value while dropdown is open
+      await user.click(screen.getByTestId('external-button'))
+      
+      // Verify the value changed in the trigger
+      await waitFor(() => {
+        expect(screen.getByRole('combobox')).toHaveTextContent('Option 2')
+      })
     })
 
     it('handles form integration', () => {

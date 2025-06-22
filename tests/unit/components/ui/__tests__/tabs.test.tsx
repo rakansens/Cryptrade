@@ -196,8 +196,12 @@ describe('Tabs Components', () => {
       const activeTab = screen.getByRole('tab', { name: 'Tab 1' })
       const inactiveTab = screen.getByRole('tab', { name: 'Tab 2' })
 
-      expect(activeTab).toHaveClass('data-[state=active]:bg-background')
-      expect(inactiveTab).not.toHaveClass('data-[state=active]:bg-background')
+      expect(activeTab).toHaveAttribute('data-state', 'active')
+      expect(activeTab).toHaveClass('bg-background', 'text-foreground', 'shadow-sm')
+      
+      expect(inactiveTab).toHaveAttribute('data-state', 'inactive')
+      expect(inactiveTab).toHaveClass('text-muted-foreground')
+      expect(inactiveTab).not.toHaveClass('bg-background')
     })
 
     it('handles keyboard navigation', async () => {
@@ -241,9 +245,9 @@ describe('Tabs Components', () => {
     it('applies correct ARIA attributes', () => {
       render(defaultTabs())
 
-      const content1 = screen.getByText('Content 1').parentElement
+      const content1 = screen.getByTestId('tab-content-tab1')
       expect(content1).toHaveAttribute('role', 'tabpanel')
-      expect(content1).toHaveAttribute('aria-labelledby')
+      expect(content1).toHaveAttribute('aria-labelledby', 'trigger-tab1')
       expect(content1).toHaveAttribute('tabindex', '0')
     })
 
@@ -265,10 +269,10 @@ describe('Tabs Components', () => {
         </Tabs>
       )
 
-      expect(screen.getByText('Content 1').parentElement).toHaveClass('custom-content-1')
+      expect(screen.getByTestId('tab-content-tab1')).toHaveClass('custom-content-1')
 
       await user.click(screen.getByText('Tab 2'))
-      expect(screen.getByText('Content 2').parentElement).toHaveClass('custom-content-2')
+      expect(screen.getByTestId('tab-content-tab2')).toHaveClass('custom-content-2')
     })
 
     it('maintains focus management', async () => {

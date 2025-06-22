@@ -47,6 +47,7 @@ export const DialogTrigger = React.forwardRef<HTMLButtonElement, any>(
         ref,
         onClick: handleClick,
         'data-testid': 'dialog-trigger',
+        style: { pointerEvents: 'auto' },
         ...props
       });
     }
@@ -56,6 +57,7 @@ export const DialogTrigger = React.forwardRef<HTMLButtonElement, any>(
         ref={ref} 
         data-testid="dialog-trigger" 
         onClick={handleClick} 
+        style={{ pointerEvents: 'auto' }}
         {...props}
       >
         {children}
@@ -85,6 +87,7 @@ export const DialogOverlay = React.forwardRef<HTMLDivElement, any>(
         data-testid="dialog-overlay" 
         data-radix-dialog-overlay=""
         className={className}
+        style={{ pointerEvents: 'auto' }}
         onClick={() => setIsOpen(false)}
         {...props} 
       />
@@ -97,6 +100,25 @@ export const DialogContent = React.forwardRef<HTMLDivElement, any>(
   ({ children, className, ...props }, ref) => {
     const { isOpen, setIsOpen } = React.useContext(DialogContext);
     
+    // Handle scroll lock
+    React.useEffect(() => {
+      if (!isOpen) return;
+      
+      // Store original styles
+      const originalOverflow = document.body.style.overflow;
+      const originalPointerEvents = document.body.style.pointerEvents;
+      
+      // Apply scroll lock
+      document.body.style.overflow = 'hidden';
+      document.body.style.pointerEvents = 'none';
+      
+      // Cleanup on unmount or when dialog closes
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.pointerEvents = originalPointerEvents;
+      };
+    }, [isOpen]);
+    
     if (!isOpen) return null;
     
     return (
@@ -108,6 +130,7 @@ export const DialogContent = React.forwardRef<HTMLDivElement, any>(
         aria-labelledby="dialog-title"
         aria-describedby="dialog-description"
         className={className}
+        style={{ pointerEvents: 'auto' }}
         {...props}
       >
         {React.Children.map(children, child => {
@@ -203,6 +226,7 @@ export const DialogClose = React.forwardRef<HTMLButtonElement, any>(
           setIsOpen(false);
         }}
         aria-label="Close"
+        style={{ pointerEvents: 'auto' }}
         {...props}
       >
         {children}

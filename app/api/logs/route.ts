@@ -129,6 +129,7 @@ export const DELETE = createApiHandler({
       );
     }
     
+    // Call cleanup method without filter - it uses internal config
     const deleted = await enhancedLogger.cleanup();
     
     return { deleted };

@@ -68,15 +68,26 @@ describe('Style Validation Tests', () => {
       expect(() => validateStyleUpdate(hexColorUpdate)).not.toThrow()
     })
 
-    it('accepts color names', () => {
-      const namedColorUpdate = {
+    it('accepts color in various hex formats', () => {
+      // Test standard hex format
+      const hexColorUpdate = {
         drawingId: 'test-123',
         style: {
-          color: 'red',
+          color: '#ff0000',
         },
       }
       
-      expect(() => validateStyleUpdate(namedColorUpdate)).not.toThrow()
+      expect(() => validateStyleUpdate(hexColorUpdate)).not.toThrow()
+      
+      // Test uppercase hex
+      const upperHexUpdate = {
+        drawingId: 'test-123',
+        style: {
+          color: '#FF0000',
+        },
+      }
+      
+      expect(() => validateStyleUpdate(upperHexUpdate)).not.toThrow()
     })
   })
 

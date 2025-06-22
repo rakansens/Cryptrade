@@ -186,20 +186,19 @@ describe('Concurrent Utilities', () => {
       
       const { execute } = createDebouncedAsync(asyncFn, 100);
       
-      // Make multiple calls - collect the results first
-      const results = await Promise.allSettled([
-        execute('first'),
-        execute('second'),
-        execute('third')
-      ]).then(async (settled) => {
-        // Advance time past debounce delay
-        await jest.advanceTimersByTimeAsync(100);
-        
-        // Advance time for async function to complete
-        await jest.advanceTimersByTimeAsync(50);
-        
-        return settled;
-      });
+      // Make multiple calls
+      const promise1 = execute('first');
+      const promise2 = execute('second');
+      const promise3 = execute('third');
+      
+      // Advance time past debounce delay
+      await jest.advanceTimersByTimeAsync(100);
+      
+      // Advance time for async function to complete
+      await jest.advanceTimersByTimeAsync(50);
+      
+      // Collect results
+      const results = await Promise.allSettled([promise1, promise2, promise3]);
       
       // Only the last call should have been executed
       expect(asyncFn).toHaveBeenCalledTimes(1);
@@ -257,7 +256,11 @@ describe('Concurrent Utilities', () => {
       
       const resultPromise = withTimeout(operation, 100);
       
-      await jest.advanceTimersByTimeAsync(100);
+      // Advance time to trigger timeout
+      jest.advanceTimersByTime(100);
+      
+      // Let promises settle
+      await Promise.resolve();
       
       await expect(resultPromise).rejects.toThrow('Operation timed out after 100ms');
     });
@@ -286,12 +289,14 @@ describe('Concurrent Utilities', () => {
       const onUpdate = jest.fn();
       const queue = new StateUpdateQueue({ count: 0 }, onUpdate as any);
       
-      await queue.enqueue(async (state) => {
+      const enqueuePromise = queue.enqueue(async (state) => {
         await new Promise(resolve => setTimeout(resolve, 50));
         return { count: state.count + 1 };
       });
       
+      // Advance timers and wait for enqueue to complete
       await jest.advanceTimersByTimeAsync(50);
+      await enqueuePromise;
       
       expect(queue.getState()).toEqual({ count: 1 });
       expect(onUpdate).toHaveBeenCalledWith({ count: 1 });
@@ -341,7 +346,8 @@ describe('Concurrent Utilities', () => {
       const promise1 = batcher.add(1);
       const promise2 = batcher.add(2);
       
-      await jest.advanceTimersByTimeAsync(0);
+      // Let the batcher process (either immediate or on next tick)
+      await Promise.resolve();
       
       await expect(promise1).rejects.toThrow('Batch failed');
       await expect(promise2).rejects.toThrow('Batch failed');

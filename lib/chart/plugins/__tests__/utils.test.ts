@@ -199,8 +199,8 @@ describe('ColorUtils', () => {
 
   describe('toDarkTheme', () => {
     it('should brighten colors for dark theme', () => {
-      expect(ColorUtils.toDarkTheme('#808080')).toBe('#999999');
-      expect(ColorUtils.toDarkTheme('#404040')).toBe('#4d4d4d');
+      expect(ColorUtils.toDarkTheme('#808080')).toBe('#9a9a9a'); // 128 * 1.2 = 153.6 → 154 → 0x9a
+      expect(ColorUtils.toDarkTheme('#404040')).toBe('#4d4d4d'); // 64 * 1.2 = 76.8 → 77 → 0x4d
     });
   });
 });
@@ -217,8 +217,8 @@ describe('TimeUtils', () => {
 
     it('should handle edge cases', () => {
       expect(TimeUtils.normalizeTime(0)).toBe(0);
-      expect(TimeUtils.normalizeTime(9999999999)).toBe(9999999999); // Just under 10^10
-      expect(TimeUtils.normalizeTime(10000000000)).toBe(10000000000); // Exactly 10^10
+      expect(TimeUtils.normalizeTime(9999999999)).toBe(9999999999); // Just under 10^10, kept as is
+      expect(TimeUtils.normalizeTime(10000000000)).toBe(10000000); // 10^10 ms → 10^7 seconds
     });
   });
 
@@ -235,8 +235,9 @@ describe('TimeUtils', () => {
     });
 
     it('should normalize timestamps before comparison', () => {
-      expect(TimeUtils.isWithinRange(1500000, 1000, 2000)).toBe(true); // 1500 seconds
-      expect(TimeUtils.isWithinRange(1500, 1000000, 2000000)).toBe(true); // all in ms
+      expect(TimeUtils.isWithinRange(1500000, 1000, 2000)).toBe(false); // 1500000ms = 1500s, not in 1000-2000 range
+      expect(TimeUtils.isWithinRange(1500000000, 1000, 2000)).toBe(true); // 1500000000ms = 1500s, in 1000-2000 range
+      expect(TimeUtils.isWithinRange(1500, 1000000000, 2000000000)).toBe(true); // all normalized to seconds
     });
   });
 

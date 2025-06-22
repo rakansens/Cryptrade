@@ -2,6 +2,11 @@
 jest.mock('@/lib/utils/api-cache');
 jest.mock('@/lib/utils/retry');
 jest.mock('@/lib/utils/logger');
+jest.mock('@/config/env', () => ({
+  env: {
+    NODE_ENV: 'test'
+  }
+}));
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -193,8 +198,9 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should return empty array in development mode when no cache available', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true, configurable: true });
+      const { env } = require('@/config/env');
+      const originalEnv = env.NODE_ENV;
+      env.NODE_ENV = 'development';
 
       mockApiCache.get.mockReturnValue(null);
       jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
@@ -204,7 +210,7 @@ describe('ChartDrawingAPI', () => {
       expect(result).toEqual([]);
       expect(logger.warn).toHaveBeenCalledWith('[ChartDrawingAPI] Returning empty array in development mode');
 
-      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
+      env.NODE_ENV = originalEnv;
     });
 
     it('should throw error in production when no cache available', async () => {
@@ -451,8 +457,9 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should return null in development mode on error', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, "NODE_ENV", { value: "development", writable: true, configurable: true });
+      const { env } = require('@/config/env');
+      const originalEnv = env.NODE_ENV;
+      env.NODE_ENV = 'development';
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
@@ -461,7 +468,7 @@ describe('ChartDrawingAPI', () => {
       expect(result).toBeNull();
       expect(logger.error).toHaveBeenCalled();
 
-      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
+      env.NODE_ENV = originalEnv;
     });
 
     it('should throw error in production mode', async () => {
