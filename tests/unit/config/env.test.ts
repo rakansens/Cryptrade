@@ -35,9 +35,12 @@ describe('Environment Configuration', () => {
 
     // Clear mocks
     jest.clearAllMocks();
-
-    // Setup default test environment
+    
+    // Setup default test environment BEFORE resetting modules
     restoreEnv = mockEnv(createTestEnv());
+    
+    // Reset modules to clear any cached environment AFTER setting up env
+    jest.resetModules();
   });
 
   afterEach(() => {
@@ -60,8 +63,12 @@ describe('Environment Configuration', () => {
         PORT: '3001',
       });
 
+      // Reset modules and clear cache before importing
+      jest.resetModules();
+
       // Act
-      const { loadEnv } = await import('@/config/env');
+      const { loadEnv, _resetEnvCache } = await import('@/config/env');
+      _resetEnvCache(); // Clear any cached environment
       const env = loadEnv();
 
       // Assert

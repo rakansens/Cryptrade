@@ -202,11 +202,23 @@ describe('WSManager Coverage Tests', () => {
   });
 
   describe('Cleanup and Resource Management', () => {
+    let originalGC: any;
+
     beforeEach(() => {
+      originalGC = (global as any).gc;
       manager = new WSManager({
         url: 'wss://test.com',
         debug: true
       });
+    });
+
+    afterEach(() => {
+      // Restore original gc value
+      if (originalGC !== undefined) {
+        (global as any).gc = originalGC;
+      } else {
+        (global as any).gc = undefined;
+      }
     });
 
     it('should handle cleanup when stream does not exist', () => {
@@ -234,9 +246,6 @@ describe('WSManager Coverage Tests', () => {
       
       // Assert
       expect(mockGC).toHaveBeenCalled();
-      
-      // Cleanup
-      delete (global as any).gc;
     });
 
     it('should handle GC errors gracefully', () => {
@@ -256,9 +265,6 @@ describe('WSManager Coverage Tests', () => {
       expect(() => {
         manager['handleStreamCleanup']('test@stream');
       }).not.toThrow();
-      
-      // Cleanup
-      delete (global as any).gc;
     });
   });
 

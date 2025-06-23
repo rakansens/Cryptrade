@@ -1,11 +1,3 @@
-import {
-  logger,
-  createAgentLogger,
-  createToolLogger,
-  logPerformance,
-  createSessionLogger,
-} from '@/lib/utils/logger-enhanced';
-
 // Mock dependencies
 const mockEnhancedLogger = {
   debug: jest.fn(),
@@ -24,6 +16,14 @@ const mockEnhancedLogger = {
 jest.mock('@/lib/logging', () => ({
   enhancedLogger: mockEnhancedLogger,
 }));
+
+import {
+  logger,
+  createAgentLogger,
+  createToolLogger,
+  logPerformance,
+  createSessionLogger,
+} from '@/lib/utils/logger-enhanced';
 
 const mockOriginalLogger = {
   debug: jest.fn(),

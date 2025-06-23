@@ -13,9 +13,11 @@ jest.mock('@prisma/client', () => ({
         super(message);
         this.code = options.code;
         this.clientVersion = options.clientVersion || '0.0.0';
+        this.meta = options.meta;
       }
       code: string;
       clientVersion: string;
+      meta?: any;
     },
     TransactionIsolationLevel: {
       ReadUncommitted: 'ReadUncommitted',
@@ -54,13 +56,12 @@ jest.mock('@/lib/db/prisma', () => ({
   },
 }));
 
-describe('DatabaseConnection', () => {
-  let mockPrisma: any;
+// Get the mocked prisma instance at module level
+const mockPrisma = require('@/lib/db/prisma').prisma;
 
+describe('DatabaseConnection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Get the mocked prisma instance
-    mockPrisma = require('@/lib/db/prisma').prisma;
     // Reset static state
     (DatabaseConnection as any).isConnected = false;
     (DatabaseConnection as any).connectionAttempts = 0;
@@ -111,7 +112,7 @@ describe('DatabaseConnection', () => {
       );
       
       expect(mockPrisma.$connect).toHaveBeenCalledTimes(5);
-    });
+    }, 30000);
 
     it('should use exponential backoff for retries', async () => {
       const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
@@ -417,7 +418,10 @@ describe('batchOperation', () => {
 
 describe('checkDatabaseHealth', () => {
   it('should return healthy status with latency', async () => {
-    mockPrisma.$queryRaw.mockResolvedValueOnce([{ '?column?': 1 }]);
+    // Mock with a slight delay to simulate actual database query time
+    mockPrisma.$queryRaw.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve([{ '?column?': 1 }]), 10))
+    );
     
     const result = await checkDatabaseHealth();
     

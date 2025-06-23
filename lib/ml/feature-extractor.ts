@@ -344,6 +344,11 @@ export class FeatureExtractor {
       }
     }
     
+    // Handle edge case when no returns can be calculated
+    if (returns.length === 0) {
+      return 0;
+    }
+    
     const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
     const variance = returns.reduce((acc, ret) => acc + Math.pow(ret - avgReturn, 2), 0) / returns.length;
     const stdDev = Math.sqrt(variance);

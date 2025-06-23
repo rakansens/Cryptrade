@@ -65,7 +65,8 @@ describe('RootLayout', () => {
       // Check body structure
       const body = container.querySelector('body')
       expect(body).toHaveClass('mocked-inter-font')
-      expect(body).toHaveAttribute('suppressHydrationWarning')
+      // suppressHydrationWarning is a React prop, not an HTML attribute
+      // It won't appear in the DOM, so we remove this test
 
       // Check providers are rendered in correct order
       expect(screen.getByTestId('body-style-wrapper')).toBeInTheDocument()

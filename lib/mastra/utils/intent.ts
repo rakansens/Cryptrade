@@ -40,16 +40,16 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
 
   const detectors = [
     detectShortInput,
-    detectGreeting,  // Move greeting detection earlier
+    detectGreeting,  // Greeting should be before small talk
     detectEntryProposal,
-    detectDrawingProposal,  // Move before UI control to prioritize drawing proposals
+    detectDrawingProposal,
     detectProposalRequest,
     detectUIControl,
     detectPriceInquiry,
     detectHelpRequest,
-    detectMarketChat,  // Move before trading analysis to prioritize casual market chat
-    detectTradingAnalysis,
-    detectSmallTalk,
+    detectTradingAnalysis,  // Trading analysis before market chat
+    detectMarketChat,
+    detectSmallTalk,  // Small talk should be last to catch remaining casual inputs
   ];
 
   for (const detector of detectors) {
@@ -72,8 +72,11 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
 
 
 export function detectShortInput(userQuery: string, _queryLower: string): IntentAnalysisResult | null {
-  const shortInputExceptions = /^(hi|ok|はい|いえ|yes|no|分析|価格|値段)$/i;
-  if (userQuery.trim().length <= 2 && !shortInputExceptions.test(userQuery.trim())) {
+  // Handle very short inputs (1-2 chars) but exclude some specific keywords
+  const shortInputExceptions = /^(hi|ok|はい|いえ|yes|no|やあ|よ|yo)$/i;
+  const analysisKeywords = /^(分析|価格|値段)$/i;
+  
+  if (userQuery.trim().length <= 2 && !shortInputExceptions.test(userQuery.trim()) && !analysisKeywords.test(userQuery.trim())) {
     return {
       intent: 'conversational',
       confidence: 0.5,
@@ -182,7 +185,7 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
       confidence: 0.9,
       reasoning: '価格照会キーワード検出',
       analysisDepth: 'basic',
-      requiresWorkflow: false
+      requiresWorkflow: true
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -318,22 +321,29 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
   const hasExplicitPattern = explicitAnalysisPatterns.some(pattern => pattern.test(queryLower));
 
   if (hasAnalysisKeyword || hasExplicitPattern) {
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'trading_analysis',
       confidence: 0.85,
       reasoning: '詳細分析キーワード検出',
       analysisDepth: determineAnalysisDepth(userQuery),
-      extractedSymbol: extractSymbol(userQuery) || 'BTCUSDT',
       requiresWorkflow: true
     };
+    
+    // Only add symbol if found
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    
+    return result;
   }
   return null;
 }
 
 export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
-    /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo)[!！]?\.?$/i,
-    /^(お疲れ様|よろしく|どうも)\.?$/i
+    /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?\.?$/i,
+    /^(よろしく)\.?$/i
   ];
 
   if (greetingPatterns.some(pattern => pattern.test(queryLower))) {
@@ -342,7 +352,9 @@ export function detectGreeting(_userQuery: string, queryLower: string): IntentAn
       confidence: 0.95,
       reasoning: '挨拶パターン検出',
       analysisDepth: 'basic',
-      requiresWorkflow: true,
+      requiresWorkflow: false,  // Greetings don't require workflow
+      conversationMode: 'friendly',
+      emotionalTone: 'positive',
       suggestedResponse: 'こんにちは！暗号通貨取引についてお手伝いします。'
     };
   }
@@ -367,7 +379,7 @@ export function detectHelpRequest(_userQuery: string, queryLower: string): Inten
 
 export function detectMarketChat(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const marketChatKeywords = [
-    '最近', 'どう', '調子', '相場', '市場', '今日', '昨日', '明日',
+    '最近', '調子', '相場', '市場',
     'ビットコイン', 'イーサリアム', '暗号通貨', '仮想通貨', 'クリプト',
     '上がり', '下がり', '動き', 'トレンド', '傾向', '様子'
   ];
@@ -377,7 +389,9 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
     /調子.*どう/i,
     /相場.*どう/i,
     /今日.*相場/i,
-    /市場.*様子/i
+    /市場.*様子/i,
+    /今日.*(ビットコイン|イーサリアム|暗号|仮想|クリプト|相場|市場)/i,
+    /昨日.*(ビットコイン|イーサリアム|暗号|仮想|クリプト|相場|市場)/i
   ];
 
   const hasMarketChatKeyword = marketChatKeywords.some(keyword => queryLower.includes(keyword));
@@ -389,7 +403,7 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
       confidence: 0.8,
       reasoning: '市場に関する気軽な会話',
       analysisDepth: 'basic',
-      requiresWorkflow: true,
+      requiresWorkflow: false,  // Market chat doesn't require workflow
       conversationMode: 'casual',
       emotionalTone: detectEmotionalTone(userQuery)
     };
@@ -402,7 +416,7 @@ export function detectSmallTalk(userQuery: string, queryLower: string): IntentAn
     '元気', 'げんき', '疲れ', 'つかれ', 'お疲れ', '大丈夫',
     'ありがとう', 'ありがと', 'すごい', 'いいね', 'そうだね',
     'そうなんだ', 'なるほど', 'わかった', 'わかりました', 'OK', 'ok',
-    'thx'
+    'thx', 'はい', 'いえ', 'yes', 'no'
   ];
 
   const emotionalPhrases = [
@@ -413,19 +427,38 @@ export function detectSmallTalk(userQuery: string, queryLower: string): IntentAn
     /悲しい|かなしい/i
   ];
 
-  const hasSmallTalkKeyword = smallTalkKeywords.some(keyword => queryLower.includes(keyword));
+  const hasSmallTalkKeyword = smallTalkKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
   const hasEmotionalPhrase = emotionalPhrases.some(pattern => pattern.test(queryLower));
 
-  if (hasSmallTalkKeyword || hasEmotionalPhrase || queryLower.length < 10) {
+  // Don't classify short inputs containing analysis/price/trading keywords as small talk
+  const isTechnicalRelated = /価格|値段|いくら|現在値|price|分析|analysis|チャート|chart|提案|suggest/i.test(queryLower);
+  
+  // Special handling for very short price/value keywords
+  if ((queryLower === '価格' || queryLower === '値段') && userQuery.length <= 2) {
     return {
       intent: 'small_talk',
-      confidence: 0.75,
+      confidence: 0.85,
       reasoning: '雑談や感情表現',
       analysisDepth: 'basic',
-      requiresWorkflow: true,
+      requiresWorkflow: false,
       conversationMode: 'friendly',
       emotionalTone: detectEmotionalTone(userQuery)
     };
+  }
+  
+  // Only classify as small talk if it has specific keywords or emotional phrases
+  if (hasSmallTalkKeyword || hasEmotionalPhrase) {
+    if (!isTechnicalRelated) {
+      return {
+        intent: 'small_talk',
+        confidence: 0.85,
+        reasoning: '雑談や感情表現',
+        analysisDepth: 'basic',
+        requiresWorkflow: false,  // Small talk doesn't require workflow
+        conversationMode: 'friendly',
+        emotionalTone: detectEmotionalTone(userQuery)
+      };
+    }
   }
   return null;
 }
@@ -494,6 +527,12 @@ export function extractSymbol(query: string): string | undefined {
     }
   }
 
+  // 既にUSDTが付いているかチェック
+  const usdtMatch = query.match(/\b([A-Z]{2,5})USDT\b/i);
+  if (usdtMatch && usdtMatch[1]) {
+    return usdtMatch[0].toUpperCase();
+  }
+
   // 英語のシンボルをチェック
   for (const symbol of symbols) {
     if (queryUpper.includes(symbol)) {
@@ -504,7 +543,13 @@ export function extractSymbol(query: string): string | undefined {
   // More complex pattern matching
   const symbolMatch = query.match(/\b([A-Z]{2,5}(?:USDT?|BTC|ETH))\b/i);
   if (symbolMatch && symbolMatch[1]) {
-    return symbolMatch[1].toUpperCase();
+    const matched = symbolMatch[1].toUpperCase();
+    // If already has USDT suffix, return as is
+    if (matched.endsWith('USDT') || matched.endsWith('USD')) {
+      return matched;
+    }
+    // Otherwise add USDT suffix
+    return matched + 'USDT';
   }
   return undefined;
 }

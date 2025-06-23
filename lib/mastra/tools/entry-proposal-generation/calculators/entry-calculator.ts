@@ -185,6 +185,7 @@ function calculatePatternBasedEntries(
           ],
         },
         relatedPatterns: [pattern.id],
+        relatedDrawings: [], // パターンには関連する描画がない場合は空配列
       });
     }
   }

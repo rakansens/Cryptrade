@@ -93,7 +93,13 @@ describe('AI Chat API Route', () => {
       expect(mockExecuteImprovedOrchestrator).toHaveBeenCalledWith(
         'What is the current price of Bitcoin?',
         'test-session-123',
-        {}
+        {
+          queryComplexity: 'simple',
+          isProposalMode: false,
+          userTier: 'free',
+          userLevel: 'intermediate',
+          marketStatus: 'open'
+        }
       );
     });
 
@@ -278,7 +284,13 @@ describe('AI Chat API Route', () => {
       expect(mockExecuteImprovedOrchestrator).toHaveBeenCalledWith(
         'Analyze Ethereum',
         expect.any(String),
-        contextData
+        {
+          queryComplexity: 'complex', // comprehensive maps to complex
+          isProposalMode: false,
+          userTier: 'free',
+          userLevel: 'intermediate',
+          marketStatus: 'open'
+        }
       );
     });
   });

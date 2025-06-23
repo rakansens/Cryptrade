@@ -102,7 +102,9 @@ export class DatabaseConnection {
   static handlePrismaError(error: Prisma.PrismaClientKnownRequestError): Error {
     switch (error.code) {
       case 'P2002':
-        return new Error(`Unique constraint violation: ${error.meta?.['target']}`);
+        const target = error.meta?.['target'];
+        const targetStr = Array.isArray(target) ? target.join(', ') : target;
+        return new Error(`Unique constraint violation: ${targetStr}`);
       case 'P2003':
         return new Error(`Foreign key constraint violation: ${error.meta?.['field_name']}`);
       case 'P2025':

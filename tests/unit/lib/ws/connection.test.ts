@@ -4,7 +4,7 @@
  */
 
 import { WSManager } from '@/lib/ws/WSManager';
-import { MockWebSocket, setupWebSocketMocking } from '@/tests/helpers/websocket-mock';
+import { setupWebSocketMocking } from '@/tests/helpers/websocket-mock';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -15,6 +15,76 @@ jest.mock('@/lib/utils/logger', () => ({
     error: jest.fn()
   }
 }));
+
+// First import the mock setup before anything else
+import { MockWebSocket } from '@/tests/helpers/websocket-mock';
+
+// Mock RxJS webSocket to use our MockWebSocket
+jest.mock('rxjs/webSocket', () => {
+  const { Observable } = require('rxjs');
+  const { MockWebSocket: MockWS } = require('@/tests/helpers/websocket-mock');
+  
+  return {
+    webSocket: (config: any) => {
+      // Create an observable that manages WebSocket lifecycle
+      return new Observable(subscriber => {
+        const mockWs = new MockWS(config.url);
+        let isCompleted = false;
+        
+        // Connect mock WebSocket events
+        mockWs.onopen = () => {
+          if (config.openObserver && !isCompleted) {
+            config.openObserver.next({ type: 'open' });
+          }
+        };
+        
+        mockWs.onclose = (e: CloseEvent) => {
+          if (config.closeObserver && !isCompleted) {
+            config.closeObserver.next(e);
+          }
+          
+          if (!isCompleted) {
+            isCompleted = true;
+            if (e.code === 1000 || e.wasClean) {
+              subscriber.complete();
+            } else {
+              // Emit error to trigger retry logic
+              const error = new Error(`WebSocket closed abnormally: ${e.reason || 'Connection lost'}`);
+              (error as any).code = e.code;
+              subscriber.error(error);
+            }
+          }
+        };
+        
+        mockWs.onerror = (e: Event) => {
+          if (!isCompleted) {
+            isCompleted = true;
+            subscriber.error(e);
+          }
+        };
+        
+        mockWs.onmessage = (e: MessageEvent) => {
+          if (!isCompleted) {
+            try {
+              const data = JSON.parse(e.data);
+              subscriber.next(data);
+            } catch {
+              subscriber.next(e.data);
+            }
+          }
+        };
+        
+        // Return teardown logic
+        return () => {
+          isCompleted = true;
+          if (mockWs.readyState !== MockWS.CLOSED) {
+            mockWs.close(1000, 'Normal closure');
+          }
+        };
+      });
+    }
+  };
+});
 
 // Setup WebSocket mocking
 const cleanupMock = setupWebSocketMocking();
@@ -43,11 +113,14 @@ describe('WSManager E2E - Connection Management', () => {
   });
 
   describe('Connection Establishment', () => {
-    it('should establish connection on first subscription', () => {
+    it('should establish connection on first subscription', async () => {
       const subscription = manager.subscribe('btcusdt@trade').subscribe({
         next: () => {},
         error: () => {}
       });
+
+      // Wait for async connection
+      await new Promise(resolve => setTimeout(resolve, 20));
 
       // Verify connection created
       const instances = MockWebSocket.getAllInstances();
@@ -58,10 +131,13 @@ describe('WSManager E2E - Connection Management', () => {
       subscription.unsubscribe();
     });
 
-    it('should create separate connections for different streams', () => {
+    it('should create separate connections for different streams', async () => {
       const sub1 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
       const sub2 = manager.subscribe('ethusdt@trade').subscribe({ next: () => {} });
       const sub3 = manager.subscribe('bnbusdt@kline_1m').subscribe({ next: () => {} });
+
+      // Wait for async connections
+      await new Promise(resolve => setTimeout(resolve, 20));
 
       // Each stream should have its own connection
       const instances = MockWebSocket.getAllInstances();
@@ -79,7 +155,7 @@ describe('WSManager E2E - Connection Management', () => {
   });
 
   describe('Connection Sharing', () => {
-    it('should share connection for same stream', () => {
+    it('should share connection for same stream', async () => {
       const subscriptions = [];
       
       // Create 5 subscriptions to the same stream
@@ -91,6 +167,9 @@ describe('WSManager E2E - Connection Management', () => {
         subscriptions.push(sub);
       }
 
+      // Wait for async connection
+      await new Promise(resolve => setTimeout(resolve, 20));
+
       // Should only have one WebSocket connection
       expect(MockWebSocket.getAllInstances()).toHaveLength(1);
       expect(manager.getActiveStreamsCount()).toBe(1);
@@ -99,9 +178,12 @@ describe('WSManager E2E - Connection Management', () => {
       subscriptions.forEach(sub => sub.unsubscribe());
     });
 
-    it('should maintain connection while at least one subscriber exists', () => {
+    it('should maintain connection while at least one subscriber exists', async () => {
       const sub1 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
       const sub2 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
+      
+      // Wait for async connection
+      await new Promise(resolve => setTimeout(resolve, 20));
       
       expect(MockWebSocket.getAllInstances()).toHaveLength(1);
       
@@ -121,10 +203,13 @@ describe('WSManager E2E - Connection Management', () => {
   });
 
   describe('Connection Cleanup', () => {
-    it('should close connections on destroy', () => {
+    it('should close connections on destroy', async () => {
       // Create multiple connections
       manager.subscribe('btcusdt@trade').subscribe({ next: () => {} });
       manager.subscribe('ethusdt@trade').subscribe({ next: () => {} });
+      
+      // Wait for async connections
+      await new Promise(resolve => setTimeout(resolve, 20));
       
       const instances = MockWebSocket.getAllInstances();
       expect(instances).toHaveLength(2);
@@ -141,7 +226,7 @@ describe('WSManager E2E - Connection Management', () => {
       expect(manager.getActiveStreamsCount()).toBe(0);
     });
 
-    it('should handle rapid subscribe/unsubscribe cycles', () => {
+    it('should handle rapid subscribe/unsubscribe cycles', async () => {
       const cycles = 20;
       
       for (let i = 0; i < cycles; i++) {
@@ -153,6 +238,9 @@ describe('WSManager E2E - Connection Management', () => {
         // Immediately unsubscribe
         sub.unsubscribe();
       }
+      
+      // Wait a bit for any async cleanup
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       // Should handle gracefully without connection leaks
       const instances = MockWebSocket.getAllInstances();

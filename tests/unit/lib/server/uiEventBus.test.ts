@@ -1,22 +1,29 @@
 /**
  * UI Event Bus Tests
  */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals'
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals'
 import { EventEmitter } from 'events'
-import type { UIEventPayload } from '@/lib/server/uiEventBus'
 
-// Mock fetch
-global.fetch = jest.fn()
+// Mock fetch globally
+const mockFetch = jest.fn()
+global.fetch = mockFetch
 
 describe('UI Event Bus', () => {
-  let mockFetch: jest.MockedFunction<typeof fetch>
   let consoleErrorSpy: jest.SpyInstance
 
   beforeEach(() => {
     jest.clearAllMocks()
     jest.resetModules()
     
-    mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
+    // Reset fetch implementation
+    mockFetch.mockImplementation(() => 
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({}),
+        text: jest.fn().mockResolvedValue('')
+      } as any)
+    )
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
   })
 
@@ -24,37 +31,66 @@ describe('UI Event Bus', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  describe('uiEventBus', () => {
-    it('exports EventEmitter instance', async () => {
-      const { uiEventBus } = await import('@/lib/server/uiEventBus')
+  describe('Module Loading Debug', () => {
+    it('should load the module', () => {
+      let module: any
+      try {
+        // Try different approaches
+        const path = require.resolve('@/lib/server/uiEventBus')
+        console.log('Resolved path:', path)
+        module = require('@/lib/server/uiEventBus')
+        console.log('Loaded module keys:', Object.keys(module || {}))
+        console.log('Module content:', module)
+      } catch (error) {
+        console.error('Module loading error:', error)
+        
+        // Try relative path
+        try {
+          const relativePath = require.resolve('../../../../lib/server/uiEventBus')
+          console.log('Relative path resolved:', relativePath)
+          module = require('../../../../lib/server/uiEventBus')
+          console.log('Module loaded with relative path:', module)
+        } catch (relativeError) {
+          console.error('Relative path error:', relativeError)
+        }
+      }
       
+      expect(module).toBeDefined()
+    })
+  })
+
+  describe('uiEventBus', () => {
+    it('exports EventEmitter instance', () => {
+      const module = require('../../../../lib/server/uiEventBus')
+      console.log('Module in test:', module)
+      const { uiEventBus } = module
       expect(uiEventBus).toBeInstanceOf(EventEmitter)
     })
 
-    it('can emit and listen to events', async () => {
-      const { uiEventBus } = await import('@/lib/server/uiEventBus')
-      
+    it('can emit and listen to events', () => {
+      const { uiEventBus } = require('../../../../lib/server/uiEventBus')
       const listener = jest.fn()
       uiEventBus.on('test-event', listener)
       
       uiEventBus.emit('test-event', { data: 'test' })
       
       expect(listener).toHaveBeenCalledWith({ data: 'test' })
+      
+      // Cleanup
+      uiEventBus.off('test-event', listener)
     })
   })
 
   describe('getUIEventBus', () => {
-    it('returns the same uiEventBus instance', async () => {
-      const { uiEventBus, getUIEventBus } = await import('@/lib/server/uiEventBus')
-      
+    it('returns the same uiEventBus instance', () => {
+      const { uiEventBus, getUIEventBus } = require('../../../../lib/server/uiEventBus')
       const instance = getUIEventBus()
       
       expect(instance).toBe(uiEventBus)
     })
 
-    it('returns singleton instance on multiple calls', async () => {
-      const { getUIEventBus } = await import('@/lib/server/uiEventBus')
-      
+    it('returns singleton instance on multiple calls', () => {
+      const { getUIEventBus } = require('../../../../lib/server/uiEventBus')
       const instance1 = getUIEventBus()
       const instance2 = getUIEventBus()
       const instance3 = getUIEventBus()
@@ -66,22 +102,20 @@ describe('UI Event Bus', () => {
 
   describe('emitUIEvent', () => {
     it('sends event via HTTP POST when available', async () => {
-      // Arrange
+      const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200
       } as Response)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'draw:trendline',
         data: { symbol: 'BTCUSDT', type: 'uptrend' }
       }
 
-      // Act
-      const { emitUIEvent } = await import('@/lib/server/uiEventBus')
       await emitUIEvent(payload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/ui-events', {
         method: 'POST',
         headers: {
@@ -93,86 +127,90 @@ describe('UI Event Bus', () => {
     })
 
     it('falls back to direct emit when HTTP POST fails', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500
       } as Response)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'chart:update',
         data: { timeframe: '1h' }
       }
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', 500)
       expect(listener).toHaveBeenCalledWith(payload)
+      
+      // Cleanup
+      uiEventBus.off('ui-event', listener)
     })
 
     it('falls back to direct emit when fetch throws error', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       const fetchError = new Error('Network error')
       mockFetch.mockRejectedValue(fetchError)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'indicator:add',
         data: { indicator: 'RSI' }
       }
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST Error:', fetchError)
       expect(listener).toHaveBeenCalledWith(payload)
+      
+      // Cleanup
+      uiEventBus.off('ui-event', listener)
     })
 
     it('handles error in direct emit gracefully', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockRejectedValue(new Error('Fetch failed'))
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'test:event',
         data: { test: true }
       }
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
-      
       // Make emit throw an error
       const emitError = new Error('Emit failed')
-      jest.spyOn(uiEventBus, 'emit').mockImplementation(() => {
+      const originalEmit = uiEventBus.emit
+      uiEventBus.emit = jest.fn().mockImplementation(() => {
         throw emitError
       })
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST Error:', expect.any(Error))
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] Direct emit also failed:', emitError)
+      
+      // Restore
+      uiEventBus.emit = originalEmit
     })
 
     it('sends correct payload structure', async () => {
-      // Arrange
+      const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200
       } as Response)
 
-      const complexPayload: UIEventPayload = {
+      const complexPayload = {
         event: 'analysis:complete',
         data: {
           symbol: 'ETHUSDT',
@@ -185,15 +223,12 @@ describe('UI Event Bus', () => {
               macd: { signal: 'buy' }
             }
           },
-          timestamp: Date.now()
+          timestamp: 1234567890
         }
       }
 
-      // Act
-      const { emitUIEvent } = await import('@/lib/server/uiEventBus')
       await emitUIEvent(complexPayload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3000/api/ui-events',
         expect.objectContaining({
@@ -205,22 +240,20 @@ describe('UI Event Bus', () => {
 
   describe('Event Payload Types', () => {
     it('handles minimal payload', async () => {
-      // Arrange
+      const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200
       } as Response)
 
-      const minimalPayload: UIEventPayload = {
+      const minimalPayload = {
         event: 'ping',
         data: {}
       }
 
-      // Act
-      const { emitUIEvent } = await import('@/lib/server/uiEventBus')
       await emitUIEvent(minimalPayload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -230,13 +263,14 @@ describe('UI Event Bus', () => {
     })
 
     it('handles payload with various data types', async () => {
-      // Arrange
+      const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200
       } as Response)
 
-      const mixedPayload: UIEventPayload = {
+      const mixedPayload = {
         event: 'mixed:data',
         data: {
           string: 'value',
@@ -252,11 +286,8 @@ describe('UI Event Bus', () => {
         }
       }
 
-      // Act
-      const { emitUIEvent } = await import('@/lib/server/uiEventBus')
       await emitUIEvent(mixedPayload)
 
-      // Assert
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -268,14 +299,13 @@ describe('UI Event Bus', () => {
 
   describe('Event Bus Integration', () => {
     it('allows multiple listeners for ui-event', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500
       } as Response)
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
-      
       const listener1 = jest.fn()
       const listener2 = jest.fn()
       const listener3 = jest.fn()
@@ -284,23 +314,25 @@ describe('UI Event Bus', () => {
       uiEventBus.on('ui-event', listener2)
       uiEventBus.on('ui-event', listener3)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'multi:listener',
         data: { count: 3 }
       }
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(listener1).toHaveBeenCalledWith(payload)
       expect(listener2).toHaveBeenCalledWith(payload)
       expect(listener3).toHaveBeenCalledWith(payload)
+      
+      // Cleanup
+      uiEventBus.off('ui-event', listener1)
+      uiEventBus.off('ui-event', listener2)
+      uiEventBus.off('ui-event', listener3)
     })
 
-    it('can remove listeners', async () => {
-      // Arrange
-      const { uiEventBus } = await import('@/lib/server/uiEventBus')
+    it('can remove listeners', () => {
+      const { uiEventBus } = require('../../../../lib/server/uiEventBus')
       
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
@@ -318,49 +350,51 @@ describe('UI Event Bus', () => {
 
   describe('Error Scenarios', () => {
     it('handles timeout errors', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       const timeoutError = new Error('Request timeout')
       mockFetch.mockRejectedValue(timeoutError)
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'timeout:test',
         data: { timeout: true }
       }
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST Error:', timeoutError)
-      expect(listener).toHaveBeenCalledWith(payload) // Fallback worked
+      expect(listener).toHaveBeenCalledWith(payload)
+      
+      // Cleanup
+      uiEventBus.off('ui-event', listener)
     })
 
     it('handles malformed response', async () => {
-      // Arrange
+      const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
+      
       mockFetch.mockResolvedValue({
         ok: false,
-        status: undefined // Malformed response
+        status: undefined
       } as any)
 
-      const { uiEventBus, emitUIEvent } = await import('@/lib/server/uiEventBus')
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
 
-      const payload: UIEventPayload = {
+      const payload = {
         event: 'malformed:response',
         data: {}
       }
 
-      // Act
       await emitUIEvent(payload)
 
-      // Assert
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', undefined)
       expect(listener).toHaveBeenCalledWith(payload)
+      
+      // Cleanup
+      uiEventBus.off('ui-event', listener)
     })
   })
 })

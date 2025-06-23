@@ -2,8 +2,6 @@
  * @jest-environment node
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
-import { mockMetricsCollector } from '@/tests/utils/test-helpers';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -16,9 +14,21 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 // Mock metrics collector for faster tests
+const mockMetricsCollectorObj = {
+  reset: jest.fn(),
+  recordMetric: jest.fn(),
+  recordHistogram: jest.fn(),
+  toJSON: jest.fn(),
+};
+
 jest.mock('@/lib/monitoring/metrics', () => ({
-  metricsCollector: mockMetricsCollector,
+  metricsCollector: mockMetricsCollectorObj,
+  incrementMetric: jest.fn(),
+  observeMetric: jest.fn(),
 }));
+
+import { DrawingOperationQueue } from '@/lib/utils/drawing-queue';
+const mockMetricsCollector = mockMetricsCollectorObj;
 
 describe('DrawingOperationQueue with Retry', () => {
   let queue: DrawingOperationQueue;

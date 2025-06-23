@@ -33,6 +33,7 @@ jest.mock('@/components/ui/toast', () => ({
   showToast: jest.fn(),
 }))
 
+
 jest.mock('@/store/chart', () => {
   const mockPatterns = new Map([
     ['pattern-123', {
@@ -157,19 +158,24 @@ describe('Style Editor Integration Tests', () => {
       const { drawingId, style, immediate } = customEvent.detail;
       logger.info('[Drawing Event] Handling update drawing style', { drawingId, style, immediate });
       
-      const drawing = mockGetDrawing(drawingId);
-      if (!drawing) {
-        logger.error('[Agent Event] Update drawing style failed', { id: drawingId, error: 'Drawing not found' });
-        showToast('描画が見つかりません', 'error');
-        return;
+      try {
+        const drawing = mockGetDrawing(drawingId);
+        if (!drawing) {
+          logger.error('[Agent Event] Update drawing style failed', { id: drawingId, error: 'Drawing not found' });
+          showToast('描画が見つかりません', 'error');
+          return;
+        }
+        
+        mockUpdateDrawing(drawingId, { style });
+        mockHandlers.drawingManager?.updateDrawing(drawingId, { style });
+        if (immediate) {
+          mockHandlers.drawingManager?.redrawDrawing(drawingId);
+        }
+        showToast('スタイルを更新しました', 'success');
+      } catch (error) {
+        logger.error('[Agent Event] Update drawing style failed', { id: drawingId, error });
+        showToast('スタイル更新に失敗しました', 'error');
       }
-      
-      mockUpdateDrawing(drawingId, { style });
-      mockHandlers.drawingManager?.updateDrawing(drawingId, { style });
-      if (immediate) {
-        mockHandlers.drawingManager?.redrawDrawing(drawingId);
-      }
-      showToast('スタイルを更新しました', 'success');
     });
     
     window.addEventListener('chart:updatePatternStyle', (event: Event) => {
@@ -513,20 +519,23 @@ describe('Style Editor Integration Tests', () => {
         immediate: false,
       }
       
-      // Wrap in try-catch to prevent error from propagating
-      try {
-        dispatchEvent('chart:updateDrawingStyle', styleUpdate)
-      } catch (error) {
-        // Expected error
-      }
+      // Dispatch the event
+      dispatchEvent('chart:updateDrawingStyle', styleUpdate)
       
-      // The event handler throws the error, so it won't call logger.error in the handler
-      // Instead, we should verify that the error was thrown
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 0))
+      
+      // The event handler should catch the error and log it
       expect(mockUpdateDrawing).toHaveBeenCalledWith(
         'drawing-456',
         expect.objectContaining({
           style: expect.objectContaining({ color: '#3b82f6' })
         })
+      )
+      expect(showToast).toHaveBeenCalledWith('スタイル更新に失敗しました', 'error')
+      expect(logger.error).toHaveBeenCalledWith(
+        '[Agent Event] Update drawing style failed',
+        expect.objectContaining({ id: 'drawing-456', error: expect.any(Error) })
       )
       
       // Reset the mock for next test

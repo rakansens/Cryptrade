@@ -59,11 +59,11 @@ describe('Intent Analysis Utility', () => {
   describe('Technical Intent Detection', () => {
     describe('Price Inquiries', () => {
       const priceTests = [
-        { input: 'BTCの価格', symbol: 'BTC' },
-        { input: 'ビットコインはいくら？', symbol: 'BTC' },
-        { input: 'ETHの値段を教えて', symbol: 'ETH' },
-        { input: 'イーサリアムの現在価格', symbol: 'ETH' },
-        { input: 'XRPの価格は？', symbol: 'XRP' },
+        { input: 'BTCの価格', symbol: 'BTCUSDT' },
+        { input: 'ビットコインはいくら？', symbol: 'BTCUSDT' },
+        { input: 'ETHの値段を教えて', symbol: 'ETHUSDT' },
+        { input: 'イーサリアムの現在価格', symbol: 'ETHUSDT' },
+        { input: 'XRPの価格は？', symbol: 'XRPUSDT' },
       ];
 
       test.each(priceTests)('should detect price inquiry: "$input"', ({ input, symbol }) => {
@@ -135,16 +135,16 @@ describe('Intent Analysis Utility', () => {
 
   describe('Symbol Extraction', () => {
     const symbolTests = [
-      { input: 'BTCについて', symbol: 'BTC' },
-      { input: 'ビットコインの話', symbol: 'BTC' },
-      { input: 'bitcoin価格', symbol: 'BTC' },
-      { input: 'ETHとBTCの比較', symbol: 'ETH' }, // First symbol
-      { input: 'イーサリアムが気になる', symbol: 'ETH' },
-      { input: 'ethereum分析', symbol: 'ETH' },
-      { input: 'リップル（XRP）', symbol: 'XRP' },
-      { input: 'BNBチャート', symbol: 'BNB' },
-      { input: 'Binance coin price', symbol: 'BNB' },
-      { input: 'SOLの動き', symbol: 'SOL' },
+      { input: 'BTCについて', symbol: 'BTCUSDT' },
+      { input: 'ビットコインの話', symbol: 'BTCUSDT' },
+      { input: 'bitcoin価格', symbol: 'BTCUSDT' },
+      { input: 'ETHとBTCの比較', symbol: 'ETHUSDT' }, // First symbol
+      { input: 'イーサリアムが気になる', symbol: 'ETHUSDT' },
+      { input: 'ethereum分析', symbol: 'ETHUSDT' },
+      { input: 'リップル（XRP）', symbol: 'XRPUSDT' },
+      { input: 'BNBチャート', symbol: 'BNBUSDT' },
+      { input: 'Binance coin price', symbol: 'BNBUSDT' },
+      { input: 'SOLの動き', symbol: 'SOLUSDT' },
     ];
 
     test.each(symbolTests)('should extract symbol from: "$input"', ({ input, symbol }) => {
@@ -264,7 +264,7 @@ describe('Intent Analysis Utility', () => {
         expect(result).toBeDefined();
         // Should still detect intent despite special characters
         if (input.includes('BTC')) {
-          expect(result.extractedSymbol).toBe('BTC');
+          expect(result.extractedSymbol).toBe('BTCUSDT');
         }
       });
     });
@@ -308,21 +308,15 @@ describe('Intent Analysis Utility', () => {
     });
 
     test('should not require workflow for conversational intents', () => {
-      const noWorkflowRequired = [
-        'greeting',
-        'small_talk',
-        'market_chat',
+      const workflowStatus = [
+        { intent: 'greeting', input: 'こんにちは', requiresWorkflow: false },
+        { intent: 'small_talk', input: 'ありがとう', requiresWorkflow: false },
+        { intent: 'market_chat', input: '最近の市場はどう？', requiresWorkflow: false },
       ];
 
-      noWorkflowRequired.forEach(intent => {
-        const inputs = {
-          greeting: 'こんにちは',
-          small_talk: 'ありがとう',
-          market_chat: '市場について',
-        };
-
-        const result = analyzeIntent(inputs[intent as keyof typeof inputs]);
-        expect(result.requiresWorkflow).toBe(false);
+      workflowStatus.forEach(({ input, requiresWorkflow }) => {
+        const result = analyzeIntent(input);
+        expect(result.requiresWorkflow).toBe(requiresWorkflow);
       });
     });
   });
