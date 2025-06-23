@@ -2,6 +2,8 @@
  * MSW Example Test
  * 
  * Demonstrates how to use Mock Service Worker for API testing
+ * 
+ * @jest-environment node
  */
 
 import { http, HttpResponse } from 'msw';

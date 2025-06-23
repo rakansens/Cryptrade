@@ -36,6 +36,11 @@ let _clientEnv: ClientEnv | null = null;
  * This abstraction helps with testing and reduces direct process.env access
  */
 function createClientEnv(rawEnv: Record<string, string | undefined>): ClientEnv | null {
+  // Handle null/undefined rawEnv
+  if (!rawEnv) {
+    rawEnv = {};
+  }
+  
   const parseResult = ClientEnvSchema.safeParse({
     NEXT_PUBLIC_BASE_URL: rawEnv['NEXT_PUBLIC_BASE_URL'],
     NEXT_PUBLIC_SUPABASE_URL: rawEnv['NEXT_PUBLIC_SUPABASE_URL'],
@@ -100,7 +105,7 @@ export function getClientEnv(): ClientEnv {
 
   // Client-side or server-side fallback: read from process.env
   // Next.js automatically injects NEXT_PUBLIC_* variables at build time
-  _clientEnv = createClientEnv(process.env);
+  _clientEnv = createClientEnv(process.env || {});
   
   if (!_clientEnv) {
     // This should never happen due to the createClientEnv fallback, but just in case

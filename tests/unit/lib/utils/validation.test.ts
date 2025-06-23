@@ -8,7 +8,7 @@ import {
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger
-jest.mock('@/lib/logger', () => ({
+jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),

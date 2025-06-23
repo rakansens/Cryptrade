@@ -2,6 +2,8 @@
  * Environment Configuration Tests
  * 
  * Tests for type-safe environment variable loading and validation
+ * 
+ * @jest-environment node
  */
 
 import { beforeEach, describe, it, expect, jest } from '@jest/globals';
@@ -36,11 +38,12 @@ describe('Environment Configuration', () => {
     // Clear mocks
     jest.clearAllMocks();
     
-    // Setup default test environment BEFORE resetting modules
-    restoreEnv = mockEnv(createTestEnv());
-    
-    // Reset modules to clear any cached environment AFTER setting up env
+    // Reset modules first to ensure clean state
     jest.resetModules();
+    
+    // Setup default test environment after module reset
+    // Note: jest.setup.js sets default OPENAI_API_KEY='test-openai-key'
+    restoreEnv = mockEnv(createTestEnv());
   });
 
   afterEach(() => {
@@ -63,19 +66,30 @@ describe('Environment Configuration', () => {
         PORT: '3001',
       });
 
-      // Reset modules and clear cache before importing
+      // Reset modules before importing to ensure clean state
       jest.resetModules();
+      
+      // Mock window to be undefined for Node environment
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Act
-      const { loadEnv, _resetEnvCache } = await import('@/config/env');
-      _resetEnvCache(); // Clear any cached environment
-      const env = loadEnv();
+      try {
+        // Act
+        const { loadEnv, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache(); // Clear any cached environment
+        const env = loadEnv();
 
-      // Assert
-      expect(env.NODE_ENV).toBe('development');
-      expect(env.OPENAI_API_KEY).toBe('sk-test-key-12345');
-      expect(env.PORT).toBe(3001);
-      expect(mockConsole.log).toHaveBeenCalledWith('✅ [Environment] Configuration loaded successfully');
+        // Assert
+        expect(env.NODE_ENV).toBe('development');
+        expect(env.OPENAI_API_KEY).toBe('sk-test-key-12345');
+        expect(env.PORT).toBe(3001);
+        expect(mockConsole.log).toHaveBeenCalledWith('✅ [Environment] Configuration loaded successfully');
+      } finally {
+        // Restore window
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should apply default values for optional fields', async () => {
@@ -86,195 +100,368 @@ describe('Environment Configuration', () => {
         OPENAI_API_KEY: 'sk-test-key',
       });
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      const env = loadEnv();
+      // Reset modules and mock window
+      jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Assert
-      expect(env.PORT).toBe(3000); // Default value
-      expect(env.LOG_TRANSPORT).toBe('console'); // Default value
+      try {
+        // Act
+        const { loadEnv, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        const env = loadEnv();
+
+        // Assert
+        expect(env.PORT).toBe(3000); // Default value
+        expect(env.LOG_TRANSPORT).toBe('console'); // Default value
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should transform boolean string values correctly', async () => {
       // Arrange
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'test',
         OPENAI_API_KEY: 'sk-test-key',
         FORCE_VALIDATION: 'true',
         DISABLE_CONSOLE_LOGS: 'false',
         USE_NEW_WS_MANAGER: 'true',
-      };
+      });
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      const env = loadEnv();
+      // Reset modules and mock window
+      jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Assert
-      expect(env.FORCE_VALIDATION).toBe(true);
-      expect(env.DISABLE_CONSOLE_LOGS).toBe(false);
-      expect(env.USE_NEW_WS_MANAGER).toBe(true);
+      try {
+        // Act
+        const { loadEnv, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        const env = loadEnv();
+
+        // Assert
+        expect(env.FORCE_VALIDATION).toBe(true);
+        expect(env.DISABLE_CONSOLE_LOGS).toBe(false);
+        expect(env.USE_NEW_WS_MANAGER).toBe(true);
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
   });
 
   describe('loadEnv() - Validation Failures', () => {
     it('should fail when required OPENAI_API_KEY is missing', async () => {
-      // Arrange
-      process.env = {
-        NODE_ENV: 'test', // Set NODE_ENV to test to avoid exit behavior
-        // Missing OPENAI_API_KEY
-      };
+      // Arrange - Override jest.setup.js defaults
+      restoreEnv();
+      // Delete all env vars to ensure clean state
+      Object.keys(process.env).forEach(key => {
+        if (key !== 'PATH' && key !== 'HOME' && key !== 'USER') {
+          delete process.env[key];
+        }
+      });
+      restoreEnv = mockEnv({
+        NODE_ENV: 'test',
+        // Explicitly not setting OPENAI_API_KEY
+      });
 
-      // Reset and reimport module
+      // Reset modules and mock window
       jest.resetModules();
-      
-      // Act & Assert  
-      await expect(async () => {
-        const { loadEnv } = await import('@/config/env');
-        loadEnv();
-      }).rejects.toThrow('Environment validation failed in test environment');
-      
-      expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        // Act & Assert
+        let errorThrown = false;
+        try {
+          const envModule = await import('@/config/env');
+          // If module loads successfully, try calling loadEnv directly
+          if (envModule._resetEnvCache) {
+            envModule._resetEnvCache();
+          }
+          envModule.loadEnv();
+        } catch (e) {
+          errorThrown = true;
+          expect(e).toEqual(expect.objectContaining({
+            message: 'Environment validation failed in test environment'
+          }));
+        }
+        
+        expect(errorThrown).toBe(true);
+        expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should fail with empty OPENAI_API_KEY', async () => {
       // Arrange
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'test',
         OPENAI_API_KEY: '', // Empty string should fail
-      };
+      });
 
-      // Reset and reimport module
+      // Reset modules and mock window
       jest.resetModules();
-      
-      // Act & Assert
-      await expect(async () => {
-        const { loadEnv } = await import('@/config/env');
-        loadEnv();
-      }).rejects.toThrow('Environment validation failed in test environment');
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        // Act & Assert - The module will throw during import
+        await expect(async () => {
+          await import('@/config/env');
+        }).rejects.toThrow('Environment validation failed in test environment');
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should fail with invalid PORT value', async () => {
       // Arrange
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'test',
         OPENAI_API_KEY: 'sk-test-key',
         PORT: 'invalid-port',
-      };
+      });
 
-      // Reset and reimport module
+      // Reset modules and mock window
       jest.resetModules();
-      
-      // Act & Assert
-      await expect(async () => {
-        const { loadEnv } = await import('@/config/env');
-        loadEnv();
-      }).rejects.toThrow('Environment validation failed in test environment');
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        // Act & Assert - The module will throw during import
+        await expect(async () => {
+          await import('@/config/env');
+        }).rejects.toThrow('Environment validation failed in test environment');
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should call process.exit(1) in non-test environment on validation failure', async () => {
-      // Arrange
-      process.env = {
+      // Arrange - Override jest.setup.js defaults
+      restoreEnv();
+      // Delete all env vars to ensure clean state
+      Object.keys(process.env).forEach(key => {
+        if (key !== 'PATH' && key !== 'HOME' && key !== 'USER') {
+          delete process.env[key];
+        }
+      });
+      restoreEnv = mockEnv({
         NODE_ENV: 'production',
-        // Missing OPENAI_API_KEY
-      };
+        // Explicitly not setting OPENAI_API_KEY
+      });
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      loadEnv();
+      // Reset modules and mock window
+      jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Assert
-      expect(mockExit).toHaveBeenCalledWith(1);
-      expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
+      try {
+        // Act
+        try {
+          const envModule = await import('@/config/env');
+          // If the module loads without calling exit (unlikely), call loadEnv directly
+          if (envModule._resetEnvCache) {
+            envModule._resetEnvCache();
+          }
+          envModule.loadEnv();
+        } catch (e) {
+          // Error is expected after process.exit is called
+        }
+
+        // Assert
+        expect(mockExit).toHaveBeenCalledWith(1);
+        expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
   });
 
   describe('Singleton Pattern', () => {
     it('should return same instance on multiple calls', async () => {
       // Arrange
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'test',
         OPENAI_API_KEY: 'sk-test-key',
-      };
+      });
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      const env1 = loadEnv();
-      const env2 = loadEnv();
+      // Reset modules and mock window
+      jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Assert
-      expect(env1).toBe(env2); // Same reference
-      expect(mockConsole.log).toHaveBeenCalledTimes(0); // No duplicate logs in test
+      try {
+        // Act
+        const { loadEnv, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        const env1 = loadEnv();
+        const env2 = loadEnv();
+
+        // Assert
+        expect(env1).toBe(env2); // Same reference
+        expect(mockConsole.log).toHaveBeenCalledTimes(0); // No duplicate logs in test
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
   });
 
   describe('Utility Functions', () => {
     beforeEach(async () => {
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'development',
         OPENAI_API_KEY: 'sk-test-key',
         UPSTASH_REDIS_REST_URL: 'https://redis.upstash.io',
         UPSTASH_REDIS_REST_TOKEN: 'token123',
-      };
+      });
       
-      // Reset and reimport module after setting env
+      // Reset modules
       jest.resetModules();
     });
 
     it('should detect development mode correctly', async () => {
-      const { isDevelopment, isProduction, isTest } = await import('@/config/env');
-      
-      expect(isDevelopment()).toBe(true);
-      expect(isProduction()).toBe(false);
-      expect(isTest()).toBe(false);
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        const { isDevelopment, isProduction, isTest, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        
+        expect(isDevelopment()).toBe(true);
+        expect(isProduction()).toBe(false);
+        expect(isTest()).toBe(false);
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should detect Redis availability', async () => {
-      const { hasRedis } = await import('@/config/env');
-      
-      expect(hasRedis()).toBe(true);
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        const { hasRedis, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        
+        expect(hasRedis()).toBe(true);
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should return correct port', async () => {
-      const { getPort } = await import('@/config/env');
-      
-      expect(getPort()).toBe(3000); // Default value
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      try {
+        const { getPort, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        
+        expect(getPort()).toBe(3000); // Default value
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
   });
 
   describe('Production Environment Validation', () => {
     it('should enforce required API keys in production', async () => {
-      // Arrange
-      process.env = {
+      // Arrange - Override jest.setup.js defaults
+      restoreEnv();
+      // Delete all env vars to ensure clean state
+      Object.keys(process.env).forEach(key => {
+        if (key !== 'PATH' && key !== 'HOME' && key !== 'USER') {
+          delete process.env[key];
+        }
+      });
+      restoreEnv = mockEnv({
         NODE_ENV: 'production',
-        // Missing OPENAI_API_KEY  
+        // Explicitly not setting OPENAI_API_KEY  
         PORT: '3000',
-      };
+      });
 
-      // Reset and reimport module
+      // Reset modules and mock window
       jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      loadEnv();
+      try {
+        // Act
+        try {
+          const envModule = await import('@/config/env');
+          // If the module loads without calling exit (unlikely), call loadEnv directly
+          if (envModule._resetEnvCache) {
+            envModule._resetEnvCache();
+          }
+          envModule.loadEnv();
+        } catch (e) {
+          // Error is expected after process.exit is called
+        }
 
-      // Assert - should call process.exit(1) in production
-      expect(mockExit).toHaveBeenCalledWith(1);
+        // Assert - should call process.exit(1) in production
+        expect(mockExit).toHaveBeenCalledWith(1);
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
 
     it('should pass validation with all required keys in production', async () => {
       // Arrange
-      process.env = {
+      restoreEnv();
+      restoreEnv = mockEnv({
         NODE_ENV: 'production',
         OPENAI_API_KEY: 'sk-prod-key-12345',
-      };
+      });
 
-      // Act
-      const { loadEnv } = await import('@/config/env');
-      const env = loadEnv();
+      // Reset modules and mock window
+      jest.resetModules();
+      const originalWindow = global.window;
+      delete (global as any).window;
 
-      // Assert
-      expect(env.NODE_ENV).toBe('production');
-      expect(env.OPENAI_API_KEY).toBe('sk-prod-key-12345');
+      try {
+        // Act
+        const { loadEnv, _resetEnvCache } = await import('@/config/env');
+        _resetEnvCache();
+        const env = loadEnv();
+
+        // Assert
+        expect(env.NODE_ENV).toBe('production');
+        expect(env.OPENAI_API_KEY).toBe('sk-prod-key-12345');
+      } finally {
+        if (originalWindow) {
+          (global as any).window = originalWindow;
+        }
+      }
     });
   });
 });

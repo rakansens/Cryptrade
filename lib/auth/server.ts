@@ -4,28 +4,33 @@ import { NextResponse } from 'next/server';
 import { env } from '@/config/env';
 
 export async function getServerSession() {
-  const cookieStore = await cookies();
-  
-  const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL!,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+  try {
+    const cookieStore = await cookies();
+    
+    const supabase = createServerClient(
+      env.NEXT_PUBLIC_SUPABASE_URL!,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
         },
-      },
+      }
+    );
+    
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Error getting session:', error);
+      return null;
     }
-  );
-  
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error) {
-    console.error('Error getting session:', error);
-    return null;
+    
+    return session;
+  } catch (error) {
+    console.error('Error in getServerSession:', error);
+    throw error;
   }
-  
-  return session;
 }
 
 export async function requireAuth() {

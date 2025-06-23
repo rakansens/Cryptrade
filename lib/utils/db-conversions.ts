@@ -72,16 +72,20 @@ export function convertDbAnalysisRecord(
   })) || [];
 
   // Build tracking data
-  const finalTrackingData: TrackingData = trackingData || {
-    status: 'active' as const,
-    startTime: Number(dbRecord.timestamp.toString()),
+  const finalTrackingData: TrackingData = {
+    status: trackingData?.status || 'active' as const,
+    startTime: trackingData?.startTime || Number(dbRecord.timestamp.toString()),
     touches: touches.map(t => ({
       time: t.timestamp,
       price: t.price,
       result: t.result === 'breakout' ? 'break' : t.result as 'bounce' | 'break' | 'test',
       volume: t.volume,
       strength: t.strength
-    }))
+    })),
+    endTime: trackingData?.endTime,
+    duration: trackingData?.duration,
+    finalResult: trackingData?.finalResult as 'success' | 'partial' | 'failure' | undefined,
+    notes: trackingData?.notes,
   };
 
   // Extract confidence from performanceData if available

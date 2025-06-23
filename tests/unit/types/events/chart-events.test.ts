@@ -92,8 +92,8 @@ describe('Chart Events Validation', () => {
             ]
           },
           metrics: {
-            targetLevel: 120,
-            stopLoss: 95
+            target_level: 120,
+            stop_loss: 95
           },
           confidence: 0.8
         }

@@ -8,12 +8,22 @@ const createMockLogger = () => {
     warn: jest.fn(),
     error: jest.fn(),
     critical: jest.fn(),
+    time: jest.fn(),
+    timeEnd: jest.fn(),
+    willLog: jest.fn(() => true),
+    setLevel: jest.fn(),
+    getLevel: jest.fn(() => 'debug'),
+    clearThrottle: jest.fn(),
   } as const;
 
   // self-reference で logger.logger.info も通るようにする
   return Object.assign({}, methods, { logger: methods });
 };
 
-export const logger = createMockLogger();
+// Create the mocked logger instance
+const mockLoggerInstance = createMockLogger();
+
+// Export the logger with original property for tests that expect it
+export const logger = mockLoggerInstance;
 
 export default { logger }; 

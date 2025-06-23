@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logger } from './logger';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Generic safe parse wrapper with logging

@@ -1,7 +1,4 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { AgentNetwork, agentNetwork, sendAgentMessage, routeToAgent } from '@/lib/mastra/network/message-router';
-import { Agent } from '@mastra/core';
-import { logger } from '@/lib/utils/logger';
 import type { A2AMessage, RegisteredAgent } from '@/types';
 
 // Mock dependencies
@@ -13,12 +10,44 @@ jest.mock('@/types/agent-payload', () => ({
   generateCorrelationId: jest.fn(() => 'test-correlation-123'),
 }));
 
+// Mock the Agent class - we'll configure behavior in beforeEach
+jest.mock('@mastra/core', () => {
+  return {
+    Agent: jest.fn(),
+  };
+});
+
+// Import after mocks are set up
+import { AgentNetwork, agentNetwork, sendAgentMessage, routeToAgent } from '@/lib/mastra/network/message-router';
+import { Agent } from '@mastra/core';
+import { logger } from '@/lib/utils/logger';
+
+// Get the mocked constructor
+const MockedAgent = Agent as jest.MockedClass<typeof Agent>;
+
 describe('Agent Network Message Router', () => {
   let network: AgentNetwork;
   let mockAgent: jest.Mocked<Agent>;
+  let mockRoutingAgent: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Set up the Agent mock implementation
+    MockedAgent.mockImplementation((config: any) => {
+      const agent = {
+        name: config.name,
+        model: config.model,
+        generate: jest.fn(),
+      };
+      
+      // Capture routing agent for later use in tests
+      if (config.name === 'agent-router') {
+        mockRoutingAgent = agent;
+      }
+      
+      return agent as any;
+    });
     
     // Create a new network instance for each test
     network = new AgentNetwork({
@@ -77,21 +106,21 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should select price inquiry agent for price queries', async () => {
-      mockAgent.generate.mockResolvedValue({ text: 'priceInquiryAgent' });
+      mockRoutingAgent.generate.mockResolvedValue({ text: 'priceInquiryAgent' });
       
       const selected = await network.selectAgent('BTCの価格は？');
       expect(selected).toBe('priceInquiryAgent');
     });
 
     it('should select UI control agent for chart queries', async () => {
-      mockAgent.generate.mockResolvedValue({ text: 'uiControlAgent' });
+      mockRoutingAgent.generate.mockResolvedValue({ text: 'uiControlAgent' });
       
       const selected = await network.selectAgent('チャートにトレンドラインを描画');
       expect(selected).toBe('uiControlAgent');
     });
 
     it('should fallback to pattern matching when AI selection fails', async () => {
-      mockAgent.generate.mockResolvedValue({ text: 'invalidAgent' });
+      mockRoutingAgent.generate.mockResolvedValue({ text: 'invalidAgent' });
       
       const selected = await network.selectAgent('BTCの価格を教えて');
       expect(selected).toBe('priceInquiryAgent');
@@ -103,14 +132,14 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should default to orchestrator for unclear queries', async () => {
-      mockAgent.generate.mockRejectedValue(new Error('AI error'));
+      mockRoutingAgent.generate.mockRejectedValue(new Error('AI error'));
       
       const selected = await network.selectAgent('こんにちは');
       expect(selected).toBe('orchestratorAgent');
     });
 
     it('should handle complex context in selection', async () => {
-      mockAgent.generate.mockResolvedValue({ text: 'tradingAnalysisAgent' });
+      mockRoutingAgent.generate.mockResolvedValue({ text: 'tradingAnalysisAgent' });
       
       const context = {
         previousIntent: 'price_inquiry',
@@ -149,23 +178,30 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should handle tool execution results', async () => {
-      mockAgent.generate.mockResolvedValue({
-        text: 'Price fetched',
-        steps: [{
-          toolResults: [{
-            toolName: 'marketDataResilientTool',
-            result: {
-              symbol: 'BTCUSDT',
-              currentPrice: 45000,
-              priceChangePercent24h: 2.5,
-            },
+      // Register priceInquiryAgent for this test
+      const priceAgent = {
+        generate: jest.fn().mockResolvedValue({
+          text: 'Price fetched',
+          steps: [{
+            toolResults: [{
+              toolName: 'marketDataResilientTool',
+              result: {
+                symbol: 'BTCUSDT',
+                currentPrice: 45000,
+                priceChangePercent24h: 2.5,
+              },
+            }],
           }],
-        }],
-      });
+        }),
+        name: 'priceInquiryAgent',
+        model: 'test-model',
+      } as any;
+      
+      network.registerAgent('priceInquiryAgent', priceAgent, ['price'], 'Price agent');
       
       const message = await network.sendMessage(
         'source',
-        'targetAgent',
+        'priceInquiryAgent',
         'process_query',
         { query: 'BTCの価格' }
       );
@@ -175,24 +211,31 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should handle proposal generation results', async () => {
-      mockAgent.generate.mockResolvedValue({
-        text: 'Proposals generated',
-        steps: [{
-          toolResults: [{
-            toolName: 'proposalGenerationTool',
-            result: {
-              proposalGroup: {
-                id: 'pg-123',
-                proposals: [{ id: '1' }, { id: '2' }],
+      // Register tradingAnalysisAgent for this test
+      const tradingAgent = {
+        generate: jest.fn().mockResolvedValue({
+          text: 'Proposals generated',
+          steps: [{
+            toolResults: [{
+              toolName: 'proposalGenerationTool',
+              result: {
+                proposalGroup: {
+                  id: 'pg-123',
+                  proposals: [{ id: '1' }, { id: '2' }],
+                },
               },
-            },
+            }],
           }],
-        }],
-      });
+        }),
+        name: 'tradingAnalysisAgent',
+        model: 'test-model',
+      } as any;
+      
+      network.registerAgent('tradingAnalysisAgent', tradingAgent, ['analysis'], 'Trading agent');
       
       const message = await network.sendMessage(
         'source',
-        'targetAgent',
+        'tradingAnalysisAgent',
         'process_query',
         { query: '提案を生成' }
       );
@@ -265,14 +308,33 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should handle partial broadcast failures', async () => {
-      let callCount = 0;
-      mockAgent.generate.mockImplementation(() => {
-        callCount++;
-        if (callCount === 2) {
-          return Promise.reject(new Error('Agent 2 failed'));
-        }
-        return Promise.resolve({ text: `Response ${callCount}` });
-      });
+      // Create separate agents with different behaviors
+      const agent1Mock = {
+        generate: jest.fn().mockResolvedValue({ text: 'Response 1' }),
+        name: 'agent1',
+        model: 'test-model',
+      } as any;
+      
+      const agent2Mock = {
+        generate: jest.fn().mockRejectedValue(new Error('Agent 2 failed')),
+        name: 'agent2',
+        model: 'test-model',
+      } as any;
+      
+      const agent3Mock = {
+        generate: jest.fn().mockResolvedValue({ text: 'Response 3' }),
+        name: 'agent3', 
+        model: 'test-model',
+      } as any;
+      
+      // Re-register agents with specific behaviors
+      network.unregisterAgent('agent1');
+      network.unregisterAgent('agent2');
+      network.unregisterAgent('agent3');
+      
+      network.registerAgent('agent1', agent1Mock, ['price'], 'Agent 1');
+      network.registerAgent('agent2', agent2Mock, ['analysis'], 'Agent 2');
+      network.registerAgent('agent3', agent3Mock, ['ui'], 'Agent 3');
       
       const responses = await network.broadcastMessage(
         'broadcaster',
@@ -280,8 +342,28 @@ describe('Agent Network Message Router', () => {
         {}
       );
       
-      expect(responses).toHaveLength(2); // 2 successful
-      expect(logger.warn).toHaveBeenCalled();
+      // Check that we have 3 responses total (2 successful, 1 error)
+      expect(responses).toHaveLength(3);
+      
+      // Check that we have 2 successful responses and 1 error response
+      const successfulResponses = responses.filter(r => r.type === 'response');
+      const errorResponses = responses.filter(r => r.type === 'error');
+      
+      expect(successfulResponses).toHaveLength(2);
+      expect(errorResponses).toHaveLength(1);
+      
+      // Verify the error response is from agent2
+      expect(errorResponses[0]?.source).toBe('agent2');
+      expect(errorResponses[0]?.error?.message).toBe('Agent execution failed');
+      
+      // Verify logger.error was called for the failed agent execution
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('[AgentNetwork] Message processing failed'),
+        expect.objectContaining({
+          targetId: 'agent2',
+          method: 'test',
+        })
+      );
     });
   });
 
@@ -292,12 +374,10 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should route messages to appropriate agents', async () => {
-      mockAgent.generate.mockImplementation((prompt) => {
-        if (typeof prompt === 'string' && prompt.includes('agent router')) {
-          return Promise.resolve({ text: 'priceInquiryAgent' });
-        }
-        return Promise.resolve({ text: 'Price is $45,000' });
-      });
+      // Mock routing agent to select priceInquiryAgent
+      mockRoutingAgent.generate.mockResolvedValue({ text: 'priceInquiryAgent' });
+      // Mock the actual agent execution
+      mockAgent.generate.mockResolvedValue({ text: 'Price is $45,000' });
       
       const result = await network.routeMessage(
         'router',
@@ -310,7 +390,7 @@ describe('Agent Network Message Router', () => {
     });
 
     it('should handle routing failures', async () => {
-      mockAgent.generate.mockRejectedValue(new Error('Routing failed'));
+      mockRoutingAgent.generate.mockRejectedValue(new Error('Routing failed'));
       
       const result = await network.routeMessage(
         'router',
@@ -343,15 +423,21 @@ describe('Agent Network Message Router', () => {
 
   describe('Health Check', () => {
     it('should perform health checks on all agents', async () => {
-      network.registerAgent('healthyAgent', mockAgent, ['test'], 'Healthy');
-      network.registerAgent('unhealthyAgent', mockAgent, ['test'], 'Unhealthy');
+      // Create separate mock agents for healthy and unhealthy
+      const healthyMockAgent = {
+        generate: jest.fn().mockResolvedValue({ text: 'OK' }),
+        name: 'healthyAgent',
+        model: 'test-model',
+      } as any;
       
-      mockAgent.generate.mockImplementation((prompt) => {
-        if (prompt.includes('unhealthyAgent')) {
-          return Promise.reject(new Error('Agent unhealthy'));
-        }
-        return Promise.resolve({ text: 'OK' });
-      });
+      const unhealthyMockAgent = {
+        generate: jest.fn().mockRejectedValue(new Error('Agent unhealthy')),
+        name: 'unhealthyAgent',
+        model: 'test-model',
+      } as any;
+      
+      network.registerAgent('healthyAgent', healthyMockAgent, ['test'], 'Healthy');
+      network.registerAgent('unhealthyAgent', unhealthyMockAgent, ['test'], 'Unhealthy');
       
       const health = await network.healthCheck();
       

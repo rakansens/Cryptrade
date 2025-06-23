@@ -31,7 +31,7 @@ module.exports = {
   // パスエイリアス + 静的モック
   moduleNameMapper: {
     '^@/components/(.*)$': '<rootDir>/components/$1',
-    '^@/lib/logger$': '<rootDir>/lib/logger.ts',
+    '^@/lib/logger$': '<rootDir>/lib/utils/logger.ts',
     '^@/lib/database/client$': '<rootDir>/lib/db/prisma.ts',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/lib/mastra/entry-proposal-generation/(.*)$': '<rootDir>/lib/mastra/tools/entry-proposal-generation/$1',

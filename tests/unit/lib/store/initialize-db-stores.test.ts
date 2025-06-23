@@ -107,7 +107,14 @@ describe('Store: initializeDbStores', () => {
     // @ts-ignore
     delete global.window;
     
-    await initializeDbStores();
+    // Clear any previous calls before testing
+    jest.clearAllMocks();
+    
+    // Re-import the module after changing window
+    jest.resetModules();
+    const { initializeDbStores: initializeDbStoresSSR } = await import('@/lib/store/initialize-db-stores');
+    
+    await initializeDbStoresSSR();
     
     // Should not call any getState methods when window is undefined
     expect(useAnalysisHistoryBase.getState).not.toHaveBeenCalled();

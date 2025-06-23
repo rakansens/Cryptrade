@@ -240,7 +240,7 @@ export class FallbackHandler {
       };
     }
 
-    if (errorStr.includes('timeout')) {
+    if (errorStr.includes('timeout') || errorStr.includes('timed out') || errorStr.includes('etimedout')) {
       return {
         type: 'timeout',
         userMessage: '処理がタイムアウトしました。しばらくしてから再度お試しください。',

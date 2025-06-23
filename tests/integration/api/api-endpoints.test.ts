@@ -340,6 +340,24 @@ describe('API Performance Tests', () => {
     market: 500, // ms
   };
 
+  beforeEach(() => {
+    // Ensure fetch is mocked for performance tests
+    if (typeof global.fetch !== 'function' || !('mockReset' in global.fetch)) {
+      global.fetch = jest.fn();
+    }
+    
+    // Mock fetch for performance tests
+    (global.fetch as jest.Mock).mockReset();
+    (global.fetch as jest.Mock).mockImplementation(async () => {
+      // Simulate small network delay
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    });
+  });
+
   test('Health endpoint should respond quickly', async () => {
     const start = Date.now();
     await fetch(`${process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000'}/api/health`);

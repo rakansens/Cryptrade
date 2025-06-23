@@ -91,7 +91,7 @@ describe('WSManager Advanced E2E Scenarios', () => {
       await messagePromise;
     });
 
-    it('should maintain connection sharing under high load', () => {
+    it('should maintain connection sharing under high load', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: true
@@ -108,6 +108,9 @@ describe('WSManager Advanced E2E Scenarios', () => {
         });
         subscriptions.push(sub);
       }
+
+      // Wait for connection to be established
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should only have 1 active connection despite 5 subscribers
       expect(manager.getActiveStreamsCount()).toBe(1);
@@ -376,7 +379,7 @@ describe('WSManager Advanced E2E Scenarios', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle multiple concurrent streams efficiently', () => {
+    it('should handle multiple concurrent streams efficiently', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
@@ -394,6 +397,9 @@ describe('WSManager Advanced E2E Scenarios', () => {
         });
         subscriptions.push(sub);
       });
+
+      // Wait for connections to be established
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify efficient connection management
       expect(manager.getActiveStreamsCount()).toBe(symbols.length);

@@ -187,7 +187,7 @@ export class PatternRenderer {
         globalAllSeries: this.stateManager.allSeriesMap,
       });
 
-      if (lineSeries.length > 0) {
+      if (lineSeries && lineSeries.length > 0) {
         this.patternSeries.set(id, lineSeries);
         logger.info('[PatternRenderer] Lines created successfully', {
           id,

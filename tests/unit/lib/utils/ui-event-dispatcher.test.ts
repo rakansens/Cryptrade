@@ -1,3 +1,6 @@
+// Unmock the ui-event-dispatcher to test the real implementation
+jest.unmock('@/lib/utils/ui-event-dispatcher');
+
 import {
   UIEventDispatcher,
   uiEventDispatcher,
@@ -21,10 +24,24 @@ describe('UIEventDispatcher', () => {
   let mockWindow: any;
 
   beforeEach(() => {
+    // Clear the singleton instance before each test
+    (UIEventDispatcher as any).instance = null;
+    
     dispatcher = UIEventDispatcher.getInstance();
     dispatcher.clearAllListeners();
     
     originalWindow = global.window;
+    
+    // Add CustomEvent polyfill
+    (global as any).CustomEvent = class CustomEvent extends Event {
+      detail: any;
+      
+      constructor(type: string, options?: any) {
+        super(type, options);
+        this.detail = options?.detail;
+      }
+    };
+    
     mockWindow = {
       dispatchEvent: jest.fn(),
       requestAnimationFrame: jest.fn((callback: Function) => {
@@ -33,6 +50,8 @@ describe('UIEventDispatcher', () => {
       }),
       removeEventListener: jest.fn(),
     };
+    
+    // Simply assign window
     global.window = mockWindow as any;
   });
 
@@ -447,7 +466,7 @@ describe('UIEventDispatcher', () => {
         const entryZone = { start: 50000, end: 51000 };
 
         dispatcher.checkPriceInEntryZone(50000, entryZone);
-        expect(mockWindow.dispatchEvent).toHaveBeenCalledOnce();
+        expect(mockWindow.dispatchEvent).toHaveBeenCalledTimes(1);
 
         dispatcher.checkPriceInEntryZone(51000, entryZone);
         expect(mockWindow.dispatchEvent).toHaveBeenCalledTimes(2);

@@ -38,7 +38,7 @@ describe('WSManager Simplified E2E Tests', () => {
   });
 
   describe('Basic WebSocket Operations', () => {
-    it('should create WebSocket connection when subscribing', () => {
+    it('should create WebSocket connection when subscribing', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
@@ -50,6 +50,9 @@ describe('WSManager Simplified E2E Tests', () => {
         next: () => {},
         error: () => {}
       });
+
+      // Wait for WebSocket to be created
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that WebSocket was created
       const instances = MockWebSocket.getAllInstances();
@@ -96,7 +99,7 @@ describe('WSManager Simplified E2E Tests', () => {
       await messageReceived;
     }, 10000);
 
-    it('should share connections for same stream', () => {
+    it('should share connections for same stream', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
@@ -107,6 +110,9 @@ describe('WSManager Simplified E2E Tests', () => {
       const sub1 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {}, error: () => {} });
       const sub2 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {}, error: () => {} });
       const sub3 = manager.subscribe('btcusdt@trade').subscribe({ next: () => {}, error: () => {} });
+
+      // Wait for WebSocket to be created
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should only create one WebSocket connection
       expect(MockWebSocket.getAllInstances()).toHaveLength(1);
@@ -235,17 +241,21 @@ describe('WSManager Simplified E2E Tests', () => {
       manager.destroy();
     });
 
-    it('should handle multiple stream types', () => {
+    it('should handle multiple stream types', async () => {
       const manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         debug: false
       });
+      managers.push(manager);
 
       const subscriptions = [
         manager.subscribe('btcusdt@trade').subscribe({ next: () => {}, error: () => {} }),
         manager.subscribe('ethusdt@kline_1m').subscribe({ next: () => {}, error: () => {} }),
         manager.subscribe('bnbusdt@depth').subscribe({ next: () => {}, error: () => {} })
       ];
+
+      // Wait for WebSockets to be created
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should create 3 separate connections
       expect(MockWebSocket.getAllInstances()).toHaveLength(3);
@@ -259,6 +269,7 @@ describe('WSManager Simplified E2E Tests', () => {
 
       // Cleanup
       subscriptions.forEach(sub => sub.unsubscribe());
+      manager.destroy();
     });
   });
 });

@@ -322,8 +322,15 @@ describe('calculateEntryPoints', () => {
       const longEntries = entryPoints.filter(e => e.direction === 'long');
       const shortEntries = entryPoints.filter(e => e.direction === 'short');
       
-      // In bullish market, should have more long entries
-      expect(longEntries.length).toBeGreaterThan(shortEntries.length);
+      // In bullish market, long entries should have higher confidence on average
+      if (longEntries.length > 0 && shortEntries.length > 0) {
+        const avgLongConfidence = longEntries.reduce((sum, e) => sum + e.confidence, 0) / longEntries.length;
+        const avgShortConfidence = shortEntries.reduce((sum, e) => sum + e.confidence, 0) / shortEntries.length;
+        expect(avgLongConfidence).toBeGreaterThan(avgShortConfidence);
+      } else {
+        // If only one direction has entries, it should be long
+        expect(longEntries.length).toBeGreaterThan(0);
+      }
     });
 
     it('should adapt to bearish market', async () => {

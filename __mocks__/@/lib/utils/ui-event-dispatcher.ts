@@ -31,4 +31,22 @@ export class UIEventDispatcher {
   unsubscribe = jest.fn();
   clear = jest.fn();
   emit = jest.fn();
+  clearAllListeners = jest.fn();
+  addEventListener = jest.fn();
+  removeEventListener = jest.fn();
+  batchDispatch = jest.fn();
+  destroy = jest.fn();
+  
+  // Helper methods
+  dispatchProposalGenerated = jest.fn();
+  dispatchProposalExecution = jest.fn();
+  checkPriceInEntryZone = jest.fn();
 }
+
+// Export singleton instance
+export const uiEventDispatcher = UIEventDispatcher.getInstance();
+
+// Legacy function for backward compatibility
+export const dispatchTypedUIEvent = jest.fn((data: any) => {
+  console.warn('dispatchTypedUIEvent is deprecated, use UIEventDispatcher instead');
+});

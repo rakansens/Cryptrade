@@ -104,6 +104,34 @@ if (typeof global.Headers === 'undefined') {
   };
 }
 
+// Polyfill setImmediate/clearImmediate for environments that don't have it
+if (typeof global.setImmediate === 'undefined') {
+  global.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);
+}
+if (typeof global.clearImmediate === 'undefined') {
+  global.clearImmediate = clearTimeout;
+}
+
+// Polyfill fetch for Node.js environments that don't have it
+if (typeof global.fetch === 'undefined') {
+  // Create a simple fetch implementation that MSW can intercept
+  const simpleFetch = async (url, options = {}) => {
+    // Create request object for MSW to intercept
+    const request = new global.Request(url, options);
+    
+    // Return a pending promise that MSW will resolve
+    return new Promise((resolve, reject) => {
+      // This will be intercepted by MSW if handlers are set up
+      // If not intercepted, reject with network error
+      setTimeout(() => {
+        reject(new Error(`No MSW handler found for ${url}`));
+      }, 100);
+    });
+  };
+  
+  global.fetch = simpleFetch;
+}
+
 // Polyfill Response/Request/Headers for MSW if not available
 if (typeof global.Response === 'undefined') {
   // Simple Response polyfill for MSW tests
@@ -179,12 +207,11 @@ require('./tests/setup/test-env');
 // Import JSDOM environment setup
 require('./tests/setup/jsdom-environment');
 
-// Setup MSW for API mocking
-// Temporarily disabled due to TypeScript compilation issues
-// require('./tests/setup/msw-setup');
-
 // Extend Jest matchers
 require('@testing-library/jest-dom');
+
+// Setup MSW for API mocking AFTER polyfills but BEFORE other mocks
+require('./tests/setup/msw-setup');
 
 // Mock console methods to reduce noise in test output
 global.console = {
@@ -232,36 +259,8 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost:3000';
 
-// Mock fetch for testing
-const createDefaultResponse = (url) => ({
-  ok: true,
-  json: jest.fn().mockResolvedValue({}),
-  text: jest.fn().mockResolvedValue(''),
-  status: 200,
-  statusText: 'OK',
-  headers: new Headers(),
-  redirected: false,
-  type: 'basic',
-  url: url || '',
-  clone: jest.fn(function() { 
-    return {...this};
-  }),
-  body: null,
-  bodyUsed: false,
-  arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
-  blob: jest.fn().mockResolvedValue(new Blob()),
-  formData: jest.fn().mockResolvedValue(new FormData()),
-});
-
-// Create the base mock function
-const mockFetch = jest.fn();
-
-// Set default implementation
-mockFetch.mockImplementation((url, options) => {
-  return Promise.resolve(createDefaultResponse(url));
-});
-
-global.fetch = mockFetch;
+// Removed fetch mock - MSW will handle all HTTP mocking
+// If tests need a default fetch mock, they should set it up individually
 
 // Helper to create a mock ReadableStream for testing
 global.createMockReadableStream = (chunks) => {

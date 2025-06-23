@@ -137,7 +137,7 @@ describe('BrowserNotificationManager', () => {
       const permission = await manager.requestPermission();
       
       expect(permission).toBe('denied');
-      expect(logger.error).toHaveBeenCalledWith('[Notifications] Failed to request permission', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('[Notifications] Failed to request permission', { error: expect.any(Error) });
     });
 
     it('handles unsupported browser when requesting permission', async () => {
@@ -235,7 +235,7 @@ describe('BrowserNotificationManager', () => {
       });
       
       expect(notification).toBeNull();
-      expect(logger.error).toHaveBeenCalledWith('[Notifications] Failed to show notification', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('[Notifications] Failed to show notification', { error: expect.any(Error) });
     });
 
     it('handles unsupported browser when showing notification', async () => {

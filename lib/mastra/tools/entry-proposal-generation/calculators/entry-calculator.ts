@@ -133,8 +133,11 @@ export async function calculateEntryPoints(
   // 5. 戦略に基づくフィルタリング
   const filteredEntries = filterByStrategy(adjustedEntries, strategyPreference, marketContext);
 
-  // 6. 信頼度でソート
-  return filteredEntries.sort((a, b) => b.confidence - a.confidence);
+  // 6. 信頼度の闾値以下を除外
+  const confidenceFiltered = filteredEntries.filter(entry => entry.confidence >= 0.5);
+
+  // 7. 信頼度でソート
+  return confidenceFiltered.sort((a, b) => b.confidence - a.confidence);
 }
 
 /**
@@ -156,11 +159,19 @@ function calculatePatternBasedEntries(
     if (priceDistance < 0.05) {
       const direction: TradingDirection = pattern.trading_implication === 'bullish' ? 'long' : 'short';
       
+      // ボラティリティに基づいたゾーンサイズ調整
+      let zoneMultiplier = 0.005; // デフォルト: 0.5%
+      if (marketContext.volatility === 'high') {
+        zoneMultiplier = 0.01; // 高ボラティリティ: 1%
+      } else if (marketContext.volatility === 'low') {
+        zoneMultiplier = 0.003; // 低ボラティリティ: 0.3%
+      }
+      
       entries.push({
         price: breakoutPrice,
         zone: {
-          min: breakoutPrice * 0.995,
-          max: breakoutPrice * 1.005,
+          min: breakoutPrice * (1 - zoneMultiplier),
+          max: breakoutPrice * (1 + zoneMultiplier),
         },
         direction,
         strategy: determineStrategyFromPattern(pattern),
@@ -211,13 +222,21 @@ function calculateSRBasedEntries(
 
   // レベルに近い場合（3%以内）
   if (priceDistance < 0.03) {
+    // ボラティリティに基づいたゾーンサイズ調整
+    let zoneMultiplier = 0.005; // デフォルト: 0.5%
+    if (marketContext.volatility === 'high') {
+      zoneMultiplier = 0.01; // 高ボラティリティ: 1%
+    } else if (marketContext.volatility === 'low') {
+      zoneMultiplier = 0.003; // 低ボラティリティ: 0.3%
+    }
+
     // バウンストレード
     if (level.type === 'support' && currentPrice > levelPrice) {
       entries.push({
         price: levelPrice * 1.002, // サポートの少し上
         zone: {
-          min: levelPrice,
-          max: levelPrice * 1.005,
+          min: levelPrice * (1 - zoneMultiplier/2),
+          max: levelPrice * (1 + zoneMultiplier),
         },
         direction: 'long',
         strategy: 'swingTrading',
@@ -249,6 +268,10 @@ function calculateSRBasedEntries(
     if (level.type === 'resistance' && currentPrice < levelPrice) {
       entries.push({
         price: levelPrice * 1.002, // レジスタンスの少し上
+        zone: {
+          min: levelPrice,
+          max: levelPrice * (1 + zoneMultiplier),
+        },
         direction: 'long',
         strategy: 'dayTrading',
         confidence: calculateSRConfidence(level, marketContext, 'breakout'),
@@ -306,12 +329,20 @@ function calculateTrendlineBasedEntries(
   if (priceDistance < 0.02) {
     const isUptrend = trendline.direction === '上昇' || (trendline.slope ?? 0) > 0;
     
+    // ボラティリティに基づいたゾーンサイズ調整
+    let zoneMultiplier = 0.005; // デフォルト: 0.5%
+    if (_marketContext.volatility === 'high') {
+      zoneMultiplier = 0.01; // 高ボラティリティ: 1%
+    } else if (_marketContext.volatility === 'low') {
+      zoneMultiplier = 0.003; // 低ボラティリティ: 0.3%
+    }
+    
     if (isUptrend && currentPrice > trendlinePrice) {
       entries.push({
         price: trendlinePrice * 1.001,
         zone: {
-          min: trendlinePrice * 0.995,
-          max: trendlinePrice * 1.005,
+          min: trendlinePrice * (1 - zoneMultiplier),
+          max: trendlinePrice * (1 + zoneMultiplier),
         },
         direction: 'long',
         strategy: 'swingTrading',
@@ -489,22 +520,47 @@ function filterByStrategy(
   strategyPreference: string,
   marketContext: MarketContext
 ): EntryPoint[] {
+  let filteredEntries = entries;
+
+  // 市場トレンドに基づいた方向性フィルタリング
+  if (marketContext.trend === 'bullish') {
+    // ブルマーケットではロングエントリーを優先
+    filteredEntries = entries.map(entry => {
+      if (entry.direction === 'long') {
+        return { ...entry, confidence: entry.confidence * 1.1 }; // ロングの信頼度を上げる
+      } else if (entry.direction === 'short') {
+        return { ...entry, confidence: entry.confidence * 0.8 }; // ショートの信頼度を下げる
+      }
+      return entry;
+    });
+  } else if (marketContext.trend === 'bearish') {
+    // ベアマーケットではショートエントリーを優先
+    filteredEntries = entries.map(entry => {
+      if (entry.direction === 'short') {
+        return { ...entry, confidence: entry.confidence * 1.1 }; // ショートの信頼度を上げる
+      } else if (entry.direction === 'long') {
+        return { ...entry, confidence: entry.confidence * 0.8 }; // ロングの信頼度を下げる
+      }
+      return entry;
+    });
+  }
+
   if (strategyPreference === 'auto') {
     // 市場状況に基づいて最適な戦略を選択
     if (marketContext.volatility === 'high') {
       // 高ボラティリティ時は短期戦略を優先
-      return entries.filter(e => 
+      return filteredEntries.filter(e => 
         e.strategy === 'scalping' || e.strategy === 'dayTrading'
       );
     } else if (marketContext.trend !== 'neutral') {
       // トレンドがある場合はスイングトレードを優先
-      return entries.filter(e => 
+      return filteredEntries.filter(e => 
         e.strategy === 'swingTrading' || e.strategy === 'position'
       );
     }
-    return entries;
+    return filteredEntries;
   }
 
   // 特定の戦略が指定されている場合
-  return entries.filter(e => e.strategy === strategyPreference);
+  return filteredEntries.filter(e => e.strategy === strategyPreference);
 }

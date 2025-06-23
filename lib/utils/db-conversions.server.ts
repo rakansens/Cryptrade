@@ -52,9 +52,9 @@ export function convertDbAnalysisRecord(
   })) || [];
 
   // Build tracking data
-  const finalTrackingData: TrackingData = trackingData || {
-    status: 'active' as const,
-    startTime: Number(dbRecord.timestamp.toString()),
+  const finalTrackingData: TrackingData = {
+    status: trackingData?.status || 'active' as const,
+    startTime: trackingData?.startTime || Number(dbRecord.timestamp.toString()),
     touches: touches.map(t => ({
       time: t.timestamp,
       price: t.price,

@@ -70,18 +70,21 @@ describe('UnifiedLogger', () => {
       logger.critical('Critical message', { test: true });
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('🚨'),
-        undefined
+        // No error object passed, so no second argument
       );
     });
   });
 
   describe('Log Level Filtering', () => {
-    test('should respect log level', () => {
+    test('should respect log level', async () => {
       const warnLogger = createUnifiedLogger({ 
         level: 'warn', 
         enableConsole: true,
         enableStorage: false 
       });
+      
+      // Initialize the logger to setup transports
+      await warnLogger.init();
       
       warnLogger.debug('Debug message');
       warnLogger.info('Info message');
@@ -90,8 +93,7 @@ describe('UnifiedLogger', () => {
       expect(console.debug).not.toHaveBeenCalled();
       expect(console.log).not.toHaveBeenCalled();
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warn message'),
-        undefined
+        expect.stringContaining('Warn message')
       );
     });
 
@@ -119,8 +121,7 @@ describe('UnifiedLogger', () => {
       logger.info('Test message');
       
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Test message'),
-        undefined
+        expect.stringContaining('Test message')
       );
       
       logger.popContext();
@@ -138,8 +139,7 @@ describe('UnifiedLogger', () => {
       
       expect(result).toBe('success');
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Inside context'),
-        undefined
+        expect.stringContaining('Inside context')
       );
     });
   });
@@ -150,8 +150,7 @@ describe('UnifiedLogger', () => {
       logger.timeEnd('test-timer');
       
       expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Timer test-timer'),
-        undefined
+        expect.stringContaining('Timer test-timer')
       );
     });
   });
@@ -205,17 +204,32 @@ describe('UnifiedLogger', () => {
 });
 
 describe('Logger Helpers', () => {
+  beforeEach(() => {
+    jest.resetModules(); // Reset module cache before each test
+  });
+
   test('should support agent logger creation', async () => {
     const { createAgentLogger } = await import('@/lib/logging/helpers');
-    const agentLogger = createAgentLogger('test-agent');
+    const { createUnifiedLogger } = await import('@/lib/logging/unified-logger');
+    
+    // Create a new logger instance for this test
+    const testLogger = createUnifiedLogger({
+      level: 'debug',
+      enableConsole: true,
+      enableStorage: false,
+      source: 'test'
+    });
+    await testLogger.init();
     
     const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
+    
+    // Create agent logger with our test logger
+    const agentLogger = createAgentLogger('test-agent', testLogger);
     
     agentLogger.debug('Agent message');
     
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[test-agent] Agent message'),
-      undefined
+      expect.stringContaining('[test-agent] Agent message')
     );
     
     consoleSpy.mockRestore();
@@ -223,15 +237,26 @@ describe('Logger Helpers', () => {
 
   test('should support tool logger creation', async () => {
     const { createToolLogger } = await import('@/lib/logging/helpers');
-    const toolLogger = createToolLogger('test-tool');
+    const { createUnifiedLogger } = await import('@/lib/logging/unified-logger');
+    
+    // Create a new logger instance for this test
+    const testLogger = createUnifiedLogger({
+      level: 'debug',
+      enableConsole: true,
+      enableStorage: false,
+      source: 'test'
+    });
+    await testLogger.init();
     
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    
+    // Create tool logger with our test logger
+    const toolLogger = createToolLogger('test-tool', testLogger);
     
     toolLogger.info('Tool message');
     
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[test-tool] Tool message'),
-      undefined
+      expect.stringContaining('[test-tool] Tool message')
     );
     
     consoleSpy.mockRestore();
@@ -239,17 +264,29 @@ describe('Logger Helpers', () => {
 
   test('should support performance logging', async () => {
     const { logPerformance } = await import('@/lib/logging/helpers');
+    const { createUnifiedLogger } = await import('@/lib/logging/unified-logger');
+    
+    // Create a new logger instance for this test
+    const testLogger = createUnifiedLogger({
+      level: 'debug',
+      enableConsole: true,
+      enableStorage: false,
+      source: 'test'
+    });
+    await testLogger.init();
+    
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
     
     const result = await logPerformance('test-operation', async () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       return 'success';
-    });
+    }, testLogger);
     
     expect(result).toBe('success');
+    
+    // Check that info level log was called
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('test-operation completed'),
-      undefined
+      expect.stringContaining('test-operation completed')
     );
     
     consoleSpy.mockRestore();

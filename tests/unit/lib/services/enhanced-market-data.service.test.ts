@@ -7,24 +7,60 @@
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { EnhancedMarketDataService, TimeframeConfig } from '@/lib/services/enhanced-market-data.service';
-// MSW setup from global test setup
-let server: any;
-let http: any;
-let HttpResponse: any;
+// Mock response handler that can be modified per test
+let mockResponseHandler: (url: string, params?: Record<string, string>) => any = null;
 
-try {
-  const mswSetup = require('@/tests/setup/msw-setup');
-  server = mswSetup.mswServer;
-  http = mswSetup.http;
-  HttpResponse = mswSetup.HttpResponse;
-} catch (e) {
-  // Fallback if MSW is not available
-  const msw = require('msw');
-  const mswNode = require('msw/node');
-  server = mswNode.setupServer();
-  http = msw.http;
-  HttpResponse = msw.HttpResponse;
-}
+// Mock kline data generator
+const generateMockKlines = (interval: string): ProcessedKline[] => {
+  const baseTime = Date.now() - 3600000;
+  const count = interval === '15m' ? 200 : interval === '1h' ? 500 : interval === '4h' ? 400 : 200;
+  
+  return Array.from({ length: count }, (_, i) => ({
+    time: baseTime + i * 60000,
+    open: 48000 + Math.random() * 1000,
+    high: 48500 + Math.random() * 500,
+    low: 47500 + Math.random() * 500,
+    close: 48200 + Math.random() * 800,
+    volume: 100 + Math.random() * 50
+  }));
+};
+
+// Mock the base service API methods
+jest.mock('@/lib/api/base-service', () => {
+  return {
+    BaseService: class MockBaseService {
+      protected async get<T>(url: string, params?: Record<string, string>): Promise<{ data: T }> {
+        // Use custom handler if set
+        if (mockResponseHandler) {
+          try {
+            const response = await mockResponseHandler(url, params);
+            if (response !== null) {
+              if (response instanceof Error) {
+                throw response;
+              }
+              return { data: response as T };
+            }
+          } catch (error) {
+            throw error;
+          }
+        }
+        
+        // Default: Return mock kline data based on interval
+        if (url === '/klines' && params?.interval) {
+          const data = generateMockKlines(params.interval);
+          return { data: data as unknown as T };
+        }
+        // Default empty response
+        return { data: [] as unknown as T };
+      }
+    }
+  };
+});
+
+// Helper to set mock response
+export const setMockResponse = (handler: (url: string, params?: Record<string, string>) => any) => {
+  mockResponseHandler = handler;
+};
 import { APP_CONSTANTS } from '@/config/app-constants';
 import { logger } from '@/lib/utils/logger';
 import type { ProcessedKline } from '@/types/market';
@@ -45,65 +81,35 @@ describe('EnhancedMarketDataService', () => {
   beforeEach(() => {
     service = new EnhancedMarketDataService();
     jest.clearAllMocks();
+    mockResponseHandler = null; // Reset mock handler
   });
 
   afterEach(() => {
     service.clearCache();
+    mockResponseHandler = null; // Reset mock handler
   });
 
   describe('fetchMultiTimeframeData', () => {
-    const mockKlineResponse = (interval: string): ProcessedKline[] => {
-      const baseTime = Date.now() - 3600000; // 1 hour ago
-      const count = interval === '15m' ? 200 : interval === '1h' ? 500 : interval === '4h' ? 400 : 200;
-      
-      return Array.from({ length: count }, (_, i) => ({
-        time: baseTime + i * 60000,
-        open: 48000 + Math.random() * 1000,
-        high: 48500 + Math.random() * 500,
-        low: 47500 + Math.random() * 500,
-        close: 48200 + Math.random() * 800,
-        volume: 100 + Math.random() * 50
-      }));
-    };
 
     it('should fetch data from multiple timeframes successfully', async () => {
-      // Setup MSW handlers for each timeframe
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', ({ request }) => {
-          const url = new URL(request.url);
-          const interval = url.searchParams.get('interval');
-          
-          if (interval) {
-            return HttpResponse.json({
-              data: mockKlineResponse(interval)
-            });
-          }
-          
-          return HttpResponse.json({ data: [] });
-        })
-      );
+      try {
+        const result = await service.fetchMultiTimeframeData('BTCUSDT');
 
-      const result = await service.fetchMultiTimeframeData('BTCUSDT');
-
-      expect(result).toBeDefined();
-      expect(result.symbol).toBe('BTCUSDT');
-      expect(Object.keys(result.timeframes)).toHaveLength(4); // Default 4 timeframes
-      expect(result.timeframes['15m']).toBeDefined();
-      expect(result.timeframes['1h']).toBeDefined();
-      expect(result.timeframes['4h']).toBeDefined();
-      expect(result.timeframes['1d']).toBeDefined();
-      expect(result.fetchedAt).toBeGreaterThan(0);
+        expect(result).toBeDefined();
+        expect(result.symbol).toBe('BTCUSDT');
+        expect(Object.keys(result.timeframes)).toHaveLength(4); // Default 4 timeframes
+        expect(result.timeframes['15m']).toBeDefined();
+        expect(result.timeframes['1h']).toBeDefined();
+        expect(result.timeframes['4h']).toBeDefined();
+        expect(result.timeframes['1d']).toBeDefined();
+        expect(result.fetchedAt).toBeGreaterThan(0);
+      } catch (error) {
+        console.error('[Test] Failed to fetch multi-timeframe data:', error);
+        throw error;
+      }
     });
 
     it('should use cached data when available and not expired', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json({
-            data: mockKlineResponse('1h')
-          });
-        })
-      );
-
       // First fetch
       const firstResult = await service.fetchMultiTimeframeData('BTCUSDT');
       const fetchTime = firstResult.fetchedAt;
@@ -115,25 +121,17 @@ describe('EnhancedMarketDataService', () => {
       expect(secondResult).toEqual(firstResult);
     });
 
-    it.skip('should handle partial timeframe failures gracefully', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', ({ request }) => {
-          const url = new URL(request.url);
-          const interval = url.searchParams.get('interval');
-          
-          // Fail for 4h timeframe
-          if (interval === '4h') {
-            return HttpResponse.json(
-              { error: 'Internal Server Error' },
-              { status: 500 }
-            );
-          }
-          
-          return HttpResponse.json({
-            data: mockKlineResponse(interval || '1h')
-          });
-        })
-      );
+    it('should handle partial timeframe failures gracefully', async () => {
+      // Set up mock to fail for 4h timeframe
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines' && params?.interval === '4h') {
+          throw new Error('Internal Server Error');
+        }
+        if (url === '/klines' && params?.interval) {
+          return generateMockKlines(params.interval);
+        }
+        return null;
+      };
 
       const result = await service.fetchMultiTimeframeData('BTCUSDT');
 
@@ -143,15 +141,14 @@ describe('EnhancedMarketDataService', () => {
       expect(Object.keys(result.timeframes).length).toBeLessThan(4);
     });
 
-    it.skip('should throw error when all timeframe fetches fail', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json(
-            { error: 'Service Unavailable' },
-            { status: 503 }
-          );
-        })
-      );
+    it('should throw error when all timeframe fetches fail', async () => {
+      // Set up mock to fail for all requests
+      mockResponseHandler = (url) => {
+        if (url === '/klines') {
+          throw new Error('Service Unavailable');
+        }
+        return null;
+      };
 
       await expect(
         service.fetchMultiTimeframeData('BTCUSDT')
@@ -161,15 +158,15 @@ describe('EnhancedMarketDataService', () => {
     it('should respect abort signal for cancellation', async () => {
       const controller = new AbortController();
       
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', async () => {
+      // Set up mock to simulate delay
+      mockResponseHandler = async (url, params) => {
+        if (url === '/klines') {
           // Simulate delay
           await new Promise(resolve => setTimeout(resolve, 100));
-          return HttpResponse.json({
-            data: mockKlineResponse('1h')
-          });
-        })
-      );
+          return generateMockKlines(params?.interval || '1h');
+        }
+        return null;
+      };
 
       // Abort immediately
       controller.abort();
@@ -179,34 +176,25 @@ describe('EnhancedMarketDataService', () => {
       ).rejects.toThrow('Operation aborted');
     });
 
-    it.skip('should handle timeout for individual timeframe requests', async () => {
+    it('should handle timeout for individual timeframe requests', async () => {
       // Track which intervals were requested
       const requestedIntervals = new Set<string>();
       
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', async ({ request }) => {
-          const url = new URL(request.url);
-          const interval = url.searchParams.get('interval');
-          
-          if (interval) {
-            requestedIntervals.add(interval);
-          }
+      mockResponseHandler = async (url, params) => {
+        if (url === '/klines' && params?.interval) {
+          requestedIntervals.add(params.interval);
           
           // Simulate timeout error for 1d timeframe
-          if (interval === '1d') {
-            // Wait just a bit then return timeout error
+          if (params.interval === '1d') {
+            // Wait just a bit then throw timeout error
             await new Promise(resolve => setTimeout(resolve, 100));
-            return HttpResponse.json(
-              { error: 'Request timeout' },
-              { status: 408 }
-            );
+            throw new Error('Request timeout');
           }
           
-          return HttpResponse.json({
-            data: mockKlineResponse(interval || '1h')
-          });
-        })
-      );
+          return generateMockKlines(params.interval);
+        }
+        return null;
+      };
 
       const result = await service.fetchMultiTimeframeData('BTCUSDT');
 
@@ -219,17 +207,14 @@ describe('EnhancedMarketDataService', () => {
     });
 
     it('should handle custom timeframe configurations', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', ({ request }) => {
-          const url = new URL(request.url);
-          const interval = url.searchParams.get('interval');
-          const limit = url.searchParams.get('limit');
-          
-          return HttpResponse.json({
-            data: mockKlineResponse(interval || '5m').slice(0, Number(limit) || 100)
-          });
-        })
-      );
+      // Set up mock to return limited data
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines' && params?.interval) {
+          const limit = Number(params.limit) || 100;
+          return generateMockKlines(params.interval).slice(0, limit);
+        }
+        return null;
+      };
 
       const customConfig = [
         { interval: '5m', weight: 0.5, dataPoints: 100 },
@@ -630,20 +615,20 @@ describe('EnhancedMarketDataService', () => {
 
   describe('Cache Management', () => {
     it('should clear cache when requested', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json({
-            data: Array.from({ length: 100 }, (_, i) => ({
-              time: Date.now() - i * 60000,
-              open: 48000,
-              high: 48100,
-              low: 47900,
-              close: 48050,
-              volume: 100
-            }))
-          });
-        })
-      );
+      // Set up mock to return fixed data
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines') {
+          return Array.from({ length: 100 }, (_, i) => ({
+            time: Date.now() - i * 60000,
+            open: 48000,
+            high: 48100,
+            low: 47900,
+            close: 48050,
+            volume: 100
+          }));
+        }
+        return null;
+      };
 
       // Populate cache
       await service.fetchMultiTimeframeData('BTCUSDT');
@@ -664,20 +649,20 @@ describe('EnhancedMarketDataService', () => {
       let currentTime = originalNow();
       Date.now = jest.fn(() => currentTime);
 
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json({
-            data: Array.from({ length: 100 }, (_, i) => ({
-              time: currentTime - i * 60000,
-              open: 48000,
-              high: 48100,
-              low: 47900,
-              close: 48050,
-              volume: 100
-            }))
-          });
-        })
-      );
+      // Set up mock to return time-based data
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines') {
+          return Array.from({ length: 100 }, (_, i) => ({
+            time: currentTime - i * 60000,
+            open: 48000,
+            high: 48100,
+            low: 47900,
+            close: 48050,
+            volume: 100
+          }));
+        }
+        return null;
+      };
 
       // First fetch
       await service.fetchMultiTimeframeData('BTCUSDT');
@@ -693,20 +678,20 @@ describe('EnhancedMarketDataService', () => {
     });
 
     it('should return cache statistics', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json({
-            data: Array.from({ length: 100 }, () => ({
-              time: Date.now(),
-              open: 48000,
-              high: 48100,
-              low: 47900,
-              close: 48050,
-              volume: 100
-            }))
-          });
-        })
-      );
+      // Set up mock for cache statistics test
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines') {
+          return Array.from({ length: 100 }, () => ({
+            time: Date.now(),
+            open: 48000,
+            high: 48100,
+            low: 47900,
+            close: 48050,
+            volume: 100
+          }));
+        }
+        return null;
+      };
 
       // Fetch data for multiple symbols
       await service.fetchMultiTimeframeData('BTCUSDT');
@@ -741,54 +726,53 @@ describe('EnhancedMarketDataService', () => {
     });
 
     it('should handle malformed kline data', async () => {
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          return HttpResponse.json({
-            data: [
-              { time: Date.now(), open: 48000 }, // Missing required fields
-              null, // Null entry
-              { 
-                time: Date.now(),
-                open: 48000,
-                high: 48100,
-                low: 47900,
-                close: 48050,
-                volume: 100
-              }
-            ]
-          });
-        })
-      );
-
-      // Should handle gracefully without throwing
-      const result = await service.fetchMultiTimeframeData('BTCUSDT');
-      expect(result).toBeDefined();
-    });
-
-    it.skip('should handle network errors with retry', async () => {
-      let attemptCount = 0;
-      
-      server.use(
-        http.get('http://localhost:3000/api/binance/klines', () => {
-          attemptCount++;
-          
-          // Fail first 2 attempts, succeed on 3rd
-          if (attemptCount < 3) {
-            return HttpResponse.error();
-          }
-          
-          return HttpResponse.json({
-            data: Array.from({ length: 100 }, () => ({
+      // Set up mock to return malformed data
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines') {
+          return [
+            { time: Date.now(), open: 48000 }, // Missing required fields
+            null, // Null entry
+            { 
               time: Date.now(),
               open: 48000,
               high: 48100,
               low: 47900,
               close: 48050,
               volume: 100
-            }))
-          });
-        })
-      );
+            }
+          ];
+        }
+        return null;
+      };
+
+      // Should handle gracefully without throwing
+      const result = await service.fetchMultiTimeframeData('BTCUSDT');
+      expect(result).toBeDefined();
+    });
+
+    it('should handle network errors with retry', async () => {
+      let attemptCount = 0;
+      
+      mockResponseHandler = (url, params) => {
+        if (url === '/klines') {
+          attemptCount++;
+          
+          // Fail first 2 attempts, succeed on 3rd
+          if (attemptCount < 3) {
+            throw new Error('Network error');
+          }
+          
+          return Array.from({ length: 100 }, () => ({
+            time: Date.now(),
+            open: 48000,
+            high: 48100,
+            low: 47900,
+            close: 48050,
+            volume: 100
+          }));
+        }
+        return null;
+      };
 
       const result = await service.fetchMultiTimeframeData('BTCUSDT');
       
