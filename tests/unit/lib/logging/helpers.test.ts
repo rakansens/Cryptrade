@@ -397,7 +397,7 @@ describe('logging helpers', () => {
       const error = new Error('Simple error');
       logErrorChain(error);
 
-      expect(mockUnifiedLogger.error).toHaveBeenCalledOnce();
+      expect(mockUnifiedLogger.error).toHaveBeenCalledTimes(1);
       expect(mockUnifiedLogger.error).toHaveBeenCalledWith(
         'Error: Simple error',
         expect.objectContaining({

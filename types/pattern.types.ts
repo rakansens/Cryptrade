@@ -139,7 +139,17 @@ export function isPatternMetrics(value: unknown): value is PatternMetrics {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
 
-  return Object.values(obj).some(v => typeof v === 'number');
+  // Check if the object has at least one numeric value and no non-numeric values
+  const values = Object.values(obj);
+  if (values.length === 0) return false;
+  
+  // All values must be either numbers or undefined/null
+  const hasNumber = values.some(v => typeof v === 'number');
+  const allValuesValid = values.every(v => 
+    v === undefined || v === null || typeof v === 'number'
+  );
+  
+  return hasNumber && allValuesValid;
 }
 
 export function isPatternRenderer(value: unknown): value is PatternRenderer {

@@ -257,22 +257,22 @@ describe('ModelSelector', () => {
   describe('estimateCost', () => {
     it('should calculate cost for simple model', () => {
       const cost = ModelSelector.estimateCost('simple', 10000);
-      expect(cost).toBe(1.5); // 10000/1000 * 0.00015
+      expect(cost).toBeCloseTo(0.0015, 5); // 10000/1000 * 0.00015
     });
 
     it('should calculate cost for complex model', () => {
       const cost = ModelSelector.estimateCost('complex', 10000);
-      expect(cost).toBe(25); // 10000/1000 * 0.0025
+      expect(cost).toBe(0.025); // 10000/1000 * 0.0025
     });
 
     it('should calculate cost for specialized model', () => {
       const cost = ModelSelector.estimateCost('specialized', 10000);
-      expect(cost).toBe(30); // 10000/1000 * 0.003
+      expect(cost).toBe(0.03); // 10000/1000 * 0.003
     });
 
     it('should handle fractional tokens', () => {
       const cost = ModelSelector.estimateCost('simple', 1500);
-      expect(cost).toBeCloseTo(0.225, 5); // 1500/1000 * 0.00015
+      expect(cost).toBeCloseTo(0.000225, 5); // 1500/1000 * 0.00015
     });
   });
 

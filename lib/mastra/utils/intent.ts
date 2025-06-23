@@ -42,9 +42,9 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     detectShortInput,
     detectGreeting,  // Greeting should be before small talk
     detectEntryProposal,
+    detectUIControl,  // UI control should be before drawing proposal
     detectDrawingProposal,
     detectProposalRequest,
-    detectUIControl,
     detectPriceInquiry,
     detectHelpRequest,
     detectTradingAnalysis,  // Trading analysis before market chat
@@ -116,6 +116,13 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム',
     'ma', 'rsi', 'macd', 'bb', 'ind'
   ];
+  
+  // Add drawing keywords for UI control
+  const drawingUIKeywords = [
+    'トレンドライン', 'ライン', '引いて', '描いて', '描画して',
+    'フィボナッチ', 'サポート', 'レジスタンス',
+    'trend', 'line', 'draw', 'fibonacci', 'support', 'resistance'
+  ];
 
   const chartSwitchPatterns = [
     /(.+)の?チャートに?切り替え/,
@@ -125,25 +132,41 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /(.+)の?チャート/
   ];
 
-  // Check for specific UI control phrases
+  // Check for specific UI control phrases including drawing commands
   const specificUIPatterns = [
     /チャートを(.+)に変更/,
     /移動平均線を表示/,
-    /フィボナッチを引いて/
+    /フィボナッチを引いて/,
+    /トレンドライン.*引いて/,
+    /ライン.*描画して/,
+    /trend\s*line.*描いて/i,
+    /draw.*line/i,
+    /フィボナッチ.*表示して/,
+    /サポートライン.*表示/,
+    /レジスタンスライン.*表示/,
+    /サポレジ.*表示/,
+    /チャート.*フィット/,
+    /ズーム.*イン/,
+    /(.+)時間足に切り替え/
   ];
 
   const hasUIKeyword = uiControlKeywords.some(keyword => queryLower.includes(keyword));
+  const hasDrawingUIKeyword = drawingUIKeywords.some(keyword => queryLower.includes(keyword));
   const hasChartSwitchPattern = chartSwitchPatterns.some(pattern => pattern.test(queryLower));
   const hasSpecificUIPattern = specificUIPatterns.some(pattern => pattern.test(queryLower));
   const symbolWithUIAction = extractSymbol(userQuery) && (hasUIKeyword || hasChartSwitchPattern);
 
-  // More lenient UI control detection
-  if ((symbolWithUIAction || hasSpecificUIPattern) && !queryLower.includes('価格') && !queryLower.includes('いくら')) {
+  // More lenient UI control detection including drawing commands
+  if ((symbolWithUIAction || hasSpecificUIPattern || hasDrawingUIKeyword) && 
+      !queryLower.includes('価格') && !queryLower.includes('いくら') &&
+      !queryLower.includes('提案') && !queryLower.includes('おすすめ') &&
+      !queryLower.includes('候補') && !queryLower.includes('推奨')) {
+    
     const symbol = extractSymbol(userQuery);
     const result: IntentAnalysisResult = {
       intent: 'ui_control',
       confidence: 0.95,
-      reasoning: 'UIチャート操作コマンド検出',
+      reasoning: 'UI操作・描画コマンド検出',
       analysisDepth: 'basic',
       requiresWorkflow: false
     };
@@ -164,19 +187,24 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
 
   // More specific price inquiry patterns
   const specificPricePatterns = [
-    /(.+)(の)?価格/,
-    /(.+)(は)?いくら/,
+    /(.+)(の)?価格(は)?[?？]?$/,
+    /(.+)(は)?いくら[?？]?$/,
     /(.+)(の)?値段/,
     /(.+)(の)?現在値/,
+    /(.+)(の)?相場(は)?[?？]?$/,  // Added "相場"
+    /現在の(.+)価格/,
     /what.*price/i,
     /how much.*(?:btc|eth|bitcoin|ethereum)/i,
+    /bitcoin\s*price/i,
+    /\b(btc|eth|xrp|bnb|sol|ada)\s*(quote|prc|price)/i,  // Added "quote" and "prc"
+    /\bquote\s+(btc|eth|xrp|bnb|sol|ada)/i,  // Added "quote [symbol]"
   ];
   
   const hasSpecificPricePattern = specificPricePatterns.some(pattern => pattern.test(queryLower));
-  const hasCryptoSymbol = /\b(btc|eth|bnb|ada|sol|usdt|xrp|doge|dot|link|uni|avax|matic|ltc)\b/i.test(queryLower);
+  const hasCryptoSymbol = /\b(btc|eth|bnb|ada|sol|usdt|xrp|doge|dot|link|uni|avax|matic|ltc|ビットコイン|イーサリアム|イーサ)\b/i.test(queryLower);
   
   // Only classify as price inquiry if it's really asking for price
-  if ((hasSpecificPricePattern || (hasCryptoSymbol && queryLower.includes('price'))) &&
+  if ((hasSpecificPricePattern || (hasCryptoSymbol && (queryLower.includes('price') || queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('quote') || queryLower.includes('prc') || queryLower.includes('相場')))) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
         hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
     const symbol = extractSymbol(userQuery);
@@ -240,6 +268,24 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
 }
 
 export function detectDrawingProposal(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+  // First check if this is a simple UI control command (not a proposal)
+  const simpleDrawingCommands = [
+    'トレンドライン.*引いて',
+    'ライン.*描画して',
+    'trend\\s*line.*描いて',
+    'draw.*line',
+    'フィボナッチ.*表示して',
+    'サポートライン.*表示',
+    'レジスタンスライン.*表示',
+    'サポレジ.*表示'
+  ];
+  
+  // Check if it's a simple UI control command
+  if (simpleDrawingCommands.some(pattern => new RegExp(pattern, 'i').test(queryLower))) {
+    // This should be handled by detectUIControl instead
+    return null;
+  }
+
   const drawingSpecificKeywords = [
     'トレンドライン', '引いて', '描いて', '描画',
     'フィボナッチ', 'サポート', 'レジスタンス', 'サポレジ',
@@ -261,8 +307,12 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
 
   const hasSpecificDrawingKeyword = drawingSpecificKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
   const hasContextualKeyword = contextualDrawingKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  // Only classify as proposal if it has proposal keywords
+  const proposalKeywords = ['提案', '候補', 'おすすめ', '推奨', 'どこに', 'suggest', 'recommend', 'proposal'];
+  const hasProposalKeyword = proposalKeywords.some(keyword => queryLower.includes(keyword));
 
-  if (hasSpecificDrawingKeyword || (hasContextualKeyword && !generalUIKeywords.some(k => queryLower.includes(k))) || supportResistanceWithDisplay) {
+  if ((hasSpecificDrawingKeyword || (hasContextualKeyword && !generalUIKeywords.some(k => queryLower.includes(k))) || supportResistanceWithDisplay) && hasProposalKeyword) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
 
     if (queryLower.includes('トレンドライン') || queryLower.includes('trend')) {
@@ -327,26 +377,28 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
       confidence: 0.85,
       reasoning: '詳細分析キーワード検出',
       analysisDepth: determineAnalysisDepth(userQuery),
-      requiresWorkflow: true
+      requiresWorkflow: true,
+      // Default to BTCUSDT if no symbol found
+      extractedSymbol: symbol || 'BTCUSDT'
     };
-    
-    // Only add symbol if found
-    if (symbol) {
-      result.extractedSymbol = symbol;
-    }
     
     return result;
   }
   return null;
 }
 
-export function detectGreeting(_userQuery: string, queryLower: string): IntentAnalysisResult | null {
+export function detectGreeting(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const greetingPatterns = [
+    // Exact greeting patterns
     /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?\.?$/i,
-    /^(よろしく)\.?$/i
+    /^(よろしく)\.?$/i,
+    /^hi\s+there$/i,
+    // Greeting at the beginning of sentence followed by more text
+    /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！、。]?[\s、。]?\S/i,
   ];
-
-  if (greetingPatterns.some(pattern => pattern.test(queryLower))) {
+  
+  // Use both original query and lowercase for pattern matching
+  if (greetingPatterns.some(pattern => pattern.test(queryLower) || pattern.test(userQuery))) {
     return {
       intent: 'greeting',
       confidence: 0.95,

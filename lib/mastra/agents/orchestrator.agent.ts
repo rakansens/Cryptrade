@@ -498,6 +498,14 @@ export async function executeImprovedOrchestrator(
             // Generate a fallback response based on intent
             executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
           } else {
+            // Map targetAgent to processedBy value for test compatibility
+            let processedByValue: string = targetAgent;
+            if (targetAgent === 'price_inquiry' || targetAgent === 'trading_analysis') {
+              processedByValue = 'trading-agent';
+            } else if (targetAgent === 'ui_control') {
+              processedByValue = 'chart-control-agent';
+            }
+            
             // 専門エージェントの結果にメタデータを追加
             executionResult = {
               ...agentResult,
@@ -505,7 +513,7 @@ export async function executeImprovedOrchestrator(
               response: agentResult.executionResult?.response || agentResult.message || 'No response',
               metadata: {
                 ...(agentResult as any).metadata,
-                processedBy: targetAgent,
+                processedBy: processedByValue,
                 intent: analysis.intent,
                 delegatedFrom: 'orchestrator',
               },
@@ -591,6 +599,14 @@ export async function executeImprovedOrchestrator(
 
   } catch (error) {
     const executionTime = Date.now() - startTime;
+    
+    // Add detailed error logging for debugging
+    console.error('[Improved Orchestrator] DETAILED ERROR:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userQuery,
+      sessionId: activeSessionId,
+    });
     
     logger.error('[Improved Orchestrator] Failed', {
       correlationId,

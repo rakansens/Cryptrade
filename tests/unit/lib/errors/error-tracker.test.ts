@@ -1,20 +1,19 @@
 // Import test environment setup first
 import '@/tests/setup/test-env';
-import { resetTestEnvironment } from '@/tests/setup/test-env';
 
-// Import modules after environment is set
-import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
+// Mock dependencies before importing the modules that use them
+jest.mock('@/lib/utils/logger');
+
+// Import base-error first since it doesn't depend on the mocked logger
 import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/errors/base-error';
-import { logger } from '@/lib/utils/logger';
-import { env } from '@/config/env';
 
-// Mock dependencies
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    error: jest.fn(),
-    warn: jest.fn(),
-  }
-}));
+// Import logger and get the mocked version
+import { logger } from '@/lib/utils/logger';
+const mockLogger = logger as jest.Mocked<typeof logger>;
+
+// Import error-tracker after logger is mocked
+import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
+import { env } from '@/config/env';
 
 // Ensure fetch is properly mocked before any tests
 beforeAll(() => {
@@ -33,13 +32,12 @@ describe('ErrorTracker', () => {
   let tracker: ErrorTracker;
 
   beforeEach(() => {
-    // Reset environment to ensure clean state
-    resetTestEnvironment();
-    
     // Clear singleton instance
     (ErrorTracker as any).instance = undefined;
     tracker = ErrorTracker.getInstance();
     jest.clearAllMocks();
+    mockLogger.error.mockClear();
+    mockLogger.warn.mockClear();
     
     // Reset and setup fetch mock
     if (global.fetch) {
@@ -61,8 +59,8 @@ describe('ErrorTracker', () => {
   });
 
   afterAll(() => {
-    // Reset environment to clean state
-    resetTestEnvironment();
+    // Clean up
+    tracker.destroy();
   });
 
   describe('getInstance', () => {
@@ -86,6 +84,12 @@ describe('ErrorTracker', () => {
   });
 
   describe('trackException', () => {
+    it('should call logger directly', () => {
+      // Direct logger test
+      logger.error('test message', { test: true });
+      expect(mockLogger.error).toHaveBeenCalledWith('test message', { test: true });
+    });
+
     it('should track MastraBaseError with context', () => {
       const error = new ApiError('API failed', 500, {
         correlationId: 'corr-123'
@@ -99,7 +103,7 @@ describe('ErrorTracker', () => {
 
       tracker.trackException(error, context);
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         name: 'ApiError',
         message: 'API failed',
         code: 'API_500',
@@ -118,7 +122,7 @@ describe('ErrorTracker', () => {
       
       tracker.trackException(error);
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         name: 'Error',
         message: 'Regular error',
         code: 'UNKNOWN_ERROR',
@@ -183,7 +187,7 @@ describe('ErrorTracker', () => {
       // Should not throw
       expect(() => tracker.trackException(problematicError)).not.toThrow();
 
-      expect(logger.warn).toHaveBeenCalledWith('Failed to track exception', expect.objectContaining({
+      expect(mockLogger.warn).toHaveBeenCalledWith('Failed to track exception', expect.objectContaining({
         originalError: 'Test',
         trackingError: 'Error: Logging failed'
       }));
@@ -324,7 +328,7 @@ describe('ErrorTracker', () => {
       // Manually trigger flush
       await (tracker as any).flush();
 
-      expect(logger.warn).toHaveBeenCalledWith('Failed to flush errors', {
+      expect(mockLogger.warn).toHaveBeenCalledWith('Failed to flush errors', {
         error: 'Error: Network error'
       });
 
@@ -395,7 +399,7 @@ describe('ErrorTracker', () => {
 
       tracker.trackException(workflowError, { workflowId: 'wf-123' });
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         category: 'WORKFLOW_ERROR',
         context: expect.objectContaining({
           workflowId: 'wf-123',
@@ -471,11 +475,11 @@ describe('ErrorTracker', () => {
       tracker.trackException(warningError);
 
       // Critical errors should trigger immediate flush
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         severity: 'CRITICAL'
       }));
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         severity: 'WARNING'
       }));
     });
@@ -507,7 +511,7 @@ describe('ErrorTracker', () => {
 
       tracker.trackException(error, trackingContext);
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         context: expect.objectContaining({
           input: 'test-data',
           attempt: 1,
@@ -680,7 +684,7 @@ describe('ErrorTracker', () => {
 
       trackException(error, context);
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         message: 'Test error',
         context
       }));
@@ -691,7 +695,7 @@ describe('ErrorTracker', () => {
       
       trackAgentError(error, 'TradingAgent', { action: 'buy' });
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         message: 'Agent failed',
         context: expect.objectContaining({
           agentName: 'TradingAgent',
@@ -705,7 +709,7 @@ describe('ErrorTracker', () => {
       
       trackToolError(error, 'ChartTool', { operation: 'draw' });
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         message: 'Tool failed',
         context: expect.objectContaining({
           toolName: 'ChartTool',
@@ -719,7 +723,7 @@ describe('ErrorTracker', () => {
       
       trackApiError(error, '/api/data', 500, { method: 'GET' });
 
-      expect(logger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
         message: 'Request failed',
         context: expect.objectContaining({
           endpoint: '/api/data',
@@ -775,7 +779,7 @@ describe('ErrorTracker', () => {
       tracker.trackException(new Error('Second')); // This will fail
       tracker.trackException(new Error('Third'));
 
-      expect(logger.warn).toHaveBeenCalledWith('Failed to track exception', expect.any(Object));
+      expect(mockLogger.warn).toHaveBeenCalledWith('Failed to track exception', expect.any(Object));
       expect(callCount).toBe(3);
 
       // Restore

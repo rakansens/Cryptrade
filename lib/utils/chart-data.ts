@@ -16,8 +16,11 @@ export function cleanTimeSeriesData<T extends TimeSeriesData>(
 ): T[] {
   if (!data || data.length === 0) return [];
 
+  // Filter out null/undefined items first
+  const validData = data.filter(item => item != null);
+  
   // Sort by time first
-  const sorted = [...data].sort((a, b) => Number(a[timeKey]) - Number(b[timeKey]));
+  const sorted = [...validData].sort((a, b) => Number(a[timeKey]) - Number(b[timeKey]));
   
   // Remove duplicates - keep the last occurrence of each timestamp
   const cleaned: T[] = [];
@@ -25,11 +28,12 @@ export function cleanTimeSeriesData<T extends TimeSeriesData>(
   
   for (let i = sorted.length - 1; i >= 0; i--) {
     const item = sorted[i];
-    if (!item) continue;
-    const time = Number(item[timeKey]);
-    if (!seen.has(time)) {
-      seen.add(time);
-      cleaned.unshift(item);
+    if (item) {
+      const time = Number(item[timeKey]);
+      if (!seen.has(time)) {
+        seen.add(time);
+        cleaned.unshift(item);
+      }
     }
   }
   
@@ -65,8 +69,8 @@ export function validateTimeSeriesOrder<T extends TimeSeriesData>(
  * Convert milliseconds to seconds for lightweight-charts
  */
 export function convertToLightweightChartsTime(timestamp: number): number {
-  // If timestamp is in milliseconds, convert to seconds
-  if (timestamp > 1e12) {
+  // If timestamp is in milliseconds (> 1e12 or < -1e12), convert to seconds
+  if (Math.abs(timestamp) > 1e12) {
     return Math.floor(timestamp / 1000);
   }
   return timestamp;

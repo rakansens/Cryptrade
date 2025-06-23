@@ -110,15 +110,12 @@ export class ModelSelector {
   static analyzeComplexity(task: string, context?: Record<string, unknown>): ModelComplexity {
     const taskLower = task.toLowerCase();
     
-    // Simple tasks
-    if (
-      taskLower.includes('価格') || 
-      taskLower.includes('price') ||
-      taskLower.includes('いくら') ||
-      taskLower.includes('how much') ||
-      taskLower.length < 20
-    ) {
-      return 'simple';
+    // Check context first
+    if (context?.['requiresNuance']) {
+      return 'specialized';
+    }
+    if (context?.['multiStep']) {
+      return 'complex';
     }
     
     // Specialized tasks
@@ -129,7 +126,8 @@ export class ModelSelector {
       taskLower.includes('poem') ||
       taskLower.includes('ストーリー') ||
       taskLower.includes('story') ||
-      context?.['requiresNuance']
+      taskLower.includes('compose') ||
+      taskLower.includes('作って')
     ) {
       return 'specialized';
     }
@@ -142,10 +140,27 @@ export class ModelSelector {
       taskLower.includes('strategy') ||
       taskLower.includes('複雑') ||
       taskLower.includes('complex') ||
-      taskLower.length > 100 ||
-      context?.['multiStep']
+      taskLower.includes('solve') ||
+      taskLower.includes('詳細') ||
+      taskLower.includes('detailed') ||
+      taskLower.includes('develop') ||
+      taskLower.includes('立てて') ||
+      taskLower.includes('解決') ||
+      taskLower.length > 100
     ) {
       return 'complex';
+    }
+    
+    // Simple tasks
+    if (
+      taskLower.includes('価格') || 
+      taskLower.includes('price') ||
+      taskLower.includes('いくら') ||
+      taskLower.includes('how much') ||
+      taskLower.includes('cost') ||
+      taskLower.length < 20
+    ) {
+      return 'simple';
     }
     
     // Default to moderate

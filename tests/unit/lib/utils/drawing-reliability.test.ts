@@ -16,6 +16,25 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+// Mock metrics
+jest.mock('@/lib/monitoring/metrics', () => ({
+  incrementMetric: jest.fn(),
+  observeMetric: jest.fn(),
+  metricsCollector: {
+    increment: jest.fn(),
+    observe: jest.fn(),
+  },
+}));
+
+// Mock trace manager
+jest.mock('@/lib/monitoring/trace', () => ({
+  traceManager: {
+    startTrace: jest.fn().mockReturnValue('test-trace-id'),
+    endTrace: jest.fn(),
+    addEvent: jest.fn(),
+  },
+}));
+
 describe('Drawing Reliability Tests', () => {
   describe('DrawingOperationQueue', () => {
     let queue: DrawingOperationQueue;

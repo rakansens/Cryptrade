@@ -419,15 +419,15 @@ export class LineRenderer implements ILineRendererPlugin {
   private resolveLineStyle(line: { style?: Partial<LineStyle>; type?: string }, index: number): Required<LineStyle> {
     const baseStyle = { ...this.lineStyle };
     
-    // ライン固有のスタイルを適用
-    if (line.style) {
-      Object.assign(baseStyle, line.style);
-    }
-    
-    // タイプベースのスタイルを適用
+    // タイプベースのスタイルを適用（先に適用）
     if (line.type) {
       const typeStyle = this.getStyleByType(line.type);
       Object.assign(baseStyle, typeStyle);
+    }
+    
+    // ライン固有のスタイルを適用（後で適用して優先）
+    if (line.style) {
+      Object.assign(baseStyle, line.style);
     }
     
     // インデックスベースの色を適用（スタイルで指定されていない場合）

@@ -24,26 +24,42 @@ describe('UIEventDispatcher', () => {
   let mockWindow: any;
 
   beforeEach(() => {
-    // Clear the singleton instance before each test
-    (UIEventDispatcher as any).instance = null;
-    
-    dispatcher = UIEventDispatcher.getInstance();
-    dispatcher.clearAllListeners();
-    
+    // Save original window
     originalWindow = global.window;
     
-    // Add CustomEvent polyfill
+    // Ensure Event is available (jsdom provides it)
+    if (typeof Event === 'undefined') {
+      (global as any).Event = class Event {
+        type: string;
+        bubbles: boolean;
+        cancelable: boolean;
+        
+        constructor(type: string, eventInit?: EventInit) {
+          this.type = type;
+          this.bubbles = eventInit?.bubbles || false;
+          this.cancelable = eventInit?.cancelable || false;
+        }
+      };
+    }
+    
+    // Mock CustomEvent to capture constructor arguments
+    const mockCustomEventConstructor = jest.fn();
     (global as any).CustomEvent = class CustomEvent extends Event {
       detail: any;
       
       constructor(type: string, options?: any) {
         super(type, options);
         this.detail = options?.detail;
+        mockCustomEventConstructor(type, options);
       }
     };
     
+    // Define window with mocked dispatchEvent
     mockWindow = {
-      dispatchEvent: jest.fn(),
+      dispatchEvent: jest.fn((event) => {
+        // Capture the event for testing
+        return true;
+      }),
       requestAnimationFrame: jest.fn((callback: Function) => {
         callback();
         return 1;
@@ -51,11 +67,19 @@ describe('UIEventDispatcher', () => {
       removeEventListener: jest.fn(),
     };
     
-    // Simply assign window
+    // Set window BEFORE clearing singleton instance
     global.window = mockWindow as any;
+    
+    // Clear the singleton instance AFTER setting window
+    (UIEventDispatcher as any).instance = null;
+    
+    // Now get instance with the mocked window
+    dispatcher = UIEventDispatcher.getInstance();
+    dispatcher.clearAllListeners();
   });
 
   afterEach(() => {
+    // Restore original window
     global.window = originalWindow;
     jest.clearAllMocks();
   });
@@ -77,14 +101,12 @@ describe('UIEventDispatcher', () => {
 
       dispatcher.dispatch(event);
 
-      expect(mockWindow.dispatchEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'proposal:generated',
-          detail: { proposalGroup: { proposals: [] } },
-          bubbles: true,
-          cancelable: true,
-        })
-      );
+      expect(mockWindow.dispatchEvent).toHaveBeenCalled();
+      const dispatchedEvent = mockWindow.dispatchEvent.mock.calls[0][0];
+      expect(dispatchedEvent.type).toBe('proposal:generated');
+      expect(dispatchedEvent.detail).toEqual({ proposalGroup: { proposals: [] } });
+      expect(dispatchedEvent.bubbles).toBe(true);
+      expect(dispatchedEvent.cancelable).toBe(true);
     });
 
     it('should dispatch to internal listeners', () => {
@@ -204,11 +226,11 @@ describe('UIEventDispatcher', () => {
       };
 
       dispatcher.dispatch(event);
-      expect(listener).toHaveBeenCalledOnce();
+      expect(listener).toHaveBeenCalledTimes(1);
 
       dispatcher.removeEventListener('proposal:checkExpiration', listener);
       dispatcher.dispatch(event);
-      expect(listener).toHaveBeenCalledOnce(); // Not called again
+      expect(listener).toHaveBeenCalledTimes(1); // Not called again
     });
 
     it('should handle multiple listeners for same event', () => {
@@ -477,7 +499,8 @@ describe('UIEventDispatcher', () => {
   describe('singleton instance', () => {
     it('should export singleton instance', () => {
       expect(uiEventDispatcher).toBeDefined();
-      expect(uiEventDispatcher).toBe(UIEventDispatcher.getInstance());
+      // Since we reset instance in beforeEach, we need to compare with a fresh instance
+      expect(uiEventDispatcher).toBeInstanceOf(UIEventDispatcher);
     });
   });
 

@@ -176,17 +176,28 @@ export class DrawingOperationQueue {
    * Wait for all operations to complete
    */
   async flush(): Promise<void> {
+    // Start processing any pending operations
+    this.processQueue();
+    
+    // If nothing to wait for, return immediately
     if (this.queue.length === 0 && this.activeOperations === 0) {
       return;
     }
 
+    // Wait for all operations to complete
     return new Promise((resolve) => {
       const checkComplete = setInterval(() => {
+        // Keep processing if there are pending operations
+        if (this.queue.length > 0 && this.activeOperations < this.maxConcurrency) {
+          this.processQueue();
+        }
+        
+        // Check if all done
         if (this.queue.length === 0 && this.activeOperations === 0) {
           clearInterval(checkComplete);
           resolve();
         }
-      }, 100);
+      }, 10); // Check more frequently for better responsiveness
     });
   }
 }

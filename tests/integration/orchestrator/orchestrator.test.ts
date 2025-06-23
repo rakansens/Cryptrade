@@ -6,6 +6,92 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { OrchestratorRuntimeContext } from '@/types/orchestrator.types';
 
+// Mock the enhanced conversation memory store
+jest.mock('@/lib/store/enhanced-conversation-memory.store', () => ({
+  useEnhancedConversationMemory: {
+    getState: jest.fn(() => ({
+      currentSessionId: 'test-session-id',
+      createSession: jest.fn().mockResolvedValue('test-session-id'),
+      addMessage: jest.fn().mockResolvedValue(undefined),
+      getProcessedMessages: jest.fn(() => []),
+      getSessionContext: jest.fn(() => 'Previous context'),
+      getMemoryStats: jest.fn(() => ({
+        totalMessages: 5,
+        processedMessages: 5,
+        estimatedTokens: 100,
+        processors: ['test-processor']
+      })),
+      getRecentMessages: jest.fn(() => [])
+    }))
+  },
+  createEnhancedSession: jest.fn().mockResolvedValue('test-session-id')
+}));
+
+// Mock the agent registry
+jest.mock('@/lib/mastra/network/agent-registry', () => ({
+  registerAllAgents: jest.fn()
+}));
+
+// Mock the parallel orchestrator  
+jest.mock('@/lib/mastra/agents/parallel-orchestrator', () => ({
+  parallelOrchestrator: {
+    execute: jest.fn().mockResolvedValue({
+      analysis: {
+        intent: 'conversational',
+        confidence: 0.9,
+        reasoning: 'Complex query',
+        analysisDepth: 'comprehensive'
+      },
+      executionResult: {
+        response: 'Parallel response'
+      },
+      executionTime: 100,
+      success: true
+    })
+  }
+}));
+
+// Mock the agent selection tool
+jest.mock('@/lib/mastra/tools/agent-selection.tool', () => ({
+  agentSelectionTool: {
+    execute: jest.fn().mockImplementation(async ({ context }) => {
+      const agentType = context.agentType;
+      const query = context.query;
+      
+      let response = 'Default response';
+      let metadata = { processedBy: [] };
+      
+      switch (agentType) {
+        case 'price_inquiry':
+          response = `The current price of ${context.context.extractedSymbol || 'BTC'} is $48,000.`;
+          metadata.processedBy = ['trading-agent'];
+          break;
+        case 'ui_control':
+          response = 'Chart operation completed successfully.';
+          metadata.processedBy = ['chart-control-agent'];
+          break;
+        case 'trading_analysis':
+          response = 'Technical analysis shows bullish trend.';
+          metadata.processedBy = ['analysis-agent'];
+          break;
+      }
+      
+      return {
+        executionResult: {
+          response,
+          data: {},
+          metadata: {
+            ...metadata,
+            processedBy: metadata.processedBy
+          }
+        },
+        message: response,
+        metadata  // Return metadata at top level too
+      };
+    })
+  }
+}));
+
 // Optional metrics collector (no-op in CI/local unless library available)
 let metrics: typeof import('@/lib/monitoring/metrics') | null = null;
 try {
@@ -65,7 +151,27 @@ describe('Orchestrator Agent Integration Tests', () => {
       ];
 
       test.each(greetingQueries)('should handle "$query" as $expectedIntent', async ({ query, expectedIntent }) => {
+        // Temporarily enable console output
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+        
+        console.log(`\n=== BEFORE CALLING ORCHESTRATOR ===`);
+        console.log(`Query: "${query}"`);
+        console.log(`Expected intent: ${expectedIntent}`);
+        
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
+        
+        // Always log debug output for failing tests
+        console.log(`\n=== AFTER CALLING ORCHESTRATOR ===`);
+        console.log(`Expected: ${expectedIntent}, Got: ${result.analysis.intent}`);
+        console.log(`Confidence: ${result.analysis.confidence}`);
+        console.log(`Reasoning: ${result.analysis.reasoning}`);
+        console.log(`Full analysis:`, JSON.stringify(result.analysis, null, 2));
+        console.log(`Success: ${result.success}`);
+        console.log(`Execution time: ${result.executionTime}ms`);
+        console.log(`Has execution result: ${!!result.executionResult}`);
         
         expect(result.analysis.intent).toBe(expectedIntent);
         expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);

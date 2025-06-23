@@ -190,6 +190,9 @@ describe('WSManager E2E - Connection Management', () => {
       // Unsubscribe first subscriber
       sub1.unsubscribe();
       
+      // Wait a bit for async cleanup operations
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Connection should still exist
       expect(MockWebSocket.getAllInstances()).toHaveLength(1);
       expect(manager.getActiveStreamsCount()).toBe(1);
@@ -216,6 +219,9 @@ describe('WSManager E2E - Connection Management', () => {
       
       // Destroy manager
       manager.destroy();
+      
+      // Wait for destroy to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
       
       // All connections should be closed
       instances.forEach(ws => {

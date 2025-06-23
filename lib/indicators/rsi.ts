@@ -69,8 +69,17 @@ export function calculateRSI(
   let avgLoss = losses.slice(0, period).reduce((sum, loss) => sum + loss, 0) / period;
 
   // Calculate first RSI value
-  const firstRS = avgLoss === 0 ? 100 : avgGain / avgLoss;
-  const firstRSI = 100 - (100 / (1 + firstRS));
+  let firstRSI: number;
+  if (avgLoss === 0) {
+    // No losses means RS approaches infinity, RSI = 100
+    firstRSI = 100;
+  } else if (avgGain === 0) {
+    // No gains means RS = 0, RSI = 0
+    firstRSI = 0;
+  } else {
+    const firstRS = avgGain / avgLoss;
+    firstRSI = 100 - (100 / (1 + firstRS));
+  }
   
   const firstCandle = data[period];
   if (firstCandle) {
@@ -91,8 +100,17 @@ export function calculateRSI(
     avgGain = ((avgGain * (period - 1)) + currentGain) / period;
     avgLoss = ((avgLoss * (period - 1)) + currentLoss) / period;
 
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
+    let rsi: number;
+    if (avgLoss === 0) {
+      // No losses means RS approaches infinity, RSI = 100
+      rsi = 100;
+    } else if (avgGain === 0) {
+      // No gains means RS = 0, RSI = 0
+      rsi = 0;
+    } else {
+      const rs = avgGain / avgLoss;
+      rsi = 100 - (100 / (1 + rs));
+    }
 
     const candle = data[i];
     if (candle) {

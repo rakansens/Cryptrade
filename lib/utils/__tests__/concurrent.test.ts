@@ -180,41 +180,42 @@ describe('Concurrent Utilities', () => {
   describe('createDebouncedAsync', () => {
     it('should debounce async function calls', async () => {
       const asyncFn = jest.fn(async (value: string) => {
-        await new Promise(resolve => setTimeout(resolve, 50));
         return `processed: ${value}`;
       });
       
       const { execute } = createDebouncedAsync(asyncFn, 100);
       
-      // Make multiple calls
-      const promise1 = execute('first');
-      const promise2 = execute('second');
-      const promise3 = execute('third');
+      // Make multiple calls and capture promises immediately
+      const promises = [
+        execute('first'),
+        execute('second'),
+        execute('third')
+      ];
       
-      // Advance time past debounce delay
-      await jest.advanceTimersByTimeAsync(100);
+      // Wait for promises to settle without advancing time yet
+      await Promise.resolve();
       
-      // Advance time for async function to complete
-      await jest.advanceTimersByTimeAsync(50);
+      // Now advance time past debounce delay
+      jest.advanceTimersByTime(150);
       
       // Collect results
-      const results = await Promise.allSettled([promise1, promise2, promise3]);
+      const results = await Promise.allSettled(promises);
       
       // Only the last call should have been executed
       expect(asyncFn).toHaveBeenCalledTimes(1);
       expect(asyncFn).toHaveBeenCalledWith('third');
       
-      // Check results
+      // First two should be cancelled, last should succeed
       expect(results[0].status).toBe('rejected');
-      expect(results[1].status).toBe('rejected');
-      expect(results[2].status).toBe('fulfilled');
-      
       if (results[0].status === 'rejected') {
         expect(results[0].reason.message).toBe('Operation cancelled');
       }
+      expect(results[1].status).toBe('rejected');
       if (results[1].status === 'rejected') {
         expect(results[1].reason.message).toBe('Operation cancelled');
       }
+      expect(results[2].status).toBe('fulfilled');
+      
       if (results[2].status === 'fulfilled') {
         expect(results[2].value).toBe('processed: third');
       }
@@ -346,11 +347,24 @@ describe('Concurrent Utilities', () => {
       const promise1 = batcher.add(1);
       const promise2 = batcher.add(2);
       
-      // Let the batcher process (either immediate or on next tick)
-      await Promise.resolve();
+      // Advance timers to trigger processing
+      jest.advanceTimersByTime(0);
       
-      await expect(promise1).rejects.toThrow('Batch failed');
-      await expect(promise2).rejects.toThrow('Batch failed');
+      // Let the promises settle
+      const results = await Promise.allSettled([promise1, promise2]);
+      
+      // Both should be rejected with the same error
+      expect(results[0].status).toBe('rejected');
+      if (results[0].status === 'rejected') {
+        expect(results[0].reason.message).toBe('Batch failed');
+      }
+      
+      expect(results[1].status).toBe('rejected');
+      if (results[1].status === 'rejected') {
+        expect(results[1].reason.message).toBe('Batch failed');
+      }
+      
+      expect(batchFn).toHaveBeenCalledTimes(1);
     });
   });
 });

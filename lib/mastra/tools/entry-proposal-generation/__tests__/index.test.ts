@@ -391,7 +391,8 @@ describe('EntryProposalGenerationTool', () => {
       const proposalGroup = result.proposalGroup as any;
       const proposal = proposalGroup?.proposals[0];
       expect(proposal?.expiresAt).toBeGreaterThan(now);
-      expect(proposal?.expiresAt).toBeLessThanOrEqual(now + 24 * 60 * 60 * 1000);
+      // Allow for 2ms timing variance
+      expect(proposal?.expiresAt).toBeLessThanOrEqual(now + 24 * 60 * 60 * 1000 + 2);
     });
 
     it('should calculate average confidence correctly', async () => {

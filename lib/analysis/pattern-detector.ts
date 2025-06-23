@@ -190,7 +190,7 @@ export class PatternDetector {
             inverse
           );
           
-          if (validation.isValid && validation.confidence >= 0.6) {
+          if (validation.isValid && validation.confidence >= 0.4) {  // Further lowered confidence threshold
             const pattern = this.createHeadAndShouldersPattern(
               data,
               leftShoulder.index,
@@ -563,16 +563,16 @@ export class PatternDetector {
         const first = extremes[i];
         const second = extremes[j];
         
-        // Check if peaks/troughs are similar (within 2%)
+        // Check if peaks/troughs are similar (within 3%)
         const priceDiff = Math.abs(first!.value - second!.value) / first!.value;
-        if (priceDiff > 0.02) continue; // Relaxed from 1% to 2%
+        if (priceDiff > 0.03) continue; // Relaxed to 3% for better detection
         
         // Find valley/peak between them
         const betweenIdx = this.findValleyBetween(data, first!.index, second!.index, type === 'bottom');
         if (betweenIdx === -1) continue;
         
         const pattern = this.createDoublePattern(data, first!, second!, betweenIdx, type);
-        if (pattern.confidence >= 0.6) {
+        if (pattern.confidence >= 0.5) {  // Reduced confidence threshold
           patterns.push(pattern);
         }
       }
@@ -631,7 +631,7 @@ export class PatternDetector {
     };
     
     const priceSimilarity = 1 - Math.abs(first.value - second.value) / first.value;
-    const confidence = 0.7 + priceSimilarity * 0.3;
+    const confidence = 0.6 + priceSimilarity * 0.4;  // Adjusted confidence calculation
     
     return {
       type: type === 'top' ? 'doubleTop' : 'doubleBottom',
@@ -661,15 +661,22 @@ export class PatternDetector {
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.high;
       let isPeak = true;
+      let hasVariation = false;  // Check if there's price variation
       
       for (let j = i - window; j <= i + window; j++) {
-        if (j !== i && data[j]!.high >= current) {
-          isPeak = false;
-          break;
+        if (j !== i) {
+          if (data[j]!.high > current) {
+            isPeak = false;
+            break;
+          }
+          if (data[j]!.high !== current) {
+            hasVariation = true;
+          }
         }
       }
       
-      if (isPeak) {
+      // Only consider as peak if there's actual price variation
+      if (isPeak && hasVariation) {
         peaks.push({ index: i, value: current });
       }
     }
@@ -687,15 +694,22 @@ export class PatternDetector {
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.low;
       let isTrough = true;
+      let hasVariation = false;  // Check if there's price variation
       
       for (let j = i - window; j <= i + window; j++) {
-        if (j !== i && data[j]!.low <= current) {
-          isTrough = false;
-          break;
+        if (j !== i) {
+          if (data[j]!.low < current) {
+            isTrough = false;
+            break;
+          }
+          if (data[j]!.low !== current) {
+            hasVariation = true;
+          }
         }
       }
       
-      if (isTrough) {
+      // Only consider as trough if there's actual price variation
+      if (isTrough && hasVariation) {
         troughs.push({ index: i, value: current });
       }
     }

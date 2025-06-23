@@ -10,7 +10,11 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/utils/retry-wrapper');
+jest.mock('@/lib/utils/retry-wrapper', () => ({
+  RetryWrapper: jest.fn().mockImplementation(() => ({
+    execute: jest.fn((operation) => operation()),
+  })),
+}));
 jest.mock('@/lib/monitoring/metrics', () => ({
   incrementMetric: jest.fn(),
   observeMetric: jest.fn(),
@@ -24,19 +28,18 @@ jest.mock('@/lib/monitoring/trace', () => ({
 }));
 
 describe('DrawingOperationQueue', () => {
-  let queue: DrawingOperationQueue;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queue = new DrawingOperationQueue();
-  });
-
-  afterEach(() => {
-    queue.clear();
+    // Reset the RetryWrapper mock to default behavior
+    const { RetryWrapper } = require('@/lib/utils/retry-wrapper');
+    (RetryWrapper as any).mockImplementation(() => ({
+      execute: jest.fn((operation) => operation()),
+    }));
   });
 
   describe('enqueue', () => {
     it('should execute operations sequentially', async () => {
+      const queue = new DrawingOperationQueue();
       const results: number[] = [];
       const operations = [
         () => new Promise<number>(resolve => setTimeout(() => {
@@ -61,6 +64,7 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should handle concurrent enqueue requests', async () => {
+      const queue = new DrawingOperationQueue();
       const operations = Array.from({ length: 10 }, (_, i) => 
         () => Promise.resolve(i)
       );
@@ -72,6 +76,7 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should handle operation errors', async () => {
+      const queue = new DrawingOperationQueue();
       const successOp = () => Promise.resolve('success');
       const errorOp = () => Promise.reject(new Error('Operation failed'));
 
@@ -88,6 +93,7 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should generate unique operation IDs', async () => {
+      const queue = new DrawingOperationQueue();
       const operations = Array.from({ length: 5 }, () => 
         () => Promise.resolve()
       );
@@ -110,6 +116,7 @@ describe('DrawingOperationQueue', () => {
 
   describe('getStatus', () => {
     it('should return accurate queue status', async () => {
+      const queue = new DrawingOperationQueue();
       const slowOp = () => new Promise(resolve => setTimeout(resolve, 100));
       const fastOp = () => Promise.resolve();
 
@@ -149,6 +156,7 @@ describe('DrawingOperationQueue', () => {
 
   describe('clear', () => {
     it('should clear all pending operations', async () => {
+      const queue = new DrawingOperationQueue();
       const slowOp = () => new Promise(resolve => setTimeout(resolve, 100));
       const pendingOps = Array.from({ length: 5 }, () => queue.enqueue(slowOp));
 
@@ -168,24 +176,32 @@ describe('DrawingOperationQueue', () => {
       });
     });
 
-    it('should update status after clearing', () => {
+    it('should update status after clearing', async () => {
+      // Use a separate queue instance for this test
+      const clearQueue = new DrawingOperationQueue();
+      
       // Add operations without starting them
       const ops = Array.from({ length: 3 }, () => 
         () => new Promise(resolve => setTimeout(resolve, 1000))
       );
       
-      ops.forEach(op => queue.enqueue(op));
+      const promises = ops.map(op => clearQueue.enqueue(op).catch(() => {}));
       
       // Clear immediately
-      queue.clear();
+      clearQueue.clear();
       
-      const status = queue.getStatus();
+      const status = clearQueue.getStatus();
       expect(status.queueLength).toBe(0);
+      
+      // Wait for all promises to settle
+      await Promise.allSettled(promises);
     });
   });
 
   describe('flush', () => {
     it('should wait for all operations to complete', async () => {
+      // Create a new queue instance for this test
+      const flushQueue = new DrawingOperationQueue();
       const results: number[] = [];
       const operations = [
         () => new Promise<void>(resolve => setTimeout(() => {
@@ -202,16 +218,20 @@ describe('DrawingOperationQueue', () => {
         }, 10)),
       ];
 
-      operations.forEach(op => queue.enqueue(op));
+      // Enqueue all operations
+      operations.forEach(op => flushQueue.enqueue(op));
       
-      await queue.flush();
+      // Wait for flush to complete
+      await flushQueue.flush();
       
       expect(results).toHaveLength(3);
-      expect(queue.getStatus().queueLength).toBe(0);
-      expect(queue.getStatus().activeOperations).toBe(0);
+      expect(results).toEqual([1, 2, 3]); // Should be in order
+      expect(flushQueue.getStatus().queueLength).toBe(0);
+      expect(flushQueue.getStatus().activeOperations).toBe(0);
     });
 
     it('should resolve immediately if queue is empty', async () => {
+      const queue = new DrawingOperationQueue();
       const start = Date.now();
       await queue.flush();
       const duration = Date.now() - start;
@@ -220,6 +240,7 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should handle flush during error', async () => {
+      const queue = new DrawingOperationQueue();
       const errorOp = () => Promise.reject(new Error('Test error'));
       const successOp = () => Promise.resolve();
       
@@ -235,30 +256,48 @@ describe('DrawingOperationQueue', () => {
   describe('retry functionality', () => {
     it('should retry failed operations', async () => {
       const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
+      const { incrementMetric } = await import('@/lib/monitoring/metrics');
       
-      // Create a mock retry wrapper
-      const mockExecute = jest.fn()
-        .mockRejectedValueOnce(new Error('First attempt failed'))
-        .mockRejectedValueOnce(new Error('Second attempt failed'))
-        .mockResolvedValueOnce('Success');
+      // Clear previous mocks
+      (incrementMetric as jest.Mock).mockClear();
       
-      (RetryWrapper as any).mockImplementation(() => ({
-        execute: mockExecute,
-      }));
+      // Mock the RetryWrapper to test retry behavior
+      // The RetryWrapper should internally handle the retries
+      (RetryWrapper as any).mockImplementation((config) => {
+        return {
+          execute: jest.fn(async (operation, context) => {
+            // Call the retry callback for the first 2 attempts
+            if (config.onRetry) {
+              config.onRetry(new Error('First attempt'), 1);
+              config.onRetry(new Error('Second attempt'), 2);
+            }
+            // Then return the operation result
+            return await operation();
+          }),
+        };
+      });
       
-      queue = new DrawingOperationQueue({ enableRetry: true });
+      const retryQueue = new DrawingOperationQueue({ enableRetry: true });
       
       const operation = jest.fn().mockResolvedValue('result');
-      const result = await queue.enqueue(operation);
+      const result = await retryQueue.enqueue(operation);
       
-      expect(result).toBe('Success');
-      expect(mockExecute).toHaveBeenCalled();
+      expect(result).toBe('result');
+      expect(incrementMetric).toHaveBeenCalledWith('drawing_retry_total');
+      expect(incrementMetric).toHaveBeenCalledTimes(3); // 2 retries + 1 success
+      expect(operation).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('concurrency control', () => {
     it('should respect maxConcurrency setting', async () => {
-      queue = new DrawingOperationQueue({ maxConcurrency: 3 });
+      // Reset RetryWrapper mock to default behavior
+      const { RetryWrapper } = require('@/lib/utils/retry-wrapper');
+      (RetryWrapper as any).mockImplementation(() => ({
+        execute: jest.fn((operation) => operation()),
+      }));
+      
+      const concurrentQueue = new DrawingOperationQueue({ maxConcurrency: 3 });
       
       let concurrentCount = 0;
       let maxConcurrent = 0;
@@ -273,7 +312,7 @@ describe('DrawingOperationQueue', () => {
         }, 50);
       });
       
-      const promises = Array.from({ length: 10 }, () => queue.enqueue(operation));
+      const promises = Array.from({ length: 10 }, () => concurrentQueue.enqueue(operation));
       await Promise.all(promises);
       
       expect(maxConcurrent).toBeLessThanOrEqual(3);
@@ -283,6 +322,7 @@ describe('DrawingOperationQueue', () => {
 
   describe('metrics and tracing', () => {
     it('should track metrics for successful operations', async () => {
+      const queue = new DrawingOperationQueue();
       const { incrementMetric, observeMetric } = await import('@/lib/monitoring/metrics');
       
       await queue.enqueue(() => Promise.resolve('success'));
@@ -297,7 +337,22 @@ describe('DrawingOperationQueue', () => {
     it('should track metrics for failed operations', async () => {
       const { incrementMetric, observeMetric } = await import('@/lib/monitoring/metrics');
       
-      await queue.enqueue(() => Promise.reject(new Error('failed'))).catch(() => {});
+      // Clear previous calls
+      (incrementMetric as jest.Mock).mockClear();
+      (observeMetric as jest.Mock).mockClear();
+      
+      // Update the RetryWrapper mock to propagate errors
+      const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
+      (RetryWrapper as any).mockImplementation(() => ({
+        execute: jest.fn(async (operation) => {
+          return await operation();
+        }),
+      }));
+      
+      // Create a new queue instance
+      const failQueue = new DrawingOperationQueue();
+      
+      await failQueue.enqueue(() => Promise.reject(new Error('failed'))).catch(() => {});
       
       expect(incrementMetric).toHaveBeenCalledWith('drawing_failed_total');
       expect(observeMetric).toHaveBeenCalledWith(
@@ -307,6 +362,7 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should create traces for operations', async () => {
+      const queue = new DrawingOperationQueue();
       const { traceManager } = await import('@/lib/monitoring/trace');
       
       await queue.enqueue(() => Promise.resolve());
@@ -321,6 +377,7 @@ describe('DrawingOperationQueue', () => {
 
   describe('edge cases', () => {
     it('should handle very long operations', async () => {
+      const queue = new DrawingOperationQueue();
       const longOp = () => new Promise(resolve => setTimeout(resolve, 200));
       const shortOp = () => Promise.resolve('short');
       
@@ -338,14 +395,30 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should handle operations that throw synchronously', async () => {
+      // Update the RetryWrapper mock to handle synchronous errors
+      const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
+      (RetryWrapper as any).mockImplementation(() => ({
+        execute: jest.fn(async (operation) => {
+          try {
+            return await operation();
+          } catch (error) {
+            throw error;
+          }
+        }),
+      }));
+      
+      // Create a new queue instance with the updated mock
+      const testQueue = new DrawingOperationQueue();
+      
       const throwingOp = () => {
         throw new Error('Synchronous error');
       };
       
-      await expect(queue.enqueue(throwingOp)).rejects.toThrow('Synchronous error');
+      await expect(testQueue.enqueue(throwingOp)).rejects.toThrow('Synchronous error');
     });
 
     it('should handle null or undefined results', async () => {
+      const queue = new DrawingOperationQueue();
       const nullOp = () => Promise.resolve(null);
       const undefinedOp = () => Promise.resolve(undefined);
       
