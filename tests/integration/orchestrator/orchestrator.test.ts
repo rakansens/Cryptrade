@@ -356,8 +356,8 @@ describe('Intent Analysis Accuracy', () => {
     { query: 'ビットコインの値段を教えて', expectedIntent: 'price_inquiry', notIntent: 'ui_control' },
     
     // Analysis requests
-    { query: 'BTCの分析をして', expectedIntent: 'analysis', notIntent: 'price_inquiry' },
-    { query: 'テクニカル分析をお願い', expectedIntent: 'analysis', notIntent: 'ui_control' },
+    { query: 'BTCの分析をして', expectedIntent: 'trading_analysis', notIntent: 'price_inquiry' },
+    { query: 'テクニカル分析をお願い', expectedIntent: 'trading_analysis', notIntent: 'ui_control' },
   ];
 
   intentSummary.total = testCases.length;

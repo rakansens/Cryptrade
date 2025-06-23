@@ -132,14 +132,14 @@ describe('Entry Proposal Streaming Response', () => {
       expect(streamingResponse.onComplete).toHaveBeenCalled();
     });
 
-    it.skip('should handle tool calls during streaming', async () => {
+    it('should handle tool calls during streaming', async () => {
       const toolCalls: any[] = [];
       const mockToolHandler = jest.fn((toolCall) => {
         toolCalls.push(toolCall);
       });
 
       // Simulate streaming with tool calls
-      const simulateStreamingWithTools = async () => {
+      const simulateStreamingWithTools = () => {
         const events = [
           { type: 'text', content: 'エントリー提案を生成します...\n' },
           { type: 'toolCall', toolName: 'entryProposalGeneration', args: { symbol: 'BTCUSDT' } },
@@ -152,11 +152,12 @@ describe('Entry Proposal Streaming Response', () => {
           if (event.type === 'toolCall') {
             mockToolHandler(event);
           }
-          await new Promise(resolve => setTimeout(resolve, 20));
+          // Use fake timers to advance time instead of real setTimeout
+          jest.advanceTimersByTime(20);
         }
       };
 
-      await simulateStreamingWithTools();
+      simulateStreamingWithTools();
 
       expect(toolCalls).toHaveLength(1);
       expect(toolCalls[0].toolName).toBe('entryProposalGeneration');
@@ -169,7 +170,7 @@ describe('Entry Proposal Streaming Response', () => {
   });
 
   describe('Progressive UI Updates', () => {
-    it.skip('should emit progress events during streaming', async () => {
+    it('should emit progress events during streaming', () => {
       const progressEvents: any[] = [];
       const mockProgressHandler = jest.fn((event) => {
         progressEvents.push(event);
@@ -185,7 +186,7 @@ describe('Entry Proposal Streaming Response', () => {
 
       for (const stage of stages) {
         mockProgressHandler(stage);
-        await new Promise(resolve => setTimeout(resolve, 30));
+        jest.advanceTimersByTime(30);
       }
 
       expect(progressEvents).toHaveLength(4);
@@ -194,7 +195,7 @@ describe('Entry Proposal Streaming Response', () => {
       expect(progressEvents[3].stage).toBe('complete');
     });
 
-    it.skip('should update UI with partial results during streaming', async () => {
+    it('should update UI with partial results during streaming', () => {
       const mockUIUpdater = jest.fn();
       
       // Simulate partial proposal updates
@@ -232,7 +233,7 @@ describe('Entry Proposal Streaming Response', () => {
 
       for (const update of partialUpdates) {
         mockUIUpdater(update);
-        await new Promise(resolve => setTimeout(resolve, 25));
+        jest.advanceTimersByTime(25);
       }
 
       expect(mockUIUpdater).toHaveBeenCalledTimes(4);
@@ -248,17 +249,16 @@ describe('Entry Proposal Streaming Response', () => {
   });
 
   describe('Error Handling in Streaming', () => {
-    it.skip('should handle streaming errors gracefully', async () => {
+    it('should handle streaming errors gracefully', () => {
       const mockErrorHandler = jest.fn();
       const mockRecoveryHandler = jest.fn();
 
       // Simulate streaming error
-      const simulateStreamingError = async () => {
+      const simulateStreamingError = () => {
         try {
-          // Start streaming
-          await new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Stream interrupted')), 100);
-          });
+          // Simulate error after 100ms
+          jest.advanceTimersByTime(100);
+          throw new Error('Stream interrupted');
         } catch (error) {
           mockErrorHandler(error);
           // Attempt recovery
@@ -266,7 +266,7 @@ describe('Entry Proposal Streaming Response', () => {
         }
       };
 
-      await simulateStreamingError();
+      simulateStreamingError();
 
       expect(mockErrorHandler).toHaveBeenCalledWith(
         expect.objectContaining({

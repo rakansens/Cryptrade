@@ -83,13 +83,12 @@ describe('agentSelectionTool', () => {
     });
 
     it('should execute UI control agent with operations', async () => {
-      // Store original window object
-      const originalWindow = global.window;
+      // Mock window.dispatchEvent to track UI events
+      const mockDispatchEvent = jest.fn();
+      const originalDispatchEvent = window.dispatchEvent;
+      window.dispatchEvent = mockDispatchEvent;
       
       try {
-        // Make window undefined to force server-side behavior in test
-        delete (global as any).window;
-        
         const mockOperations = [
           {
             clientEvent: {
@@ -135,19 +134,23 @@ describe('agentSelectionTool', () => {
         expect(result.selectedAgent).toBe('uiControlAgent');
         expect(result.executionResult?.response).toBe('Chart updated to BTCUSDT 1h and RSI enabled');
         
-        // Verify UI events were emitted
-        expect(mockEmitUIEvent).toHaveBeenCalledTimes(2);
-        expect(mockEmitUIEvent).toHaveBeenCalledWith({
-          event: 'chart:update',
-          data: { symbol: 'BTCUSDT', interval: '1h' },
-        });
-        expect(mockEmitUIEvent).toHaveBeenCalledWith({
-          event: 'indicator:toggle',
-          data: { indicator: 'rsi', enabled: true },
-        });
+        // Verify UI events were dispatched via window.dispatchEvent
+        expect(mockDispatchEvent).toHaveBeenCalledTimes(2);
+        expect(mockDispatchEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'chart:update',
+            detail: { symbol: 'BTCUSDT', interval: '1h' },
+          })
+        );
+        expect(mockDispatchEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'indicator:toggle',
+            detail: { indicator: 'rsi', enabled: true },
+          })
+        );
       } finally {
-        // Restore window object
-        global.window = originalWindow;
+        // Restore original dispatchEvent
+        window.dispatchEvent = originalDispatchEvent;
       }
     });
 
@@ -349,12 +352,12 @@ describe('agentSelectionTool', () => {
 
   describe('UI operations broadcasting', () => {
     it('should broadcast operations from nested structures', async () => {
-      const originalWindow = global.window;
+      // Mock window.dispatchEvent
+      const mockDispatchEvent = jest.fn();
+      const originalDispatchEvent = window.dispatchEvent;
+      window.dispatchEvent = mockDispatchEvent;
       
       try {
-        // Make window undefined to force server-side behavior
-        delete (global as any).window;
-        
         const operations = [
           {
             clientEvent: {
@@ -395,15 +398,17 @@ describe('agentSelectionTool', () => {
           // Check if it's successful
           expect(result.success).toBe(true);
           
-          // Check if emitUIEvent was called
-          expect(mockEmitUIEvent).toHaveBeenCalledWith({
-            event: 'chart:timeframe',
-            data: { interval: '4h' },
-          });
+          // Check if window.dispatchEvent was called
+          expect(mockDispatchEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'chart:timeframe',
+              detail: { interval: '4h' },
+            })
+          );
         }
       } finally {
-        // Restore window object
-        global.window = originalWindow;
+        // Restore original dispatchEvent
+        window.dispatchEvent = originalDispatchEvent;
       }
     });
 
@@ -469,12 +474,12 @@ describe('agentSelectionTool', () => {
     });
 
     it('should handle operations without clientEvent', async () => {
-      const originalWindow = global.window;
+      // Mock window.dispatchEvent
+      const mockDispatchEvent = jest.fn();
+      const originalDispatchEvent = window.dispatchEvent;
+      window.dispatchEvent = mockDispatchEvent;
       
       try {
-        // Make window undefined to force server-side behavior
-        delete (global as any).window;
-        
         const mockResponse = {
           id: 'test-response-3',
           type: 'response' as const,
@@ -503,14 +508,16 @@ describe('agentSelectionTool', () => {
         });
 
         // Should only emit the valid event
-        expect(mockEmitUIEvent).toHaveBeenCalledTimes(1);
-        expect(mockEmitUIEvent).toHaveBeenCalledWith({
-          event: 'valid:event',
-          data: { test: true },
-        });
+        expect(mockDispatchEvent).toHaveBeenCalledTimes(1);
+        expect(mockDispatchEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'valid:event',
+            detail: { test: true },
+          })
+        );
       } finally {
-        // Restore window object
-        global.window = originalWindow;
+        // Restore original dispatchEvent
+        window.dispatchEvent = originalDispatchEvent;
       }
     });
   });
