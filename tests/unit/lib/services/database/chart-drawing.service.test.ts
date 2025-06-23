@@ -143,137 +143,246 @@ describe('ChartDrawingDatabaseService', () => {
     });
 
     describe('saveDrawings', () => {
-      it.skip('should save drawings successfully', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        await ChartDrawingDatabaseService.saveDrawings(mockDrawings, 'session-1');
+      it('should save drawings successfully', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockPrisma.chartDrawing.deleteMany.mockResolvedValue({ count: 0 });
+          mockPrisma.chartDrawing.createMany.mockResolvedValue({ count: 2 });
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await ChartDrawingDatabaseService.saveDrawings(mockDrawings, 'session-1');
 
-        expect(mockPrisma.chartDrawing.deleteMany).toHaveBeenCalledWith({
-          where: { sessionId: 'session-1' },
-        });
+          expect(mockPrisma.chartDrawing.deleteMany).toHaveBeenCalledWith({
+            where: { sessionId: 'session-1' },
+          });
 
-        expect(mockPrisma.chartDrawing.createMany).toHaveBeenCalledWith({
-          data: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'drawing-1',
-              sessionId: 'session-1',
-              type: 'trendline',
-            }),
-            expect.objectContaining({
-              id: 'drawing-2',
-              sessionId: 'session-1',
-              type: 'horizontal',
-            }),
-          ]),
+          expect(mockPrisma.chartDrawing.createMany).toHaveBeenCalledWith({
+            data: expect.arrayContaining([
+              expect.objectContaining({
+                id: 'drawing-1',
+                sessionId: 'session-1',
+                type: 'trendline',
+              }),
+              expect.objectContaining({
+                id: 'drawing-2',
+                sessionId: 'session-1',
+                type: 'horizontal',
+              }),
+            ]),
+          });
         });
       });
 
-      it.skip('should handle empty drawings array', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        await ChartDrawingDatabaseService.saveDrawings([], 'session-1');
+      it('should handle empty drawings array', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockPrisma.chartDrawing.deleteMany.mockResolvedValue({ count: 0 });
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await ChartDrawingDatabaseService.saveDrawings([], 'session-1');
 
-        expect(mockPrisma.chartDrawing.deleteMany).toHaveBeenCalledWith({
-          where: { sessionId: 'session-1' },
+          expect(mockPrisma.chartDrawing.deleteMany).toHaveBeenCalledWith({
+            where: { sessionId: 'session-1' },
+          });
+
+          expect(mockPrisma.chartDrawing.createMany).not.toHaveBeenCalled();
         });
-
-        expect(mockPrisma.chartDrawing.createMany).not.toHaveBeenCalled();
       });
 
-      it.skip('should handle drawings without sessionId', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        await ChartDrawingDatabaseService.saveDrawings(mockDrawings);
+      it('should handle drawings without sessionId', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockPrisma.chartDrawing.createMany.mockResolvedValue({ count: 2 });
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await ChartDrawingDatabaseService.saveDrawings(mockDrawings);
 
-        expect(mockPrisma.chartDrawing.deleteMany).not.toHaveBeenCalled();
-        expect(mockPrisma.chartDrawing.createMany).toHaveBeenCalled();
+          expect(mockPrisma.chartDrawing.deleteMany).not.toHaveBeenCalled();
+          expect(mockPrisma.chartDrawing.createMany).toHaveBeenCalled();
+        });
       });
 
-      it.skip('should handle database errors', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const dbError = new Error('Database error');
-        mockPrisma.chartDrawing.deleteMany.mockRejectedValueOnce(dbError);
-
-        await expect(ChartDrawingDatabaseService.saveDrawings(mockDrawings, 'session-1')).rejects.toThrow(
-          'Database error'
-        );
+      it('should handle database errors', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const dbError = new Error('Database error');
+          mockPrisma.chartDrawing.deleteMany.mockRejectedValueOnce(dbError);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await expect(ChartDrawingDatabaseService.saveDrawings(mockDrawings, 'session-1')).rejects.toThrow(
+            'Database error'
+          );
+        });
       });
     });
 
     describe('loadDrawings', () => {
-      it.skip('should load drawings successfully', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const dbDrawings = [
-          {
+      it('should load drawings successfully', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const dbDrawings = [
+            {
+              id: 'drawing-1',
+              sessionId: 'session-1',
+              type: 'trendline',
+              points: mockDrawings[0].points,
+              style: mockDrawings[0].style,
+              visible: true,
+              interactive: true,
+              price: null,
+              time: null,
+              levels: null,
+              metadata: null,
+            },
+          ];
+
+          mockPrisma.chartDrawing.findMany.mockResolvedValue(dbDrawings);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
+
+          expect(result).toHaveLength(1);
+          expect(result[0]).toMatchObject({
             id: 'drawing-1',
-            sessionId: 'session-1',
             type: 'trendline',
-            points: mockDrawings[0].points,
-            style: mockDrawings[0].style,
-            visible: true,
-            interactive: true,
-            price: null,
-            time: null,
-            levels: null,
-            metadata: null,
-          },
-        ];
-
-        mockPrisma.chartDrawing.findMany.mockResolvedValue(dbDrawings);
-
-        const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
-
-        expect(result).toHaveLength(1);
-        expect(result[0]).toMatchObject({
-          id: 'drawing-1',
-          type: 'trendline',
+          });
         });
       });
 
-      it.skip('should handle database unavailability', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        // Use the mock directly
-        mockWithDatabase.mockImplementation((fn, fallbackFn) => fallbackFn());
-        mockIsDevelopment.mockReturnValue(true);
+      it('should handle database unavailability', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockWithDatabase.mockImplementation((fn, fallbackFn) => fallbackFn());
+          mockIsDevelopment.mockReturnValue(true);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
 
-        const result = await ChartDrawingDatabaseService.loadDrawings('session-1');
-
-        expect(result).toEqual([]);
-        expect(mockLogger.warn).toHaveBeenCalledWith(
-          '[ChartDrawingDB] Database unavailable, returning empty array',
-          { sessionId: 'session-1' }
-        );
+          expect(result).toEqual([]);
+          expect(mockLogger.warn).toHaveBeenCalledWith(
+            '[ChartDrawingDB] Database unavailable, returning empty array',
+            { sessionId: 'session-1' }
+          );
+        });
       });
 
-      it.skip('should throw error in production when database unavailable', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        // Use the mock directly
-        mockWithDatabase.mockImplementation((fn, fallbackFn) => fallbackFn());
-        mockIsDevelopment.mockReturnValue(false);
-
-        await expect(ChartDrawingDatabaseService.loadDrawings('session-1')).rejects.toThrow(
-          'Database unavailable for loading drawings'
-        );
+      it('should throw error in production when database unavailable', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockWithDatabase.mockImplementation((fn, fallbackFn) => fallbackFn());
+          mockIsDevelopment.mockReturnValue(false);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await expect(ChartDrawingDatabaseService.loadDrawings('session-1')).rejects.toThrow(
+            'Database unavailable for loading drawings'
+          );
+        });
       });
     });
 
     describe('saveDrawing', () => {
-      it.skip('should save a single drawing', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const drawing = mockDrawings[0];
-        const dbDrawing = {
-          id: drawing.id,
-          sessionId: 'session-1',
-          type: drawing.type,
-          points: drawing.points,
-          style: drawing.style,
-          visible: true,
-          interactive: true,
-        };
+      it('should save a single drawing', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const drawing = mockDrawings[0];
+          const dbDrawing = {
+            id: drawing.id,
+            sessionId: 'session-1',
+            type: drawing.type,
+            points: drawing.points,
+            style: drawing.style,
+            visible: true,
+            interactive: true,
+          };
 
-        mockPrisma.chartDrawing.upsert.mockResolvedValue(dbDrawing);
+          mockPrisma.chartDrawing.upsert.mockResolvedValue(dbDrawing);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          const result = await ChartDrawingDatabaseService.saveDrawing(drawing, 'session-1');
 
-        const result = await ChartDrawingDatabaseService.saveDrawing(drawing, 'session-1');
-
-        expect(result).toEqual(dbDrawing);
-        expect(mockPrisma.chartDrawing.upsert).toHaveBeenCalled();
+          expect(result).toEqual(dbDrawing);
+          expect(mockPrisma.chartDrawing.upsert).toHaveBeenCalled();
+        });
       });
 
       it('should return null in browser environment', async () => {
@@ -298,105 +407,172 @@ describe('ChartDrawingDatabaseService', () => {
     });
 
     describe('deleteDrawing', () => {
-      it.skip('should delete drawing successfully', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        await ChartDrawingDatabaseService.deleteDrawing('drawing-1');
+      it('should delete drawing successfully', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          mockPrisma.chartDrawing.delete.mockResolvedValue({ id: 'drawing-1' });
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await ChartDrawingDatabaseService.deleteDrawing('drawing-1');
 
-        expect(mockPrisma.chartDrawing.delete).toHaveBeenCalledWith({
-          where: { id: 'drawing-1' },
+          expect(mockPrisma.chartDrawing.delete).toHaveBeenCalledWith({
+            where: { id: 'drawing-1' },
+          });
         });
       });
 
-      it.skip('should handle delete errors', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const error = new Error('Not found');
-        mockPrisma.chartDrawing.delete.mockRejectedValue(error);
-
-        await expect(ChartDrawingDatabaseService.deleteDrawing('non-existent')).rejects.toThrow('Not found');
+      it('should handle delete errors', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const error = new Error('Not found');
+          mockPrisma.chartDrawing.delete.mockRejectedValue(error);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await expect(ChartDrawingDatabaseService.deleteDrawing('non-existent')).rejects.toThrow('Not found');
+        });
       });
     });
 
     describe('savePattern', () => {
-      it.skip('should save pattern successfully', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const pattern = {
-          id: 'pattern-1',
-          type: 'triangle',
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          startTime: 1234567890,
-          endTime: 1234567900,
-          confidence: 0.8,
-          tradingImplication: 'bullish',
-          visualization: { lines: [], zones: [], markers: [] },
-        };
-
-        const dbPattern = {
-          id: 'db-pattern-1',
-          sessionId: 'session-1',
-          ...pattern,
-        };
-
-        mockPrisma.patternAnalysis.create.mockResolvedValue(dbPattern);
-
-        const result = await ChartDrawingDatabaseService.savePattern(pattern, 'session-1');
-
-        expect(result).toEqual(dbPattern);
-        expect(mockLogger.info).toHaveBeenCalledWith(
-          '[ChartDrawingDB] Pattern saved',
-          expect.objectContaining({ patternId: 'db-pattern-1' })
-        );
-      });
-
-      it.skip('should handle patterns without sessionId', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const pattern = {
-          id: 'pattern-1',
-          type: 'triangle',
-          symbol: 'BTCUSDT',
-          interval: '1h',
-          startTime: 1234567890,
-          endTime: 1234567900,
-          confidence: 0.8,
-          tradingImplication: 'bullish',
-          visualization: { lines: [], zones: [], markers: [] },
-        };
-
-        mockPrisma.patternAnalysis.create.mockResolvedValue({ id: 'db-pattern-1' });
-
-        await ChartDrawingDatabaseService.savePattern(pattern);
-
-        expect(mockPrisma.patternAnalysis.create).toHaveBeenCalled();
-      });
-    });
-
-    describe('loadPatterns', () => {
-      it.skip('should load patterns successfully', async () => {
-        // TODO: Fix module-level browser detection preventing proper mocking
-        const dbPatterns = [
-          {
+      it('should save pattern successfully', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const pattern = {
             id: 'pattern-1',
             type: 'triangle',
             symbol: 'BTCUSDT',
             interval: '1h',
-            startTime: BigInt(1234567890),
-            endTime: BigInt(1234567900),
+            startTime: 1234567890,
+            endTime: 1234567900,
             confidence: 0.8,
             tradingImplication: 'bullish',
-            visualization: {},
-            metrics: {},
-            description: null,
-          },
-        ];
+            visualization: { lines: [], zones: [], markers: [] },
+          };
 
-        mockPrisma.patternAnalysis.findMany.mockResolvedValue(dbPatterns);
+          const dbPattern = {
+            id: 'db-pattern-1',
+            sessionId: 'session-1',
+            ...pattern,
+          };
 
-        const result = await ChartDrawingDatabaseService.loadPatterns('session-1');
+          mockPrisma.patternAnalysis.create.mockResolvedValue(dbPattern);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          const result = await ChartDrawingDatabaseService.savePattern(pattern, 'session-1');
 
-        expect(result).toHaveLength(1);
-        expect(result[0]).toMatchObject({
-          id: 'pattern-1',
-          type: 'triangle',
+          expect(result).toEqual(dbPattern);
+          expect(mockLogger.info).toHaveBeenCalledWith(
+            '[ChartDrawingDB] Pattern saved',
+            expect.objectContaining({ patternId: 'db-pattern-1' })
+          );
+        });
+      });
+
+      it('should handle patterns without sessionId', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const pattern = {
+            id: 'pattern-1',
+            type: 'triangle',
+            symbol: 'BTCUSDT',
+            interval: '1h',
+            startTime: 1234567890,
+            endTime: 1234567900,
+            confidence: 0.8,
+            tradingImplication: 'bullish',
+            visualization: { lines: [], zones: [], markers: [] },
+          };
+
+          mockPrisma.patternAnalysis.create.mockResolvedValue({ id: 'db-pattern-1' });
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          await ChartDrawingDatabaseService.savePattern(pattern);
+
+          expect(mockPrisma.patternAnalysis.create).toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('loadPatterns', () => {
+      it('should load patterns successfully', async () => {
+        jest.isolateModules(async () => {
+          // Ensure server environment
+          delete (global as any).window;
+          
+          // Set up mocks
+          const dbPatterns = [
+            {
+              id: 'pattern-1',
+              type: 'triangle',
+              symbol: 'BTCUSDT',
+              interval: '1h',
+              startTime: BigInt(1234567890),
+              endTime: BigInt(1234567900),
+              confidence: 0.8,
+              tradingImplication: 'bullish',
+              visualization: {},
+              metrics: {},
+              description: null,
+            },
+          ];
+
+          mockPrisma.patternAnalysis.findMany.mockResolvedValue(dbPatterns);
+          
+          jest.doMock('@/lib/db/prisma', () => ({ prisma: mockPrisma }));
+          jest.doMock('@/lib/utils/logger', () => ({ logger: mockLogger }));
+          jest.doMock('@/lib/utils/db-connection', () => ({ withDatabase: mockWithDatabase }));
+          jest.doMock('@/config/env', () => ({ isDevelopment: mockIsDevelopment }));
+          
+          // Import service in server environment
+          const { ChartDrawingDatabaseService } = require('@/lib/services/database/chart-drawing.service');
+          
+          const result = await ChartDrawingDatabaseService.loadPatterns('session-1');
+
+          expect(result).toHaveLength(1);
+          expect(result[0]).toMatchObject({
+            id: 'pattern-1',
+            type: 'triangle',
+          });
         });
       });
     });

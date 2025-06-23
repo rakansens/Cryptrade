@@ -182,7 +182,14 @@ export function classifyIntentByKeywords(query: string): {
     // パターンマッチング
     for (const pattern of definition.patterns) {
       if (pattern.test(query)) {
-        score += 15;
+        // Give less weight to conversational pattern matches when technical keywords are present
+        if (definition.category === IntentCategory.CONVERSATIONAL && 
+            (queryLower.includes('price') || queryLower.includes('chart') || 
+             queryLower.includes('分析') || queryLower.includes('価格'))) {
+          score += 5; // Reduced weight for conversational patterns when technical terms present
+        } else {
+          score += 15;
+        }
       }
     }
 

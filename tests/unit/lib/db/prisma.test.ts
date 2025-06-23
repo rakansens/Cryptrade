@@ -34,44 +34,419 @@ describe('Prisma Configuration', () => {
   })
 
   describe('createPrismaClient', () => {
-    it.skip('creates client with correct configuration in development', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
-      // The Prisma client is created at module load time, making it difficult
-      // to test different configurations in the same test suite
+    it('creates client with correct configuration in development', () => {
+      jest.isolateModules(() => {
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert
+        expect(mockPrismaClient).toHaveBeenCalledWith({
+          log: [
+            { emit: 'event', level: 'query' },
+            { emit: 'event', level: 'error' },
+            { emit: 'event', level: 'warn' }
+          ],
+          errorFormat: 'pretty'
+        })
+      })
     })
 
-    it.skip('creates client with minimal configuration in production', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('creates client with minimal configuration in production', () => {
+      jest.isolateModules(() => {
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'production'
+          },
+          isDevelopment: jest.fn(() => false)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert
+        expect(mockPrismaClient).toHaveBeenCalledWith({
+          log: [
+            { emit: 'event', level: 'query' },
+            { emit: 'event', level: 'error' },
+            { emit: 'event', level: 'warn' }
+          ],
+          errorFormat: 'minimal'
+        })
+      })
     })
 
-    it.skip('throws error when DATABASE_URL is missing', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('throws error when DATABASE_URL is missing', () => {
+      jest.isolateModules(() => {
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: undefined,
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: jest.fn(),
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module and expect error
+        expect(() => require('@/lib/db/prisma')).toThrow('DATABASE_URL is not configured')
+      })
     })
 
-    it.skip('sets up event listeners in development', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('sets up event listeners in development', () => {
+      jest.isolateModules(() => {
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        const mockIsDevelopment = jest.fn(() => true)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: mockIsDevelopment
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert event listeners are set up
+        expect(mockPrismaInstance.$on).toHaveBeenCalledWith('query', expect.any(Function))
+        expect(mockPrismaInstance.$on).toHaveBeenCalledWith('error', expect.any(Function))
+        expect(mockPrismaInstance.$on).toHaveBeenCalledWith('warn', expect.any(Function))
+        expect(mockPrismaInstance.$on).toHaveBeenCalledTimes(3)
+      })
     })
 
-    it.skip('logs queries in development', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('logs queries in development', () => {
+      jest.isolateModules(() => {
+        const mockLogger = {
+          debug: jest.fn(),
+          error: jest.fn(),
+          warn: jest.fn()
+        }
+        const mockPrismaInstance = {
+          $on: jest.fn((event, callback) => {
+            if (event === 'query') {
+              // Simulate a query event
+              callback({
+                query: 'SELECT * FROM users',
+                params: '[]',
+                duration: 5,
+                timestamp: new Date(),
+                target: 'db'
+              })
+            }
+          }),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: mockLogger
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert query was logged
+        expect(mockLogger.debug).toHaveBeenCalledWith('[Prisma Query]', {
+          query: 'SELECT * FROM users',
+          params: '[]',
+          duration: 5
+        })
+      })
     })
 
-    it.skip('logs errors always', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('logs errors always', () => {
+      jest.isolateModules(() => {
+        const mockLogger = {
+          debug: jest.fn(),
+          error: jest.fn(),
+          warn: jest.fn()
+        }
+        const mockPrismaInstance = {
+          $on: jest.fn((event, callback) => {
+            if (event === 'error') {
+              // Simulate an error event
+              callback({
+                message: 'Database connection failed',
+                timestamp: new Date(),
+                target: 'db'
+              })
+            }
+          }),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'production'
+          },
+          isDevelopment: jest.fn(() => false)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: mockLogger
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith('[Prisma Error]', {
+          error: {
+            message: 'Database connection failed',
+            timestamp: expect.any(Date),
+            target: 'db'
+          }
+        })
+      })
     })
 
-    it.skip('logs warnings', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('logs warnings', () => {
+      jest.isolateModules(() => {
+        const mockLogger = {
+          debug: jest.fn(),
+          error: jest.fn(),
+          warn: jest.fn()
+        }
+        const mockPrismaInstance = {
+          $on: jest.fn((event, callback) => {
+            if (event === 'warn') {
+              // Simulate a warning event
+              callback({
+                message: 'Query is slow',
+                timestamp: new Date(),
+                target: 'db'
+              })
+            }
+          }),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: mockLogger
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert warning was logged
+        expect(mockLogger.warn).toHaveBeenCalledWith('[Prisma Warning]', {
+          warning: {
+            message: 'Query is slow',
+            timestamp: expect.any(Date),
+            target: 'db'
+          }
+        })
+      })
     })
   })
 
   describe('Singleton Pattern', () => {
-    it.skip('returns same instance in non-production', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('returns same instance in non-production', () => {
+      jest.isolateModules(() => {
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module multiple times
+        const prisma1 = require('@/lib/db/prisma').prisma
+        const prisma2 = require('@/lib/db/prisma').prisma
+        
+        // Assert same instance
+        expect(prisma1).toBe(prisma2)
+        expect(mockPrismaClient).toHaveBeenCalledTimes(1)
+      })
     })
 
-    it.skip('stores instance on global in non-production', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('stores instance on global in non-production', () => {
+      jest.isolateModules(() => {
+        // Clear global
+        const globalAny = global as any
+        delete globalAny.prisma
+        
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        require('@/lib/db/prisma')
+        
+        // Assert stored on global
+        expect(globalAny.prisma).toBeDefined()
+        expect(globalAny.prisma).toBe(mockPrismaInstance)
+      })
     })
 
     it('does not store on global in production', () => {
@@ -226,27 +601,248 @@ describe('Prisma Configuration', () => {
   })
 
   describe('withTransaction', () => {
-    it.skip('executes transaction with default options', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('executes transaction with default options', async () => {
+      jest.isolateModules(async () => {
+        const mockTransactionClient = {
+          user: { findMany: jest.fn() }
+        }
+        const mockTransaction = jest.fn().mockResolvedValue('transaction result')
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: mockTransaction
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        const { withTransaction } = require('@/lib/db/prisma')
+        
+        // Execute transaction
+        const callback = jest.fn().mockResolvedValue('callback result')
+        const result = await withTransaction(callback)
+        
+        // Assert
+        expect(mockTransaction).toHaveBeenCalledWith(callback, undefined)
+        expect(result).toBe('transaction result')
+      })
     })
 
-    it.skip('passes transaction options correctly', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('passes transaction options correctly', async () => {
+      jest.isolateModules(async () => {
+        const mockTransaction = jest.fn().mockResolvedValue('transaction result')
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: mockTransaction
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {
+            TransactionIsolationLevel: {
+              ReadUncommitted: 'ReadUncommitted',
+              ReadCommitted: 'ReadCommitted',
+              RepeatableRead: 'RepeatableRead',
+              Serializable: 'Serializable'
+            }
+          }
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        const { withTransaction } = require('@/lib/db/prisma')
+        const { Prisma } = require('@prisma/client')
+        
+        // Execute transaction with options
+        const callback = jest.fn().mockResolvedValue('callback result')
+        const options = {
+          maxWait: 5000,
+          timeout: 10000,
+          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+        }
+        await withTransaction(callback, options)
+        
+        // Assert
+        expect(mockTransaction).toHaveBeenCalledWith(callback, options)
+      })
     })
 
-    it.skip('provides transaction client to callback', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('provides transaction client to callback', async () => {
+      jest.isolateModules(async () => {
+        const mockTransactionClient = {
+          user: { findMany: jest.fn().mockResolvedValue([{ id: 1, name: 'Test' }]) }
+        }
+        const mockTransaction = jest.fn((callback) => callback(mockTransactionClient))
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: mockTransaction
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        const { withTransaction } = require('@/lib/db/prisma')
+        
+        // Execute transaction
+        const result = await withTransaction(async (tx) => {
+          const users = await tx.user.findMany()
+          return users
+        })
+        
+        // Assert
+        expect(mockTransactionClient.user.findMany).toHaveBeenCalled()
+        expect(result).toEqual([{ id: 1, name: 'Test' }])
+      })
     })
 
-    it.skip('propagates transaction errors', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
+    it('propagates transaction errors', async () => {
+      jest.isolateModules(async () => {
+        const mockError = new Error('Transaction failed')
+        const mockTransaction = jest.fn().mockRejectedValue(mockError)
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: mockTransaction
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        const { withTransaction } = require('@/lib/db/prisma')
+        
+        // Execute transaction
+        const callback = jest.fn().mockRejectedValue(new Error('Callback error'))
+        
+        // Assert error is propagated
+        await expect(withTransaction(callback)).rejects.toThrow('Transaction failed')
+      })
     })
   })
 
   describe('Type Exports', () => {
-    it.skip('exports required types', () => {
-      // TODO: Fix module caching issue preventing proper mock isolation
-      // This test depends on successful module loading which is affected by the caching issue
+    it('exports required types', () => {
+      jest.isolateModules(() => {
+        const mockPrismaInstance = {
+          $on: jest.fn(),
+          $connect: jest.fn(),
+          $disconnect: jest.fn(),
+          $transaction: jest.fn()
+        }
+        const mockPrismaClient = jest.fn(() => mockPrismaInstance)
+        
+        jest.doMock('@/config/env', () => ({
+          env: {
+            DATABASE_URL: 'postgresql://user:pass@localhost:5432/testdb',
+            NODE_ENV: 'development'
+          },
+          isDevelopment: jest.fn(() => true)
+        }))
+        
+        jest.doMock('@prisma/client', () => ({
+          PrismaClient: mockPrismaClient,
+          Prisma: {}
+        }))
+        
+        jest.doMock('@/lib/utils/logger', () => ({
+          logger: {
+            debug: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn()
+          }
+        }))
+        
+        // Import module
+        const prismaModule = require('@/lib/db/prisma')
+        
+        // Assert exports
+        expect(prismaModule).toHaveProperty('prisma')
+        expect(prismaModule).toHaveProperty('serializeBigInt')
+        expect(prismaModule).toHaveProperty('withTransaction')
+        expect(typeof prismaModule.serializeBigInt).toBe('function')
+        expect(typeof prismaModule.withTransaction).toBe('function')
+      })
     })
   })
 })

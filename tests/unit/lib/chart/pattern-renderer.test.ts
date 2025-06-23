@@ -171,7 +171,7 @@ describe('PatternRenderer', () => {
   })
 
   describe('Pattern Rendering', () => {
-    it.skip('validates visualization object', () => {
+    it('validates visualization object', () => {
       renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
       // Null visualization

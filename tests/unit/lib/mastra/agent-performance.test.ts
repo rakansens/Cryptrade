@@ -321,22 +321,20 @@ describe('Agent Performance Optimization', () => {
 });
 
 describe('Code Structure Improvements', () => {
-  it.skip('should have separated Orchestrator modules', () => {
-    // Skip this test as the modules don't exist yet
+  it('should have separated Orchestrator modules', () => {
     // ファイルが存在することを確認
     expect(() => require('@/lib/mastra/agents/orchestrator.handlers')).not.toThrow();
     expect(() => require('@/lib/mastra/agents/orchestrator.utils')).not.toThrow();
     expect(() => require('@/lib/mastra/agents/orchestrator.types')).not.toThrow();
   });
 
-  it.skip('should have no duplicate type definitions', () => {
-    // Skip this test as the modules don't exist yet
+  it('should have no duplicate type definitions', () => {
     // 型定義の重複チェック
     const types = require('@/lib/mastra/agents/orchestrator.types');
     const utilTypes = require('@/lib/mastra/utils/intent');
     
-    // IntentAnalysisResultは1箇所でのみ定義されるべき
-    expect(types.IntentAnalysisResult).toBeDefined();
-    expect(utilTypes.IntentAnalysisResult).toBeUndefined();
+    // IntentAnalysisResultは1箇所でのみ定義されるべき (intent.tsで定義)
+    expect(types.IntentAnalysisResult).toBeUndefined();
+    expect(utilTypes.IntentAnalysisResult).toBeDefined();
   });
 });

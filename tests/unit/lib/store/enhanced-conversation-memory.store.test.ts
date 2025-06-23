@@ -15,6 +15,13 @@ import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/utils/logger';
 import type { ConversationMessage } from '@/types/conversation-memory';
 
+// Mock zustand persist storage - define before using in mock
+const mockStorage = {
+  getItem: jest.fn(() => null),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+};
+
 // Mock dependencies
 jest.mock('@/lib/services/database/chat.service');
 jest.mock('@/config/env', () => ({
@@ -37,26 +44,38 @@ jest.mock('@/lib/db/prisma', () => ({
 }));
 jest.mock('@/lib/utils/logger');
 
-// Helper to ensure store has all required methods
-const ensureStoreMethods = (store: any) => {
-  if (!store) {
-    console.warn('Store is undefined or null');
-    return;
-  }
-  
-  const requiredMethods = [
-    'createSession', 'addMessage', 'getProcessedMessages', 'getRecentMessages',
-    'getSessionContext', 'updateMessageMetadata', 'clearSession', 'searchMessages',
-    'summarizeSession', 'addProcessor', 'removeProcessor', 'setDefaultProcessors',
-    'getMemoryStats', 'enableDbSync', 'disableDbSync', 'syncWithDatabase',
-    'loadFromDatabase'
-  ];
-  
-  for (const method of requiredMethods) {
-    if (store && typeof store[method] !== 'function') {
-      console.warn(`Store method ${method} is not a function or doesn't exist`);
+jest.mock('zustand/middleware', () => ({
+  devtools: (config: any) => config,
+  persist: (config: any, options: any) => (set: any, get: any, api: any) => {
+    const state = config(set, get, api);
+    // Initialize the state immediately
+    return state;
+  },
+  immer: (config: any) => config,
+  createJSONStorage: () => mockStorage,
+}));
+
+// Reset store state helper
+const resetStore = () => {
+  const store = useEnhancedConversationMemory.getState();
+  // Clear all sessions
+  Object.keys(store.sessions || {}).forEach(sessionId => {
+    if (typeof store.clearSession === 'function') {
+      store.clearSession(sessionId);
     }
-  }
+  });
+  
+  // Reset to initial state
+  useEnhancedConversationMemory.setState({
+    sessions: {},
+    currentSessionId: null,
+    isDbEnabled: true,
+    isSyncing: false,
+    defaultProcessors: [
+      new TokenLimiter(127000), 
+      new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] })
+    ]
+  });
 };
 
 // MSW server handlers
@@ -67,32 +86,10 @@ beforeEach(() => {
     })
   );
   jest.clearAllMocks();
+  mockStorage.getItem.mockReturnValue(null);
   
-  // Get current store to properly reset it
-  const store = useEnhancedConversationMemory.getState();
-  
-  // Clear all sessions if clearSession method exists
-  if (store && store.sessions && typeof store.clearSession === 'function') {
-    Object.keys(store.sessions).forEach(sessionId => {
-      store.clearSession(sessionId);
-    });
-  }
-  
-  // Ensure the store has been properly initialized with all methods
-  ensureStoreMethods(store);
-  
-  // Reset state while preserving methods
-  if (store) {
-    // Clear sessions
-    store.sessions = {};
-    store.currentSessionId = null;
-    store.isDbEnabled = true;
-    store.isSyncing = false;
-    store.defaultProcessors = [
-      new TokenLimiter(127000), 
-      new ToolCallFilter({ exclude: ['marketDataTool', 'chartControlTool'] })
-    ];
-  }
+  // Reset store state
+  resetStore();
 });
 
 describe('EnhancedConversationMemoryStore', () => {

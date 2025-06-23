@@ -1209,37 +1209,8 @@ jest.mock('@/store/chart', () => ({
   }))
 }));
 
-// Mock error classes
-jest.mock('@/lib/errors/base-error', () => ({
-  AuthError: class AuthError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = 'AuthError';
-    }
-  },
-  ValidationError: class ValidationError extends Error {
-    constructor(message, field, value) {
-      super(message);
-      this.name = 'ValidationError';
-      this.field = field;
-      this.value = value;
-    }
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message, statusCode, details) {
-      super(message);
-      this.name = 'ApiError';
-      this.statusCode = statusCode;
-      this.details = details;
-    }
-  },
-  BaseError: class BaseError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = 'BaseError';
-    }
-  },
-}));
+// Remove mock for error classes - let them use the real implementation
+// The base-error module exports proper classes that tests expect
 
 // Mock Next.js Image component
 jest.mock('next/image', () => {

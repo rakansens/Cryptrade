@@ -430,7 +430,7 @@ function calculateTrendlinePrice(trendline: Trendline, currentTime: number): num
  */
 function determineStrategyFromPattern(pattern: Pattern): TradingStrategyType {
   const patternDuration = pattern.endTime - pattern.startTime;
-  const hours = patternDuration / (60 * 60); // 秒単位から時間単位へ
+  const hours = patternDuration / (60 * 60 * 1000); // ミリ秒単位から時間単位へ
 
   if (hours < 4) return 'scalping';
   if (hours < 24) return 'dayTrading';

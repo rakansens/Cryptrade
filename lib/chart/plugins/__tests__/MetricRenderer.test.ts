@@ -187,9 +187,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('render', () => {
-    // TODO: Fix test expectations to match actual MetricRenderer implementation
-    // The tests expect registry.registerMetricLines which might not exist
+  describe('render', () => {
     const mockData: PatternVisualization = {
       keyPoints: [
         { time: 1000, value: 100, type: 'peak' },
@@ -368,8 +366,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('remove', () => {
-    // TODO: Tests depend on render functionality which is skipped
+  describe('remove', () => {
     const mockData: PatternVisualization = {
       keyPoints: [
         { time: 1000, value: 100, type: 'peak' },
@@ -425,8 +422,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('updateMetric', () => {
-    // TODO: Fix test expectations for updateMetric method
+  describe('updateMetric', () => {
     beforeEach(() => {
       renderer.initialize(mockContext);
     });
@@ -441,8 +437,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('dispose', () => {
-    // TODO: Tests depend on render functionality which is skipped
+  describe('dispose', () => {
     beforeEach(async () => {
       renderer.initialize(mockContext);
       
@@ -492,8 +487,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('metric extraction', () => {
-    // TODO: Fix test expectations for metric extraction
+  describe('metric extraction', () => {
     beforeEach(() => {
       renderer.initialize(mockContext);
     });
@@ -602,8 +596,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('error handling', () => {
-    // TODO: Tests depend on render functionality which is skipped
+  describe('error handling', () => {
     beforeEach(() => {
       renderer.initialize(mockContext);
     });
@@ -644,8 +637,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('getDebugState', () => {
-    // TODO: Tests depend on render functionality which is skipped
+  describe('getDebugState', () => {
     it('should return complete state information', async () => {
       renderer.initialize(mockContext);
       
@@ -685,8 +677,7 @@ describe('MetricRenderer', () => {
     });
   });
 
-  describe.skip('metric formatting', () => {
-    // TODO: Fix test expectations for metric formatting
+  describe('metric formatting', () => {
     beforeEach(() => {
       renderer.initialize(mockContext);
     });
