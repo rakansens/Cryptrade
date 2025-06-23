@@ -170,10 +170,13 @@ export class ErrorTracker {
     error: Error | MastraBaseError,
     context?: ErrorContext
   ): SerializedError {
-    if (error instanceof MastraBaseError) {
+    // Check if error has toJSON method (MastraBaseError)
+    if (error && typeof (error as any).toJSON === 'function') {
+      const mastraError = error as MastraBaseError;
+      const serialized = mastraError.toJSON();
       return {
-        ...error.toJSON(),
-        context: { ...error.context, ...context },
+        ...serialized,
+        context: { ...(mastraError.context || {}), ...(context || {}) },
       };
     }
 

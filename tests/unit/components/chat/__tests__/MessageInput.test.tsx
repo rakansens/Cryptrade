@@ -135,22 +135,27 @@ describe('MessageInput', () => {
       expect(defaultProps.onSend).not.toHaveBeenCalled()
     })
 
-    it.skip('prevents default Enter key behavior', () => {
+    it('prevents default Enter key behavior', () => {
       render(<MessageInput {...defaultProps} value="Test message" />)
       
       const textarea = screen.getByPlaceholderText('Type a message...')
       
-      // Create a mock event with preventDefault
-      const mockEvent = {
+      // Create a proper keyboard event
+      const enterEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         shiftKey: false,
-        preventDefault: jest.fn()
-      }
+        bubbles: true,
+        cancelable: true
+      })
       
-      fireEvent.keyDown(textarea, mockEvent)
+      // Spy on preventDefault
+      const preventDefaultSpy = jest.spyOn(enterEvent, 'preventDefault')
+      
+      // Dispatch the event
+      textarea.dispatchEvent(enterEvent)
       
       expect(defaultProps.onSend).toHaveBeenCalled()
-      expect(mockEvent.preventDefault).toHaveBeenCalled()
+      expect(preventDefaultSpy).toHaveBeenCalled()
     })
   })
 

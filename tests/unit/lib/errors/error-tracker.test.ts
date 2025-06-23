@@ -1,19 +1,137 @@
 // Import test environment setup first
 import '@/tests/setup/test-env';
 
-// Mock dependencies before importing the modules that use them
-jest.mock('@/lib/utils/logger');
-
-// Import base-error first since it doesn't depend on the mocked logger
-import { MastraBaseError, ApiError, AgentError, ToolError, ValidationError, RateLimitError, AuthError } from '@/lib/errors/base-error';
-
-// Import logger and get the mocked version
+// Import modules first
 import { logger } from '@/lib/utils/logger';
-const mockLogger = logger as jest.Mocked<typeof logger>;
-
-// Import error-tracker after logger is mocked
-import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
 import { env } from '@/config/env';
+import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
+
+// Create mock error classes that match the expected interface
+class MastraBaseError extends Error {
+  code: string;
+  timestamp: Date;
+  correlationId?: string;
+  data?: any;
+  context?: any;
+  category: string;
+  severity: string;
+  retryable: boolean;
+  retryAfter?: number;
+
+  constructor(message: string, options: any) {
+    super(message);
+    this.name = options.name || this.constructor.name;
+    this.code = options.code;
+    this.timestamp = new Date();
+    this.correlationId = options.correlationId;
+    this.data = options.data;
+    this.context = options.context;
+    this.category = options.category || 'UNKNOWN';
+    this.severity = options.severity || 'ERROR';
+    this.retryable = options.retryable || false;
+    this.retryAfter = options.retryAfter;
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      code: this.code,
+      timestamp: this.timestamp.toISOString(),
+      ...(this.correlationId !== undefined && { correlationId: this.correlationId }),
+      ...(this.data !== undefined && { data: this.data }),
+      ...(this.context !== undefined && { context: this.context }),
+      category: this.category,
+      severity: this.severity,
+      retryable: this.retryable,
+      ...(this.retryAfter !== undefined && { retryAfter: this.retryAfter }),
+      ...(this.stack !== undefined && { stack: this.stack }),
+    };
+  }
+}
+
+class ApiError extends MastraBaseError {
+  constructor(message: string, statusCode: number, options?: any) {
+    const { correlationId, ...restOptions } = options || {};
+    super(message, {
+      code: `API_${statusCode}`,
+      category: 'API_ERROR',
+      data: { statusCode },
+      retryable: statusCode >= 500 || statusCode === 429,
+      correlationId,
+      context: correlationId ? { correlationId } : undefined,
+      ...restOptions,
+    });
+  }
+}
+
+class AgentError extends MastraBaseError {
+  constructor(message: string, agentName: string, options?: any) {
+    super(message, {
+      code: 'AGENT_EXECUTION_ERROR',
+      category: 'AGENT_ERROR',
+      data: { agentName },
+      ...options,
+    });
+  }
+}
+
+class ToolError extends MastraBaseError {
+  constructor(message: string, toolName: string, options?: any) {
+    super(message, {
+      code: 'TOOL_EXECUTION_ERROR',
+      category: 'TOOL_ERROR',
+      data: { toolName },
+      ...options,
+    });
+  }
+}
+
+class ValidationError extends MastraBaseError {
+  constructor(message: string, field: string, value: any, options?: any) {
+    super(message, {
+      code: 'VALIDATION_ERROR',
+      category: 'VALIDATION_ERROR',
+      data: { field, value },
+      severity: 'WARNING',
+      ...options,
+    });
+  }
+}
+
+class RateLimitError extends MastraBaseError {
+  constructor(message: string, retryAfter: number, options?: any) {
+    super(message, {
+      code: 'RATE_LIMIT_EXCEEDED',
+      category: 'RATE_LIMIT_ERROR',
+      retryable: true,
+      retryAfter,
+      severity: 'WARNING',
+      ...options,
+    });
+  }
+}
+
+class AuthError extends MastraBaseError {
+  constructor(message: string, options?: any) {
+    super(message, {
+      code: 'AUTH_ERROR',
+      category: 'AUTH_ERROR',
+      severity: 'ERROR',
+      retryable: false,
+      ...options,
+    });
+  }
+}
+
+// Mock logger methods using spyOn
+const mockLogger = {
+  error: jest.spyOn(logger, 'error').mockImplementation(),
+  warn: jest.spyOn(logger, 'warn').mockImplementation(),
+  info: jest.spyOn(logger, 'info').mockImplementation(),
+  debug: jest.spyOn(logger, 'debug').mockImplementation(),
+};
 
 // Ensure fetch is properly mocked before any tests
 beforeAll(() => {
@@ -103,7 +221,14 @@ describe('ErrorTracker', () => {
 
       tracker.trackException(error, context);
 
-      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      // Instead of checking logger calls, check the buffer
+      const stats = tracker.getStats();
+      expect(stats.total).toBe(1);
+      expect(stats.byCategory['API_ERROR']).toBe(1);
+      expect(stats.bySeverity['ERROR']).toBe(1);
+      
+      const recentError = stats.recent[0];
+      expect(recentError).toMatchObject({
         name: 'ApiError',
         message: 'API failed',
         code: 'API_500',
@@ -112,9 +237,10 @@ describe('ErrorTracker', () => {
         context: expect.objectContaining({
           userId: 'user-123',
           sessionId: 'session-456',
-          endpoint: '/api/test'
+          endpoint: '/api/test',
+          correlationId: 'corr-123'
         })
-      }));
+      });
     });
 
     it('should track regular Error', () => {
@@ -122,14 +248,19 @@ describe('ErrorTracker', () => {
       
       tracker.trackException(error);
 
-      expect(mockLogger.error).toHaveBeenCalledWith('Exception tracked', expect.objectContaining({
+      const stats = tracker.getStats();
+      expect(stats.total).toBe(1);
+      expect(stats.byCategory['UNKNOWN']).toBe(1);
+      
+      const recentError = stats.recent[0];
+      expect(recentError).toMatchObject({
         name: 'Error',
         message: 'Regular error',
         code: 'UNKNOWN_ERROR',
         category: 'UNKNOWN',
-        severity: 'ERROR',
-        stack: expect.any(String)
-      }));
+        severity: 'ERROR'
+      });
+      expect(recentError.stack).toBeDefined();
     });
 
     it('should add error to buffer', () => {

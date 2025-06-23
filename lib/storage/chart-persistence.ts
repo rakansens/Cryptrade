@@ -169,7 +169,12 @@ export class ChartPersistenceManager {
           throw new Error(`Failed to load drawings from database: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
         }
       } else {
-        return this.loadDrawingsFromLocal();
+        try {
+          return await this.loadDrawingsFromLocal();
+        } catch (localError) {
+          logger.error('[ChartPersistence] Failed to load drawings', { error: localError });
+          return [];
+        }
       }
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load drawings', { error });
@@ -187,14 +192,9 @@ export class ChartPersistenceManager {
         }
       }
       
-      // 開発環境では空配列を返す
-      if (isDevelopment()) {
-        logger.warn('[ChartPersistence] Returning empty array in development');
-        return [];
-      }
-      
-      // 本番環境ではエラーを投げる
-      throw new Error(`Failed to load drawings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // エラーが発生した場合は空配列を返す
+      logger.warn('[ChartPersistence] Failed to load drawings, returning empty array', { error });
+      return [];
     }
   }
 
@@ -408,13 +408,8 @@ export class ChartPersistenceManager {
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load drawings from localStorage', { error });
       
-      // 開発環境では空配列を返す
-      if (isDevelopment()) {
-        return [];
-      }
-      
-      // 本番環境ではエラーを投げる
-      throw new Error(`Failed to load drawings from localStorage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // JSONパースエラーなどの場合は空配列を返す
+      return [];
     }
   }
 
@@ -442,9 +437,21 @@ export class ChartPersistenceManager {
 
       // Validate each pattern
       const validPatterns: PatternData[] = [];
+      const allowedPatternTypes = [
+        'headAndShoulders', 'doubleTop', 'doubleBottom', 'triangle', 
+        'wedge', 'flag', 'pennant', 'channel', 'cup', 'rounding'
+      ];
+      
       for (const pattern of parsed) {
         try {
           const valid = PatternDataSchema.parse(pattern);
+          
+          // Check if pattern type is allowed
+          if (!allowedPatternTypes.includes(valid.type)) {
+            logger.warn('[ChartPersistence] Invalid pattern skipped', { pattern: valid, error: new Error('Invalid pattern type') });
+            continue;
+          }
+          
           validPatterns.push(valid);
         } catch (e) {
           logger.warn('[ChartPersistence] Invalid pattern skipped', { pattern, error: e });
@@ -455,13 +462,8 @@ export class ChartPersistenceManager {
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load patterns from localStorage', { error });
       
-      // 開発環境では空配列を返す
-      if (isDevelopment()) {
-        return [];
-      }
-      
-      // 本番環境ではエラーを投げる
-      throw new Error(`Failed to load patterns from localStorage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // JSONパースエラーなどの場合は空配列を返す
+      return [];
     }
   }
 

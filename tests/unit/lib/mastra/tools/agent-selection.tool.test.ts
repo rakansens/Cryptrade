@@ -82,8 +82,14 @@ describe('agentSelectionTool', () => {
       );
     });
 
-    it.skip('should execute UI control agent with operations', async () => {
+    it('should execute UI control agent with operations', async () => {
+      // Store original window object
+      const originalWindow = global.window;
+      
       try {
+        // Make window undefined to force server-side behavior in test
+        delete (global as any).window;
+        
         const mockOperations = [
           {
             clientEvent: {
@@ -116,7 +122,6 @@ describe('agentSelectionTool', () => {
 
         mockAgentNetwork.sendMessage.mockResolvedValue(mockA2AResponse);
 
-        console.log('Before execute');
         const result = await agentSelectionTool.execute({
           context: {
             agentType: 'ui_control',
@@ -125,12 +130,6 @@ describe('agentSelectionTool', () => {
           },
           runtimeContext: {} as any
         });
-        console.log('After execute');
-
-        // Debug: Log the result
-        console.log('Test result:', JSON.stringify(result, null, 2));
-        console.log('mockEmitUIEvent calls:', mockEmitUIEvent.mock.calls);
-        console.log('mockLogger.info calls:', mockLogger.info.mock.calls.length);
 
         expect(result.success).toBe(true);
         expect(result.selectedAgent).toBe('uiControlAgent');
@@ -138,18 +137,18 @@ describe('agentSelectionTool', () => {
         
         // Verify UI events were emitted
         expect(mockEmitUIEvent).toHaveBeenCalledTimes(2);
-      } catch (error) {
-        console.error('Test error:', error);
-        throw error;
+        expect(mockEmitUIEvent).toHaveBeenCalledWith({
+          event: 'chart:update',
+          data: { symbol: 'BTCUSDT', interval: '1h' },
+        });
+        expect(mockEmitUIEvent).toHaveBeenCalledWith({
+          event: 'indicator:toggle',
+          data: { indicator: 'rsi', enabled: true },
+        });
+      } finally {
+        // Restore window object
+        global.window = originalWindow;
       }
-      expect(mockEmitUIEvent).toHaveBeenCalledWith({
-        event: 'chart:update',
-        data: { symbol: 'BTCUSDT', interval: '1h' },
-      });
-      expect(mockEmitUIEvent).toHaveBeenCalledWith({
-        event: 'indicator:toggle',
-        data: { indicator: 'rsi', enabled: true },
-      });
     });
 
     it('should execute trading analysis agent with proposal group', async () => {
@@ -349,52 +348,62 @@ describe('agentSelectionTool', () => {
   });
 
   describe('UI operations broadcasting', () => {
-    it.skip('should broadcast operations from nested structures', async () => {
-      const operations = [
-        {
-          clientEvent: {
+    it('should broadcast operations from nested structures', async () => {
+      const originalWindow = global.window;
+      
+      try {
+        // Make window undefined to force server-side behavior
+        delete (global as any).window;
+        
+        const operations = [
+          {
+            clientEvent: {
+              event: 'chart:timeframe',
+              data: { interval: '4h' },
+            },
+          },
+        ];
+
+        // Test different response structures
+        const responseVariants = [
+          // Direct operations
+          { id: 'test-1', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', operations },
+          // In data
+          { id: 'test-2', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', data: { operations } },
+          // In result (as object with response property)
+          { id: 'test-3', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: { response: 'Done', operations } },
+          // In executionResult.data
+          { id: 'test-4', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', executionResult: { data: { operations } } },
+          // In toolResults
+          { id: 'test-5', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', toolResults: [{ result: { operations } }] },
+          // In steps->toolResults
+          { id: 'test-6', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', steps: [{ toolResults: [{ result: { operations } }] }] },
+        ];
+
+        for (const response of responseVariants) {
+          jest.clearAllMocks();
+          mockAgentNetwork.sendMessage.mockResolvedValue(response);
+
+          const result = await agentSelectionTool.execute({
+            context: {
+              agentType: 'ui_control',
+              query: 'Change timeframe',
+            },
+            runtimeContext: {} as any
+          });
+
+          // Check if it's successful
+          expect(result.success).toBe(true);
+          
+          // Check if emitUIEvent was called
+          expect(mockEmitUIEvent).toHaveBeenCalledWith({
             event: 'chart:timeframe',
             data: { interval: '4h' },
-          },
-        },
-      ];
-
-      // Test different response structures
-      const responseVariants = [
-        // Direct operations
-        { id: 'test-1', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', operations },
-        // In data
-        { id: 'test-2', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', data: { operations } },
-        // In result (as object with response property)
-        { id: 'test-3', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: { response: 'Done', operations } },
-        // In executionResult.data
-        { id: 'test-4', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', executionResult: { data: { operations } } },
-        // In toolResults
-        { id: 'test-5', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', toolResults: [{ result: { operations } }] },
-        // In steps->toolResults
-        { id: 'test-6', type: 'response' as const, source: 'testAgent', timestamp: Date.now(), result: 'Done', steps: [{ toolResults: [{ result: { operations } }] }] },
-      ];
-
-      for (const response of responseVariants) {
-        jest.clearAllMocks();
-        mockAgentNetwork.sendMessage.mockResolvedValue(response);
-
-        const result = await agentSelectionTool.execute({
-          context: {
-            agentType: 'ui_control',
-            query: 'Change timeframe',
-          },
-          runtimeContext: {} as any
-        });
-
-        // Check if it's successful
-        expect(result.success).toBe(true);
-        
-        // Check if emitUIEvent was called
-        expect(mockEmitUIEvent).toHaveBeenCalledWith({
-          event: 'chart:timeframe',
-          data: { interval: '4h' },
-        });
+          });
+        }
+      } finally {
+        // Restore window object
+        global.window = originalWindow;
       }
     });
 
@@ -459,40 +468,50 @@ describe('agentSelectionTool', () => {
       expect(mockEmitUIEvent).not.toHaveBeenCalled();
     });
 
-    it.skip('should handle operations without clientEvent', async () => {
-      const mockResponse = {
-        id: 'test-response-3',
-        type: 'response' as const,
-        source: 'testAgent',
-        timestamp: Date.now(),
-        result: 'Done',
-        operations: [
-          { someOtherField: 'value' }, // No clientEvent
-          {
-            clientEvent: {
-              event: 'valid:event',
-              data: { test: true },
+    it('should handle operations without clientEvent', async () => {
+      const originalWindow = global.window;
+      
+      try {
+        // Make window undefined to force server-side behavior
+        delete (global as any).window;
+        
+        const mockResponse = {
+          id: 'test-response-3',
+          type: 'response' as const,
+          source: 'testAgent',
+          timestamp: Date.now(),
+          result: 'Done',
+          operations: [
+            { someOtherField: 'value' }, // No clientEvent
+            {
+              clientEvent: {
+                event: 'valid:event',
+                data: { test: true },
+              },
             },
+          ],
+        };
+
+        mockAgentNetwork.sendMessage.mockResolvedValue(mockResponse);
+
+        await agentSelectionTool.execute({
+          context: {
+            agentType: 'ui_control',
+            query: 'Mixed operations',
           },
-        ],
-      };
+          runtimeContext: {} as any
+        });
 
-      mockAgentNetwork.sendMessage.mockResolvedValue(mockResponse);
-
-      await agentSelectionTool.execute({
-        context: {
-          agentType: 'ui_control',
-          query: 'Mixed operations',
-        },
-        runtimeContext: {} as any
-      });
-
-      // Should only emit the valid event
-      expect(mockEmitUIEvent).toHaveBeenCalledTimes(1);
-      expect(mockEmitUIEvent).toHaveBeenCalledWith({
-        event: 'valid:event',
-        data: { test: true },
-      });
+        // Should only emit the valid event
+        expect(mockEmitUIEvent).toHaveBeenCalledTimes(1);
+        expect(mockEmitUIEvent).toHaveBeenCalledWith({
+          event: 'valid:event',
+          data: { test: true },
+        });
+      } finally {
+        // Restore window object
+        global.window = originalWindow;
+      }
     });
   });
 

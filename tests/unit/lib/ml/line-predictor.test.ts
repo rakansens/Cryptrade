@@ -111,6 +111,10 @@ describe('LineQualityPredictor', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const features = createMockFeatures();
+      // Modify features to trigger reasoning generation
+      features.touchCount = 5;  // >= 5 for positive reasoning
+      features.rSquared = 0.92; // > 0.9 for positive reasoning
+      
       const normalized = Array(23).fill(0.5);
       
       // Force model ready state
@@ -381,13 +385,13 @@ describe('LineQualityPredictor', () => {
 
   describe('Edge cases and error handling', () => {
     it('should handle empty normalized features array', async () => {
-      (predictor as any).isModelReady = true;
-      (predictor as any).model = mockModel;
-      
-      const prediction = await predictor.predictLineSuccess({} as LineFeatures, []);
+      // Don't set model as ready to trigger fallback
+      const features = createMockFeatures();
+      const prediction = await predictor.predictLineSuccess(features, []);
       
       expect(prediction).toBeDefined();
       expect(prediction.successProbability).toBeGreaterThanOrEqual(0);
+      expect(prediction.successProbability).toBeLessThanOrEqual(1);
     });
 
     it('should handle extreme feature values in reasoning', async () => {

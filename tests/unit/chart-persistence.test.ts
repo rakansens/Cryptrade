@@ -282,7 +282,7 @@ describe('ChartPersistenceManager', () => {
 
       expect(drawings).toEqual([]);
       expect(logger.error).toHaveBeenCalledWith(
-        '[ChartPersistence] Failed to load drawings',
+        '[ChartPersistence] Failed to load drawings from localStorage',
         expect.objectContaining({ error: expect.any(Error) })
       );
     });

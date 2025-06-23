@@ -118,12 +118,7 @@ describe('store.types', () => {
     });
   });
 
-  /**
-   * @fixme This test suite is currently skipped due to implementation issues
-   * @todo Fix the isProposalGroup type guard implementation and enable these tests
-   * @description Tests for validating ProposalGroup type guard function
-   */
-  describe.skip('isProposalGroup', () => {
+  describe('isProposalGroup', () => {
     it('should return true for valid ProposalGroup', () => {
       const validGroup: any = {
         id: 'group-1',

@@ -94,15 +94,7 @@ export class WSManager {
     
     if (!streamState) {
       // Create new shared observable
-      const sharedObservable = this.createStreamObservable<T>(streamName).pipe(
-        // Add finalize operator to handle cleanup when refCount reaches 0
-        finalize(() => {
-          if (this.options.debug) {
-            logger.debug('[WSManager] Stream refCount reached 0, cleaning up', { streamName });
-          }
-          this.handleStreamCleanup(streamName);
-        })
-      );
+      const sharedObservable = this.createStreamObservable<T>(streamName);
       
       streamState = {
         observable: sharedObservable as Observable<unknown>,
@@ -201,16 +193,17 @@ export class WSManager {
           })
         )
       ),
-      // Handle cleanup when stream is no longer needed
-      finalize(() => {
-        if (this.options.debug) {
-          logger.debug('[WSManager] Stream observable finalized', { streamName });
-        }
-      }),
       // Share replay with refCount for connection sharing
       shareReplay({ 
         refCount: true, 
         bufferSize: 1 
+      }),
+      // Handle cleanup when stream is no longer needed (after shareReplay)
+      finalize(() => {
+        if (this.options.debug) {
+          logger.debug('[WSManager] Stream refCount reached 0, cleaning up', { streamName });
+        }
+        this.handleStreamCleanup(streamName);
       }),
       // Handle errors that bubble up
       catchError(error => {

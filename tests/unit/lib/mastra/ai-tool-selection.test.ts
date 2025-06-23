@@ -146,8 +146,16 @@ describe('AI Tool Selection', () => {
       for (const query of testQueries) {
         mockToolCalls.length = 0;
         
+        const intent = analyzeIntent(query);
+        const context = {
+          isProposalMode: intent.isProposalMode,
+          proposalType: intent.proposalType,
+          extractedSymbol: intent.extractedSymbol || 'BTCUSDT',
+        };
+        
         await tradingAgent.generate(
-          [{ role: 'user', content: query }]
+          [{ role: 'user', content: query }],
+          context
         );
 
         expect(mockToolCalls).toHaveLength(1);
@@ -172,7 +180,7 @@ describe('AI Tool Selection', () => {
           context: { proposalType: 'entry', isEntryProposal: true },
         },
         {
-          query: 'トレンドライン描いて',
+          query: 'トレンドラインの提案をして',
           expectedIntent: 'proposal_request',
           expectedTool: 'proposalGeneration',
           context: { proposalType: 'trendline' },

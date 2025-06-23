@@ -92,13 +92,19 @@ describe('ChartPersistenceManager', () => {
     // Clear localStorage and mocks
     localStorageMock.clear();
     jest.clearAllMocks();
+    
+    // Configure to use localStorage instead of database
+    ChartPersistenceManager.configure({
+      useDatabase: false,
+      fallbackToLocal: true
+    });
   });
 
   describe('saveDrawings', () => {
     it('saves valid drawings to localStorage', async () => {
       const drawings = [validDrawing];
       
-      ChartPersistenceManager.saveDrawings(drawings);
+      await ChartPersistenceManager.saveDrawings(drawings);
       
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'cryptrade_chart_drawings',
@@ -113,7 +119,7 @@ describe('ChartPersistenceManager', () => {
       });
       
       expect(logger.info).toHaveBeenCalledWith(
-        '[ChartPersistence] Drawings saved',
+        '[ChartPersistence] Drawings saved to localStorage',
         { count: 1 }
       );
     });
@@ -134,7 +140,7 @@ describe('ChartPersistenceManager', () => {
     });
 
     it('handles empty array', async () => {
-      ChartPersistenceManager.saveDrawings([]);
+      await ChartPersistenceManager.saveDrawings([]);
       
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'cryptrade_chart_drawings',
@@ -142,7 +148,7 @@ describe('ChartPersistenceManager', () => {
       );
       
       expect(logger.info).toHaveBeenCalledWith(
-        '[ChartPersistence] Drawings saved',
+        '[ChartPersistence] Drawings saved to localStorage',
         { count: 0 }
       );
     });
@@ -152,7 +158,7 @@ describe('ChartPersistenceManager', () => {
         throw new Error('QuotaExceededError');
       });
       
-      ChartPersistenceManager.saveDrawings([validDrawing]);
+      await ChartPersistenceManager.saveDrawings([validDrawing]);
       
       expect(logger.error).toHaveBeenCalledWith(
         '[ChartPersistence] Failed to save drawings',
@@ -175,7 +181,7 @@ describe('ChartPersistenceManager', () => {
       });
       
       expect(logger.info).toHaveBeenCalledWith(
-        '[ChartPersistence] Drawings loaded',
+        '[ChartPersistence] Drawings loaded from localStorage',
         { count: 1 }
       );
     });
@@ -226,7 +232,7 @@ describe('ChartPersistenceManager', () => {
       
       expect(loaded).toEqual([]);
       expect(logger.error).toHaveBeenCalledWith(
-        '[ChartPersistence] Failed to load drawings',
+        '[ChartPersistence] Failed to load drawings from localStorage',
         expect.objectContaining({ error: expect.any(Error) })
       );
     });
@@ -246,7 +252,7 @@ describe('ChartPersistenceManager', () => {
         ['pattern-1', validPattern]
       ]);
       
-      ChartPersistenceManager.savePatterns(Array.from(patterns.values()));
+      await ChartPersistenceManager.savePatterns(Array.from(patterns.values()));
       
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'cryptrade_chart_patterns',
@@ -263,7 +269,7 @@ describe('ChartPersistenceManager', () => {
       });
       
       expect(logger.info).toHaveBeenCalledWith(
-        '[ChartPersistence] Patterns saved',
+        '[ChartPersistence] Patterns saved to localStorage',
         { count: 1 }
       );
     });
@@ -276,7 +282,7 @@ describe('ChartPersistenceManager', () => {
       
       const patterns = new Map([['invalid', invalidPattern as any]]);
       
-      ChartPersistenceManager.savePatterns(Array.from(patterns.values()));
+      await ChartPersistenceManager.savePatterns(Array.from(patterns.values()));
       
       expect(logger.error).toHaveBeenCalledWith(
         '[ChartPersistence] Failed to save patterns',
@@ -285,7 +291,7 @@ describe('ChartPersistenceManager', () => {
     });
 
     it('handles empty map', async () => {
-      ChartPersistenceManager.savePatterns(new Map() as any);
+      await ChartPersistenceManager.savePatterns([]);
       
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'cryptrade_chart_patterns',
@@ -296,9 +302,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('loadPatterns', () => {
     it('loads patterns into Map from localStorage', async () => {
-      const patternsArray = [
-        { id: 'pattern-1', data: validPattern }
-      ];
+      const patternsArray = [validPattern];
       localStorageMock.setItem('cryptrade_chart_patterns', JSON.stringify(patternsArray));
       
       const loaded = await ChartPersistenceManager.loadPatterns();
@@ -317,15 +321,14 @@ describe('ChartPersistenceManager', () => {
     it('returns empty array when no data exists', async () => {
       const loaded = await ChartPersistenceManager.loadPatterns();
       
-      expect(loaded.length).toBe(0);
-      expect(loaded).toBeInstanceOf(Map);
+      expect(loaded).toEqual([]);
     });
 
     it('skips invalid patterns', async () => {
       const mixedPatterns = [
-        { id: 'pattern-1', data: validPattern },
-        { id: 'invalid', data: { type: '' } }, // Invalid
-        { id: 'pattern-2', data: { ...validPattern, type: 'double-top' } }
+        validPattern,
+        { type: '' }, // Invalid
+        { ...validPattern, id: 'pattern-2', type: 'doubleTop' }
       ];
       
       localStorageMock.setItem('cryptrade_chart_patterns', JSON.stringify(mixedPatterns));
@@ -333,10 +336,10 @@ describe('ChartPersistenceManager', () => {
       const loaded = await ChartPersistenceManager.loadPatterns();
       
       expect(loaded.length).toBe(2);
-      expect(loaded.find(p => p.id === 'invalid')).toBeUndefined();
+      expect(loaded.find(p => p.type === '')).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith(
         '[ChartPersistence] Invalid pattern skipped',
-        expect.objectContaining({ id: 'invalid' })
+        expect.objectContaining({ pattern: expect.objectContaining({ type: '' }) })
       );
     });
 
@@ -345,9 +348,9 @@ describe('ChartPersistenceManager', () => {
       
       const loaded = await ChartPersistenceManager.loadPatterns();
       
-      expect(loaded.length).toBe(0);
+      expect(loaded).toEqual([]);
       expect(logger.error).toHaveBeenCalledWith(
-        '[ChartPersistence] Failed to load patterns',
+        '[ChartPersistence] Failed to load patterns from localStorage',
         expect.objectContaining({ error: expect.any(Error) })
       );
     });

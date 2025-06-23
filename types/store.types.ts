@@ -155,11 +155,24 @@ export function isProposalGroup(value: unknown): value is ProposalGroup {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
   
-  return (
+  // Check required fields
+  const hasRequiredFields = (
     typeof obj['id'] === 'string' &&
+    Array.isArray(obj['proposals']) &&
+    (typeof obj['timestamp'] === 'number' || typeof obj['createdAt'] === 'number')
+  );
+  
+  if (!hasRequiredFields) return false;
+  
+  // For legacy ProposalGroup (with fewer required fields)
+  if (obj['timestamp'] !== undefined) {
+    return true;
+  }
+  
+  // For DrawingProposalGroup (newer format with more fields)
+  return (
     typeof obj['title'] === 'string' &&
     typeof obj['description'] === 'string' &&
-    Array.isArray(obj['proposals']) &&
     typeof obj['groupType'] === 'string' &&
     typeof obj['createdAt'] === 'number'
   );

@@ -161,7 +161,7 @@ export class PatternDetector {
    */
   private detectHeadAndShoulders(data: CandlestickData[], inverse: boolean = false): PatternAnalysis[] {
     const patterns: PatternAnalysis[] = [];
-    const minPatternBars = 15; // Minimum bars for pattern formation
+    const minPatternBars = 10; // Reduced minimum bars for pattern formation
     
     if (data.length < minPatternBars) return patterns;
     
@@ -656,7 +656,7 @@ export class PatternDetector {
    */
   private findPeaks(data: CandlestickData[]): Array<{ index: number; value: number }> {
     const peaks: Array<{ index: number; value: number }> = [];
-    const window = 3; // Reduced window for more flexible peak detection
+    const window = 2; // Further reduced window for more flexible peak detection
     
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.high;
@@ -689,7 +689,7 @@ export class PatternDetector {
    */
   private findTroughs(data: CandlestickData[]): Array<{ index: number; value: number }> {
     const troughs: Array<{ index: number; value: number }> = [];
-    const window = 3; // Reduced window for more flexible trough detection
+    const window = 2; // Further reduced window for more flexible trough detection
     
     for (let i = window; i < data.length - window; i++) {
       const current = data[i]!.low;

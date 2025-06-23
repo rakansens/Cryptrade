@@ -827,7 +827,7 @@ describe('PatternDetector', () => {
       expect(() => patterns).not.toThrow();
     });
     
-    it.skip('should validate H&S pattern with asymmetric shoulders', () => {
+    it('should validate H&S pattern with asymmetric shoulders', () => {
       // H&S with shoulders at different heights (within 5% tolerance)
       mockData = [
         createMockCandle(1, 100, 102, 98, 100),
