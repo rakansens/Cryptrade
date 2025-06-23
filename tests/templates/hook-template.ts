@@ -47,10 +47,11 @@ describe('useYourHook', () => {
 
   describe('Initial State', () => {
     it('should initialize with default values', () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() => {
         // Call your hook with default params
-        // useYourHook({ ...defaultProps })
-      );
+        // return useYourHook({ ...defaultProps })
+        return {};
+      });
 
       // Assert initial state
       // expect(result.current.data).toBeNull();
@@ -63,9 +64,10 @@ describe('useYourHook', () => {
         // Add initial config
       };
 
-      const { result } = renderHook(() => 
-        // useYourHook(initialConfig)
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook(initialConfig)
+        return {};
+      });
 
       // Assert configuration is applied
     });
@@ -73,9 +75,10 @@ describe('useYourHook', () => {
 
   describe('State Updates', () => {
     it('should update state when action is triggered', async () => {
-      const { result } = renderHook(() => 
-        // useYourHook()
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       await act(async () => {
         // Trigger an action
@@ -87,9 +90,10 @@ describe('useYourHook', () => {
     });
 
     it('should handle multiple updates correctly', async () => {
-      const { result } = renderHook(() => 
-        // useYourHook()
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       // Perform multiple updates
       await act(async () => {
@@ -106,12 +110,13 @@ describe('useYourHook', () => {
 
   describe('Side Effects', () => {
     it('should call callbacks on specific events', async () => {
-      const { result } = renderHook(() => 
-        // useYourHook({
+      const { result } = renderHook(() => {
+        // return useYourHook({
         //   onSuccess: mockFunctions.onSuccess,
         //   onError: mockFunctions.onError,
         // })
-      );
+        return {};
+      });
 
       await act(async () => {
         // Trigger success scenario
@@ -124,9 +129,10 @@ describe('useYourHook', () => {
     it('should handle subscriptions/intervals', () => {
       jest.useFakeTimers();
 
-      const { result, unmount } = renderHook(() => 
-        // useYourHook({ pollingInterval: 1000 })
-      );
+      const { result, unmount } = renderHook(() => {
+        // return useYourHook({ pollingInterval: 1000 })
+        return {};
+      });
 
       // Advance timers
       act(() => {
@@ -147,9 +153,10 @@ describe('useYourHook', () => {
       // Mock error scenario
       // mockService.someMethod.mockRejectedValueOnce(new Error('Test error'));
 
-      const { result } = renderHook(() => 
-        // useYourHook({ onError: mockFunctions.onError })
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook({ onError: mockFunctions.onError })
+        return {};
+      });
 
       await act(async () => {
         // Trigger error scenario
@@ -160,9 +167,10 @@ describe('useYourHook', () => {
     });
 
     it('should recover from errors', async () => {
-      const { result } = renderHook(() => 
-        // useYourHook()
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       // Trigger error
       await act(async () => {
@@ -182,9 +190,10 @@ describe('useYourHook', () => {
     it('should clean up on unmount', () => {
       const cleanupSpy = jest.fn();
       
-      const { unmount } = renderHook(() => 
-        // useYourHook()
-      );
+      const { unmount } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       unmount();
 
@@ -193,9 +202,10 @@ describe('useYourHook', () => {
     });
 
     it('should cancel pending operations on unmount', async () => {
-      const { result, unmount } = renderHook(() => 
-        // useYourHook()
-      );
+      const { result, unmount } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       // Start async operation
       act(() => {
@@ -212,7 +222,7 @@ describe('useYourHook', () => {
   describe('Hook Dependencies', () => {
     it('should re-run effect when dependencies change', () => {
       const { result, rerender } = renderHook(
-        ({ dep }) => /* useYourHook({ dependency: dep }) */, 
+        ({ dep }) => { /* return useYourHook({ dependency: dep }) */ return {}; }, 
         { initialProps: { dep: 'initial' } }
       );
 
@@ -228,7 +238,7 @@ describe('useYourHook', () => {
       const effectSpy = jest.fn();
 
       const { rerender } = renderHook(
-        ({ value }) => /* useYourHook({ value }) */,
+        ({ value }) => { /* return useYourHook({ value }) */ return {}; },
         { initialProps: { value: 'stable' } }
       );
 
@@ -240,15 +250,17 @@ describe('useYourHook', () => {
 
   describe('Edge Cases', () => {
     it('should handle rapid state changes', async () => {
-      const { result } = renderHook(() => 
-        // useYourHook()
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook()
+        return {};
+      });
 
       // Trigger rapid changes
       await act(async () => {
-        const promises = Array.from({ length: 10 }, (_, i) => 
-          // result.current.updateState(i)
-        );
+        const promises = Array.from({ length: 10 }, (_, i) => {
+          // return result.current.updateState(i)
+          return Promise.resolve();
+        });
         await Promise.all(promises);
       });
 
@@ -256,9 +268,10 @@ describe('useYourHook', () => {
     });
 
     it('should handle null/undefined inputs gracefully', () => {
-      const { result } = renderHook(() => 
-        // useYourHook({ data: null })
-      );
+      const { result } = renderHook(() => {
+        // return useYourHook({ data: null })
+        return {};
+      });
 
       // Assert no errors
       // expect(result.current.data).toBeNull();
@@ -270,7 +283,7 @@ describe('useYourHook', () => {
       const expensiveComputation = jest.fn();
 
       const { result, rerender } = renderHook(
-        ({ data }) => /* useYourHook({ data, compute: expensiveComputation }) */,
+        ({ data }) => { /* return useYourHook({ data, compute: expensiveComputation }) */ return {}; },
         { initialProps: { data: [1, 2, 3] } }
       );
 

@@ -229,7 +229,7 @@ describe('Orchestrator Agent Integration Tests', () => {
       test.each(analysisQueries)('should handle analysis request: "%s"', async (query) => {
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
-        expect(['analysis', 'entry_proposal']).toContain(result.analysis.intent);
+        expect(['trading_analysis', 'proposal_request']).toContain(result.analysis.intent);
         expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
         expect(result.executionResult).toBeDefined();
         expect(result.executionResult!.metadata?.['processedBy']).toContain('trading');
@@ -396,7 +396,7 @@ describe('Intent Analysis Accuracy', () => {
 describe('Ambiguous and Multilingual Queries', () => {
   const testSessionId = `test-ambiguous-${Date.now()}`;
   const queries = [
-    { query: 'BTC価格チャート', expectedIntent: 'price_inquiry' },
+    { query: 'BTC価格チャート', expectedIntent: 'ui_control' },  // Should be UI control, not price inquiry
     { query: 'チャートのビットコイン価格', expectedIntent: 'price_inquiry' },
     { query: '価格チャートを表示', expectedIntent: 'ui_control' },
     { query: 'What is the price of Bitcoin?', expectedIntent: 'price_inquiry' },

@@ -69,43 +69,44 @@ jest.mock('@/store/chart', () => {
       symbol: 'BTCUSDT',
       timeframe: '1h'
     })),
-  useDrawingActions: () => ({
-    updateDrawing: mockUpdateDrawing,
-    getDrawing: mockGetDrawing,
-    setDrawingMode: jest.fn(),
-    addDrawing: jest.fn(),
-    deleteDrawing: jest.fn(),
-    selectDrawing: jest.fn(),
-    clearAllDrawings: jest.fn(),
-    setIsDrawing: jest.fn(),
-  }),
-  usePatternActions: () => ({
-    removePattern: jest.fn(),
-    addPattern: jest.fn(),
-    clearPatterns: jest.fn(),
-  }),
-  useChartActions: () => ({
-    addDrawing: jest.fn(),
-    removeDrawing: jest.fn(),
-    updateDrawing: jest.fn(),
-    removeAllDrawings: jest.fn(),
-    setSelectedDrawingId: jest.fn(),
-    selectMarketType: jest.fn(),
-    addAlert: jest.fn(),
-    removeAlert: jest.fn(),
-    setIndicatorEnabled: jest.fn(),
-    setIndicatorSetting: jest.fn(),
-    setSymbol: jest.fn(),
-    setTimeframe: jest.fn(),
-  }),
-  useChartStore: jest.fn((selector) => {
-    const state = {
-      undo: jest.fn(),
-      redo: jest.fn(),
-    };
-    return selector ? selector(state) : state;
-  })
-}))
+    useDrawingActions: () => ({
+      updateDrawing: mockUpdateDrawing,
+      getDrawing: mockGetDrawing,
+      setDrawingMode: jest.fn(),
+      addDrawing: jest.fn(),
+      deleteDrawing: jest.fn(),
+      selectDrawing: jest.fn(),
+      clearAllDrawings: jest.fn(),
+      setIsDrawing: jest.fn(),
+    }),
+    usePatternActions: () => ({
+      removePattern: jest.fn(),
+      addPattern: jest.fn(),
+      clearPatterns: jest.fn(),
+    }),
+    useChartActions: () => ({
+      addDrawing: jest.fn(),
+      removeDrawing: jest.fn(),
+      updateDrawing: jest.fn(),
+      removeAllDrawings: jest.fn(),
+      setSelectedDrawingId: jest.fn(),
+      selectMarketType: jest.fn(),
+      addAlert: jest.fn(),
+      removeAlert: jest.fn(),
+      setIndicatorEnabled: jest.fn(),
+      setIndicatorSetting: jest.fn(),
+      setSymbol: jest.fn(),
+      setTimeframe: jest.fn(),
+    }),
+    useChartStore: jest.fn((selector) => {
+      const state = {
+        undo: jest.fn(),
+        redo: jest.fn(),
+      };
+      return selector ? selector(state) : state;
+    })
+  };
+});
 
 // Mock the useAgentEventHandlers hook to be a simple pass-through
 jest.mock('@/components/chart/hooks/useAgentEventHandlers', () => ({

@@ -3,7 +3,7 @@
  */
 
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { act } from 'react';
 import type { AnalysisRecord, TouchEvent, TrackingData } from '@/types/analysis-history';
 
 // Import JSDOM setup for this test
@@ -1153,6 +1153,7 @@ describe('AnalysisHistoryStore', () => {
       // Should maintain relative order when values are equal
       expect(sorted.map(r => r.id)).toEqual(['a1', 'a2', 'a3']);
     });
+  });
 
   describe('Database Sync Edge Cases', () => {
     it('should handle database sync failure during enable', async () => {

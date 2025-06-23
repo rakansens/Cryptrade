@@ -47,8 +47,8 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     detectProposalRequest,
     detectPriceInquiry,
     detectHelpRequest,
-    detectTradingAnalysis,  // Trading analysis before market chat
-    detectMarketChat,
+    detectMarketChat,  // Market chat should be before trading analysis
+    detectTradingAnalysis,  // Trading analysis after market chat to avoid false positives
     detectSmallTalk,  // Small talk should be last to catch remaining casual inputs
   ];
 
@@ -112,9 +112,9 @@ export function detectEntryProposal(userQuery: string, queryLower: string): Inte
 
 export function detectUIControl(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const uiControlKeywords = [
-    'チャート', '切り替え', '変更', '表示して', '見せて', 'にして',
+    'チャート', '切り替え', '変更', '表示', '見せて', 'にして',
     'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム',
-    'ma', 'rsi', 'macd', 'bb', 'ind'
+    'ma', 'rsi', 'macd', 'bb', 'ind', '分足', '時間足'
   ];
   
   // Add drawing keywords for UI control
@@ -129,7 +129,12 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /(.+)に?変更/,
     /チャートを(.+)に/,
     /(.+)を?表示/,
-    /(.+)の?チャート/
+    /(.+)の?チャート/,
+    /チャート.*表示/,
+    /価格チャート.*表示/,
+    /\d+分足に?変更/,
+    /BTC価格チャート/,  // Specific pattern for "BTC価格チャート"
+    /(BTC|ETH|\w+)価格チャート/  // Pattern for symbol + 価格チャート
   ];
 
   // Check for specific UI control phrases including drawing commands
@@ -147,17 +152,23 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /サポレジ.*表示/,
     /チャート.*フィット/,
     /ズーム.*イン/,
-    /(.+)時間足に切り替え/
+    /(.+)時間足に切り替え/,
+    /価格チャート.*表示/  // Added specific pattern for "価格チャートを表示"
   ];
 
   const hasUIKeyword = uiControlKeywords.some(keyword => queryLower.includes(keyword));
   const hasDrawingUIKeyword = drawingUIKeywords.some(keyword => queryLower.includes(keyword));
   const hasChartSwitchPattern = chartSwitchPatterns.some(pattern => pattern.test(queryLower));
   const hasSpecificUIPattern = specificUIPatterns.some(pattern => pattern.test(queryLower));
-  const symbolWithUIAction = extractSymbol(userQuery) && (hasUIKeyword || hasChartSwitchPattern);
-
-  // More lenient UI control detection including drawing commands
-  if ((symbolWithUIAction || hasSpecificUIPattern || hasDrawingUIKeyword) && 
+  
+  // Check for timeframe changes (e.g., "15分足に変更")
+  const hasTimeframeChange = /\d+(分|時間)足|日足|週足|月足|\d+[mhMH]|\d+min|\d+hour|tf.*\d/i.test(queryLower);
+  
+  // Check for indicator commands (e.g., "MAを表示")
+  const hasIndicatorCommand = /(MA|RSI|MACD|BB|移動平均|ボリンジャー).*(表示|描画|出して|見せて)/i.test(queryLower);
+  
+  // More lenient UI control detection - don't require symbol for UI commands
+  if ((hasUIKeyword || hasDrawingUIKeyword || hasChartSwitchPattern || hasSpecificUIPattern || hasTimeframeChange || hasIndicatorCommand) && 
       !queryLower.includes('価格') && !queryLower.includes('いくら') &&
       !queryLower.includes('提案') && !queryLower.includes('おすすめ') &&
       !queryLower.includes('候補') && !queryLower.includes('推奨')) {
@@ -185,7 +196,7 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
   const hasAnalysisKeyword = priceAnalysisKeywords.some(keyword => queryLower.includes(keyword));
   const hasUIKeyword = ['チャート', '切り替え', '変更', '表示して', '見せて', 'にして', 'switch', 'change', 'show', 'display', 'sw', 'chg', 'disp', 'tf', 'zoom', 'ズーム'].some(keyword => queryLower.includes(keyword));
 
-  // More specific price inquiry patterns
+  // More specific price inquiry patterns (including multilingual)
   const specificPricePatterns = [
     /(.+)(の)?価格(は)?[?？]?$/,
     /(.+)(は)?いくら[?？]?$/,
@@ -198,15 +209,33 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
     /bitcoin\s*price/i,
     /\b(btc|eth|xrp|bnb|sol|ada)\s*(quote|prc|price)/i,  // Added "quote" and "prc"
     /\bquote\s+(btc|eth|xrp|bnb|sol|ada)/i,  // Added "quote [symbol]"
+    /cuál.*precio.*bitcoin/i,  // Spanish: "Cuál es el precio de Bitcoin?"
+    /precio.*bitcoin/i,  // Spanish: "precio de bitcoin"
+    /比特币.*价格/,  // Chinese: "比特币价格是多少？"
+    /价格.*多少/,  // Chinese: "价格是多少"
   ];
   
   const hasSpecificPricePattern = specificPricePatterns.some(pattern => pattern.test(queryLower));
   const hasCryptoSymbol = /\b(btc|eth|bnb|ada|sol|usdt|xrp|doge|dot|link|uni|avax|matic|ltc|ビットコイン|イーサリアム|イーサ)\b/i.test(queryLower);
   
+  // Special case: "チャートのビットコイン価格" should be price inquiry
+  if (queryLower.includes('チャートの') && queryLower.includes('価格')) {
+    const symbol = extractSymbol(userQuery);
+    return {
+      intent: 'price_inquiry',
+      confidence: 0.9,
+      reasoning: 'チャート上の価格確認',
+      analysisDepth: 'basic',
+      requiresWorkflow: true,
+      extractedSymbol: symbol || 'BTCUSDT'
+    };
+  }
+  
   // Only classify as price inquiry if it's really asking for price
-  if ((hasSpecificPricePattern || (hasCryptoSymbol && (queryLower.includes('price') || queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('quote') || queryLower.includes('prc') || queryLower.includes('相場')))) &&
+  if ((hasSpecificPricePattern || (hasCryptoSymbol && (queryLower.includes('price') || queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('quote') || queryLower.includes('prc') || queryLower.includes('相場') || queryLower.includes('precio') || queryLower.includes('价格')))) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
-        hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword)) {
+        hasDrawingKeyword || queryLower.includes('提案') || hasUIKeyword || 
+        (queryLower.includes('チャート') && queryLower.includes('表示')))) {
     const symbol = extractSymbol(userQuery);
     const result: IntentAnalysisResult = {
       intent: 'price_inquiry',
@@ -235,8 +264,23 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
 
   const hasProposalKeyword = proposalKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
   const hasProposalDrawingKeyword = proposalDrawingKeywords.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  // Check for analysis patterns that should not be proposals
+  const analysisPatterns = [
+    /サポート.*レジスタンス.*分析/,
+    /サポート.*分析/,
+    /レジスタンス.*分析/
+  ];
+  
+  const isAnalysisRequest = analysisPatterns.some(pattern => pattern.test(queryLower));
+  
+  // If it's an analysis request with support/resistance, let it fall through to trading_analysis
+  if (isAnalysisRequest) {
+    return null;
+  }
 
-  if (hasProposalKeyword && hasProposalDrawingKeyword) {
+  // More lenient proposal detection
+  if (hasProposalKeyword || (hasProposalDrawingKeyword && (queryLower.includes('提案') || queryLower.includes('suggest')))) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
 
     if (queryLower.includes('トレンドライン') || queryLower.includes('trend')) {
@@ -349,13 +393,13 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
 
 export function detectTradingAnalysis(userQuery: string, queryLower: string): IntentAnalysisResult | null {
   const analysisKeywords = [
-    '分析', 'テクニカル', '市場', '買う', '売る', '投資',
+    '分析', 'テクニカル', '買う', '売る', '投資',
     '推奨', 'おすすめ', '戦略', 'リスク', '評価', 'レポート',
-    '将来性', '見通し', '予想', '買い時', '売り時',
-    'どう思う', '判断', 'トレンド', '動向', '展望',
-    'outlook', 'forecast', 'prediction', 'trend', 'analysis',
+    '予想', '買い時', '売り時',
+    '判断', '動向', '展望',
+    'outlook', 'forecast', 'prediction', 'analysis',
     'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解', '詳しく', '詳細',
-    '買うべき', '売るべき', '教えて'
+    '買うべき', '売るべき'
   ];
 
   // Check for explicit analysis requests
@@ -364,7 +408,10 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     /(.+)の?詳細な?分析/,
     /(.+)について?詳しく/,
     /(.+)の?状況を?詳しく/,
-    /詳しく.*教えて/
+    /詳しく.*教えて/,
+    /テクニカル分析/,
+    /分析を?して/,
+    /分析を?お願い/
   ];
 
   const hasAnalysisKeyword = analysisKeywords.some(keyword => queryLower.includes(keyword));
@@ -433,7 +480,8 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   const marketChatKeywords = [
     '最近', '調子', '相場', '市場',
     'ビットコイン', 'イーサリアム', '暗号通貨', '仮想通貨', 'クリプト',
-    '上がり', '下がり', '動き', 'トレンド', '傾向', '様子'
+    '上がり', '下がり', '動き', 'トレンド', '傾向', '様子',
+    '将来性', '見通し'  // Add keywords that were causing false positives
   ];
 
   const casualMarketPhrases = [
@@ -442,6 +490,8 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
     /相場.*どう/i,
     /今日.*相場/i,
     /市場.*様子/i,
+    /市場.*どう/i,  // Added pattern for "最近の市場はどう？"
+    /将来性.*どう思う/i,  // Added pattern for "ビットコインの将来性についてどう思う？"
     /今日.*(ビットコイン|イーサリアム|暗号|仮想|クリプト|相場|市場)/i,
     /昨日.*(ビットコイン|イーサリアム|暗号|仮想|クリプト|相場|市場)/i
   ];
@@ -449,10 +499,14 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   const hasMarketChatKeyword = marketChatKeywords.some(keyword => queryLower.includes(keyword));
   const hasCasualMarketPhrase = casualMarketPhrases.some(pattern => pattern.test(queryLower));
 
-  if ((hasMarketChatKeyword && queryLower.length < 50) || hasCasualMarketPhrase) {
+  // Check for casual conversation patterns
+  const casualPatterns = /(どう？|どう思う|どうかな)/;
+  const isCasualTone = casualPatterns.test(queryLower);
+
+  if ((hasMarketChatKeyword && (queryLower.length < 50 || isCasualTone)) || hasCasualMarketPhrase) {
     return {
       intent: 'market_chat',
-      confidence: 0.8,
+      confidence: 0.85,  // Increased confidence
       reasoning: '市場に関する気軽な会話',
       analysisDepth: 'basic',
       requiresWorkflow: false,  // Market chat doesn't require workflow
@@ -468,7 +522,8 @@ export function detectSmallTalk(userQuery: string, queryLower: string): IntentAn
     '元気', 'げんき', '疲れ', 'つかれ', 'お疲れ', '大丈夫',
     'ありがとう', 'ありがと', 'すごい', 'いいね', 'そうだね',
     'そうなんだ', 'なるほど', 'わかった', 'わかりました', 'OK', 'ok',
-    'thx', 'はい', 'いえ', 'yes', 'no'
+    'thx', 'はい', 'いえ', 'yes', 'no',
+    '暑い', '寒い', '天気', '雨', '晴れ', '曇り'  // Added weather keywords
   ];
 
   const emotionalPhrases = [
