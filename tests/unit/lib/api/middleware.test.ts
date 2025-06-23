@@ -99,11 +99,12 @@ describe('Utility Functions', () => {
       expect(key).toBe('generate-api-key-on-server-side');
     });
 
-    it.skip('should generate unique keys - not applicable for placeholder', () => {
-      // Skipped: generateApiKey returns a placeholder for edge runtime compatibility
+    it('returns consistent placeholder value', () => {
+      // generateApiKey returns a placeholder for edge runtime compatibility
       const key1 = generateApiKey();
       const key2 = generateApiKey();
-      expect(key1).not.toBe(key2);
+      expect(key1).toBe(key2); // Should be same placeholder
+      expect(key1).toBe('generate-api-key-on-server-side');
     });
   });
 

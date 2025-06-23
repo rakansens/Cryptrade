@@ -17,6 +17,12 @@ export interface TechnicalAnalysis {
     direction: 'bullish' | 'bearish' | 'sideways';
     strength: number;
     confidence: number;
+    trendlines?: Array<{
+      type: 'support' | 'resistance' | 'trend';
+      points: Array<{ time: number; price: number }>;
+      strength: number;
+      touchPoints: number;
+    }>;
   };
   momentum: {
     rsi: number;
@@ -298,6 +304,7 @@ export const chartDataAnalysisTool = createTool({
             direction: 'sideways',
             strength: 0.5,
             confidence: 0.1,
+            trendlines: [],
           },
           supportResistance: {
             supports: [],
@@ -393,7 +400,7 @@ async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: num
   const currentPrice = closes[closes.length - 1];
   if (currentPrice === undefined) {
     return {
-      trend: { direction: 'sideways', strength: 0.5, confidence: 0.5 },
+      trend: { direction: 'sideways', strength: 0.5, confidence: 0.5, trendlines: [] },
       supportResistance: { supports: [], resistances: [] },
       volatility: { atr: 0, volatilityLevel: 'low', atrPercent: 0 },
       momentum: { rsi: 50, macd: { macd: 0, signal: 0, histogram: 0 } },
@@ -921,7 +928,7 @@ function generateNextActionRecommendation(technicalAnalysis: TechnicalAnalysis, 
     return '下降トレンド継続中。戻り売りのタイミングを探してください。';
   } else if (momentum.rsi > 80) {
     return 'RSIが買われすぎ水準。利確または調整待ちを検討してください。';
-  } else if (momentum.rsi < 20) {
+  } else if (momentum.rsi < 30) {
     return 'RSIが売られすぎ水準。反発の可能性があります。';
   } else if (supportResistance.supports.length > 0 && supportResistance.supports[0]) {
     const nearestSupport = supportResistance.supports[0];

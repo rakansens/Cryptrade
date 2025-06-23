@@ -168,12 +168,18 @@ export class ApiError extends MastraBaseError {
     statusCode: number,
     options?: Partial<MastraErrorOptions>
   ) {
+    // Merge data to ensure statusCode is preserved
+    const mergedData = {
+      statusCode,
+      ...(options?.data || {})
+    };
+    
     super(message, {
       code: `API_${statusCode}`,
       category: 'API_ERROR',
-      data: { statusCode },
       retryable: statusCode >= 500 || statusCode === 429,
       ...options,
+      data: mergedData,
     });
   }
 }

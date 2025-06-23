@@ -444,7 +444,7 @@ describe('AnalysisHistoryStore', () => {
       useAnalysisHistoryStore.setState({ records: testRecords });
     });
 
-    it.skip('should filter records by status', () => {
+    it('should filter records by status', () => {
       const { result } = renderHook(() => useAnalysisHistoryStore());
 
       act(() => {
@@ -460,8 +460,9 @@ describe('AnalysisHistoryStore', () => {
       });
       
       filtered = result.current.getFilteredRecords();
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].id).toBe('2');
+      expect(filtered).toHaveLength(2); // Records 2 and 5 have success
+      expect(filtered.map(r => r.id)).toContain('2');
+      expect(filtered.map(r => r.id)).toContain('5');
 
       act(() => {
         result.current.setFilter('failure');
@@ -472,7 +473,7 @@ describe('AnalysisHistoryStore', () => {
       expect(filtered[0].id).toBe('3');
     });
 
-    it.skip('should sort records by different criteria', () => {
+    it('should sort records by different criteria', () => {
       const { result } = renderHook(() => useAnalysisHistoryStore());
 
       // Sort by timestamp ascending
@@ -481,8 +482,8 @@ describe('AnalysisHistoryStore', () => {
       });
       
       let sorted = result.current.getFilteredRecords();
-      expect(sorted[0].id).toBe('1');
-      expect(sorted[2].id).toBe('3');
+      expect(sorted[0].id).toBe('2'); // Oldest timestamp
+      expect(sorted[sorted.length - 1].id).toBe('5'); // Newest timestamp
 
       // Sort by accuracy descending
       act(() => {
@@ -491,7 +492,7 @@ describe('AnalysisHistoryStore', () => {
       
       sorted = result.current.getFilteredRecords();
       expect(sorted[0].performance?.accuracy).toBe(0.9);
-      expect(sorted[2].performance?.accuracy).toBe(0.5);
+      expect(sorted[sorted.length - 1].performance?.accuracy).toBe(0.5);
 
       // Sort by symbol
       act(() => {
@@ -499,8 +500,10 @@ describe('AnalysisHistoryStore', () => {
       });
       
       sorted = result.current.getFilteredRecords();
+      // First should be BTC/USDT
       expect(sorted[0].symbol).toBe('BTC/USDT');
-      expect(sorted[2].symbol).toBe('ETH/USDT');
+      // Last should be XRP/USDT
+      expect(sorted[sorted.length - 1].symbol).toBe('XRP/USDT');
     });
 
     it('should toggle sort order when sorting by same field', () => {
@@ -1299,9 +1302,17 @@ describe('AnalysisHistoryStore', () => {
       }).toThrow('Invalid import data format');
     });
 
-    it.skip('should handle import with missing records field', () => {
+    it('should handle import with missing records field', () => {
       const { result } = renderHook(() => useAnalysisHistoryStore());
 
+      // Add some existing records to verify they're not cleared
+      act(() => {
+        useAnalysisHistoryStore.setState({
+          records: [{ id: 'existing' } as AnalysisRecord]
+        });
+      });
+
+      // Import data without records field - should not throw or change state
       act(() => {
         result.current.importData(JSON.stringify({ 
           exportedAt: Date.now(),
@@ -1310,8 +1321,15 @@ describe('AnalysisHistoryStore', () => {
         }));
       });
 
-      // Should not crash, but also not import anything
-      expect(useAnalysisHistoryStore.getState().records).toHaveLength(0);
+      // Should not crash and existing records should remain unchanged
+      const state = useAnalysisHistoryStore.getState();
+      expect(state.records).toHaveLength(1);
+      expect(state.records[0].id).toBe('existing');
+      // Logger.info should not have been called since no records were imported
+      expect(logger.info).not.toHaveBeenCalledWith(
+        '[AnalysisHistory] Data imported',
+        expect.any(Object)
+      );
     });
 
     it('should handle import with invalid record data', () => {

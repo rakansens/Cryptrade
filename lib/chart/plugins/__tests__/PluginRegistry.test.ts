@@ -65,9 +65,14 @@ class AsyncDisposePlugin extends MockPlugin {
 // Error-prone plugin
 class ErrorPlugin extends MockPlugin {
   override name = 'error-plugin';
+  errorOnSupport = false; // Control when to throw support errors
   
-  override supports(): boolean {
-    throw new Error('Support check failed');
+  override supports(data: PatternVisualization): boolean {
+    if (this.errorOnSupport) {
+      throw new Error('Support check failed');
+    }
+    // Return true for render tests so the plugin gets included
+    return data.keyPoints.length >= 3;
   }
 
   override async render(): Promise<void> {
@@ -79,7 +84,8 @@ class ErrorPlugin extends MockPlugin {
   }
 
   override initialize(): void {
-    throw new Error('Initialize failed');
+    // Initialize successfully so the plugin gets registered
+    this.initialized = true;
   }
 
   override dispose(): void {
@@ -151,9 +157,18 @@ describe('PluginRegistry', () => {
 
     it('should handle reinitialization errors gracefully', () => {
       const reg = new PluginRegistry();
-      const errorPlugin = new ErrorPlugin();
+      // Create a plugin that initializes successfully first time
+      const reinitErrorPlugin = new MockPlugin();
+      reinitErrorPlugin.name = 'reinit-error-plugin';
+      let initCount = 0;
+      reinitErrorPlugin.initialize = () => {
+        initCount++;
+        if (initCount > 1) {
+          throw new Error('Reinitialize failed');
+        }
+      };
       
-      reg.register(errorPlugin);
+      reg.register(reinitErrorPlugin);
       
       // Should not throw
       expect(() => reg.setContext(mockContext)).not.toThrow();
@@ -197,9 +212,14 @@ describe('PluginRegistry', () => {
     });
 
     it('should handle initialization failure', () => {
-      const errorPlugin = new ErrorPlugin();
+      // Create a plugin that throws during initialization
+      const initErrorPlugin = new MockPlugin();
+      initErrorPlugin.name = 'init-error-plugin';
+      initErrorPlugin.initialize = () => {
+        throw new Error('Initialize failed');
+      };
       
-      expect(() => registry.register(errorPlugin)).toThrow('Failed to initialize');
+      expect(() => registry.register(initErrorPlugin)).toThrow('Failed to initialize');
     });
 
     it('should not initialize if no context', () => {
@@ -250,9 +270,9 @@ describe('PluginRegistry', () => {
       expect(supporting).toHaveLength(0);
     });
 
-    it.skip('should handle support check errors', () => {
-      // TODO: Fix test - ErrorPlugin fails to initialize and doesn't get registered
+    it('should handle support check errors', () => {
       const errorPlugin = new ErrorPlugin();
+      errorPlugin.errorOnSupport = true; // Enable support check errors for this test
       const goodPlugin = new MockPlugin();
       goodPlugin.name = 'good-plugin';
       
@@ -319,8 +339,7 @@ describe('PluginRegistry', () => {
       expect(result).toBe(false);
     });
 
-    it.skip('should handle dispose errors', () => {
-      // TODO: Fix test - ErrorPlugin fails to initialize and doesn't get registered
+    it('should handle dispose errors', () => {
       const errorPlugin = new ErrorPlugin();
       registry.register(errorPlugin);
       
@@ -369,8 +388,7 @@ describe('PluginRegistry', () => {
       expect(asyncPlugin.disposed).toBe(true);
     });
 
-    it.skip('should collect disposal errors', async () => {
-      // TODO: Fix test - ErrorPlugin fails to initialize and doesn't get registered
+    it('should collect disposal errors', async () => {
       const errorPlugin = new ErrorPlugin();
       const goodPlugin = new MockPlugin();
       
@@ -451,8 +469,7 @@ describe('PluginRegistry', () => {
       expect(result.failures).toHaveLength(0);
     });
 
-    it.skip('should handle render failures', async () => {
-      // TODO: Fix test - ErrorPlugin fails to initialize and doesn't get registered
+    it('should handle render failures', async () => {
       const errorPlugin = new ErrorPlugin();
       const goodPlugin = new MockPlugin();
       goodPlugin.name = 'good-plugin';
@@ -515,8 +532,7 @@ describe('PluginRegistry', () => {
       expect(plugin2.remove).toHaveBeenCalledWith('pattern-1');
     });
 
-    it.skip('should handle remove failures gracefully', async () => {
-      // TODO: Fix test - ErrorPlugin fails to initialize and doesn't get registered
+    it('should handle remove failures gracefully', async () => {
       const errorPlugin = new ErrorPlugin();
       const goodPlugin = new MockPlugin();
       goodPlugin.name = 'good-plugin';

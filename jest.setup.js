@@ -558,6 +558,17 @@ jest.mock('@/lib/api/create-api-handler', () => {
     createApiHandler: jest.fn((config) => {
       return jest.fn(async (request) => {
         try {
+          // Apply middleware if provided
+          if (config.middleware) {
+            const middlewares = Array.isArray(config.middleware) ? config.middleware : [config.middleware];
+            for (const middleware of middlewares) {
+              const response = await middleware(request);
+              if (response) {
+                return response; // Middleware returned early response
+              }
+            }
+          }
+          
           // Parse request data
           let data = {};
           if (request.method === 'GET' || request.method === 'HEAD') {
@@ -596,11 +607,15 @@ jest.mock('@/lib/api/create-api-handler', () => {
             }
           }
           
+          // Extract session ID from headers
+          const sessionId = request.headers.get('x-session-id');
+          
           // Call the handler
           const result = await config.handler({
             data,
             request,
             context: {
+              sessionId,
               headers: Object.fromEntries(request.headers.entries()),
             },
           });
@@ -631,12 +646,18 @@ jest.mock('@/lib/api/create-api-handler', () => {
               } 
             };
           } else if (error.constructor.name === 'ApiError') {
-            status = error.statusCode || 500;
+            // ApiError stores statusCode in data field
+            status = (error.data && error.data.statusCode) || error.statusCode || 500;
+            
+            // Extract retryable and other properties from error
+            const errorObject = {
+              message: error.message,
+              ...(error.retryable !== undefined && { retryable: error.retryable }),
+              ...(error.context !== undefined && { context: error.context }),
+            };
+            
             errorResponse = { 
-              error: { 
-                message: error.message,
-                ...error.details 
-              } 
+              error: errorObject
             };
           }
           
@@ -657,6 +678,77 @@ jest.mock('@/lib/api/create-api-handler', () => {
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       });
+    });
+  }),
+  createStreamingHandler: jest.fn((config) => {
+    return jest.fn(async (request) => {
+      try {
+        // Parse request data
+        let data = {};
+        if (request.method === 'POST' || request.method === 'PUT') {
+          try {
+            data = await request.json();
+          } catch {
+            // Ignore JSON parsing errors in tests
+          }
+        }
+        
+        // Validate with schema if provided
+        if (config.schema) {
+          data = config.schema.parse(data);
+        }
+        
+        // Call the stream handler
+        const context = {
+          sessionId: request.headers.get('x-session-id'),
+          headers: Object.fromEntries(request.headers.entries()),
+        };
+        
+        const stream = config.streamHandler({ data, request, context });
+        
+        // Create a mock SSE response
+        return new Response(new ReadableStream({
+          async start(controller) {
+            try {
+              if (stream instanceof ReadableStream) {
+                // Handle ReadableStream directly
+                const reader = stream.getReader();
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  controller.enqueue(value);
+                }
+              } else {
+                // Handle AsyncGenerator
+                for await (const chunk of stream) {
+                  const data = typeof chunk === 'string'
+                    ? chunk
+                    : `data: ${JSON.stringify(chunk)}\n\n`;
+                  controller.enqueue(new TextEncoder().encode(data));
+                }
+              }
+              controller.close();
+            } catch (error) {
+              controller.error(error);
+            }
+          },
+        }), {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } catch (error) {
+        // Return error response
+        return new (require('next/server').NextResponse)(
+          JSON.stringify({ error: { message: error.message } }),
+          { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+      }
     });
   }),
   };

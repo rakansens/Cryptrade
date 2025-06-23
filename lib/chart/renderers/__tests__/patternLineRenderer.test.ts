@@ -406,8 +406,7 @@ describe('renderPatternLines', () => {
       });
     });
 
-    it.skip('should log detailed error information', () => {
-      // TODO: Fix test - error logging format might be different
+    it('should log detailed error information', () => {
       const error = new Error('Test error');
       error.stack = 'Test stack trace';
       
@@ -429,19 +428,18 @@ describe('renderPatternLines', () => {
         ],
       };
 
-      try {
-        renderPatternLines('pattern-14', visualization, deps);
-      } catch (e) {
-        // Expected in production mode
-      }
+      // renderPatternLines logs error but returns existing lines as fallback
+      const result = renderPatternLines('pattern-14', visualization, deps);
 
-      expect(logger.error).toHaveBeenCalledWith('[PatternLineRenderer] Error', {
+      // Verify error was logged for the failed line creation
+      expect(logger.error).toHaveBeenCalledWith('[PatternLineRenderer] Failed to create line', {
         id: 'pattern-14',
-        error: {
-          message: 'Test error',
-          stack: 'Test stack trace',
-        },
+        lineIndex: 0,
+        error: 'Error: Test error',
       });
+      
+      // Result should be empty since no lines were successfully created
+      expect(result).toEqual([]);
     });
   });
 

@@ -1,9 +1,13 @@
 // Mock dependencies before imports
+const mockAddPattern = jest.fn();
+const mockRemovePattern = jest.fn();
+const mockClearPatterns = jest.fn();
+
 jest.mock('@/store/chart', () => ({
   usePatternActions: jest.fn(() => ({
-    addPattern: jest.fn(),
-    removePattern: jest.fn(),
-    clearPatterns: jest.fn(),
+    addPattern: mockAddPattern,
+    removePattern: mockRemovePattern,
+    clearPatterns: mockClearPatterns,
   })),
   useChartBaseStore: jest.fn(() => ({
     symbol: 'BTCUSDT',
@@ -19,14 +23,16 @@ jest.mock('@/lib/utils/logger', () => ({
     debug: jest.fn()
   }
 }));
+const mockPatternRenderer = {
+  renderPattern: jest.fn(),
+  removePattern: jest.fn(),
+};
+
 jest.mock('@/lib/chart/agent-utils', () => ({
   handleValidationError: jest.fn(),
   handleAgentError: jest.fn(),
   showAgentSuccess: jest.fn(),
-  getPatternRenderer: jest.fn(() => ({
-    renderPattern: jest.fn(),
-    removePattern: jest.fn(),
-  }))
+  getPatternRenderer: jest.fn(() => mockPatternRenderer)
 }));
 jest.mock('@/types/events/pattern-events', () => ({
   validatePatternEvent: jest.fn((eventType, detail) => ({
@@ -49,11 +55,6 @@ import {
 } from '@/lib/chart/agent-utils';
 
 describe('usePatternEventHandlers', () => {
-  const mockPatternRenderer = {
-    renderPattern: jest.fn(),
-    removePattern: jest.fn(),
-  };
-  
   // Create a complete mock of ChartEventHandlers to ensure useEffect runs
   let mockHandlers: ChartEventHandlers;
 
@@ -76,11 +77,14 @@ describe('usePatternEventHandlers', () => {
     // Reset all mock implementations
     mockPatternRenderer.renderPattern.mockClear();
     mockPatternRenderer.removePattern.mockClear();
+    mockAddPattern.mockClear();
+    mockRemovePattern.mockClear();
+    mockClearPatterns.mockClear();
     
     // Initialize mockHandlers with stable references
     mockHandlers = {
       patternRenderer: mockPatternRenderer,
-      getPatternRenderer: jest.fn(() => mockPatternRenderer),
+      getPatternRenderer: () => mockPatternRenderer, // Use regular function instead of jest.fn
       chart: {} as any,
       series: {} as any,
     } as ChartEventHandlers;
@@ -106,14 +110,19 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Initial state and mounting', () => {
-    it('should register event listeners on mount', () => {
+    it('should register event listeners on mount', async () => {
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
       
       // Render the hook 
-      const { result } = renderHook(() => usePatternEventHandlers(mockHandlers));
+      let result: any;
+      await act(async () => {
+        result = renderHook(() => usePatternEventHandlers(mockHandlers));
+      });
       
-      // useEffect should run immediately
-      expect(addEventListenerSpy).toHaveBeenCalled();
+      // Wait for useEffect to run
+      await waitFor(() => {
+        expect(addEventListenerSpy).toHaveBeenCalled();
+      });
       
       // Check that addEventListener was called
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));

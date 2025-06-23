@@ -8,7 +8,7 @@ config({ path: '.env.local' });
 global.fetch = jest.fn();
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
-describe.skip('API Endpoints Integration Tests - Requires running server', () => {
+describe('API Endpoints Integration Tests', () => {
   const baseUrl = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3000';
   
   beforeEach(() => {

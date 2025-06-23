@@ -1,33 +1,59 @@
-// import { AlertService } from '@/lib/services/alert.service';
+import { AlertService } from '@/lib/services/alert.service';
 
-// The AlertService is a placeholder implementation that's not fully functional
-// Skip these tests until the service is properly implemented with Prisma models
+// Mock console.warn for testing
+const originalWarn = console.warn;
+let consoleWarnSpy: jest.SpyInstance;
 
-describe.skip('AlertService', () => {
+beforeEach(() => {
+  consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+});
+
+afterEach(() => {
+  consoleWarnSpy.mockRestore();
+});
+
+describe('AlertService', () => {
   describe('Placeholder Implementation', () => {
     it('createAlert should throw not implemented error', async () => {
-      // Skipped: AlertService is not implemented
-      expect(true).toBe(true);
+      await expect(
+        AlertService.createAlert({
+          userId: 'user-123',
+          symbol: 'BTCUSDT',
+          conditions: { priceAbove: 50000 },
+          metadata: { name: 'Test Alert' }
+        })
+      ).rejects.toThrow('Alert service is not implemented - missing Prisma models');
     });
 
     it('triggerAlert should throw not implemented error', async () => {
-      // Skipped: AlertService is not implemented
-      expect(true).toBe(true);
+      await expect(
+        AlertService.triggerAlert('alert-123', 50000)
+      ).rejects.toThrow('Alert service is not implemented - missing Prisma models');
     });
 
     it('getUserAlerts should return empty array with warning', async () => {
-      // Skipped: AlertService is not implemented
-      expect(true).toBe(true);
+      const result = await AlertService.getUserAlerts('user-123');
+      
+      expect(result).toEqual([]);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[AlertService] getUserAlerts called but not implemented - returning empty array',
+        {
+          userId: 'user-123',
+          reason: 'Alert and AlertTrigger models not defined in Prisma schema'
+        }
+      );
     });
 
     it('deleteAlert should throw not implemented error', async () => {
-      // Skipped: AlertService is not implemented
-      expect(true).toBe(true);
+      await expect(
+        AlertService.deleteAlert('alert-123')
+      ).rejects.toThrow('Alert service is not implemented - missing Prisma models');
     });
     
     it('triggerAlert should throw not implemented error with description', async () => {
-      // Skipped: AlertService is not implemented
-      expect(true).toBe(true);
+      await expect(
+        AlertService.triggerAlert('alert-123', 50000, 'Price crossed threshold')
+      ).rejects.toThrow('Alert service is not implemented - missing Prisma models');
     });
   });
 });

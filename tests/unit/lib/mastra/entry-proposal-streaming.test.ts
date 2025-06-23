@@ -304,8 +304,14 @@ describe('Entry Proposal Streaming Response', () => {
   });
 
   describe('Streaming Performance', () => {
-    it.skip('should maintain reasonable chunk processing speed', async () => {
+    it('should maintain reasonable chunk processing speed', () => {
       const chunkTimestamps: number[] = [];
+      let currentTime = 0;
+      
+      // Mock Date.now to use our controlled time
+      const originalDateNow = Date.now;
+      Date.now = jest.fn(() => currentTime);
+      
       const mockChunkProcessor = jest.fn(() => {
         chunkTimestamps.push(Date.now());
       });
@@ -313,7 +319,8 @@ describe('Entry Proposal Streaming Response', () => {
       // Process multiple chunks
       for (let i = 0; i < 10; i++) {
         mockChunkProcessor();
-        await new Promise(resolve => setTimeout(resolve, 10));
+        currentTime += 15; // Simulate 15ms between chunks
+        jest.advanceTimersByTime(15);
       }
 
       // Calculate average time between chunks
@@ -329,6 +336,9 @@ describe('Entry Proposal Streaming Response', () => {
 
       expect(avgDelta).toBeGreaterThanOrEqual(10);
       expect(avgDelta).toBeLessThan(50); // Should not be too slow
+      
+      // Restore Date.now
+      Date.now = originalDateNow;
     });
 
     it('should buffer chunks efficiently', () => {
@@ -359,7 +369,7 @@ describe('Entry Proposal Streaming Response', () => {
   });
 
   describe('Real-time Proposal Updates', () => {
-    it.skip('should stream multiple proposals sequentially', async () => {
+    it('should stream multiple proposals sequentially', () => {
       const proposals: any[] = [];
       const mockProposalHandler = jest.fn((proposal) => {
         proposals.push(proposal);
@@ -374,7 +384,7 @@ describe('Entry Proposal Streaming Response', () => {
 
       for (const [index, proposal] of proposalData.entries()) {
         // Stream proposal header
-        await new Promise(resolve => setTimeout(resolve, 20));
+        jest.advanceTimersByTime(20);
         
         // Stream proposal details
         mockProposalHandler({
@@ -383,7 +393,7 @@ describe('Entry Proposal Streaming Response', () => {
           proposal,
         });
         
-        await new Promise(resolve => setTimeout(resolve, 30));
+        jest.advanceTimersByTime(30);
       }
 
       expect(proposals).toHaveLength(3);

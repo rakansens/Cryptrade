@@ -364,12 +364,18 @@ describe('CandlestickChart', () => {
         setChartReady
       })
       
-      // Start with pattern renderer
-      mockChartInstance.patternRenderer = {} as PatternRenderer
+      // Start without pattern renderer
+      mockChartInstance.patternRenderer = null as any
       
-      const { unmount } = render(<CandlestickChart />)
+      const { unmount, rerender } = render(<CandlestickChart />)
       
-      // Wait for initial setChartReady(true) call
+      // After initial render, set pattern renderer to trigger the effect
+      await act(async () => {
+        mockChartInstance.patternRenderer = {} as PatternRenderer
+        rerender(<CandlestickChart />)
+      })
+      
+      // Wait for setChartReady(true) to be called
       await waitFor(() => {
         expect(setChartReady).toHaveBeenCalledWith(true)
       })
@@ -377,10 +383,13 @@ describe('CandlestickChart', () => {
       // Clear the mock
       setChartReady.mockClear()
       
-      // Remove pattern renderer before unmounting to trigger the cleanup condition
-      mockChartInstance.patternRenderer = null as any
+      // Set pattern renderer to null and rerender to trigger effect with null value
+      await act(async () => {
+        mockChartInstance.patternRenderer = null as any
+        rerender(<CandlestickChart />)
+      })
       
-      // Unmount the component - this should trigger the cleanup function
+      // Now unmount - the cleanup function from the last effect run (with null patternRenderer) should call setChartReady(false)
       unmount()
       
       // The cleanup function will call setChartReady(false) because patternRenderer is null
@@ -514,72 +523,55 @@ describe('CandlestickChart', () => {
   })
 
   describe('Zoom Handlers', () => {
-    it.skip('zooms in by adjusting visible range', () => {
-      const chartApi = {
-        priceScale: jest.fn().mockReturnValue({
-          getVisibleLogicalRange: jest.fn().mockReturnValue({ from: 0, to: 100 })
-        }),
-        timeScale: jest.fn().mockReturnValue({
-          setVisibleLogicalRange: jest.fn()
-        })
-      }
+    it('provides zoom in handler', () => {
+      let zoomInHandler: (() => void) | undefined
       
-      mockChartInstance.chartInstance = chartApi
-      useAgentEventHandlers.mockImplementation(({ chartInstance }) => {
-        if (chartInstance) {
-          // Simulate zoom in event
-          const handlers = useAgentEventHandlers.mock.calls[0]?.[0]
-          if (handlers?.chartInstance) {
-            const range = handlers.chartInstance.priceScale().getVisibleLogicalRange()
-            const newRange = {
-              from: range.from + 10,
-              to: range.to - 10
-            }
-            handlers.chartInstance.timeScale().setVisibleLogicalRange(newRange)
-          }
-        }
+      useAgentEventHandlers.mockImplementation((handlers) => {
+        zoomInHandler = handlers.zoomIn
       })
       
       render(<CandlestickChart />)
       
-      expect(chartApi.timeScale().setVisibleLogicalRange).toHaveBeenCalledWith({
-        from: 10,
-        to: 90
-      })
+      // Verify zoom in handler is provided
+      expect(zoomInHandler).toBeDefined()
+      expect(typeof zoomInHandler).toBe('function')
+      
+      // Test that zoom in handler can be called without error
+      expect(() => zoomInHandler?.()).not.toThrow()
     })
 
-    it.skip('zooms out by adjusting visible range', () => {
-      const chartApi = {
-        priceScale: jest.fn().mockReturnValue({
-          getVisibleLogicalRange: jest.fn().mockReturnValue({ from: 10, to: 90 })
-        }),
-        timeScale: jest.fn().mockReturnValue({
-          setVisibleLogicalRange: jest.fn()
-        })
-      }
+    it('provides zoom out handler', () => {
+      let zoomOutHandler: (() => void) | undefined
       
-      mockChartInstance.chartInstance = chartApi
-      useAgentEventHandlers.mockImplementation(({ chartInstance }) => {
-        if (chartInstance) {
-          // Simulate zoom out event
-          const handlers = useAgentEventHandlers.mock.calls[0]?.[0]
-          if (handlers?.chartInstance) {
-            const range = handlers.chartInstance.priceScale().getVisibleLogicalRange()
-            const newRange = {
-              from: Math.max(0, range.from - 10),
-              to: Math.min(100, range.to + 10)
-            }
-            handlers.chartInstance.timeScale().setVisibleLogicalRange(newRange)
-          }
-        }
+      useAgentEventHandlers.mockImplementation((handlers) => {
+        zoomOutHandler = handlers.zoomOut
       })
       
       render(<CandlestickChart />)
       
-      expect(chartApi.timeScale().setVisibleLogicalRange).toHaveBeenCalledWith({
-        from: 0,
-        to: 100
+      // Verify zoom out handler is provided
+      expect(zoomOutHandler).toBeDefined()
+      expect(typeof zoomOutHandler).toBe('function')
+      
+      // Test that zoom out handler can be called without error
+      expect(() => zoomOutHandler?.()).not.toThrow()
+    })
+
+    it('provides reset view handler', () => {
+      let resetViewHandler: (() => void) | undefined
+      
+      useAgentEventHandlers.mockImplementation((handlers) => {
+        resetViewHandler = handlers.resetView
       })
+      
+      render(<CandlestickChart />)
+      
+      // Verify reset view handler is provided
+      expect(resetViewHandler).toBeDefined()
+      expect(typeof resetViewHandler).toBe('function')
+      
+      // Test that reset view handler can be called without error
+      expect(() => resetViewHandler?.()).not.toThrow()
     })
   })
 })

@@ -360,28 +360,50 @@ describe('StreamingResponseBuilder', () => {
       reader.releaseLock();
     });
 
-    it.skip('should handle transform errors - timeout issues', async () => {
+    it.skip('should handle transform errors - circular references', async () => {
       // Create a circular reference that will cause JSON.stringify to fail
       const circularRef: any = { name: 'test' };
       circularRef.self = circularRef;
       
       const transform = builder.createSSETransformStream();
       const writer = transform.writable.getWriter();
-      const reader = transform.readable.getReader();
       
-      // Write the circular reference and close immediately
+      // Write the circular reference - this should be caught and logged
       await writer.write({ data: circularRef });
+      
+      // Write a valid event to ensure the stream continues working
+      await writer.write({ event: 'test', data: 'valid data' });
+      
+      // Close the writer
       await writer.close();
       
-      // Try to read - stream should be empty because the transform skipped the malformed event
-      const result = await reader.read();
-      expect(result.done).toBe(true);
+      // Create a simple consumer that collects all chunks
+      const chunks: Uint8Array[] = [];
+      const reader = transform.readable.getReader();
       
-      // The transform should log the error but not throw
-      expect(logger.error).toHaveBeenCalledWith('[SSE Transform] Failed to transform event', expect.any(Object));
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
       
-      reader.releaseLock();
-    });
+      // Should have received the valid event but not the circular reference
+      const allText = chunks.map(chunk => new TextDecoder().decode(chunk)).join('');
+      expect(allText).toContain('valid data');
+      expect(allText).not.toContain('circularRef');
+      
+      // Verify error was logged for the circular reference
+      expect(logger.error).toHaveBeenCalledWith(
+        '[SSE Transform] Failed to transform event',
+        expect.objectContaining({
+          error: expect.any(Error)
+        })
+      );
+    }, 10000);
   });
 });
 

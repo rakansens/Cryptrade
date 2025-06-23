@@ -205,36 +205,81 @@ describe('BinanceAPIService', () => {
     });
   });
 
-  describe.skip('WebSocket URL generation', () => {
-    // Skip: These methods don't exist on the mocked service
-    it('should generate correct WebSocket URLs', () => {
-      expect(true).toBe(true);
+  describe('API service methods', () => {
+    it('should have fetchOrderBook method', async () => {
+      // Test that the method exists and can be called
+      expect(service.fetchOrderBook).toBeDefined();
+      expect(typeof service.fetchOrderBook).toBe('function');
     });
 
-    it('should handle combined streams', () => {
-      expect(true).toBe(true);
-    });
-  });
-
-  describe.skip('Retry mechanism', () => {
-    // Skip: Retry logic is internal to the actual implementation
-    it('should retry failed requests', async () => {
-      expect(true).toBe(true);
+    it('should have fetchAvgPrice method', async () => {
+      // Test that the method exists and can be called
+      expect(service.fetchAvgPrice).toBeDefined();
+      expect(typeof service.fetchAvgPrice).toBe('function');
     });
 
-    it('should fail after max retries', async () => {
-      expect(true).toBe(true);
+    it('should have fetchExchangeInfo method', async () => {
+      // Test that the method exists and can be called
+      expect(service.fetchExchangeInfo).toBeDefined();
+      expect(typeof service.fetchExchangeInfo).toBe('function');
     });
   });
 
-  describe.skip('Request interceptors', () => {
-    // Skip: Internal implementation details
-    it('should add request headers', async () => {
-      expect(true).toBe(true);
+  describe('Service behavior', () => {
+    it('should handle concurrent requests', async () => {
+      const mockData = { symbol: 'BTCUSDT', lastPrice: '47000.00' };
+      (service.fetchTicker24hr as jest.Mock).mockResolvedValue(mockData);
+
+      // Make multiple concurrent requests
+      const promises = Array(5).fill(null).map(() => 
+        service.fetchTicker24hr('BTCUSDT')
+      );
+
+      const results = await Promise.all(promises);
+
+      // All should succeed
+      expect(results).toHaveLength(5);
+      results.forEach(result => {
+        expect(result).toEqual(mockData);
+      });
     });
 
-    it('should handle API key errors', async () => {
-      expect(true).toBe(true);
+    it('should handle mixed success and failure', async () => {
+      const mockData = { symbol: 'BTCUSDT', lastPrice: '47000.00' };
+      const mockError = new Error('API Error');
+
+      (service.fetchTicker24hr as jest.Mock)
+        .mockResolvedValueOnce(mockData)
+        .mockRejectedValueOnce(mockError)
+        .mockResolvedValueOnce(mockData);
+
+      const results = await Promise.allSettled([
+        service.fetchTicker24hr('BTCUSDT'),
+        service.fetchTicker24hr('BTCUSDT'),
+        service.fetchTicker24hr('BTCUSDT')
+      ]);
+
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1].status).toBe('rejected');
+      expect(results[2].status).toBe('fulfilled');
+    });
+  });
+
+  describe('Error handling patterns', () => {
+    it('should handle connection errors', async () => {
+      const connectionError = new Error('ECONNREFUSED');
+      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(connectionError);
+
+      await expect(service.fetchKlines('BTCUSDT', '1h', 100))
+        .rejects.toThrow('ECONNREFUSED');
+    });
+
+    it('should handle JSON parse errors', async () => {
+      const parseError = new Error('Unexpected token in JSON');
+      (service.fetchTicker24hr as jest.Mock).mockRejectedValueOnce(parseError);
+
+      await expect(service.fetchTicker24hr('BTCUSDT'))
+        .rejects.toThrow('Unexpected token in JSON');
     });
   });
 

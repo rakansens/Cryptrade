@@ -5,7 +5,7 @@ const restoreEnv = mockTestEnv();
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createApiHandler, createOptionsHandler } from '@/lib/api/create-api-handler';
+import { createApiHandler, createOptionsHandler, createStreamingHandler } from '@/lib/api/create-api-handler';
 import { ValidationError } from '@/lib/api/helpers/error-handler';
 import type { StreamEvent } from '@/lib/api/types';
 
@@ -146,7 +146,7 @@ describe('create-api-handler', () => {
       });
     });
 
-    it.skip('should apply middleware in correct order', async () => {
+    it('should apply middleware in correct order', async () => {
       const executionOrder: string[] = [];
       
       const middleware1 = async (_req: NextRequest): Promise<NextResponse | null> => {
@@ -201,7 +201,7 @@ describe('create-api-handler', () => {
       expect(response2.status).toBe(200);
     });
 
-    it.skip('should extract session ID from headers', async () => {
+    it('should extract session ID from headers', async () => {
       const mockHandler = jest.fn().mockResolvedValue({ result: 'success' });
       
       const handler = createApiHandler({
@@ -308,7 +308,7 @@ describe('create-api-handler', () => {
     });
   });
 
-  describe.skip('createStreamingHandler', () => {
+  describe('createStreamingHandler', () => {
     it('should create SSE stream from async generator', async () => {
       const streamHandler = async function* () {
         yield { event: 'start', data: { id: 1 } };

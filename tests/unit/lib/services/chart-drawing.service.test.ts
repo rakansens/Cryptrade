@@ -283,21 +283,39 @@ describe('ChartDrawingDatabaseService', () => {
   // Note: clearSession method doesn't exist in ChartDrawingDatabaseService
   // The service clears old drawings when saving new ones
 
-  describe.skip('saveTimeframeState', () => {
-    // saveTimeframeState is not a static method in ChartDrawingDatabaseService
-    it('should save timeframe state', async () => {
-      expect(true).toBe(true);
+  describe('service limitations in browser environment', () => {
+    // ChartDrawingDatabaseService only provides static methods for drawings and patterns
+    // Timeframe state management is not part of this service's public API
+    it('should only provide drawing and pattern operations', () => {
+      // Verify the service exposes the expected methods
+      expect(typeof ChartDrawingDatabaseService.saveDrawings).toBe('function');
+      expect(typeof ChartDrawingDatabaseService.loadDrawings).toBe('function');
+      expect(typeof ChartDrawingDatabaseService.deleteDrawing).toBe('function');
+      expect(typeof ChartDrawingDatabaseService.savePattern).toBe('function');
+      expect(typeof ChartDrawingDatabaseService.loadPatterns).toBe('function');
+      expect(typeof ChartDrawingDatabaseService.deletePattern).toBe('function');
     });
-  });
 
-  describe.skip('loadTimeframeState', () => {
-    // loadTimeframeState is not a static method in ChartDrawingDatabaseService
-    it('should load timeframe state', async () => {
-      expect(true).toBe(true);
+    it('should return safe defaults in browser environment', async () => {
+      // In browser environment, all methods return safe defaults
+      const drawings = await ChartDrawingDatabaseService.loadDrawings('any-session');
+      expect(drawings).toEqual([]);
+      
+      const patterns = await ChartDrawingDatabaseService.loadPatterns('any-session');
+      expect(patterns).toEqual([]);
     });
 
-    it('should return null when no state exists', async () => {
-      expect(true).toBe(true);
+    it('should not perform database operations in browser', async () => {
+      // All save operations should be no-op in browser
+      await ChartDrawingDatabaseService.saveDrawings([], 'session');
+      await ChartDrawingDatabaseService.deleteDrawing('drawing-id');
+      await ChartDrawingDatabaseService.deletePattern('pattern-id');
+      
+      // Verify no database operations were attempted
+      expect(mockPrismaClient.$transaction).not.toHaveBeenCalled();
+      expect(mockPrismaClient.chartDrawing.createMany).not.toHaveBeenCalled();
+      expect(mockPrismaClient.chartDrawing.delete).not.toHaveBeenCalled();
+      expect(mockPrismaClient.patternAnalysis.delete).not.toHaveBeenCalled();
     });
   });
 

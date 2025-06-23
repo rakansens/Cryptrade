@@ -41,14 +41,32 @@ export function createErrorResponse(
     });
   }
   
+  // Build error object based on details structure
+  let errorObject: any;
+  
+  // If details contains the full error structure (from toJSON), use it
+  if (details && 'message' in details) {
+    errorObject = {
+      message: details['message'] || errorMessage,
+      ...(details['retryable'] !== undefined && { retryable: details['retryable'] }),
+      ...(details['statusCode'] !== undefined && { statusCode: details['statusCode'] }),
+      ...(details['context'] !== undefined && { context: details['context'] }),
+      ...(details['code'] !== undefined && { code: details['code'] }),
+    };
+  } else {
+    // Otherwise, return simple error message
+    errorObject = errorMessage;
+  }
+  
   const response = NextResponse.json(
     {
-      error: errorMessage,
+      error: errorObject,
       message: status === 500 
         ? 'リクエストの処理中にエラーが発生しました。' 
         : errorMessage,
       timestamp: new Date().toISOString(),
-      ...(details && { details }),
+      ...(details && Object.keys(details).length > 0 && 
+         !('message' in details) && { details }),
     },
     { status }
   );
