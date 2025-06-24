@@ -3,6 +3,7 @@ import { mastra } from '@/lib/mastra/mastra';
 import { logger } from '@/lib/utils/logger';
 import { AgentError } from '@/lib/errors/base-error';
 import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 /**
  * AI Chat Streaming API - Server-Sent Events (SSE) for real-time responses
@@ -24,6 +25,14 @@ export const POST = createSSEHandler({
   handler: {
     async onConnect({ request, stream }) {
       try {
+        // Check authentication
+        const session = await getServerSession();
+        if (!session) {
+          stream.write({ data: { error: 'Unauthorized - Please login' } });
+          stream.close();
+          return;
+        }
+
         const body = await request.json();
         const validatedInput = StreamRequestSchema.parse(body);
 
@@ -90,6 +99,14 @@ export const POST = createSSEHandler({
 export const GET = createSSEHandler({
   handler: {
     async onConnect({ request, stream }) {
+      // Check authentication
+      const session = await getServerSession();
+      if (!session) {
+        stream.write({ data: { error: 'Unauthorized - Please login' } });
+        stream.close();
+        return;
+      }
+
       const { searchParams } = new URL(request.url);
       const message = searchParams.get('message');
       const agentId = (searchParams.get('agentId') ?? 'tradingAgent') as 'tradingAgent' | 'priceInquiryAgent' | 'uiControlAgent' | 'orchestratorAgent';
