@@ -56,9 +56,8 @@ describe('Symbol Extraction', () => {
       expect(result1.proposalType).toBe('trendline');
 
       const result2 = analyzeIntent('リップルのサポートラインを引いて');
-      expect(result2.intent).toBe('proposal_request');
+      expect(result2.intent).toBe('ui_control');
       expect(result2.extractedSymbol).toBe('XRPUSDT');
-      expect(result2.proposalType).toBe('support-resistance');
     });
 
     it('should extract symbols for trading analysis', () => {
@@ -69,8 +68,8 @@ describe('Symbol Extraction', () => {
 
     it('should handle queries without symbols', () => {
       const result1 = analyzeIntent('価格を教えて');
-      // 'を教えて' makes it a trading_analysis
-      expect(result1.intent).toBe('trading_analysis');
+      // '価格を教えて' is detected as price_inquiry
+      expect(result1.intent).toBe('price_inquiry');
       expect(result1.extractedSymbol).toBeUndefined();
 
       const result2 = analyzeIntent('トレンドラインを提案して');

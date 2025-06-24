@@ -42,13 +42,13 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     detectShortInput,
     detectGreeting,  // Greeting should be before small talk
     detectEntryProposal,
+    detectPriceInquiry,
+    detectMarketChat,  // Market chat should be before trading analysis
+    detectTradingAnalysis,  // Trading analysis after market chat to avoid false positives
     detectUIControl,  // UI control should be before drawing proposal
     detectDrawingProposal,
     detectProposalRequest,
-    detectPriceInquiry,
     detectHelpRequest,
-    detectMarketChat,  // Market chat should be before trading analysis
-    detectTradingAnalysis,  // Trading analysis after market chat to avoid false positives
     detectSmallTalk,  // Small talk should be last to catch remaining casual inputs
   ];
 
@@ -74,7 +74,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
   }
   
   // For partial matches that suggest some intent
-  const partialMatchPatterns = /(どう|して|見せて|分析)/i;
+  const partialMatchPatterns = /(どう|して|見せて)/i;
   if (partialMatchPatterns.test(queryLower) && userQuery.length < 20) {
     return {
       intent: 'conversational',
@@ -87,7 +87,8 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     };
   }
   
-  return {
+  const symbol = extractSymbol(userQuery);
+  const result: IntentAnalysisResult = {
     intent: 'conversational',
     confidence: 0.6,
     reasoning: 'カジュアル会話と推定',
@@ -96,6 +97,10 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     conversationMode: 'casual',
     emotionalTone: detectEmotionalTone(userQuery)
   };
+  if (symbol) {
+    result.extractedSymbol = symbol;
+  }
+  return result;
 }
 
 
@@ -197,6 +202,11 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /価格チャート.*表示/  // Added specific pattern for "価格チャートを表示"
   ];
 
+  // Special case: "サポートとレジスタンス" without drawing keywords should be trading analysis
+  if (queryLower === 'サポートとレジスタンス' || userQuery === 'サポートとレジスタンス') {
+    return null;
+  }
+  
   const hasUIKeyword = uiControlKeywords.some(keyword => queryLower.includes(keyword));
   const hasDrawingUIKeyword = drawingUIKeywords.some(keyword => queryLower.includes(keyword));
   const hasChartSwitchPattern = chartSwitchPatterns.some(pattern => pattern.test(queryLower));
@@ -233,12 +243,19 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
       !queryLower.includes('候補') && !queryLower.includes('推奨')) {
     
     const symbol = extractSymbol(userQuery);
+    // Lower confidence for vague inputs
+    let confidence = 0.95;
+    if (queryLower.includes('ちょっと') || queryLower.includes('なんか')) {
+      confidence = 0.7;
+    }
+    
     const result: IntentAnalysisResult = {
       intent: 'ui_control',
-      confidence: 0.95,
+      confidence,
       reasoning: 'UI操作・描画コマンド検出',
       analysisDepth: 'basic',
-      requiresWorkflow: true
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -290,6 +307,23 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
     };
   }
   
+  // Special case for "値段を教えて" or "価格を教えて" patterns
+  if (queryLower.includes('教えて') && (queryLower.includes('値段') || queryLower.includes('価格') || queryLower.includes('いくら'))) {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
+      intent: 'price_inquiry',
+      confidence: 0.9,
+      reasoning: '価格照会キーワード検出',
+      analysisDepth: 'basic',
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
+    };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
+  }
+  
   // Only classify as price inquiry if it's really asking for price
   if ((hasSpecificPricePattern || (hasCryptoSymbol && (queryLower.includes('price') || queryLower.includes('価格') || queryLower.includes('いくら') || queryLower.includes('quote') || queryLower.includes('prc') || queryLower.includes('相場') || queryLower.includes('precio') || queryLower.includes('价格')))) &&
       !(hasAnalysisKeyword || queryLower.includes('変更') || queryLower.includes('描画') ||
@@ -301,7 +335,8 @@ export function detectPriceInquiry(userQuery: string, queryLower: string): Inten
       confidence: 0.9,
       reasoning: '価格照会キーワード検出',
       analysisDepth: 'basic',
-      requiresWorkflow: true
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -375,7 +410,7 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
       requiresWorkflow: true,
       isProposalMode: true,
       proposalType,
-      isEntryProposal: false
+      isEntryProposal: proposalType === 'entry'
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -407,7 +442,7 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
       requiresWorkflow: true,
       isProposalMode: true,
       proposalType,
-      isEntryProposal: false
+      isEntryProposal: proposalType === 'entry'
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -418,6 +453,11 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
 }
 
 export function detectDrawingProposal(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+  // Special case: "サポートとレジスタンス" should be trading analysis
+  if (queryLower === 'サポートとレジスタンス' || userQuery === 'サポートとレジスタンス') {
+    return null;
+  }
+  
   const drawingSpecificKeywords = [
     'トレンドライン', '引いて', '描いて', '描画',
     'フィボナッチ', 'サポート', 'レジスタンス', 'サポレジ',
@@ -446,11 +486,8 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
 
   // Skip if there are no proposal keywords (let UI control handle pure drawing commands)
   const hasProposalKeyword = proposalKeywords.some(keyword => queryLower.includes(keyword));
-  if (!hasProposalKeyword) {
-    return null;
-  }
   
-  // For helper function compatibility: if called directly, detect drawing commands without proposal keywords
+  // For helper function compatibility: if called directly, detect drawing commands even without proposal keywords
   if (hasSpecificDrawingKeyword || (hasContextualKeyword && !generalUIKeywords.some(k => queryLower.includes(k))) || supportResistanceWithDisplay) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
 
@@ -471,13 +508,17 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
 
     const symbol = extractSymbol(userQuery);
     const result: IntentAnalysisResult = {
-      intent: 'proposal_request',
+      intent: hasProposalKeyword ? 'proposal_request' : 'ui_control',
       confidence: 0.95,
-      reasoning: '描画コマンドを自動的に提案モードで処理',
+      reasoning: hasProposalKeyword ? '描画提案リクエスト検出' : '描画コマンド検出',
       analysisDepth: 'detailed',
-      isProposalMode: true,
-      proposalType
+      isProposalMode: hasProposalKeyword,
+      proposalType,
+      requiresWorkflow: true
     };
+    if (hasProposalKeyword) {
+      result.isEntryProposal = proposalType === 'entry';
+    }
     if (symbol) {
       result.extractedSymbol = symbol;
     }
@@ -487,6 +528,50 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
 }
 
 export function detectTradingAnalysis(userQuery: string, queryLower: string): IntentAnalysisResult | null {
+  // Special case for RSI patterns
+  if (queryLower.includes('rsi') && queryLower.includes('見')) {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
+      intent: 'trading_analysis',
+      confidence: 0.9,
+      reasoning: 'RSI分析リクエスト',
+      analysisDepth: 'detailed',
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
+    };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
+  }
+
+  // Skip if this is a proposal request
+  if (queryLower.includes('提案') || queryLower.includes('候補') || queryLower.includes('おすすめ') || queryLower.includes('推奨')) {
+    return null;
+  }
+
+  // Skip if this is a drawing command
+  if (queryLower.includes('引いて') || queryLower.includes('描いて') || queryLower.includes('draw')) {
+    return null;
+  }
+
+  // Special case for "市場の状況を詳しく" pattern
+  if (queryLower.includes('詳しく') && (queryLower.includes('市場') || queryLower.includes('状況'))) {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
+      intent: 'trading_analysis',
+      confidence: 0.85,
+      reasoning: '詳細分析リクエスト',
+      analysisDepth: 'detailed',
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
+    };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
+  }
+  
   const analysisKeywords = [
     '分析', 'テクニカル', '買う', '売る', '投資',
     '推奨', 'おすすめ', '戦略', 'リスク', '評価', 'レポート',
@@ -494,7 +579,7 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     '判断', '動向', '展望',
     'outlook', 'forecast', 'prediction', 'analysis',
     'ta', 'fa', 'entry', 'exit', 'tp', 'sl', '見解', '詳しく', '詳細',
-    '買うべき', '売るべき', 'サポート', 'レジスタンス', 'トレンド', '教えて'
+    '買うべき', '売るべき', 'サポート', 'レジスタンス'
   ];
 
   // Check for explicit analysis requests
@@ -509,15 +594,26 @@ export function detectTradingAnalysis(userQuery: string, queryLower: string): In
     /^技術分析をして$/,
     /分析を?して/,
     /分析を?お願い/,
-    /RSI.*見/,
+    /RSI.*見て/,
+    /RSI.*見る/,
     /サポート.*レジスタンス/,
-    /トレンド分析/,
-    /^価格を教えて$/,
-    /^値段を教えて$/
+    /トレンド分析/
   ];
 
   const hasAnalysisKeyword = analysisKeywords.some(keyword => queryLower.includes(keyword));
   const hasExplicitPattern = explicitAnalysisPatterns.some(pattern => pattern.test(queryLower));
+  
+  // Special handling for "サポートとレジスタンス" pattern
+  if (queryLower === 'サポートとレジスタンス' || queryLower.match(/サポート.*レジスタンス/)) {
+    return {
+      intent: 'trading_analysis',
+      confidence: 0.85,
+      reasoning: 'サポート・レジスタンス分析',
+      analysisDepth: 'detailed',
+      requiresWorkflow: true,
+      emotionalTone: detectEmotionalTone(userQuery)
+    };
+  }
 
   if (hasAnalysisKeyword || hasExplicitPattern) {
     const symbol = extractSymbol(userQuery);
@@ -592,7 +688,7 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   const marketChatKeywords = [
     '最近', '調子', '相場', '市場',
     'ビットコイン', 'イーサリアム', '暗号通貨', '仮想通貨', 'クリプト',
-    '上がり', '下がり', '上がって', '下がって', '動き', 'トレンド', '傾向', '様子',
+    '上がり', '下がり', '上がって', '下がって', '動き', '傾向', '様子',
     '将来性', '見通し'  // Add keywords that were causing false positives
   ];
 
@@ -616,12 +712,31 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   const isCasualTone = casualPatterns.test(queryLower);
 
   // Skip if this is an analysis request
-  if (queryLower.includes('分析') || queryLower.includes('分析して')) {
+  if (queryLower.includes('分析') || queryLower.includes('分析して') || queryLower.includes('詳しく')) {
     return null;
+  }
+  
+  // Special case for "市場のトレンド" pattern
+  if (queryLower.includes('市場') && queryLower.includes('トレンド') && !queryLower.includes('分析')) {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
+      intent: 'market_chat',
+      confidence: 0.9,
+      reasoning: '市場トレンドに関する会話',
+      analysisDepth: 'basic',
+      requiresWorkflow: false,
+      conversationMode: 'casual',
+      emotionalTone: detectEmotionalTone(userQuery)
+    };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
 
   if ((hasMarketChatKeyword && (queryLower.length < 50 || isCasualTone)) || hasCasualMarketPhrase) {
-    return {
+    const symbol = extractSymbol(userQuery);
+    const result: IntentAnalysisResult = {
       intent: 'market_chat',
       confidence: 0.85,  // Increased confidence
       reasoning: '市場に関する気軽な会話',
@@ -630,6 +745,10 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
       conversationMode: 'casual',
       emotionalTone: detectEmotionalTone(userQuery)
     };
+    if (symbol) {
+      result.extractedSymbol = symbol;
+    }
+    return result;
   }
   return null;
 }
@@ -696,9 +815,12 @@ export function extractSymbol(query: string): string | undefined {
     'DOGE', 'XRP', 'DOT', 'LINK', 'UNI',
     'AVAX', 'MATIC', 'LTC'
   ];
-  // Remove special characters but keep spaces and parentheses for proper detection
-  const cleanQuery = query.replace(/[!！？?@#$%^&*_+=\[\]{};:'",.<>\/\\|`~]/g, ' ');
+  // Remove special characters but keep parentheses and spaces for proper detection
+  const cleanQuery = query.replace(/[!！？?@#$%^&*_+=\[\]{};:'",.<>\/\\|`~-]/g, ' ');
   const cleanQueryUpper = cleanQuery.toUpperCase();
+  
+  // Track position of found symbols to return the first one
+  const foundSymbols: { symbol: string; position: number }[] = [];
   
   // 日本語の通貨名マッピング
   const japaneseCurrencyMap: Record<string, string> = {
@@ -740,62 +862,84 @@ export function extractSymbol(query: string): string | undefined {
   
   // まず日本語の通貨名をチェック
   for (const [jaName, symbol] of Object.entries(japaneseCurrencyMap)) {
-    if (query.includes(jaName)) {
-      return symbol + 'USDT';
+    const index = query.indexOf(jaName);
+    if (index !== -1) {
+      foundSymbols.push({ symbol: symbol + 'USDT', position: index });
     }
   }
 
   // 英語の通貨名をチェック
   const queryLower = cleanQuery.toLowerCase();
   for (const [enName, symbol] of Object.entries(englishCurrencyMap)) {
-    if (queryLower.includes(enName)) {
-      return symbol + 'USDT';
+    // Use word boundaries for better matching
+    const regex = new RegExp(`\\b${enName}\\b`, 'i');
+    const match = queryLower.match(regex);
+    if (match && match.index !== undefined) {
+      foundSymbols.push({ symbol: symbol + 'USDT', position: match.index });
     }
   }
 
   // 既にUSDTが付いているかチェック
   const usdtMatch = cleanQueryUpper.match(/\b([A-Z]{2,5})USDT\b/);
-  if (usdtMatch && usdtMatch[1]) {
-    return usdtMatch[0];
+  if (usdtMatch && usdtMatch[1] && usdtMatch.index !== undefined) {
+    foundSymbols.push({ symbol: usdtMatch[0], position: usdtMatch.index });
   }
 
   // Check for symbols in parentheses first (e.g., リップル（XRP）)
-  const parenMatch = query.match(/[（(]([A-Z]{2,5})[）)]/);
-  if (parenMatch && parenMatch[1]) {
+  const parenMatch = query.match(/[（(]([A-Z]{2,5})[）)]/i);
+  if (parenMatch && parenMatch[1] && parenMatch.index !== undefined) {
     const symbolInParen = parenMatch[1].toUpperCase();
     if (symbols.includes(symbolInParen)) {
-      return symbolInParen + 'USDT';
+      foundSymbols.push({ symbol: symbolInParen + 'USDT', position: parenMatch.index });
     }
   }
   
-  // Check for pattern like "BTCについて" or "SOLの動き"
-  const japanesePatternMatch = query.match(/([A-Z]{2,5})(?:について|の|を|が|は)/);
-  if (japanesePatternMatch && japanesePatternMatch[1]) {
+  // Check for pattern like "BTCについて" or "SOLの動き" or "BTC!!!"
+  // Use original query to preserve case
+  const japanesePatternMatch = query.match(/([A-Z]{2,5})(?:について|の|を|が|は)/i);
+  if (japanesePatternMatch && japanesePatternMatch[1] && japanesePatternMatch.index !== undefined) {
     const symbolMatch = japanesePatternMatch[1].toUpperCase();
     if (symbols.includes(symbolMatch)) {
-      return symbolMatch + 'USDT';
+      foundSymbols.push({ symbol: symbolMatch + 'USDT', position: japanesePatternMatch.index });
+    }
+  }
+  
+  // Also check the original query for cases like "BTC!!!" where symbols are followed by special chars
+  const specialCharMatch = query.match(/\b([A-Z]{2,5})(?:[!！？?]*$|[!！？?]+\s|[!！？?]+\b)/i);
+  if (specialCharMatch && specialCharMatch[1] && specialCharMatch.index !== undefined) {
+    const symbolMatch = specialCharMatch[1].toUpperCase();
+    if (symbols.includes(symbolMatch)) {
+      foundSymbols.push({ symbol: symbolMatch + 'USDT', position: specialCharMatch.index });
     }
   }
   
   // 英語のシンボルをチェック（単語境界を考慮）
   for (const symbol of symbols) {
     const symbolRegex = new RegExp(`\\b${symbol}\\b`, 'i');
-    if (symbolRegex.test(cleanQuery) || symbolRegex.test(query)) {
-      return symbol + 'USDT';
+    const match = cleanQuery.match(symbolRegex);
+    if (match && match.index !== undefined) {
+      foundSymbols.push({ symbol: symbol + 'USDT', position: match.index });
     }
   }
   
   // More complex pattern matching
   const symbolMatch = cleanQuery.match(/\b([A-Z]{2,5}(?:USDT?|BTC|ETH))\b/i);
-  if (symbolMatch && symbolMatch[1]) {
+  if (symbolMatch && symbolMatch[1] && symbolMatch.index !== undefined) {
     const matched = symbolMatch[1].toUpperCase();
     // If already has USDT suffix, return as is
     if (matched.endsWith('USDT') || matched.endsWith('USD')) {
-      return matched;
+      foundSymbols.push({ symbol: matched, position: symbolMatch.index });
+    } else {
+      // Otherwise add USDT suffix
+      foundSymbols.push({ symbol: matched + 'USDT', position: symbolMatch.index });
     }
-    // Otherwise add USDT suffix
-    return matched + 'USDT';
   }
+  // Return the first symbol found (by position in the string)
+  if (foundSymbols.length > 0) {
+    foundSymbols.sort((a, b) => a.position - b.position);
+    return foundSymbols[0].symbol;
+  }
+  
   return undefined;
 }
 

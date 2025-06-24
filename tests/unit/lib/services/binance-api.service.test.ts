@@ -1,7 +1,4 @@
-import { BinanceAPIService, binanceAPI } from '@/lib/services/binance-api.service';
-import { logger } from '@/lib/utils/logger';
-
-// Mock logger
+// Mock dependencies first
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -11,30 +8,62 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-// Since BinanceAPIService extends BaseService, we need to mock the entire module
-jest.mock('@/lib/services/binance-api.service', () => {
-  const mockService = {
-    fetchKlines: jest.fn(),
-    fetchTicker24hr: jest.fn(),
-    fetchOrderBook: jest.fn(),
-    fetchAvgPrice: jest.fn(),
-    fetchExchangeInfo: jest.fn(),
-  };
-  
-  return {
-    BinanceAPIService: jest.fn().mockImplementation(() => mockService),
-    binanceAPI: mockService,
-    fetchKlines: jest.fn(),
-    fetchTicker24hr: jest.fn(),
-    isValidSymbol: jest.fn(),
-  };
+jest.mock('@/lib/api/client');
+
+import { BinanceAPIService } from '@/lib/binance/api-service';
+import { ApiClient } from '@/lib/api/client';
+
+// Mock validateBinanceKlines to return data as-is for testing
+jest.mock('@/types/market', () => ({
+  validateBinanceKlines: jest.fn((data) => data || []),
+  BinanceTicker24hr: {},
+  ProcessedKline: {},
+  BinanceKlineTuple: {}
+}));
+
+// Mock generateMockTicker helper
+const generateMockTicker = (symbol = 'BTCUSDT') => ({
+  symbol,
+  priceChange: '0.00',
+  priceChangePercent: '0.00',
+  weightedAvgPrice: '100.00',
+  prevClosePrice: '100.00',
+  lastPrice: '100.00',
+  lastQty: '1.00',
+  bidPrice: '99.99',
+  bidQty: '10.00',
+  askPrice: '100.01',
+  askQty: '10.00',
+  openPrice: '100.00',
+  highPrice: '101.00',
+  lowPrice: '99.00',
+  volume: '1000.00',
+  quoteVolume: '100000.00',
+  openTime: Date.now() - 86400000,
+  closeTime: Date.now(),
+  firstId: 1,
+  lastId: 100,
+  count: 100
 });
 
 describe('BinanceAPIService', () => {
   let service: BinanceAPIService;
+  let mockApiClient: jest.Mocked<ApiClient>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Create a mock ApiClient instance
+    mockApiClient = {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn()
+    } as any;
+    
+    // Mock the ApiClient constructor to return our mock instance
+    (ApiClient as jest.MockedClass<typeof ApiClient>).mockImplementation(() => mockApiClient);
+    
     service = new BinanceAPIService();
   });
 
@@ -59,7 +88,13 @@ describe('BinanceAPIService', () => {
         }
       ];
 
-      (service.fetchKlines as jest.Mock).mockResolvedValueOnce(mockKlineData);
+      // Mock the HTTP response
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockKlineData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
       const result = await service.fetchKlines('BTCUSDT', '1h', 100);
 
@@ -72,12 +107,22 @@ describe('BinanceAPIService', () => {
         close: 46200,
         volume: 1000
       });
-      expect(service.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 100);
+      
+      // Verify the HTTP call was made correctly
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/klines'),
+        {
+          symbol: 'BTCUSDT',
+          interval: '1h',
+          limit: '100'
+        },
+        undefined
+      );
     });
 
     it('should handle API errors', async () => {
       const mockError = new Error('API Error');
-      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(mockError);
+      mockApiClient.get.mockRejectedValueOnce(mockError);
 
       await expect(service.fetchKlines('INVALID', '1h', 100))
         .rejects.toThrow('API Error');
@@ -85,33 +130,49 @@ describe('BinanceAPIService', () => {
 
     it('should handle rate limit errors', async () => {
       const rateLimitError = new Error('Rate limit exceeded');
-      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(rateLimitError);
+      mockApiClient.get.mockRejectedValueOnce(rateLimitError);
 
       await expect(service.fetchKlines('BTCUSDT', '1h', 100))
         .rejects.toThrow('Rate limit exceeded');
     });
 
-    it('should validate interval parameter', async () => {
-      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(new Error('Invalid interval parameter'));
+    it('should include startTime and endTime when provided', async () => {
+      const mockData = [
+        { time: 1640995200, open: 46000, high: 46500, low: 45800, close: 46200, volume: 1000 }
+      ];
       
-      await expect(service.fetchKlines('BTCUSDT', 'invalid', 100))
-        .rejects.toThrow('Invalid interval parameter');
-    });
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
-    it('should validate limit parameter', async () => {
-      (service.fetchKlines as jest.Mock)
-        .mockRejectedValueOnce(new Error('Limit cannot exceed 1000'))
-        .mockRejectedValueOnce(new Error('Limit must be positive'));
-        
-      await expect(service.fetchKlines('BTCUSDT', '1h', 1500))
-        .rejects.toThrow('Limit cannot exceed 1000');
+      const startTime = 1640995200000;
+      const endTime = 1641081600000;
 
-      await expect(service.fetchKlines('BTCUSDT', '1h', 0))
-        .rejects.toThrow('Limit must be positive');
+      await service.fetchKlines('BTCUSDT', '1h', 100, startTime, endTime);
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/klines'),
+        {
+          symbol: 'BTCUSDT',
+          interval: '1h',
+          limit: '100',
+          startTime: startTime.toString(),
+          endTime: endTime.toString()
+        },
+        undefined
+      );
     });
 
     it('should handle empty response', async () => {
-      (service.fetchKlines as jest.Mock).mockResolvedValueOnce([]);
+      mockApiClient.get.mockResolvedValueOnce({
+        data: [],
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
       const result = await service.fetchKlines('BTCUSDT', '1h', 100);
 
@@ -120,10 +181,29 @@ describe('BinanceAPIService', () => {
 
     it('should handle network timeout', async () => {
       const timeoutError = new Error('timeout of 10000ms exceeded');
-      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(timeoutError);
+      mockApiClient.get.mockRejectedValueOnce(timeoutError);
 
       await expect(service.fetchKlines('BTCUSDT', '1h', 100))
         .rejects.toThrow('timeout');
+    });
+
+    it('should convert symbol to uppercase', async () => {
+      mockApiClient.get.mockResolvedValueOnce({
+        data: [],
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
+
+      await service.fetchKlines('btcusdt', '1h', 100);
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          symbol: 'BTCUSDT'
+        }),
+        undefined
+      );
     });
   });
 
@@ -153,82 +233,183 @@ describe('BinanceAPIService', () => {
         count: 100000
       };
 
-      (service.fetchTicker24hr as jest.Mock).mockResolvedValueOnce(mockTickerData);
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockTickerData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
       const result = await service.fetchTicker24hr('BTCUSDT');
 
       expect(result).toEqual(mockTickerData);
-      expect(service.fetchTicker24hr).toHaveBeenCalledWith('BTCUSDT');
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/ticker'), 
+        { symbol: 'BTCUSDT' }, 
+        undefined
+      );
     });
 
-    it('should handle invalid symbol', async () => {
-      const mockError = new Error('Invalid symbol');
-      (service.fetchTicker24hr as jest.Mock).mockRejectedValueOnce(mockError);
+    it('should fetch all tickers when no symbol provided', async () => {
+      const mockTickersData = [
+        { symbol: 'BTCUSDT', lastPrice: '47000.00' },
+        { symbol: 'ETHUSDT', lastPrice: '3000.00' }
+      ];
+
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockTickersData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
+
+      const result = await service.fetchTicker24hr();
+
+      expect(result).toEqual(mockTickersData);
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/ticker'), 
+        undefined, 
+        undefined
+      );
+    });
+
+    it('should handle Binance API error response', async () => {
+      const errorResponse = {
+        code: -1121,
+        msg: 'Invalid symbol.'
+      };
+
+      mockApiClient.get.mockResolvedValueOnce({
+        data: errorResponse,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
       await expect(service.fetchTicker24hr('INVALID'))
-        .rejects.toThrow('Invalid symbol');
-    });
-
-    it('should return ticker data on multiple calls', async () => {
-      const mockTickerData = { symbol: 'BTCUSDT', lastPrice: '47000.00' };
-
-      (service.fetchTicker24hr as jest.Mock).mockResolvedValue(mockTickerData);
-
-      // First call
-      const result1 = await service.fetchTicker24hr('BTCUSDT');
-      expect(result1).toEqual(mockTickerData);
-
-      // Second call
-      const result2 = await service.fetchTicker24hr('BTCUSDT');
-      expect(result2).toEqual(mockTickerData);
+        .rejects.toThrow('Binance API error: -1121 - Invalid symbol.');
     });
   });
 
   describe('isValidSymbol', () => {
-    it('should validate symbol format', () => {
-      // Test the exported function directly
-      const { isValidSymbol } = require('@/lib/services/binance-api.service');
+    it('should validate symbol format correctly', () => {
+      // Test valid symbols
+      expect(service.isValidSymbol('BTCUSDT')).toBe(true);
+      expect(service.isValidSymbol('ETHUSDT')).toBe(true);
+      expect(service.isValidSymbol('BNBUSDT')).toBe(true);
+      expect(service.isValidSymbol('BTCUSD')).toBe(true);
+      expect(service.isValidSymbol('ETHUSD')).toBe(true);
       
-      (isValidSymbol as jest.Mock).mockImplementation((symbol: string) => {
-        return /^[A-Z]+$/.test(symbol) && symbol.length >= 3;
-      });
+      // Test lowercase (should still work as method converts to uppercase)
+      expect(service.isValidSymbol('btcusdt')).toBe(true);
+      expect(service.isValidSymbol('ethusdt')).toBe(true);
       
-      expect(isValidSymbol('BTCUSDT')).toBe(true);
-      expect(isValidSymbol('ETHBTC')).toBe(true);
-      expect(isValidSymbol('BNBUSDT')).toBe(true);
-      
-      expect(isValidSymbol('')).toBe(false);
-      expect(isValidSymbol('123')).toBe(false);
-      expect(isValidSymbol('btcusdt')).toBe(false); // lowercase
-      expect(isValidSymbol('BTC-USDT')).toBe(false); // with dash
-      expect(isValidSymbol('BTC_USDT')).toBe(false); // with underscore
+      // Test invalid formats
+      expect(service.isValidSymbol('')).toBe(false);
+      expect(service.isValidSymbol('123')).toBe(false);
+      expect(service.isValidSymbol('BTC-USDT')).toBe(false); // with dash
+      expect(service.isValidSymbol('BTC_USDT')).toBe(false); // with underscore
+      expect(service.isValidSymbol('BTCEUR')).toBe(false); // not USD/USDT
+      expect(service.isValidSymbol('BTC')).toBe(false); // too short
+      expect(service.isValidSymbol('VERYLONGASSETUSDT')).toBe(false); // too long
     });
   });
 
-  describe('API service methods', () => {
-    it('should have fetchOrderBook method', async () => {
-      // Test that the method exists and can be called
-      expect(service.fetchOrderBook).toBeDefined();
-      expect(typeof service.fetchOrderBook).toBe('function');
+  describe('fetchCurrentPrice', () => {
+    it('should fetch current price successfully', async () => {
+      const mockPriceData = {
+        symbol: 'BTCUSDT',
+        price: '47000.00'
+      };
+
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockPriceData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
+
+      const result = await service.fetchCurrentPrice('BTCUSDT');
+
+      expect(result).toEqual(mockPriceData);
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/ticker'), 
+        { symbol: 'BTCUSDT' }, 
+        undefined
+      );
     });
 
-    it('should have fetchAvgPrice method', async () => {
-      // Test that the method exists and can be called
-      expect(service.fetchAvgPrice).toBeDefined();
-      expect(typeof service.fetchAvgPrice).toBe('function');
+    it('should handle errors when fetching current price', async () => {
+      mockApiClient.get.mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(service.fetchCurrentPrice('BTCUSDT'))
+        .rejects.toThrow('Network error');
+    });
+  });
+
+  describe('fetchExchangeInfo', () => {
+    it('should fetch exchange info successfully', async () => {
+      const mockExchangeInfo = {
+        timezone: 'UTC',
+        serverTime: Date.now(),
+        rateLimits: [],
+        exchangeFilters: [],
+        symbols: [
+          {
+            symbol: 'BTCUSDT',
+            status: 'TRADING',
+            baseAsset: 'BTC',
+            quoteAsset: 'USDT',
+            baseAssetPrecision: 8,
+            quotePrecision: 8,
+            quoteAssetPrecision: 8,
+            orderTypes: ['LIMIT', 'MARKET'],
+            icebergAllowed: true,
+            ocoAllowed: true,
+            isSpotTradingAllowed: true,
+            isMarginTradingAllowed: true,
+            filters: [],
+            permissions: ['SPOT', 'MARGIN']
+          }
+        ]
+      };
+
+      mockApiClient.get.mockResolvedValueOnce({
+        data: mockExchangeInfo,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
+
+      const result = await service.fetchExchangeInfo();
+
+      expect(result).toEqual(mockExchangeInfo);
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('/exchangeInfo'), 
+        undefined, 
+        undefined
+      );
     });
 
-    it('should have fetchExchangeInfo method', async () => {
-      // Test that the method exists and can be called
-      expect(service.fetchExchangeInfo).toBeDefined();
-      expect(typeof service.fetchExchangeInfo).toBe('function');
+    it('should handle errors when fetching exchange info', async () => {
+      mockApiClient.get.mockRejectedValueOnce(new Error('Service unavailable'));
+
+      await expect(service.fetchExchangeInfo())
+        .rejects.toThrow('Service unavailable');
     });
   });
 
   describe('Service behavior', () => {
     it('should handle concurrent requests', async () => {
       const mockData = { symbol: 'BTCUSDT', lastPrice: '47000.00' };
-      (service.fetchTicker24hr as jest.Mock).mockResolvedValue(mockData);
+      
+      // Mock the client.get to return the ticker data
+      mockApiClient.get.mockResolvedValue({
+        data: mockData,
+        status: 200,
+        statusText: 'OK',
+        headers: {}
+      } as any);
 
       // Make multiple concurrent requests
       const promises = Array(5).fill(null).map(() => 
@@ -242,16 +423,29 @@ describe('BinanceAPIService', () => {
       results.forEach(result => {
         expect(result).toEqual(mockData);
       });
+      
+      // Verify get was called 5 times
+      expect(mockApiClient.get).toHaveBeenCalledTimes(5);
     });
 
     it('should handle mixed success and failure', async () => {
       const mockData = { symbol: 'BTCUSDT', lastPrice: '47000.00' };
       const mockError = new Error('API Error');
 
-      (service.fetchTicker24hr as jest.Mock)
-        .mockResolvedValueOnce(mockData)
+      mockApiClient.get
+        .mockResolvedValueOnce({
+          data: mockData,
+          status: 200,
+          statusText: 'OK',
+          headers: {}
+        } as any)
         .mockRejectedValueOnce(mockError)
-        .mockResolvedValueOnce(mockData);
+        .mockResolvedValueOnce({
+          data: mockData,
+          status: 200,
+          statusText: 'OK',
+          headers: {}
+        } as any);
 
       const results = await Promise.allSettled([
         service.fetchTicker24hr('BTCUSDT'),
@@ -268,7 +462,7 @@ describe('BinanceAPIService', () => {
   describe('Error handling patterns', () => {
     it('should handle connection errors', async () => {
       const connectionError = new Error('ECONNREFUSED');
-      (service.fetchKlines as jest.Mock).mockRejectedValueOnce(connectionError);
+      mockApiClient.get.mockRejectedValueOnce(connectionError);
 
       await expect(service.fetchKlines('BTCUSDT', '1h', 100))
         .rejects.toThrow('ECONNREFUSED');
@@ -276,18 +470,25 @@ describe('BinanceAPIService', () => {
 
     it('should handle JSON parse errors', async () => {
       const parseError = new Error('Unexpected token in JSON');
-      (service.fetchTicker24hr as jest.Mock).mockRejectedValueOnce(parseError);
+      mockApiClient.get.mockRejectedValueOnce(parseError);
 
       await expect(service.fetchTicker24hr('BTCUSDT'))
         .rejects.toThrow('Unexpected token in JSON');
     });
   });
 
-  describe('Singleton instance', () => {
-    it('should export singleton instance', () => {
-      // The binanceAPI export is mocked
-      expect(binanceAPI).toBeDefined();
-      expect(binanceAPI).toBe(binanceAPI); // Same instance
+  describe('Service instance creation', () => {
+    it('should create service instance correctly', () => {
+      expect(service).toBeDefined();
+      expect(service).toBeInstanceOf(BinanceAPIService);
+    });
+
+    it('should have proper methods available', () => {
+      expect(typeof service.fetchKlines).toBe('function');
+      expect(typeof service.fetchTicker24hr).toBe('function');
+      expect(typeof service.fetchCurrentPrice).toBe('function');
+      expect(typeof service.fetchExchangeInfo).toBe('function');
+      expect(typeof service.isValidSymbol).toBe('function');
     });
   });
 });

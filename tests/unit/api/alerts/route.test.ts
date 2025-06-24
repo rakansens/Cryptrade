@@ -5,45 +5,524 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/alerts/route';
 import { AlertService } from '@/lib/services/alert.service';
 
+// Mock dependencies
 jest.mock('@/lib/services/alert.service');
-
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
     error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
   },
 }));
 
 describe('Alerts API Route', () => {
-  afterAll(() => {
-    restoreEnv();
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('GET should return alerts', async () => {
-    (AlertService.getUserAlerts as jest.Mock).mockResolvedValue([{ id: 'a1' }]);
-    const req = new NextRequest('http://localhost/api/alerts', { headers: { 'x-user-id': 'u1' } });
-    const res = await GET(req);
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    expect(data.alerts).toHaveLength(1);
+  afterAll(() => {
+    restoreEnv();
   });
 
-  it('POST should create alert', async () => {
-    (AlertService.createAlert as jest.Mock).mockResolvedValue({ id: 'a1' });
-    const req = new NextRequest('http://localhost/api/alerts', {
-      method: 'POST',
-      body: JSON.stringify({ symbol: 'BTC', conditions: { priceAbove: 10 } }),
-    } as any);
-    req.headers.set('x-user-id', 'u1');
-    const res = await POST(req);
-    expect(AlertService.createAlert).toHaveBeenCalled();
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    expect(data.alert).toEqual({ id: 'a1' });
+  describe('GET /api/alerts', () => {
+    it('should return user alerts successfully', async () => {
+      const mockUserId = 'user-123';
+      const mockAlerts = [
+        {
+          id: 'alert-1',
+          userId: mockUserId,
+          symbol: 'BTCUSDT',
+          conditions: { priceAbove: 50000 },
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: 'alert-2',
+          userId: mockUserId,
+          symbol: 'ETHUSDT',
+          conditions: { priceBelow: 3000 },
+          isActive: true,
+          createdAt: new Date(),
+        },
+      ];
+
+      (AlertService.getUserAlerts as jest.Mock).mockResolvedValueOnce(mockAlerts);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        headers: {
+          'x-user-id': mockUserId,
+        },
+      });
+
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toMatchObject({
+        success: true,
+        data: { alerts: mockAlerts },
+      });
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.getUserAlerts).toHaveBeenCalledWith(mockUserId);
+    });
+
+    it('should return 400 when user id is missing', async () => {
+      const request = new NextRequest('http://localhost/api/alerts');
+
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data).toMatchObject({
+        error: 'Missing user id',
+      });
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.getUserAlerts).not.toHaveBeenCalled();
+    });
+
+    it('should handle service errors', async () => {
+      const mockUserId = 'user-123';
+      const serviceError = new Error('Database error');
+      (AlertService.getUserAlerts as jest.Mock).mockRejectedValueOnce(serviceError);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        headers: {
+          'x-user-id': mockUserId,
+        },
+      });
+
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data).toMatchObject({
+        error: 'Failed to get alerts',
+      });
+      expect(data.timestamp).toBeDefined();
+    });
+
+    it('should return empty array when user has no alerts', async () => {
+      const mockUserId = 'user-456';
+      (AlertService.getUserAlerts as jest.Mock).mockResolvedValueOnce([]);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        headers: {
+          'x-user-id': mockUserId,
+        },
+      });
+
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toMatchObject({
+        success: true,
+        data: { alerts: [] },
+      });
+      expect(data.timestamp).toBeDefined();
+    });
+  });
+
+  describe('POST /api/alerts', () => {
+    it('should create price above alert successfully', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          priceAbove: 60000,
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-123',
+        userId: mockUserId,
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toMatchObject({
+        success: true,
+        data: { alert: mockCreatedAlert },
+      });
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: mockUserId,
+        symbol: 'BTCUSDT',
+        conditions: { priceAbove: 60000 },
+      });
+    });
+
+    it('should create price below alert successfully', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'ETHUSDT',
+        conditions: {
+          priceBelow: 2800,
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-456',
+        userId: mockUserId,
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: mockUserId,
+        symbol: 'ETHUSDT',
+        conditions: { priceBelow: 2800 },
+      });
+    });
+
+    it('should create volume alert successfully', async () => {
+      const alertData = {
+        userId: 'user-456', // userId in body takes precedence
+        symbol: 'BTCUSDT',
+        conditions: {
+          volumeAbove: 1000000,
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-789',
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'user-123', // This should be overridden by body userId
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: 'user-456',
+        symbol: 'BTCUSDT',
+        conditions: { volumeAbove: 1000000 },
+      });
+    });
+
+    it('should create indicator crossover alert successfully', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          indicatorCrossover: {
+            indicator1: 'MA50',
+            indicator2: 'MA200',
+            direction: 'above' as const,
+          },
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-abc',
+        userId: mockUserId,
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: mockUserId,
+        symbol: 'BTCUSDT',
+        conditions: {
+          indicatorCrossover: {
+            indicator1: 'MA50',
+            indicator2: 'MA200',
+            direction: 'above',
+          },
+        },
+      });
+    });
+
+    it('should create pattern detection alert successfully', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          patternDetected: 'triangle',
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-def',
+        userId: mockUserId,
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(200);
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: mockUserId,
+        symbol: 'BTCUSDT',
+        conditions: { patternDetected: 'triangle' },
+      });
+    });
+
+    it('should create alert with multiple conditions', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          priceAbove: 55000,
+          priceBelow: 65000,
+          volumeAbove: 500000,
+        },
+      };
+      const mockCreatedAlert = {
+        id: 'alert-multi',
+        userId: mockUserId,
+        ...alertData,
+        isActive: true,
+        createdAt: new Date(),
+      };
+
+      (AlertService.createAlert as jest.Mock).mockResolvedValueOnce(mockCreatedAlert);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(200);
+      expect(AlertService.createAlert).toHaveBeenCalledWith({
+        userId: mockUserId,
+        symbol: 'BTCUSDT',
+        conditions: {
+          priceAbove: 55000,
+          priceBelow: 65000,
+          volumeAbove: 500000,
+        },
+      });
+    });
+
+    it('should return 400 when user id is missing', async () => {
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          priceAbove: 60000,
+        },
+      };
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data).toMatchObject({
+        error: 'Missing user id',
+      });
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.createAlert).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when symbol is missing', async () => {
+      const alertData = {
+        conditions: {
+          priceAbove: 60000,
+        },
+      };
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'user-123',
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error).toContain('Invalid input');
+      expect(AlertService.createAlert).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when no conditions are specified', async () => {
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {},
+      };
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'user-123',
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error).toContain('Invalid input');
+      expect(AlertService.createAlert).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for invalid indicator crossover direction', async () => {
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          indicatorCrossover: {
+            indicator1: 'MA50',
+            indicator2: 'MA200',
+            direction: 'invalid' as any,
+          },
+        },
+      };
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'user-123',
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBeDefined();
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.createAlert).not.toHaveBeenCalled();
+    });
+
+    it('should handle service errors', async () => {
+      const mockUserId = 'user-123';
+      const alertData = {
+        symbol: 'BTCUSDT',
+        conditions: {
+          priceAbove: 60000,
+        },
+      };
+      const serviceError = new Error('Database error');
+      (AlertService.createAlert as jest.Mock).mockRejectedValueOnce(serviceError);
+
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: JSON.stringify(alertData),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data).toMatchObject({
+        error: 'Failed to create alert',
+      });
+      expect(data.timestamp).toBeDefined();
+    });
+
+    it('should handle invalid JSON body', async () => {
+      const request = new NextRequest('http://localhost/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'user-123',
+        },
+        body: 'invalid json',
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBeDefined();
+      expect(data.timestamp).toBeDefined();
+      expect(AlertService.createAlert).not.toHaveBeenCalled();
+    });
   });
 });

@@ -230,9 +230,6 @@ describe('Logs API Route', () => {
   });
 
   describe('DELETE /api/logs', () => {
-    // TODO: Fix request body parsing in test environment
-    // The DELETE handler is not properly parsing the request body in tests
-    // This causes the filter validation to fail with status 400
     it('should delete logs with filter', async () => {
       mockCleanup.mockResolvedValue(10);
 
@@ -258,30 +255,30 @@ describe('Logs API Route', () => {
       expect(data).toEqual({ deleted: 10 });
       // Note: The actual implementation calls cleanup() without parameters
       // The filter is validated but not passed to cleanup
-      expect(mockCleanup).toHaveBeenCalled();
+      expect(mockCleanup).toHaveBeenCalledWith();
     });
 
     it('should prevent deletion without filter', async () => {
       const bodyData = {};
 
-      const request = {
+      const request = new NextRequest('http://localhost/api/logs', {
         method: 'DELETE',
-        url: 'http://localhost/api/logs',
-        headers: {
-          get: jest.fn((name) => name === 'content-type' ? 'application/json' : null),
-          entries: jest.fn(() => [['content-type', 'application/json']])
+        headers: { 
+          'Content-Type': 'application/json' 
         },
-        json: jest.fn().mockResolvedValue(bodyData)
-      } as unknown as NextRequest;
+        body: JSON.stringify(bodyData)
+      });
 
       const response = await DELETE(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data).toMatchObject({
-        error: expect.objectContaining({
+        error: {
           message: 'Filter required for deletion'
-        })
+        },
+        message: 'Filter required for deletion',
+        timestamp: expect.any(String)
       });
       expect(mockCleanup).not.toHaveBeenCalled();
     });
@@ -304,10 +301,69 @@ describe('Logs API Route', () => {
 
       expect(response.status).toBe(500);
       expect(data).toMatchObject({
-        error: expect.objectContaining({
+        error: {
           message: 'Database error'
-        })
+        },
+        timestamp: expect.any(String)
       });
+    });
+
+    it('should validate filter structure', async () => {
+      mockCleanup.mockResolvedValue(5);
+
+      const bodyData = {
+        level: ['info', 'error'],
+        source: 'api',
+        timeRange: {
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-02T00:00:00Z'
+        },
+        tags: ['important', 'critical']
+      };
+
+      const request = new NextRequest('http://localhost/api/logs', {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ deleted: 5 });
+      expect(mockCleanup).toHaveBeenCalledWith();
+    });
+
+    it('should reject invalid filter data', async () => {
+      const bodyData = {
+        level: 'invalid-level', // Invalid log level
+        timeRange: {
+          from: 'not-a-date'
+        }
+      };
+
+      const request = new NextRequest('http://localhost/api/logs', {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data).toMatchObject({
+        error: {
+          message: 'Invalid query parameters'
+        },
+        timestamp: expect.any(String)
+      });
+      expect(mockCleanup).not.toHaveBeenCalled();
     });
   });
 });

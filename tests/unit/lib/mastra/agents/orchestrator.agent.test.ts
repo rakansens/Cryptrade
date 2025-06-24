@@ -270,10 +270,10 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
 
     it('should correctly analyze UI control intent', () => {
       const testCases = [
-        { query: 'トレンドラインを描いて', intent: 'proposal_request' },
+        { query: 'トレンドラインを描いて', intent: 'ui_control' },
         { query: 'チャートをBTCに変更', intent: 'ui_control' },
         { query: '移動平均線を表示', intent: 'ui_control' },
-        { query: 'フィボナッチを引いて', intent: 'proposal_request' }
+        { query: 'フィボナッチを引いて', intent: 'ui_control' }
       ];
       
       testCases.forEach(({ query, intent }) => {

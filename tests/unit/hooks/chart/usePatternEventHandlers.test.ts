@@ -1,13 +1,22 @@
 // Tests for usePatternEventHandlers
-// Note: In test environment, useEffect may not run automatically
-// These tests focus on verifying the hook renders without errors
+import { renderHook, act } from '@testing-library/react-hooks';
+import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
+import { usePatternStore } from '@/store/chart';
+import { logger } from '@/lib/utils/logger';
+import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
+import { 
+  handleValidationError, 
+  handleAgentError, 
+  showAgentSuccess,
+  getPatternRenderer
+} from '@/lib/chart/agent-utils';
+import { validatePatternEvent } from '@/types/events/pattern-events';
 
-// Mock dependencies before imports
+// Mock dependencies
 const mockAddPattern = jest.fn();
 const mockRemovePattern = jest.fn();
 const mockClearPatterns = jest.fn();
 
-// Create stable mock return values
 const mockPatternActionsReturn = {
   addPattern: mockAddPattern,
   removePattern: mockRemovePattern,
@@ -19,20 +28,17 @@ const mockChartBaseStoreReturn = {
   timeframe: '1h',
 };
 
-jest.mock('@/store/chart', () => {
-  const actualModule = jest.requireActual('@/store/chart');
-  return {
-    ...actualModule,
-    usePatternActions: jest.fn(() => mockPatternActionsReturn),
-    useChartBaseStore: jest.fn(() => mockChartBaseStoreReturn),
-    usePatternStore: Object.assign(jest.fn(), {
-      getState: jest.fn(() => ({
-        patterns: new Map()
-      })),
-      setState: jest.fn()
-    })
-  };
-});
+jest.mock('@/store/chart', () => ({
+  usePatternActions: jest.fn(() => mockPatternActionsReturn),
+  useChartBaseStore: jest.fn(() => mockChartBaseStoreReturn),
+  usePatternStore: Object.assign(jest.fn(), {
+    getState: jest.fn(() => ({
+      patterns: new Map()
+    })),
+    setState: jest.fn()
+  })
+}));
+
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -41,20 +47,19 @@ jest.mock('@/lib/utils/logger', () => ({
     debug: jest.fn()
   }
 }));
+
 const mockPatternRenderer = {
   renderPattern: jest.fn(),
   removePattern: jest.fn(),
 };
 
-// Create stable mock function that always returns the same renderer
-const mockGetPatternRenderer = jest.fn(() => mockPatternRenderer);
-
 jest.mock('@/lib/chart/agent-utils', () => ({
   handleValidationError: jest.fn(),
   handleAgentError: jest.fn(),
   showAgentSuccess: jest.fn(),
-  getPatternRenderer: mockGetPatternRenderer
+  getPatternRenderer: jest.fn(() => mockPatternRenderer)
 }));
+
 jest.mock('@/types/events/pattern-events', () => ({
   validatePatternEvent: jest.fn((eventType, detail) => ({
     success: true,
@@ -62,221 +67,376 @@ jest.mock('@/types/events/pattern-events', () => ({
   }))
 }));
 
-import { renderHook, act } from '@testing-library/react';
-import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
-import { usePatternStore } from '@/store/chart';
-import { logger } from '@/lib/utils/logger';
-import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
-import { 
-  handleValidationError, 
-  handleAgentError, 
-  showAgentSuccess 
-} from '@/lib/chart/agent-utils';
-
 describe('usePatternEventHandlers', () => {
-  const mockPatterns = new Map([
-    ['pattern1', {
-      id: 'pattern1',
-      type: 'triangle',
-      visualization: {
-        type: 'triangle',
-        lines: [
-          { start: { time: 1000, price: 100 }, end: { time: 2000, price: 200 }, type: 'trend' },
-        ],
-      },
-    }],
-  ]);
-
-  // Create stable mock handlers outside of beforeEach to avoid reference changes
-  const mockHandlers: any = {
+  const mockHandlers: ChartEventHandlers = {
     patternRenderer: mockPatternRenderer,
     getPatternRenderer: () => mockPatternRenderer,
-    chart: {},
-    series: {},
+    chart: {} as any,
+    series: {} as any,
   };
   
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Mock usePatternStore with getState and setState methods
-    (usePatternStore as any).getState = jest.fn().mockReturnValue({
-      patterns: mockPatterns,
+    // Reset pattern store state
+    (usePatternStore as any).getState.mockReturnValue({
+      patterns: new Map(),
     });
-    (usePatternStore as any).setState = jest.fn();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    // Clean up any remaining event listeners
+    const events = ['chart:addPattern', 'chart:removePattern', 'chart:updatePatternStyle'];
+    events.forEach(event => {
+      const listeners = (window as any).listeners?.(event) || [];
+      listeners.forEach((listener: any) => {
+        window.removeEventListener(event, listener);
+      });
+    });
   });
 
-  describe('Initial state and mounting', () => {
-    it('should have all required dependencies', () => {
-      // Check that all mock functions are defined
-      expect(mockAddPattern).toBeDefined();
-      expect(mockRemovePattern).toBeDefined();
-      expect(mockClearPatterns).toBeDefined();
+  describe('Event listener registration and cleanup', () => {
+    it('should register event listeners on mount', () => {
+      const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
       
-      // Check that hooks return expected values
-      const { usePatternActions, useChartBaseStore } = require('@/store/chart');
-      const actions = usePatternActions();
-      const store = useChartBaseStore();
-      
-      expect(actions.addPattern).toBe(mockAddPattern);
-      expect(actions.removePattern).toBe(mockRemovePattern);
-      expect(actions.clearPatterns).toBe(mockClearPatterns);
-      expect(store.symbol).toBe('BTCUSDT');
-      expect(store.timeframe).toBe('1h');
-    });
-    
-    it('should render without errors', () => {
-      const { result } = renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook should return undefined
-      expect(result.current).toBeUndefined();
-    });
-    
-    it('should handle events when dispatched', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Try dispatching an add pattern event
-      const addEvent = new CustomEvent('chart:addPattern', {
-        detail: {
-          type: 'chart:addPattern',
-          data: {
-            id: 'test-pattern',
-            pattern: {
-              type: 'triangle',
-              visualization: {
-                type: 'triangle',
-                lines: [],
-              },
-            },
-          },
-        },
-      });
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
+      expect(addEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
       
-      // Dispatch the event
-      window.dispatchEvent(addEvent);
-      
-      // For now, just check that the hook was rendered without errors
-      // The actual event handling might not work in test environment
-      expect(true).toBe(true);
+      expect(logger.info).toHaveBeenCalledWith(
+        '[Pattern Event Handlers] Registered pattern event listeners',
+        expect.objectContaining({
+          eventCount: 3,
+          events: ['chart:addPattern', 'chart:removePattern', 'chart:updatePatternStyle']
+        })
+      );
     });
 
-    it('should cleanup on unmount', () => {
+    it('should remove event listeners on unmount', () => {
+      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+      
       const { unmount } = renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Simply unmount without errors
       unmount();
       
-      // The cleanup happens but we can't verify it in test environment
-      expect(true).toBe(true);
+      expect(removeEventListenerSpy).toHaveBeenCalledTimes(3);
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
+      
+      expect(logger.info).toHaveBeenCalledWith('[Pattern Event Handlers] Cleaned up pattern event listeners');
     });
   });
 
   describe('Add Pattern Event', () => {
-    it('should be ready to handle add pattern events', () => {
+    it('should handle valid add pattern event', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      const patternData = {
+        id: 'test-pattern',
+        pattern: {
+          type: 'triangle',
+          visualization: {
+            type: 'triangle',
+            lines: [
+              { start: { time: 1000, price: 100 }, end: { time: 2000, price: 200 }, type: 'trend' }
+            ],
+          },
+          confidence: 0.85,
+          tradingImplication: 'Bullish breakout expected',
+          metrics: {
+            confidence: 0.85,
+            entryPrice: 150,
+            targetPrice: 200,
+            stopLoss: 140,
+            riskReward: 5
+          }
+        }
+      };
+
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:addPattern', {
+          detail: { data: patternData }
+        }));
+      });
+
+      // Event handler should be called synchronously
+      expect(validatePatternEvent).toHaveBeenCalledWith('chart:addPattern', { data: patternData });
+      expect(mockAddPattern).toHaveBeenCalledWith('test-pattern', expect.objectContaining({
+        id: 'test-pattern',
+        type: 'triangle',
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        visualization: expect.objectContaining({
+          type: 'triangle',
+          lines: expect.any(Array)
+        }),
+        confidence: 0.85,
+        tradingImplication: 'Bullish breakout expected',
+        metrics: expect.objectContaining({
+          confidence: 0.85,
+          entryPrice: 150,
+          targetPrice: 200,
+          stopLoss: 140,
+          riskReward: 5
+        })
+      }));
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalledWith(
+        'test-pattern',
+        expect.any(Object),
+        'triangle',
+        expect.objectContaining({
+          targetLevel: 200,
+          stopLoss: 140
+        })
+      );
+      expect(showAgentSuccess).toHaveBeenCalled();
     });
 
-    it('should be ready to handle pattern with markers', () => {
+    it('should handle pattern with markers transformation', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      const patternData = {
+        id: 'marker-pattern',
+        pattern: {
+          type: 'head-and-shoulders',
+          visualization: {
+            markers: [
+              { time: 1000, value: 100, text: 'Left Shoulder' },
+              { time: 2000, value: 120, text: 'Head' },
+              { time: 3000, value: 100, text: 'Right Shoulder' }
+            ],
+            lines: [{ style: { color: 'red' } }],
+            zones: [{ style: { fillColor: 'rgba(255,0,0,0.1)' } }]
+          }
+        }
+      };
+
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:addPattern', {
+          detail: { data: patternData }
+        }));
+      });
+
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalledWith(
+        'marker-pattern',
+        expect.objectContaining({
+          keyPoints: expect.arrayContaining([
+            expect.objectContaining({ time: 1000, value: 100, label: 'Left Shoulder' }),
+            expect.objectContaining({ time: 2000, value: 120, label: 'Head' }),
+            expect.objectContaining({ time: 3000, value: 100, label: 'Right Shoulder' })
+          ])
+        }),
+        'head-and-shoulders',
+        undefined
+      );
     });
 
-    it('should be ready to handle validation errors', () => {
+    it('should handle validation errors', () => {
+      (validatePatternEvent as jest.Mock).mockReturnValueOnce({
+        success: false,
+        error: 'Invalid pattern data'
+      });
+
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:addPattern', {
+          detail: { invalid: 'data' }
+        }));
+      });
+
+      expect(handleValidationError).toHaveBeenCalledWith(
+        { success: false, error: 'Invalid pattern data' },
+        expect.objectContaining({
+          eventType: 'chart:addPattern',
+          operation: 'Add pattern'
+        })
+      );
+      expect(mockAddPattern).not.toHaveBeenCalled();
+      expect(mockPatternRenderer.renderPattern).not.toHaveBeenCalled();
     });
 
-    it('should be ready to handle missing pattern renderer', () => {
+    it('should handle missing pattern renderer', () => {
+      (getPatternRenderer as jest.Mock).mockReturnValueOnce(null);
+
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      const patternData = {
+        id: 'test-pattern',
+        pattern: { type: 'triangle', visualization: { type: 'triangle', lines: [] } }
+      };
+
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:addPattern', {
+          detail: { data: patternData }
+        }));
+      });
+
+      expect(logger.warn).toHaveBeenCalledWith('[Pattern Event] Pattern renderer not available');
+      expect(handleAgentError).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          eventType: 'chart:addPattern',
+          operation: 'Add pattern'
+        }),
+        'Pattern renderer not initialized'
+      );
     });
   });
 
   describe('Remove Pattern Event', () => {
-    it('should be ready to handle remove pattern events', () => {
+    it('should handle valid remove pattern event', () => {
+      const mockPatterns = new Map([
+        ['pattern-to-remove', { id: 'pattern-to-remove', type: 'triangle' }]
+      ]);
+      (usePatternStore as any).getState.mockReturnValue({ patterns: mockPatterns });
+
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:removePattern', {
+          detail: { data: { id: 'pattern-to-remove' } }
+        }));
+      });
+
+      expect(validatePatternEvent).toHaveBeenCalledWith('chart:removePattern', { data: { id: 'pattern-to-remove' } });
+      expect(mockRemovePattern).toHaveBeenCalledWith('pattern-to-remove');
+      expect(mockPatternRenderer.removePattern).toHaveBeenCalledWith('pattern-to-remove');
+      expect(showAgentSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'chart:removePattern',
+          operation: 'Remove pattern'
+        }),
+        'Pattern removed from chart'
+      );
     });
 
-    it('should be ready to log pattern removal', () => {
-      renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
-    });
+    it('should handle errors during pattern removal', () => {
+      mockRemovePattern.mockImplementationOnce(() => {
+        throw new Error('Failed to remove pattern');
+      });
 
-    it('should be ready to handle missing pattern renderer on remove', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:removePattern', {
+          detail: { data: { id: 'pattern-id' } }
+        }));
+      });
+
+      expect(handleAgentError).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          eventType: 'chart:removePattern',
+          operation: 'Remove pattern',
+          id: 'pattern-id'
+        })
+      );
     });
   });
 
   describe('Update Pattern Style Event', () => {
-    it('should be ready to handle update pattern style events', () => {
+    it('should handle valid style update event', () => {
+      const mockPattern = {
+        id: 'pattern1',
+        type: 'triangle',
+        visualization: {
+          lines: [
+            { id: 'line1', start: { time: 1000, price: 100 }, end: { time: 2000, price: 200 }, style: {} }
+          ]
+        }
+      };
+      const mockPatterns = new Map([['pattern1', mockPattern]]);
+      (usePatternStore as any).getState.mockReturnValue({ patterns: mockPatterns });
+
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      const updateData = {
+        patternId: 'pattern1',
+        patternStyle: {
+          baseStyle: {
+            color: '#ff0000',
+            lineWidth: 2,
+            lineStyle: 0
+          }
+        },
+        lineStyles: [
+          { lineId: 'line1', style: { color: '#00ff00', lineWidth: 3 } }
+        ],
+        immediate: true
+      };
+
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:updatePatternStyle', {
+          detail: { data: updateData }
+        }));
+      });
+
+      expect(validatePatternEvent).toHaveBeenCalledWith('chart:updatePatternStyle', { data: updateData });
+      expect(mockPatternRenderer.removePattern).toHaveBeenCalledWith('pattern1');
+      expect(mockPatternRenderer.renderPattern).toHaveBeenCalledWith(
+        'pattern1',
+        expect.any(Object),
+        'triangle',
+        undefined
+      );
+      expect(showAgentSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'chart:updatePatternStyle',
+          operation: 'Update pattern style'
+        }),
+        'パターンスタイルを更新しました'
+      );
     });
 
-    it('should be ready to handle line style updates', () => {
-      renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
-    });
+    it('should handle pattern not found error', () => {
+      (usePatternStore as any).getState.mockReturnValue({ patterns: new Map() });
 
-    it('should be ready to handle pattern not found errors', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
-    });
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:updatePatternStyle', {
+          detail: { data: { patternId: 'non-existent', patternStyle: {} } }
+        }));
+      });
 
-    it('should be ready to handle missing pattern renderer on style update', () => {
-      renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
-    });
-
-    it('should be ready to update area styles', () => {
-      renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith('[Pattern Event] Pattern not found for style update', { patternId: 'non-existent' });
+      expect(handleAgentError).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          eventType: 'chart:updatePatternStyle',
+          operation: 'Update pattern style'
+        }),
+        'パターンが見つかりません'
+      );
     });
   });
 
   describe('Error handling', () => {
-    it('should be ready to handle errors during pattern operations', () => {
-      renderHook(() => usePatternEventHandlers(mockHandlers));
-      
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
-    });
+    it('should handle errors in event handlers gracefully', () => {
+      mockAddPattern.mockImplementationOnce(() => {
+        throw new Error('Unexpected error');
+      });
 
-    it('should be ready to handle pattern with markers transformation', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      // Hook is rendered and ready for events
-      expect(true).toBe(true);
+      act(() => {
+        window.dispatchEvent(new CustomEvent('chart:addPattern', {
+          detail: { data: { id: 'test', pattern: { type: 'triangle', visualization: {} } } }
+        }));
+      });
+
+      expect(handleAgentError).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          eventType: 'chart:addPattern',
+          operation: 'Add pattern'
+        })
+      );
     });
   });
 });
