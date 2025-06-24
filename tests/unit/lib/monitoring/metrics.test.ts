@@ -8,6 +8,9 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
+// Unmock the metrics module to test the actual implementation
+jest.unmock('@/lib/monitoring/metrics');
+
 import { metricsCollector, incrementMetric, setMetric, observeMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 

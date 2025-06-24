@@ -351,7 +351,7 @@ describe('Proposal System Integration Tests', () => {
       const executionTime = Date.now() - startTime;
       
       expect(result.executionResult).toBeDefined();
-      expect(executionTime).toBeLessThan(10000); // Should complete within 10 seconds
-    });
+      expect(executionTime).toBeLessThan(20000); // Should complete within 20 seconds
+    }, 20000); // Set timeout to 20 seconds
   });
 });

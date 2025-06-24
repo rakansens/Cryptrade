@@ -207,7 +207,9 @@ describe('Binance Klines API Route', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBeTruthy();
+      expect(data.error).toBeDefined();
+      expect(typeof data.error).toBe('object');
+      expect(data.error.message).toBeDefined();
     });
 
     it('should handle concurrent requests', async () => {

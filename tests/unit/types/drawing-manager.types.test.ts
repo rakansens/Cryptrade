@@ -69,7 +69,7 @@ describe('drawing-manager.types', () => {
       expect(typeof metadata['booleanProp']).toBe('boolean');
       expect(metadata['nullProp']).toBeNull();
       expect(metadata['undefinedProp']).toBeUndefined();
-      expect(Array.isArray(metadata['arrayProp'])).toBe(true);
+      expect(metadata['arrayProp']).toBeInstanceOf(Array);
       expect(typeof metadata['objectProp']).toBe('object');
     });
   });
@@ -362,7 +362,7 @@ describe('drawing-manager.types', () => {
       };
 
       expect(simpleVisualization['visualization']).toBe('simple-viz');
-      expect(Array.isArray(arrayVisualization['visualization'])).toBe(true);
+      expect(arrayVisualization['visualization']).toBeInstanceOf(Array);
       expect(complexVisualization['visualization']).toHaveProperty('nested');
     });
 

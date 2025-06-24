@@ -175,8 +175,8 @@ describe('WSManager E2E Integration Tests', () => {
 
       expect(cleanedCount).toBe(1); // Only old stream cleaned
       expect(manager.getActiveStreamsCount()).toBe(1);
-      expect(manager['streams'].has('recent@stream')).toBe(true);
-      expect(manager['streams'].has('old@stream')).toBe(false);
+      expect(manager['streams'].has('recent@stream')).toEqual(true);
+      expect(manager['streams'].has('old@stream')).toEqual(false);
 
       manager.destroy();
     });

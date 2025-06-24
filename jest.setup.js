@@ -1106,6 +1106,19 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Mock metrics
 jest.mock('@/lib/monitoring/metrics', () => ({
+  metricsCollector: {
+    register: jest.fn(),
+    increment: jest.fn(),
+    set: jest.fn(),
+    observe: jest.fn(),
+    export: jest.fn(() => ''),
+    toJSON: jest.fn(() => ({})),
+    reset: jest.fn(),
+  },
+  incrementMetric: jest.fn(),
+  setMetric: jest.fn(),
+  observeMetric: jest.fn(),
+  // Legacy exports for backward compatibility
   metrics: {
     incrementMetric: jest.fn(),
     recordMetric: jest.fn(),

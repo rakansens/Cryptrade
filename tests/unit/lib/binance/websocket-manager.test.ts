@@ -221,7 +221,7 @@ describe('BinanceWebSocketManager', () => {
       
       const status = manager.getStatus();
       expect(status.connected).toBe(true);
-      expect(status.subscribedSymbols.has('BTCUSDT')).toBe(true);
+      expect(status.subscribedSymbols.has('BTCUSDT')).toEqual(true);
     });
   });
 
@@ -389,7 +389,7 @@ describe('BinanceWebSocketManager', () => {
       
       const status = manager.getStatus();
       expect(status.connected).toBe(false);
-      expect(status.subscribedSymbols.has('BTCUSDT')).toBe(false);
+      expect(status.subscribedSymbols.has('BTCUSDT')).toEqual(false);
     });
 
     it('should handle connection error event', async () => {
@@ -516,7 +516,7 @@ describe('BinanceWebSocketManager', () => {
       
       // Check that the timeout was cleared
       if (reconnectTimeoutId !== null) {
-        expect(timeoutCallbacks.has(reconnectTimeoutId)).toBe(false);
+        expect(timeoutCallbacks.has(reconnectTimeoutId)).toEqual(false);
       }
       
       // Should not have created a new connection
@@ -559,7 +559,7 @@ describe('BinanceWebSocketManager', () => {
       await manager.closeAll();
       
       // Check that the heartbeat interval was cleared
-      expect(intervalCallbacks.has(heartbeatIntervalId)).toBe(false);
+      expect(intervalCallbacks.has(heartbeatIntervalId)).toEqual(false);
     });
   });
 

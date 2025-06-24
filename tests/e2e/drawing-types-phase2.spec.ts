@@ -53,7 +53,8 @@ test.describe('Drawing Types Phase 2 - Trendline & Fibonacci', () => {
         return store?.drawings.find((d: any) => d.id === 'trend_test_1');
       });
       
-      expect(drawing).toBeTruthy();
+      expect(drawing).toBeDefined();
+      expect(drawing).not.toBeNull();
       expect(drawing.type).toBe('trendline');
       expect(drawing.points).toHaveLength(2);
     });
@@ -114,7 +115,8 @@ test.describe('Drawing Types Phase 2 - Trendline & Fibonacci', () => {
         return store?.drawings.find((d: any) => d.id === 'fib_test_1');
       });
       
-      expect(drawing).toBeTruthy();
+      expect(drawing).toBeDefined();
+      expect(drawing).not.toBeNull();
       expect(drawing.type).toBe('fibonacci');
       expect(drawing.points).toHaveLength(2);
       

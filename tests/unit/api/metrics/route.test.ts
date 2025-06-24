@@ -141,7 +141,8 @@ test_metric 100`;
       response = await GET(request);
 
       // JSON format goes through standard handler which adds CORS headers
-      expect(response.headers.get('access-control-allow-origin')).toBeTruthy();
+      expect(response.headers.get('access-control-allow-origin')).toBeDefined();
+      expect(response.headers.get('access-control-allow-origin')).toBe('*');
     });
 
     it('should handle empty metrics', async () => {

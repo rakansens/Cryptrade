@@ -327,7 +327,8 @@ test.describe('Enhanced Proposal Approval Flow', () => {
       return drawings[drawings.length - 1];
     });
 
-    expect(newDrawing).toBeTruthy();
+    expect(newDrawing).toBeDefined();
+    expect(newDrawing).not.toBeNull();
     expect(newDrawing.type).toBe('horizontal');
     expect(newDrawing.points[0].value).toBeCloseTo(45000, -2);
   });

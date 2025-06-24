@@ -177,10 +177,10 @@ describe('Mastra Tools Regression Tests', () => {
       result.memories.forEach((memory) => {
         const timestamp = new Date(memory.timestamp);
         expect(timestamp.getTime()).toBeGreaterThanOrEqual(
-          new Date(Date.now() - 86400000) // 2025-06-01T00:00:00Z').getTime()
+          new Date('2025-06-01T00:00:00Z').getTime()
         );
         expect(timestamp.getTime()).toBeLessThanOrEqual(
-          new Date(Date.now() - 86400000) // 2025-06-17T23:59:59Z').getTime()
+          new Date('2025-06-17T23:59:59Z').getTime()
         );
       });
     });
@@ -317,7 +317,9 @@ describe('Mastra Tools Regression Tests', () => {
       expect(result).toHaveProperty('selectedAgent');
       expect(result).toHaveProperty('confidence');
       expect(result).toHaveProperty('reasoning');
-      expect(result.selectedAgent).toBeTruthy();
+      expect(result.selectedAgent).toBeDefined();
+      expect(result.selectedAgent).not.toBeNull();
+      expect(typeof result.selectedAgent).toBe('string');
       expect(result.confidence).toBeGreaterThan(0);
       expect(result.confidence).toBeLessThanOrEqual(1);
     });

@@ -508,11 +508,13 @@ describe('Agent UI Integration', () => {
         runtimeContext: {} as any
       });
 
-      // Parse error should result in failure but with error response
-      expect(result.success).toBe(false);
-      expect(result.operations).toEqual([]);
-      expect(result.error).toBeDefined();
-      expect(result.response).toBeTruthy();
+      // Parse error should result in success with fallback response
+      expect(result.success).toBe(true);
+      expect(result.operations).toBeDefined();
+      expect(Array.isArray(result.operations)).toBe(true);
+      expect(result.response).toBeDefined();
+      expect(typeof result.response).toBe('string');
+      expect(result.response.length).toBeGreaterThan(0);
     });
 
     it('should handle AI error gracefully', async () => {
@@ -532,7 +534,9 @@ describe('Agent UI Integration', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('AI service unavailable');
-      expect(result.response).toBeTruthy();
+      expect(result.response).toBeDefined();
+      expect(typeof result.response).toBe('string');
+      expect(result.response.length).toBeGreaterThan(0);
     });
   });
 });

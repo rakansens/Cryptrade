@@ -42,8 +42,12 @@ describe('Circuit Breaker Monitoring API', () => {
       expect(data).toEqual({
         success: true,
         timestamp: expect.any(String),
-        circuitBreaker: {
-          marketData: mockStatus
+        data: {
+          success: true,
+          timestamp: expect.any(String),
+          circuitBreaker: {
+            marketData: mockStatus
+          }
         }
       });
       expect(getMarketDataCircuitBreakerStatus).toHaveBeenCalled();
@@ -64,7 +68,7 @@ describe('Circuit Breaker Monitoring API', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.circuitBreaker.marketData).toEqual(mockStatus);
+      expect(data.data.circuitBreaker.marketData).toEqual(mockStatus);
     });
 
     it('should ignore query parameters', async () => {
@@ -106,7 +110,7 @@ describe('Circuit Breaker Monitoring API', () => {
       
       // Verify response doesn't include metrics (not implemented)
       expect(data.metrics).toBeUndefined();
-      expect(data.circuitBreaker.marketData).toEqual(mockStatus);
+      expect(data.data.circuitBreaker.marketData).toEqual(mockStatus);
     });
 
     it('should handle errors gracefully', async () => {
@@ -120,7 +124,8 @@ describe('Circuit Breaker Monitoring API', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBeTruthy();
+      expect(data.error).toBeDefined();
+      expect(typeof data.error).toBe('object');
     });
   });
 
@@ -142,7 +147,7 @@ describe('Circuit Breaker Monitoring API', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe('Circuit breaker reset successfully');
+      expect(data.data.message).toBe('Circuit breaker reset successfully');
       expect(resetMarketDataCircuitBreaker).toHaveBeenCalled();
     });
 
@@ -224,7 +229,7 @@ describe('Circuit Breaker Monitoring API', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe('Circuit breaker reset successfully');
+      expect(data.data.message).toBe('Circuit breaker reset successfully');
       expect(resetMarketDataCircuitBreaker).toHaveBeenCalled();
     });
 
@@ -277,7 +282,8 @@ describe('Circuit Breaker Monitoring API', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBeTruthy();
+      expect(data.error).toBeDefined();
+      expect(typeof data.error).toBe('object');
     });
 
     it('should handle malformed JSON', async () => {
@@ -295,7 +301,8 @@ describe('Circuit Breaker Monitoring API', () => {
       // createApiHandler returns 500 for malformed JSON
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBeTruthy();
+      expect(data.error).toBeDefined();
+      expect(typeof data.error).toBe('object');
     });
 
     it('should successfully reset with correct auth', async () => {
@@ -316,7 +323,11 @@ describe('Circuit Breaker Monitoring API', () => {
       const data = await response.json();
       expect(data).toEqual({
         success: true,
-        message: 'Circuit breaker reset successfully'
+        timestamp: expect.any(String),
+        data: {
+          success: true,
+          message: 'Circuit breaker reset successfully'
+        }
       });
     });
   });

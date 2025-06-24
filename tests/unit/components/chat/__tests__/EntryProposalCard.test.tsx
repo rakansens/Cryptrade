@@ -162,7 +162,8 @@ describe('EntryProposalCard', () => {
     // Approve the proposal by clicking the approve button
     const buttons = screen.getAllByRole('button')
     const approveButton = buttons.find(btn => btn.getAttribute('title') === '承認')
-    expect(approveButton).toBeTruthy()
+    expect(approveButton).toBeDefined()
+    expect(approveButton).toBeInstanceOf(HTMLButtonElement)
     
     // After approval, the component internally tracks the state
     // We can verify that action buttons are no longer shown for approved proposals
@@ -175,7 +176,7 @@ describe('EntryProposalCard', () => {
     // After approval, the approve/reject buttons should not be visible anymore
     const buttonsAfter = screen.getAllByRole('button')
     const approveButtonAfter = buttonsAfter.find(btn => btn.getAttribute('title') === '承認')
-    expect(approveButtonAfter).toBeFalsy()
+    expect(approveButtonAfter).toBeUndefined()
   })
 
   it('shows rejected status', () => {

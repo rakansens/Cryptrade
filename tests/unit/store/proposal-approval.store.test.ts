@@ -107,7 +107,7 @@ describe('ProposalApprovalStore', () => {
 
       expect(result.current.approvedDrawingIds.get('msg1')?.get('prop1')).toBe('draw2');
       expect(result.current.drawingTypes.get('draw2')).toBe('drawing');
-      expect(result.current.drawingTypes.has('draw1')).toBe(true); // Old drawing type still exists
+      expect(result.current.drawingTypes.has('draw1')).toEqual(true); // Old drawing type still exists
     });
   });
 
@@ -120,8 +120,8 @@ describe('ProposalApprovalStore', () => {
         result.current.removeApprovedDrawing('draw1');
       });
 
-      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toBe(false);
-      expect(result.current.drawingTypes.has('draw1')).toBe(false);
+      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toEqual(false);
+      expect(result.current.drawingTypes.has('draw1')).toEqual(false);
     });
 
     it('should remove drawing from all messages', () => {
@@ -133,9 +133,9 @@ describe('ProposalApprovalStore', () => {
         result.current.removeApprovedDrawing('draw1');
       });
 
-      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toBe(false);
-      expect(result.current.approvedDrawingIds.get('msg2')?.has('prop2')).toBe(false);
-      expect(result.current.drawingTypes.has('draw1')).toBe(false);
+      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toEqual(false);
+      expect(result.current.approvedDrawingIds.get('msg2')?.has('prop2')).toEqual(false);
+      expect(result.current.drawingTypes.has('draw1')).toEqual(false);
     });
 
     it('should not affect other drawings when removing one', () => {
@@ -147,7 +147,7 @@ describe('ProposalApprovalStore', () => {
         result.current.removeApprovedDrawing('draw1');
       });
 
-      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toBe(false);
+      expect(result.current.approvedDrawingIds.get('msg1')?.has('prop1')).toEqual(false);
       expect(result.current.approvedDrawingIds.get('msg1')?.get('prop2')).toBe('draw2');
       expect(result.current.drawingTypes.get('draw2')).toBe('drawing');
     });
@@ -277,7 +277,7 @@ describe('ProposalApprovalStore', () => {
         hookResult.current('draw1');
       });
 
-      expect(storeResult.current.approvedDrawingIds.get('msg1')?.has('prop1')).toBe(false);
+      expect(storeResult.current.approvedDrawingIds.get('msg1')?.has('prop1')).toEqual(false);
     });
 
     it('should use clear approved drawings hook', () => {
@@ -323,7 +323,7 @@ describe('ProposalApprovalStore', () => {
         actionsResult.current.removeApprovedDrawing('draw1');
       });
 
-      expect(storeResult.current.approvedDrawingIds.get('msg1')?.has('prop1')).toBe(false);
+      expect(storeResult.current.approvedDrawingIds.get('msg1')?.has('prop1')).toEqual(false);
 
       act(() => {
         actionsResult.current.addApprovedDrawing('msg2', 'prop2', 'draw2', 'drawing');

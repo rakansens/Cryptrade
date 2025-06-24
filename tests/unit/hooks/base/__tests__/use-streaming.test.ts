@@ -347,10 +347,9 @@ describe('useStreaming', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.error).toBeTruthy();
+        expect(result.current.error).toBeDefined();
+        expect(result.current.error?.message).toBe('Network error');
       });
-
-      expect(result.current.error?.message).toBe('Network error');
       expect(onError).toHaveBeenCalledWith(fetchError);
     });
 
@@ -371,10 +370,9 @@ describe('useStreaming', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.error).toBeTruthy();
+        expect(result.current.error).toBeDefined();
+        expect(result.current.error?.message).toBe('Stream request failed: 500 Internal Server Error');
       });
-
-      expect(result.current.error?.message).toBe('Stream request failed: 500 Internal Server Error');
     });
 
     it('should handle empty response body', async () => {
@@ -391,10 +389,9 @@ describe('useStreaming', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.error).toBeTruthy();
+        expect(result.current.error).toBeDefined();
+        expect(result.current.error?.message).toBe('Response body is empty');
       });
-
-      expect(result.current.error?.message).toBe('Response body is empty');
     });
 
     it('should not treat abort as error', async () => {
@@ -672,7 +669,7 @@ describe('useSSE', () => {
 
     // Wait for EventSource to be created and connected
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
       expect(result.current.eventSource?.readyState).toBe(1); // OPEN
     });
 
@@ -697,7 +694,7 @@ describe('useSSE', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
     });
 
     // Simulate message
@@ -724,7 +721,7 @@ describe('useSSE', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
     });
 
     const eventSource = result.current.eventSource as any;
@@ -752,7 +749,7 @@ describe('useSSE', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
     });
 
     // Simulate error
@@ -773,7 +770,7 @@ describe('useSSE', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
     });
 
     // Simulate message with invalid JSON
@@ -843,7 +840,7 @@ describe('useSSE', () => {
 
     // Wait for auto-connect to complete
     await waitFor(() => {
-      expect(result.current.eventSource).toBeTruthy();
+      expect(result.current.eventSource).toBeDefined();
     });
 
     // Store reference to check if close was called

@@ -180,7 +180,8 @@ describe('StyleEditor', () => {
         return false
       })
       
-      expect(dashedButton).toBeTruthy()
+      expect(dashedButton).toBeDefined()
+      expect(dashedButton).toBeInstanceOf(HTMLButtonElement)
       fireEvent.click(dashedButton!)
       
       await waitFor(() => {
@@ -210,7 +211,8 @@ describe('StyleEditor', () => {
       const labelText = screen.getByText('価格ラベルを表示')
       const toggleButton = labelText.parentElement?.querySelector('button')
       
-      expect(toggleButton).toBeTruthy()
+      expect(toggleButton).toBeDefined()
+      expect(toggleButton).toBeInstanceOf(HTMLButtonElement)
       fireEvent.click(toggleButton!)
       
       await waitFor(() => {

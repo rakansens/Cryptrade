@@ -306,7 +306,7 @@ test.describe('Comprehensive Drawing Operations', () => {
           return drawings.length > 0;
         });
         
-        expect(hasDrawing).toBeTruthy();
+        expect(hasDrawing).toBe(true);
       }
     }
   });

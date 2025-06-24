@@ -225,7 +225,7 @@ describe('ChartAnalyzer', () => {
       })
 
       expect(result).toBeDefined()
-      expect(Array.isArray(result)).toBe(true)
+      expect(result).toBeInstanceOf(Array)
     })
 
     it('should fetch data for higher timeframe when not explicitly provided', async () => {
@@ -266,7 +266,7 @@ describe('ChartAnalyzer', () => {
       
       // Verify that results are returned
       expect(result).toBeDefined()
-      expect(Array.isArray(result)).toBe(true)
+      expect(result).toBeInstanceOf(Array)
       
       // All results should have mtfConfirmed property (either true or false)
       result.forEach(level => {

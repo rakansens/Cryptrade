@@ -46,7 +46,9 @@ describe('proposal generation helpers', () => {
       const after = Date.now();
 
       const match = id.match(/^TIME_(\d+)_/);
-      expect(match).toBeTruthy();
+      expect(match).not.toBeNull();
+      expect(match).toBeDefined();
+      expect(match).toHaveLength(2);
       
       const timestamp = parseInt(match![1]);
       expect(timestamp).toBeGreaterThanOrEqual(before);

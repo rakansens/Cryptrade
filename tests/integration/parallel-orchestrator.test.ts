@@ -126,7 +126,9 @@ describe('Parallel Orchestrator Integration', () => {
       expect(result.success).toBe(true);
       expect(result.executionResult).toBeDefined();
       // Even if some operations fail, we should get a response
-      expect(result.executionResult?.response).toBeTruthy();
+      expect(result.executionResult?.response).toBeDefined();
+      expect(typeof result.executionResult?.response).toBe('string');
+      expect(result.executionResult?.response.length).toBeGreaterThan(0);
     });
   });
   

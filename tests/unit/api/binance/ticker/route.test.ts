@@ -119,7 +119,7 @@ describe('Binance Ticker API Route', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       // Response is wrapped in 'data' property
-      expect(Array.isArray(data.data)).toBe(true);
+      expect(data.data).toBeInstanceOf(Array);
       expect(data.data.length).toBe(2);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/ticker/24hr',
@@ -184,7 +184,10 @@ describe('Binance Ticker API Route', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBeTruthy();
+      expect(data.error).toBeDefined();
+      expect(typeof data.error).toBe('object');
+      expect(data.error.message).toBeDefined();
+      expect(data.error.message).toContain('operation was aborted');
     });
 
     it('should validate response data structure', async () => {

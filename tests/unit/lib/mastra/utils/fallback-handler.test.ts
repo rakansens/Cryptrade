@@ -92,7 +92,9 @@ describe('FallbackHandler', () => {
 
           const result = await FallbackHandler.handle(config);
           
-          expect(result.response).toBeTruthy();
+          expect(result.response).toBeDefined();
+          expect(typeof result.response).toBe('string');
+          expect(result.response.length).toBeGreaterThan(0);
           expect(result.metadata.fallbackType).toBe('static');
         }
       });
@@ -363,7 +365,9 @@ describe('FallbackHandler', () => {
 
       const result = await FallbackHandler.handle(config);
       
-      expect(result.response).toBeTruthy();
+      expect(result.response).toBeDefined();
+      expect(typeof result.response).toBe('string');
+      expect(result.response.length).toBeGreaterThan(0);
       expect(result.metadata.fallbackType).toBe('static');
     });
 

@@ -11,40 +11,65 @@ import { openai } from '@ai-sdk/openai';
 import { incrementMetric } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import type { 
+  MockGenerateTextResponse, 
+  MockAIAnalysisResult, 
+  ChartControlContext,
+  ChartControlResult,
+  MockChartAnalysis,
+  MockChartControlExecute
+} from './chart-control.tool.test.types';
 
-// Type cast the execute function to avoid TypeScript errors
-const executeChartControlTool = chartControlTool.execute as any;
+// Type the execute function properly
+const executeChartControlTool = chartControlTool.execute as MockChartControlExecute;
+
+// Helper function to create mock generateText response
+function createMockGenerateTextResponse(
+  analysisResult: MockAIAnalysisResult | string,
+  options: Partial<MockGenerateTextResponse> = {}
+): Awaited<ReturnType<typeof generateText>> {
+  const text = typeof analysisResult === 'string' ? analysisResult : JSON.stringify(analysisResult);
+  
+  const mockResponse: MockGenerateTextResponse = {
+    text,
+    usage: { promptTokens: 100, completionTokens: 50 },
+    finishReason: 'stop',
+    response: {},
+    ...options
+  };
+  
+  return mockResponse as Awaited<ReturnType<typeof generateText>>;
+}
 
 describe('chartControlTool', () => {
   const mockGenerateText = generateText as jest.MockedFunction<typeof generateText>;
   const mockOpenai = openai as jest.MockedFunction<typeof openai>;
-  const mockChartDataAnalysisTool = chartDataAnalysisTool.execute as jest.MockedFunction<any>;
+  const mockChartDataAnalysisTool = chartDataAnalysisTool.execute as jest.MockedFunction<
+    (params: unknown) => Promise<MockChartAnalysis>
+  >;
 
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Mock AI model
-    mockOpenai.mockReturnValue('gpt-4o' as any);
+    mockOpenai.mockReturnValue('gpt-4o' as unknown as ReturnType<typeof openai>);
     
     // Default mock for generateText - valid JSON response
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({
-        operations: [{
-          type: 'symbol_change',
-          action: 'change_symbol',
-          parameters: { symbol: 'BTCUSDT' },
-          priority: 8,
-          description: 'Change to BTC'
-        }],
-        reasoning: 'User wants to view BTC chart',
-        confidence: 0.9,
-        complexity: 'simple',
-        userIntent: 'View BTC chart'
-      }),
-      usage: { promptTokens: 100, completionTokens: 50 },
-      finishReason: 'stop',
-      response: {} as any,
-    } as any);
+    const mockAnalysisResult: MockAIAnalysisResult = {
+      operations: [{
+        type: 'symbol_change',
+        action: 'change_symbol',
+        parameters: { symbol: 'BTCUSDT' },
+        priority: 8,
+        description: 'Change to BTC'
+      }],
+      reasoning: 'User wants to view BTC chart',
+      confidence: 0.9,
+      complexity: 'simple',
+      userIntent: 'View BTC chart'
+    };
+    
+    mockGenerateText.mockResolvedValue(createMockGenerateTextResponse(mockAnalysisResult));
   });
 
   describe('tool configuration', () => {
@@ -80,24 +105,19 @@ describe('chartControlTool', () => {
     });
 
     it('should handle timeframe change request', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
-          operations: [{
-            type: 'timeframe_change',
-            action: 'change_timeframe',
-            parameters: { timeframe: '4h' },
-            priority: 7,
-            description: 'Change to 4 hour timeframe'
-          }],
-          reasoning: 'User wants 4h timeframe',
-          confidence: 0.85,
-          complexity: 'simple',
-          userIntent: 'Change timeframe'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
+        operations: [{
+          type: 'timeframe_change',
+          action: 'change_timeframe',
+          parameters: { timeframe: '4h' },
+          priority: 7,
+          description: 'Change to 4 hour timeframe'
+        }],
+        reasoning: 'User wants 4h timeframe',
+        confidence: 0.85,
+        complexity: 'simple',
+        userIntent: 'Change timeframe'
+      }));
 
       const result = await executeChartControlTool({
         context: {
@@ -122,8 +142,7 @@ describe('chartControlTool', () => {
       ];
 
       for (const op of chartOps) {
-        mockGenerateText.mockResolvedValueOnce({
-          text: JSON.stringify({
+        mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
             operations: [{
               type: 'chart_operation',
               action: op.action,
@@ -135,11 +154,7 @@ describe('chartControlTool', () => {
             confidence: 0.8,
             complexity: 'simple',
             userIntent: 'Chart control'
-          }),
-          usage: { promptTokens: 100, completionTokens: 50 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any);
+          }));
 
         const result = await executeChartControlTool({
           context: { userRequest: op.action }
@@ -178,8 +193,7 @@ describe('chartControlTool', () => {
 
       mockChartDataAnalysisTool.mockResolvedValueOnce(mockChartAnalysis);
       
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'drawing_operation',
             action: 'draw_trendline',
@@ -191,11 +205,7 @@ describe('chartControlTool', () => {
           confidence: 0.9,
           complexity: 'moderate',
           userIntent: 'Draw trend'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: {
@@ -212,8 +222,7 @@ describe('chartControlTool', () => {
     });
 
     it('should handle fibonacci drawing', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'drawing_operation',
             action: 'draw_fibonacci',
@@ -230,11 +239,7 @@ describe('chartControlTool', () => {
           confidence: 0.85,
           complexity: 'moderate',
           userIntent: 'Fibonacci retracement'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'フィボナッチを描画' }
@@ -252,8 +257,7 @@ describe('chartControlTool', () => {
 
     it('should handle horizontal and vertical lines', async () => {
       // Test horizontal line
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'drawing_operation',
             action: 'draw_horizontal',
@@ -265,11 +269,7 @@ describe('chartControlTool', () => {
           confidence: 0.9,
           complexity: 'simple',
           userIntent: 'Support level'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const horizontalResult = await executeChartControlTool({
         context: { userRequest: '水平線を引く' }
@@ -284,8 +284,7 @@ describe('chartControlTool', () => {
       });
 
       // Test vertical line
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'drawing_operation',
             action: 'draw_vertical',
@@ -297,11 +296,7 @@ describe('chartControlTool', () => {
           confidence: 0.9,
           complexity: 'simple',
           userIntent: 'Time marker'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const verticalResult = await executeChartControlTool({
         context: { userRequest: '垂直線を引く' }
@@ -319,8 +314,7 @@ describe('chartControlTool', () => {
 
   describe('execute - undo/redo operations', () => {
     it('should handle undo operations', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'undo_redo',
             action: 'undo',
@@ -332,11 +326,7 @@ describe('chartControlTool', () => {
           confidence: 0.95,
           complexity: 'simple',
           userIntent: 'Undo'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: '元に戻す' }
@@ -349,8 +339,7 @@ describe('chartControlTool', () => {
     });
 
     it('should handle redo operations', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'undo_redo',
             action: 'redo',
@@ -362,11 +351,7 @@ describe('chartControlTool', () => {
           confidence: 0.95,
           complexity: 'simple',
           userIntent: 'Redo'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'やり直す' }
@@ -381,8 +366,7 @@ describe('chartControlTool', () => {
 
   describe('execute - style updates', () => {
     it('should handle color updates', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'style_update',
             action: 'update_color',
@@ -394,11 +378,7 @@ describe('chartControlTool', () => {
           confidence: 0.9,
           complexity: 'simple',
           userIntent: 'Change color'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: '青色に変更' }
@@ -411,8 +391,7 @@ describe('chartControlTool', () => {
     });
 
     it('should handle line width updates', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'style_update',
             action: 'update_line_width',
@@ -424,11 +403,7 @@ describe('chartControlTool', () => {
           confidence: 0.85,
           complexity: 'simple',
           userIntent: 'Change line width'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: '線を太くする' }
@@ -443,8 +418,7 @@ describe('chartControlTool', () => {
 
   describe('execute - indicator controls', () => {
     it('should handle indicator toggle', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'indicator_control',
             action: 'toggle_ma',
@@ -456,11 +430,7 @@ describe('chartControlTool', () => {
           confidence: 0.9,
           complexity: 'simple',
           userIntent: 'Show MA'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: '移動平均線を表示' }
@@ -475,8 +445,7 @@ describe('chartControlTool', () => {
 
   describe('execute - analysis operations', () => {
     it('should handle auto analysis', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'analysis_operation',
             action: 'auto_analysis',
@@ -488,11 +457,7 @@ describe('chartControlTool', () => {
           confidence: 0.85,
           complexity: 'complex',
           userIntent: 'Analyze chart'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: '自動分析を実行' }
@@ -507,24 +472,26 @@ describe('chartControlTool', () => {
 
   describe('execute - error handling', () => {
     it('should handle AI response parsing errors', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: 'Invalid JSON response',
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse('Invalid JSON response'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'テスト' }
       });
 
-      // When parse error occurs, the tool returns success: false due to exception handling
-      expect(result.success).toBe(false);
+      // When parse error occurs, the tool returns success: true with fallback operations
+      expect(result.success).toBe(true);
       expect(result.operations).toBeDefined();
-      expect(Array.isArray(result.operations)).toBe(true);
-      expect(result.operations).toHaveLength(0); // Empty array on error
-      // Parse error is handled inside analyzeChartRequest which we can't directly verify
-      // The error results in success: false with empty operations
+      expect(result.operations).toBeInstanceOf(Array);
+      expect(result.operations).toHaveLength(1); // Fallback operation
+      expect(result.operations[0]).toMatchObject({
+        type: 'chart_operation',
+        action: 'general_request',
+        parameters: { request: 'テスト' },
+        description: 'Fallback: テスト'
+      });
+      expect(result.metadata.confidence).toBe(0.3);
+      expect(result.reasoning).toContain('Failed to parse AI analysis');
+      expect(incrementMetric).toHaveBeenCalledWith('chart_control_parse_error_total')
     });
 
     it('should use fallback for specific request types on parse error', async () => {
@@ -535,21 +502,18 @@ describe('chartControlTool', () => {
       ];
 
       for (const testCase of testCases) {
-        mockGenerateText.mockResolvedValueOnce({
-          text: 'Invalid JSON',
-          usage: { promptTokens: 100, completionTokens: 50 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any);
+        mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse('Invalid JSON'));
 
         const result = await executeChartControlTool({
           context: { userRequest: testCase.request }
         });
 
-        expect(result.success).toBe(false); // Parse error causes exception
+        expect(result.success).toBe(true); // Parse error handled with fallback
         expect(result.operations).toBeDefined();
-        expect(Array.isArray(result.operations)).toBe(true);
-        expect(result.operations).toHaveLength(0); // Empty array on error
+        expect(result.operations).toBeInstanceOf(Array);
+        expect(result.operations).toHaveLength(1); // One fallback operation
+        expect(result.operations[0].type).toBe(testCase.expectedType);
+        expect(result.operations[0].action).toBe(testCase.expectedAction)
       }
     });
 
@@ -568,12 +532,7 @@ describe('chartControlTool', () => {
     it('should generate error response on failure', async () => {
       mockGenerateText
         .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          text: '申し訳ございません。ネットワークエラーが発生しました。',
-          usage: { promptTokens: 50, completionTokens: 25 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any);
+        .mockResolvedValueOnce(createMockGenerateTextResponse('申し訳ございません。ネットワークエラーが発生しました。'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'チャート操作' }
@@ -670,8 +629,7 @@ describe('chartControlTool', () => {
 
   describe('execute - multi-operation support', () => {
     it('should handle multiple operations in single request', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [
             {
               type: 'symbol_change',
@@ -699,11 +657,7 @@ describe('chartControlTool', () => {
           confidence: 0.85,
           complexity: 'complex',
           userIntent: 'Setup BTC 1h with RSI'
-        }),
-        usage: { promptTokens: 150, completionTokens: 100 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: {
@@ -722,30 +676,20 @@ describe('chartControlTool', () => {
   describe('execute - response generation', () => {
     it('should generate natural language response', async () => {
       mockGenerateText
-        .mockResolvedValueOnce({
-          text: JSON.stringify({
-            operations: [{
-              type: 'symbol_change',
-              action: 'change_symbol',
-              parameters: { symbol: 'BTCUSDT' },
-              priority: 8,
-              description: 'Change to BTC'
-            }],
-            reasoning: 'User wants BTC',
-            confidence: 0.9,
-            complexity: 'simple',
-            userIntent: 'View BTC'
-          }),
-          usage: { promptTokens: 100, completionTokens: 50 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any)
-        .mockResolvedValueOnce({
-          text: 'BTCUSDTのチャートに切り替えました。現在の価格動向をご確認ください。',
-          usage: { promptTokens: 50, completionTokens: 25 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any);
+        .mockResolvedValueOnce(createMockGenerateTextResponse({
+          operations: [{
+            type: 'symbol_change',
+            action: 'change_symbol',
+            parameters: { symbol: 'BTCUSDT' },
+            priority: 8,
+            description: 'Change to BTC'
+          }],
+          reasoning: 'User wants BTC',
+          confidence: 0.9,
+          complexity: 'simple',
+          userIntent: 'View BTC'
+        }))
+        .mockResolvedValueOnce(createMockGenerateTextResponse('BTCUSDTのチャートに切り替えました。現在の価格動向をご確認ください。'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'BTCに変更' }
@@ -772,30 +716,20 @@ describe('chartControlTool', () => {
 
       mockChartDataAnalysisTool.mockResolvedValueOnce(mockChartAnalysis);
       mockGenerateText
-        .mockResolvedValueOnce({
-          text: JSON.stringify({
-            operations: [{
-              type: 'drawing_operation',
-              action: 'draw_trendline',
-              parameters: {},
-              priority: 8,
-              description: 'Draw trendline'
-            }],
-            reasoning: 'Trendline analysis',
-            confidence: 0.9,
-            complexity: 'moderate',
-            userIntent: 'Analyze trend'
-          }),
-          usage: { promptTokens: 100, completionTokens: 50 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any)
-        .mockResolvedValueOnce({
-          text: '上昇トレンドラインを描画しました。現在の価格は50000で、RSIは65です。',
-          usage: { promptTokens: 100, completionTokens: 50 },
-          finishReason: 'stop',
-          response: {} as any,
-        } as any);
+        .mockResolvedValueOnce(createMockGenerateTextResponse({
+          operations: [{
+            type: 'drawing_operation',
+            action: 'draw_trendline',
+            parameters: {},
+            priority: 8,
+            description: 'Draw trendline'
+          }],
+          reasoning: 'Trendline analysis',
+          confidence: 0.9,
+          complexity: 'moderate',
+          userIntent: 'Analyze trend'
+        }))
+        .mockResolvedValueOnce(createMockGenerateTextResponse('上昇トレンドラインを描画しました。現在の価格は50000で、RSIは65です。'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'トレンドラインを引いて' }
@@ -810,18 +744,13 @@ describe('chartControlTool', () => {
 
   describe('execute - edge cases', () => {
     it('should handle empty operations array', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [],
           reasoning: 'No clear operation identified',
           confidence: 0.3,
           complexity: 'simple',
           userIntent: 'Unclear'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'よろしく' }
@@ -832,8 +761,7 @@ describe('chartControlTool', () => {
     });
 
     it('should handle operations without client events', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: JSON.stringify({
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse({
           operations: [{
             type: 'unknown_type',
             action: 'unknown_action',
@@ -845,11 +773,7 @@ describe('chartControlTool', () => {
           confidence: 0.5,
           complexity: 'simple',
           userIntent: 'Unknown'
-        }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+        }));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'Unknown request' }
@@ -859,31 +783,22 @@ describe('chartControlTool', () => {
     });
 
     it('should handle malformed AI response with partial data', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: '{"operations": [{"type": "symbol_change"}], "reasoning": "test"',
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse('{"operations": [{"type": "symbol_change"}], "reasoning": "test"'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'テスト' }
       });
 
-      // When malformed JSON is received, tool returns success: false due to exception
-      expect(result.success).toBe(false);
+      // When malformed JSON is received, tool returns success: true with fallback operations
+      expect(result.success).toBe(true);
       expect(result.operations).toBeDefined();
-      expect(Array.isArray(result.operations)).toBe(true);
-      expect(result.operations).toHaveLength(0); // Empty array on error
+      expect(result.operations).toBeInstanceOf(Array);
+      expect(result.operations).toHaveLength(1); // Fallback operation
+      expect(result.operations[0].type).toBe('chart_operation');
     });
 
     it('should strip markdown code blocks from AI response', async () => {
-      mockGenerateText.mockResolvedValueOnce({
-        text: '```json\n{"operations":[{"type":"symbol_change","action":"change_symbol","parameters":{"symbol":"BTCUSDT"},"priority":8,"description":"Change to BTC"}],"reasoning":"User wants BTC","confidence":0.9,"complexity":"simple","userIntent":"View BTC"}\n```',
-        usage: { promptTokens: 100, completionTokens: 50 },
-        finishReason: 'stop',
-        response: {} as any,
-      } as any);
+      mockGenerateText.mockResolvedValueOnce(createMockGenerateTextResponse('```json\n{"operations":[{"type":"symbol_change","action":"change_symbol","parameters":{"symbol":"BTCUSDT"},"priority":8,"description":"Change to BTC"}],"reasoning":"User wants BTC","confidence":0.9,"complexity":"simple","userIntent":"View BTC"}\n```'));
 
       const result = await executeChartControlTool({
         context: { userRequest: 'BTCに変更' }

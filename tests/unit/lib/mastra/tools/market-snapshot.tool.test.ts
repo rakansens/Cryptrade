@@ -523,7 +523,9 @@ describe('trendingTopicsTool', () => {
       result.topics.forEach(topic => {
         expect(['positive', 'negative', 'neutral']).toContain(topic.sentiment);
         expect(topic.volume).toBeGreaterThan(0);
-        expect(topic.topic).toBeTruthy();
+        expect(topic.topic).toBeDefined();
+        expect(typeof topic.topic).toBe('string');
+        expect(topic.topic.length).toBeGreaterThan(0);
       });
     });
 

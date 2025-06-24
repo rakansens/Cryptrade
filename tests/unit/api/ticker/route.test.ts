@@ -296,7 +296,9 @@ describe('Binance Ticker API Route', () => {
       const response = await OPTIONS();
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('access-control-allow-origin')).toBeTruthy();
+      expect(response.headers.get('access-control-allow-origin')).toBeDefined();
+      expect(response.headers.get('access-control-allow-origin')).toBe('*');
+      expect(response.headers.get('access-control-allow-methods')).toBeDefined();
       expect(response.headers.get('access-control-allow-methods')).toMatch(/GET|POST|OPTIONS/);
     });
   });

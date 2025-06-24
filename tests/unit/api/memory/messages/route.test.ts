@@ -44,7 +44,7 @@ describe('POST /api/memory/messages', () => {
       content: 'Hello, world!',
       agentId: null,
       metadata: {},
-      timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
+      timestamp: new Date(Date.now() - 86400000), // 1 day ago
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
@@ -104,7 +104,7 @@ describe('POST /api/memory/messages', () => {
       content: 'Here is my response',
       agentId: 'agent-123',
       metadata: { context: 'trading', confidence: 0.95 },
-      timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
+      timestamp: new Date(Date.now() - 86400000), // 1 day ago
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
@@ -305,7 +305,7 @@ describe('POST /api/memory/messages', () => {
       content: 'System notification',
       agentId: null,
       metadata: { type: 'notification' },
-      timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
+      timestamp: new Date(Date.now() - 86400000), // 1 day ago
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
@@ -351,7 +351,7 @@ describe('POST /api/memory/messages', () => {
       content: 'Analysis complete',
       agentId: 'analyzer',
       metadata: largeMetadata,
-      timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
+      timestamp: new Date(Date.now() - 86400000), // 1 day ago
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
@@ -387,7 +387,7 @@ describe('POST /api/memory/messages', () => {
       content: `Message ${index}`,
       agentId: null,
       metadata: {},
-      timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
+      timestamp: new Date(Date.now() - 86400000), // 1 day ago
     });
 
     const requests = Array(5).fill(null).map((_, index) => {

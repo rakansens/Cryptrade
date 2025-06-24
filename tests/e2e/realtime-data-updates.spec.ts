@@ -69,7 +69,7 @@ test.describe('Real-time Data Updates', () => {
       }
     }
 
-    expect(priceChanged).toBeTruthy();
+    expect(priceChanged).toBe(true);
 
     // 価格変動インジケータの表示を確認
     const priceChange = page.locator('[data-testid="price-change"]');
@@ -129,7 +129,7 @@ test.describe('Real-time Data Updates', () => {
     });
 
     // 新しいキャンドルが追加されたことを確認
-    expect(hasNewCandle).toBeTruthy();
+    expect(hasNewCandle).toBe(true);
   });
 
   test('複数の銘柄で同時にデータ更新を受信できる', async ({ page }) => {
@@ -261,7 +261,7 @@ test.describe('Real-time Data Updates', () => {
       });
     });
 
-    expect(maValueUpdated).toBeTruthy();
+    expect(maValueUpdated).toBe(true);
   });
 
   test('ボリュームデータがリアルタイムで更新される', async ({ page }) => {
@@ -285,7 +285,7 @@ test.describe('Real-time Data Updates', () => {
         }
       }
 
-      expect(volumeChanged).toBeTruthy();
+      expect(volumeChanged).toBe(true);
     } else {
       // ボリュームがチャート内に表示されている場合
       const hasVolumeUpdate = await page.evaluate(async () => {
@@ -319,7 +319,7 @@ test.describe('Real-time Data Updates', () => {
         });
       });
 
-      expect(hasVolumeUpdate).toBeTruthy();
+      expect(hasVolumeUpdate).toBe(true);
     }
   });
 
@@ -361,7 +361,7 @@ test.describe('Real-time Data Updates', () => {
       }
     }
     
-    expect(priceUpdatedAfterReconnect).toBeTruthy();
+    expect(priceUpdatedAfterReconnect).toBe(true);
   });
 });
 

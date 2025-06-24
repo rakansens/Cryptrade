@@ -148,7 +148,9 @@ describe('BodyStyleWrapper', () => {
         </BodyStyleWrapper>
       )
 
-      expect(container).toBeTruthy()
+      expect(container).toBeDefined()
+      expect(container.firstChild).toBeDefined()
+      expect(container.textContent).toBe('Test')
     })
   })
 

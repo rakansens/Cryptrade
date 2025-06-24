@@ -43,7 +43,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toBeDefined();
       expect(result.proposalGroup?.proposals).toHaveLength(5);
       expect(mockBinanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 500);
@@ -62,7 +62,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toBeDefined();
       
       // All proposals should be trendline type
@@ -84,7 +84,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toBeDefined();
       
       // All proposals should be support-resistance type
@@ -106,7 +106,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toBeDefined();
       
       // All proposals should be fibonacci type
@@ -128,7 +128,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toBeDefined();
     });
 
@@ -147,7 +147,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(mockBinanceAPI.fetchKlines).toHaveBeenCalledWith(
         'BTCUSDT',
         '1h',
@@ -172,7 +172,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       
       // Check that no excluded IDs are in the results
       result.proposalGroup?.proposals.forEach(proposal => {
@@ -193,7 +193,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       
       // Check that proposals are sorted by confidence (descending)
       const proposals = result.proposalGroup?.proposals || [];
@@ -215,7 +215,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(false);
+      expect(result.success).toEqual(false);
       expect(result.error).toBe('No market data available');
       expect(mockLogger.error).toHaveBeenCalled();
     });
@@ -233,7 +233,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(false);
+      expect(result.success).toEqual(false);
       expect(result.error).toBe('No market data available');
     });
 
@@ -255,7 +255,7 @@ describe('ProposalGenerationTool', () => {
       });
 
       // Tool handles NaN gracefully and still succeeds
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       // Accept whatever number of proposals it generates
       expect(result.proposalGroup?.proposals).toBeDefined();
     });
@@ -273,7 +273,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       const proposal = result.proposalGroup?.proposals[0];
 
       // Don't validate against schema as proposal structure may differ
@@ -298,7 +298,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: { logger } as any,
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup).toMatchObject({
         id: expect.stringMatching(/^pg_\d+_[a-z0-9]+$/),
         title: 'BTCUSDT トレンドライン分析',
@@ -323,7 +323,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       
       // Should call fetchKlines multiple times for different timeframes
       expect(mockBinanceAPI.fetchKlines).toHaveBeenCalledTimes(2); // Main + higher timeframe
@@ -357,7 +357,7 @@ describe('ProposalGenerationTool', () => {
         runtimeContext: createTestRuntimeContext()
       });
 
-      expect(result.success).toBe(true);
+      expect(result.success).toEqual(true);
       expect(result.proposalGroup?.proposals.length).toBeLessThanOrEqual(maxProposals);
     });
   });

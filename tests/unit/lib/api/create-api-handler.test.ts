@@ -450,8 +450,13 @@ describe('create-api-handler', () => {
       const response = await handler();
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('access-control-allow-origin')).toBeTruthy();
-      expect(response.headers.get('access-control-allow-methods')).toBeTruthy();
+      expect(response.headers.get('access-control-allow-origin')).toBeDefined();
+      expect(response.headers.get('access-control-allow-origin')).toBe('*');
+      expect(response.headers.get('access-control-allow-methods')).toBeDefined();
+      expect(response.headers.get('access-control-allow-methods')).toContain('GET');
+      expect(response.headers.get('access-control-allow-methods')).toContain('OPTIONS');
+      expect(response.headers.get('access-control-allow-headers')).toBeDefined();
+      expect(response.headers.get('access-control-allow-headers')).toContain('Content-Type');
     });
   });
 });

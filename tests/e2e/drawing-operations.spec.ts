@@ -47,7 +47,9 @@ test.describe('Drawing Operations - Sprint 1', () => {
         return store?.getState()?.drawings[0]?.id;
       });
       
-      expect(drawingId).toBeTruthy();
+      expect(drawingId).toBeDefined();
+      expect(drawingId).not.toBeNull();
+      expect(typeof drawingId).toBe('string');
       
       // Delete the drawing
       await page.evaluate((id) => {

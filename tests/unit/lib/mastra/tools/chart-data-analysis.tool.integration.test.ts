@@ -124,8 +124,12 @@ describe('chartDataAnalysisTool Integration Tests', () => {
 
       // Should still provide basic analysis
       expect(result.technicalAnalysis).toBeDefined();
-      expect(result.recommendations.analysis).toBeTruthy();
-      expect(result.recommendations.nextAction).toBeTruthy();
+      expect(result.recommendations.analysis).toBeDefined();
+      expect(typeof result.recommendations.analysis).toBe('string');
+      expect(result.recommendations.analysis.length).toBeGreaterThan(0);
+      expect(result.recommendations.nextAction).toBeDefined();
+      expect(typeof result.recommendations.nextAction).toBe('string');
+      expect(result.recommendations.nextAction.length).toBeGreaterThan(0);
       
       // Some indicators might not be available
       expect(result.technicalAnalysis.movingAverages.ma20).toBeUndefined(); // Not enough data for MA20
@@ -455,7 +459,9 @@ describe('chartDataAnalysisTool Integration Tests', () => {
       
       // Should provide relevant recommendations
       expect(result.recommendations.analysis).toContain('RSI');
-      expect(result.recommendations.nextAction).toBeTruthy();
+      expect(result.recommendations.nextAction).toBeDefined();
+      expect(typeof result.recommendations.nextAction).toBe('string');
+      expect(result.recommendations.nextAction.length).toBeGreaterThan(0);
     });
 
     it('should analyze range-bound markets correctly', async () => {

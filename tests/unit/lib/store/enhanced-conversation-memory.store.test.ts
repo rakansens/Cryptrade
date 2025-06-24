@@ -392,7 +392,9 @@ describe('EnhancedConversationMemoryStore', () => {
       const store = useEnhancedConversationMemory.getState();
       
       const sessionId = await store.createSession();
-      expect(sessionId).toBeTruthy();
+      expect(sessionId).toBeDefined();
+      expect(typeof sessionId).toBe('string');
+      expect(sessionId.length).toBeGreaterThan(0);
       
       const state = useEnhancedConversationMemory.getState();
       const session = state.sessions[sessionId];
@@ -766,7 +768,9 @@ describe('EnhancedConversationMemoryStore', () => {
         { price: 45000 }
       );
       
-      expect(messageId).toBeTruthy();
+      expect(messageId).toBeDefined();
+      expect(typeof messageId).toBe('string');
+      expect(messageId.length).toBeGreaterThan(0);
       
       const messages = store.getProcessedMessages(sessionId);
       expect(messages).toHaveLength(1);
@@ -924,14 +928,16 @@ describe('EnhancedConversationMemoryStore', () => {
       const store = useEnhancedConversationMemory.getState();
       const sessionId = await store.createSession();
       
+      const updatedTime = new Date(Date.now() - 86400000); // 1 day ago
+      
       store.updateSession(sessionId, {
         summary: 'Updated summary',
-        lastActiveAt: new Date(Date.now() - 86400000) // 2024-01-01'),
+        lastActiveAt: updatedTime,
       });
       
       const session = store.getSession(sessionId);
       expect(session.summary).toBe('Updated summary');
-      expect(session.lastActiveAt).toEqual(new Date(Date.now() - 86400000) // 2024-01-01'));
+      expect(session.lastActiveAt).toEqual(updatedTime);
     });
 
     it('should not update non-existent session', () => {

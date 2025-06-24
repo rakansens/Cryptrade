@@ -236,7 +236,9 @@ describe('Parallel Orchestrator', () => {
       expect(result.success).toBe(true);
       // Check that we got a result
       expect(result.executionResult).toBeDefined();
-      expect(result.executionResult?.response).toBeTruthy();
+      expect(result.executionResult?.response).toBeDefined();
+      expect(typeof result.executionResult?.response).toBe('string');
+      expect(result.executionResult?.response.length).toBeGreaterThan(0);
       
       // Check proposalGroup only if it exists
       if (result.executionResult?.proposalGroup) {
@@ -401,7 +403,9 @@ describe('Parallel Orchestrator', () => {
       }
       
       // At minimum, we should have gotten some response
-      expect(result.executionResult?.response).toBeTruthy();
+      expect(result.executionResult?.response).toBeDefined();
+      expect(typeof result.executionResult?.response).toBe('string');
+      expect(result.executionResult?.response.length).toBeGreaterThan(0);
     });
   });
 });

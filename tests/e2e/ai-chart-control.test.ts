@@ -48,7 +48,7 @@ test.describe('AI Chart Control Integration', () => {
     
     // Check if MA indicator is visible
     const maIndicator = await page.$('[data-testid="indicator-ma"]');
-    expect(maIndicator).toBeTruthy();
+    expect(maIndicator).not.toBeNull();
     
     // Disable MA indicator
     await ctx.chat.sendMessage('移動平均を非表示にして');
@@ -57,7 +57,7 @@ test.describe('AI Chart Control Integration', () => {
     
     // Check if MA indicator is hidden
     const maIndicatorHidden = await page.$('[data-testid="indicator-ma"]:not([data-visible="true"])');
-    expect(maIndicatorHidden).toBeTruthy();
+    expect(maIndicatorHidden).not.toBeNull();
   });
 
   test('should draw trendline via chat command', async ({ page }) => {
@@ -68,7 +68,7 @@ test.describe('AI Chart Control Integration', () => {
     
     // Check if trendline is drawn
     const trendline = await page.$('[data-testid^="drawing-trend-"]');
-    expect(trendline).toBeTruthy();
+    expect(trendline).not.toBeNull();
   });
 
   test('should fit chart content via chat command', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('AI Chart Control Integration', () => {
     const consoleMessages: string[] = [];
     page.on('console', msg => consoleMessages.push(msg.text()));
     
-    expect(consoleMessages.some(msg => msg.includes('Chart fit requested'))).toBeTruthy();
+    expect(consoleMessages.some(msg => msg.includes('Chart fit requested'))).toBe(true);
   });
 
   test('should handle multiple commands in sequence', async ({ page }) => {
@@ -107,13 +107,13 @@ test.describe('AI Chart Control Integration', () => {
     expect(symbolDisplay).toContain('BTC');
     
     const timeframeButton = await page.$('button[data-active="true"]:has-text("15m")');
-    expect(timeframeButton).toBeTruthy();
+    expect(timeframeButton).not.toBeNull();
     
     const rsiIndicator = await page.$('[data-testid="indicator-rsi"]');
-    expect(rsiIndicator).toBeTruthy();
+    expect(rsiIndicator).not.toBeNull();
     
     const trendline = await page.$('[data-testid^="drawing-trend-"]');
-    expect(trendline).toBeTruthy();
+    expect(trendline).not.toBeNull();
   });
 });
 
@@ -162,6 +162,6 @@ test.describe('Event System Integration', () => {
     
     // Verify trendline is drawn
     const trendline = await page.$('[data-testid^="drawing-trend-"]');
-    expect(trendline).toBeTruthy();
+    expect(trendline).not.toBeNull();
   });
 });

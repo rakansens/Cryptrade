@@ -197,7 +197,8 @@ test.describe('AI Chart Control Functionality', () => {
     // チャート分析ツールが使用されることを確認
     page.on('console', msg => {
       if (msg.text().includes('[ChartControl] Chart analysis completed')) {
-        expect(msg.text()).toBeTruthy();
+        expect(msg.text()).toBeDefined();
+        expect(msg.text().length).toBeGreaterThan(0);
       }
     });
     
@@ -232,7 +233,8 @@ test.describe('AI Response Quality', () => {
     await page.waitForSelector('.assistant-message', { timeout: 5000 });
     
     const response = await page.locator('.assistant-message').last().textContent();
-    expect(response).toBeTruthy();
+    expect(response).toBeDefined();
+    expect(response).not.toBe('');
     expect(response).toMatch(/こんにちは|お手伝い|ようこそ/);
   });
 
@@ -248,7 +250,8 @@ test.describe('AI Response Quality', () => {
     await page.waitForSelector('.assistant-message', { timeout: 5000 });
     
     const response = await page.locator('.assistant-message').last().textContent();
-    expect(response).toBeTruthy();
+    expect(response).toBeDefined();
+    expect(response).not.toBe('');
     // エラーメッセージではなく、適切な応答が返ることを確認
     expect(response).not.toContain('エラー');
   });

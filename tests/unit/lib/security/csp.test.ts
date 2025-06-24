@@ -17,8 +17,9 @@ describe('CSP Security Module', () => {
   describe('generateNonce', () => {
     it('should generate a valid base64 nonce', () => {
       const nonce = generateNonce();
-      expect(nonce).toBeTruthy();
+      expect(nonce).toBeDefined();
       expect(typeof nonce).toBe('string');
+      expect(nonce.length).toBeGreaterThan(0);
       // Base64 pattern
       expect(nonce).toMatch(/^[A-Za-z0-9+/]+=*$/);
     });
@@ -66,7 +67,9 @@ describe('CSP Security Module', () => {
       const nonce = 'test-nonce';
       applyCSPHeaders(response, nonce, true);
 
-      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
+      expect(response.headers.get('Content-Security-Policy')).toBeDefined();
+      expect(typeof response.headers.get('Content-Security-Policy')).toBe('string');
+      expect(response.headers.get('Content-Security-Policy')).toContain('script-src');
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(response.headers.get('X-Frame-Options')).toBe('DENY');
       expect(response.headers.get('X-XSS-Protection')).toBe('1; mode=block');
@@ -89,7 +92,8 @@ describe('CSP Security Module', () => {
       applyCSPHeaders(response, nonce, false);
 
       const cspHeader = response.headers.get('Content-Security-Policy');
-      expect(cspHeader).toBeTruthy();
+      expect(cspHeader).toBeDefined();
+      expect(typeof cspHeader).toBe('string');
       expect(cspHeader).toContain("script-src 'self'");
       expect(cspHeader).toContain("connect-src 'self'");
     });

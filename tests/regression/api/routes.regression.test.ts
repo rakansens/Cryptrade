@@ -33,7 +33,7 @@ describe('API Routes Regression Tests', () => {
 
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('klines');
-      expect(Array.isArray(data.klines)).toBe(true);
+      expect(data.klines).toBeInstanceOf(Array);
       expect(data.klines.length).toBeLessThanOrEqual(100);
     });
 
@@ -97,7 +97,7 @@ describe('API Routes Regression Tests', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
+      expect(data).toBeInstanceOf(Array);
       expect(data.length).toBe(2);
       expect(data.map(t => t.symbol)).toContain('BTCUSDT');
       expect(data.map(t => t.symbol)).toContain('ETHUSDT');
@@ -112,7 +112,7 @@ describe('API Routes Regression Tests', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
+      expect(data).toBeInstanceOf(Array);
       expect(data.length).toBeGreaterThan(0);
     });
   });
@@ -129,7 +129,7 @@ describe('API Routes Regression Tests', () => {
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('results');
       expect(data).toHaveProperty('total');
-      expect(Array.isArray(data.results)).toBe(true);
+      expect(data.results).toBeInstanceOf(Array);
       expect(data.results.length).toBeLessThanOrEqual(10);
     });
 
@@ -227,7 +227,7 @@ describe('API Routes Regression Tests', () => {
 
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('connectionDetails');
-      expect(Array.isArray(data.connectionDetails)).toBe(true);
+      expect(data.connectionDetails).toBeInstanceOf(Array);
     });
   });
 

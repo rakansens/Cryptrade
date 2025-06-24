@@ -238,6 +238,15 @@ describe('Improved Orchestrator Agent', () => {
     });
 
     it('should execute orchestrator successfully', async () => {
+      // Mock Date.now to simulate time passing
+      const mockNow = jest.spyOn(Date, 'now');
+      let currentTime = 1000000;
+      mockNow.mockImplementation(() => {
+        const time = currentTime;
+        currentTime += 100; // Simulate 100ms passing each time Date.now() is called
+        return time;
+      });
+      
       // Mock required dependencies
       jest.spyOn(agentSelectionTool, 'execute').mockResolvedValueOnce({
         success: true,
@@ -251,6 +260,8 @@ describe('Improved Orchestrator Agent', () => {
       expect(result.analysis.intent).toBe('ui_control');
       expect(result.analysis.confidence).toBeGreaterThanOrEqual(0.9);
       expect(result.executionTime).toBeGreaterThan(0);
+      
+      mockNow.mockRestore();
     });
 
     it('should handle agent execution failures gracefully', async () => {

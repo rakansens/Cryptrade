@@ -212,7 +212,8 @@ describe('Select Components', () => {
         const content = screen.getByRole('listbox')
         expect(content).toBeInTheDocument()
         // Content should be in a portal (outside the trigger's parent)
-        expect(content.closest('body')).toBeTruthy()
+        expect(content.closest('body')).toBeDefined()
+        expect(content.closest('body')).toBeInstanceOf(HTMLBodyElement)
       })
     })
 

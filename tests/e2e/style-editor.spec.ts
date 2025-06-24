@@ -192,7 +192,7 @@ test.describe('Style Editor E2E Tests', () => {
       })
     })
     
-    expect(patternUpdateReceived).toBeTruthy()
+    expect(patternUpdateReceived).toBe(true)
   })
 
   test('validates color input', async ({ page }) => {

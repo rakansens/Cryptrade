@@ -164,7 +164,8 @@ describe('ChartPersistenceManager', () => {
       await ChartPersistenceManager.saveDrawings([mockDrawing]);
 
       const stored = localStorageMock.getItem('cryptrade_chart_drawings');
-      expect(stored).toBeTruthy();
+      expect(stored).toBeDefined();
+      expect(typeof stored).toBe('string');
       expect(JSON.parse(stored!)).toEqual([mockDrawing]);
       expect(logger.info).toHaveBeenCalledWith(
         '[ChartPersistence] Drawings saved to localStorage',
@@ -184,7 +185,8 @@ describe('ChartPersistenceManager', () => {
       );
       
       const stored = localStorageMock.getItem('cryptrade_chart_drawings');
-      expect(stored).toBeTruthy();
+      expect(stored).toBeDefined();
+      expect(typeof stored).toBe('string');
       expect(JSON.parse(stored!)).toEqual([mockDrawing]);
     });
 
@@ -320,7 +322,8 @@ describe('ChartPersistenceManager', () => {
       await ChartPersistenceManager.savePatterns([mockPattern]);
 
       const stored = localStorageMock.getItem('cryptrade_chart_patterns');
-      expect(stored).toBeTruthy();
+      expect(stored).toBeDefined();
+      expect(typeof stored).toBe('string');
       expect(JSON.parse(stored!)).toEqual([mockPattern]);
     });
 

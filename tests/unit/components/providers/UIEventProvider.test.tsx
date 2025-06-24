@@ -170,7 +170,10 @@ describe('UIEventProvider', () => {
         </UIEventProvider>
       )
 
-      expect(container).toBeTruthy()
+      expect(container).toBeDefined()
+      expect(container.firstChild).toBeDefined()
+      expect(container.querySelector('div')).toBeDefined()
+      expect(container.textContent).toBe('Test')
     })
   })
 

@@ -330,11 +330,19 @@ describe('Code Structure Improvements', () => {
 
   it('should have no duplicate type definitions', () => {
     // 型定義の重複チェック
+    // Note: TypeScript types are not available at runtime, so we check for exported functions/values instead
     const types = require('@/lib/mastra/agents/orchestrator.types');
     const utilTypes = require('@/lib/mastra/utils/intent');
     
-    // IntentAnalysisResultは1箇所でのみ定義されるべき (intent.tsで定義)
-    expect(types.IntentAnalysisResult).toBeUndefined();
-    expect(utilTypes.IntentAnalysisResult).toBeDefined();
+    // Check that the modules are loaded correctly
+    expect(types).toBeDefined();
+    expect(utilTypes).toBeDefined();
+    
+    // Check that intent analysis functionality is in utils/intent
+    expect(utilTypes.analyzeIntent).toBeDefined();
+    expect(typeof utilTypes.analyzeIntent).toBe('function');
+    
+    // Check that orchestrator.types doesn't export intent analysis functions
+    expect(types.analyzeIntent).toBeUndefined();
   });
 });

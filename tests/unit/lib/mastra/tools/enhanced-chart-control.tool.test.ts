@@ -16,9 +16,13 @@ import { enhancedChartControlTool } from '@/lib/mastra/tools/enhanced-chart-cont
 import { logger } from '@/lib/utils/logger';
 import { generateText } from 'ai';
 import { chartDataAnalysisTool } from '@/lib/mastra/tools/chart-data-analysis.tool';
+import type {
+  MockEnhancedChartControlExecute,
+  createMockTextResponse
+} from './enhanced-chart-control.tool.test.types';
 
-// Type cast the execute function to avoid TypeScript errors
-const executeEnhancedChartControl = enhancedChartControlTool.execute as any;
+// Type the execute function properly
+const executeEnhancedChartControl = enhancedChartControlTool.execute as MockEnhancedChartControlExecute;
 
 // Mock generateText
 const mockGenerateText = generateText as jest.MockedFunction<typeof generateText>;

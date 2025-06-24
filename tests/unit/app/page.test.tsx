@@ -27,7 +27,8 @@ describe('Home Page', () => {
       // The 'use client' directive is at the top of the file
       // This test verifies the component can be rendered in a client environment
       const { container } = render(<Home />)
-      expect(container).toBeTruthy()
+      expect(container).toBeDefined()
+      expect(container).toBeInstanceOf(HTMLElement)
     })
   })
 
@@ -36,7 +37,8 @@ describe('Home Page', () => {
       const { container } = render(<Home />)
       
       // Should have exactly one child
-      expect(container.firstChild).toBeTruthy()
+      expect(container.firstChild).toBeDefined()
+      expect(container.firstChild).toBeInstanceOf(Node)
       expect(container.firstChild?.childNodes.length).toBe(1)
     })
 
