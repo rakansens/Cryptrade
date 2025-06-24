@@ -11,6 +11,7 @@ import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/store/enhanced-conversation-memory.store';
 import { registerAllAgents } from '../network/agent-registry';
 import { parallelOrchestrator } from './parallel-orchestrator';
+import type { IntentAnalysisResult } from '../utils/intent';
 
 // Context type for orchestrator agent
 export interface OrchestratorAgentContext {
@@ -33,18 +34,8 @@ export interface OrchestratorAgentContext {
  * - 高いテスタビリティと保守性
  */
 
-// 意図分析結果の型定義
-export interface IntentAnalysisResult {
-  intent: 'price_inquiry' | 'ui_control' | 'trading_analysis' | 'conversational' | 'proposal_request' | 'market_chat' | 'small_talk' | 'greeting' | 'help_request';
-  confidence: number;
-  extractedSymbol?: string;
-  reasoning: string;
-  analysisDepth: 'basic' | 'detailed' | 'comprehensive';
-  isProposalMode?: boolean;
-  proposalType?: 'trendline' | 'support-resistance' | 'pattern' | 'fibonacci' | 'entry' | 'all';
-  conversationMode?: 'formal' | 'casual' | 'friendly';
-  emotionalTone?: 'positive' | 'neutral' | 'concerned' | 'excited';
-}
+// Re-export IntentAnalysisResult for other modules
+export type { IntentAnalysisResult } from '../utils/intent';
 
 // 簡潔なスキーマ定義 - not used currently
 // const IntentAnalysisOutput = z.object({

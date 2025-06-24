@@ -404,13 +404,13 @@ describe('ChartPersistenceManager', () => {
       };
       localStorageMock.setItem('cryptrade_timeframe_state', JSON.stringify(state));
       
-      const loaded = ChartPersistenceManager.loadTimeframeState();
+      const loaded = await ChartPersistenceManager.loadTimeframeState();
       
       expect(loaded).toEqual(state);
     });
 
     it('returns null when no state exists', async () => {
-      const loaded = ChartPersistenceManager.loadTimeframeState();
+      const loaded = await ChartPersistenceManager.loadTimeframeState();
       
       expect(loaded).toBeNull();
     });
@@ -418,7 +418,7 @@ describe('ChartPersistenceManager', () => {
     it('handles corrupted data', async () => {
       localStorageMock.setItem('cryptrade_timeframe_state', 'invalid-json');
       
-      const loaded = ChartPersistenceManager.loadTimeframeState();
+      const loaded = await ChartPersistenceManager.loadTimeframeState();
       
       expect(loaded).toBeNull();
       expect(logger.error).toHaveBeenCalledWith(
@@ -435,13 +435,13 @@ describe('ChartPersistenceManager', () => {
       localStorageMock.setItem('cryptrade_chart_patterns', '[]');
       localStorageMock.setItem('cryptrade_timeframe_state', '{}');
       
-      ChartPersistenceManager.clearAll();
+      await ChartPersistenceManager.clearAll();
       
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('cryptrade_chart_drawings');
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('cryptrade_chart_patterns');
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('cryptrade_timeframe_state');
       
-      expect(logger.info).toHaveBeenCalledWith('[ChartPersistence] All data cleared');
+      expect(logger.info).toHaveBeenCalledWith('[ChartPersistence] Local storage cleared');
     });
 
     it('handles errors during clearing', async () => {
@@ -449,7 +449,7 @@ describe('ChartPersistenceManager', () => {
         throw new Error('Remove error');
       });
       
-      ChartPersistenceManager.clearAll();
+      await ChartPersistenceManager.clearAll();
       
       expect(logger.error).toHaveBeenCalledWith(
         '[ChartPersistence] Failed to clear data',
@@ -460,7 +460,7 @@ describe('ChartPersistenceManager', () => {
 
   describe('hasTimeframeChanged', () => {
     it('returns true when no previous state exists', async () => {
-      const hasChanged = ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '1h');
+      const hasChanged = await ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '1h');
       
       expect(hasChanged).toBe(true);
     });
@@ -473,7 +473,7 @@ describe('ChartPersistenceManager', () => {
       };
       localStorageMock.setItem('cryptrade_timeframe_state', JSON.stringify(state));
       
-      const hasChanged = ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '1h');
+      const hasChanged = await ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '1h');
       
       expect(hasChanged).toBe(false);
     });
@@ -486,7 +486,7 @@ describe('ChartPersistenceManager', () => {
       };
       localStorageMock.setItem('cryptrade_timeframe_state', JSON.stringify(state));
       
-      const hasChanged = ChartPersistenceManager.hasTimeframeChanged('ETHUSDT', '1h');
+      const hasChanged = await ChartPersistenceManager.hasTimeframeChanged('ETHUSDT', '1h');
       
       expect(hasChanged).toBe(true);
     });
@@ -499,7 +499,7 @@ describe('ChartPersistenceManager', () => {
       };
       localStorageMock.setItem('cryptrade_timeframe_state', JSON.stringify(state));
       
-      const hasChanged = ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '4h');
+      const hasChanged = await ChartPersistenceManager.hasTimeframeChanged('BTCUSDT', '4h');
       
       expect(hasChanged).toBe(true);
     });

@@ -15,7 +15,7 @@ describe('Intent Analysis Debug', () => {
     });
   });
 
-  test('analyzeIntent function', () => {
+  test.skip('analyzeIntent function - debug test', () => {
     const testCases = [
       { query: 'こんにちは！', expectedIntent: 'greeting' },
       { query: 'おはようございます！今日も頑張りましょう', expectedIntent: 'greeting' },
@@ -39,7 +39,7 @@ describe('Intent Analysis Debug', () => {
     throw new Error(`Debug results:\n${JSON.stringify(results, null, 2)}`);
   });
 
-  test('regex pattern test', () => {
+  test.skip('regex pattern test - debug test', () => {
     const greetingPatterns = [
       /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?\.?$/i,
       /^(よろしく)\.?$/i,

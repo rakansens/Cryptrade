@@ -7,13 +7,13 @@
 
 import { logger } from '@/lib/utils/logger';
 import { generateCorrelationId } from '@/types/agent-payload';
-import { analyzeIntent } from '../utils/intent';
+import { analyzeIntent, type IntentAnalysisResult } from '../utils/intent';
 import { agentSelectionTool } from '../tools/agent-selection.tool';
 import { marketSnapshotTool } from '../tools/market-snapshot.tool';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
 import { useEnhancedConversationMemory, createEnhancedSession } from '@/lib/store/enhanced-conversation-memory.store';
 import { raceWithCleanup } from '@/lib/utils/concurrent';
-import type { IntentAnalysisResult, OrchestratorExecutionResponse, OrchestratorRuntimeContext } from './orchestrator.agent';
+import type { OrchestratorExecutionResponse, OrchestratorRuntimeContext } from './orchestrator.agent';
 
 // Parallel execution configuration
 interface ParallelConfig {

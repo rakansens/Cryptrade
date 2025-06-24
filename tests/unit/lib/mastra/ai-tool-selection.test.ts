@@ -46,7 +46,20 @@ jest.mock('@/lib/mastra/agents/trading.agent', () => {
         // Intent analysis from query
         const intent = actualIntentModule.analyzeIntent(query);
         
+        // Debug log for testing (commented out)
+        // console.log('AI Tool Selection Debug:', {
+        //   query,
+        //   intent: {
+        //     intent: intent.intent,
+        //     isEntryProposal: intent.isEntryProposal,
+        //     isProposalMode: intent.isProposalMode,
+        //     proposalType: intent.proposalType
+        //   },
+        //   context
+        // });
+        
         if (intent.isEntryProposal || (context.isProposalMode && context.proposalType === 'entry')) {
+          // console.log('Selecting entryProposalGeneration');
           selectedTool = 'entryProposalGeneration';
           toolArgs = {
             symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT',
@@ -55,7 +68,8 @@ jest.mock('@/lib/mastra/agents/trading.agent', () => {
             riskPercentage: 1,
             maxProposals: 3,
           };
-        } else if (intent.isProposalMode || (context.isProposalMode && context.proposalType)) {
+        } else if (intent.isProposalMode === true || (context.isProposalMode === true && context.proposalType)) {
+          // console.log('Selecting proposalGeneration');
           selectedTool = 'proposalGeneration';
           toolArgs = {
             symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT',
@@ -64,8 +78,11 @@ jest.mock('@/lib/mastra/agents/trading.agent', () => {
             maxProposals: 5,
           };
         } else if (query.toLowerCase().includes('価格') || query.toLowerCase().includes('price')) {
+          // console.log('Selecting marketData');
           selectedTool = 'marketData';
           toolArgs = { symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT' };
+        } else {
+          // console.log('No tool selected');
         }
         
         if (selectedTool) {

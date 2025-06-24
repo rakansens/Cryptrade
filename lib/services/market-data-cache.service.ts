@@ -414,15 +414,14 @@ export class MarketDataCacheService {
     if (this.l1Cache.size >= this.config.l1CacheSize && !this.l1Cache.has(key)) {
       // Find least recently used entry
       let lruKey: string | null = null;
-      let minHits = Infinity;
-      let oldestTime = Infinity;
+      let minScore = Infinity;
       
       for (const [k, v] of this.l1Cache.entries()) {
-        const score = v.hits * 1000 + (Date.now() - v.timestamp);
-        if (score < minHits * 1000 + (Date.now() - oldestTime)) {
+        // For LRU: find the entry with the oldest timestamp (least recently used)
+        // Lower timestamp = older entry = should be evicted first
+        if (v.timestamp < minScore) {
           lruKey = k;
-          minHits = v.hits;
-          oldestTime = v.timestamp;
+          minScore = v.timestamp;
         }
       }
       

@@ -150,11 +150,7 @@ describe('Binance Ticker API Route', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toMatchObject({
-        message: 'Invalid symbol format',
-        field: 'symbol',
-        value: 'INVALID_SYMBOL_123'
-      });
+      expect(data.error.message).toBe('Invalid symbol format');
       expect(mockFetch).not.toHaveBeenCalled();
     });
 

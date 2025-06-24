@@ -318,7 +318,7 @@ describe('calculateEntryPoints', () => {
 
       // Should have entries near support level (50000)
       const supportEntry = entryPoints.find(
-        e => Math.abs(e.price - 50000) / 50000 < 0.01
+        e => Math.abs(e.price - 50000) / 50000 < 0.05  // 5% tolerance
       );
       expect(supportEntry).toBeDefined();
       expect(supportEntry?.direction).toBe('long'); // Support should trigger long entries

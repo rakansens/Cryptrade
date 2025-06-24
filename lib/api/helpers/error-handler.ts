@@ -52,6 +52,7 @@ export function createErrorResponse(
       ...(details['statusCode'] !== undefined && { statusCode: details['statusCode'] }),
       ...(details['context'] !== undefined && { context: details['context'] }),
       ...(details['code'] !== undefined && { code: details['code'] }),
+      ...(details['data'] !== undefined && details['data']),
     };
   } else {
     // Otherwise, return simple error message

@@ -174,8 +174,11 @@ describe('PatternRenderer', () => {
     it('validates visualization object', () => {
       renderer = new PatternRenderer(mockChart, mockMainSeries, stateManager)
       
-      // Null visualization
-      renderer.renderPattern('pattern-1', null as unknown as PatternVisualization, 'test')
+      // Null visualization - renderPattern should not throw, but log error
+      expect(() => {
+        renderer.renderPattern('pattern-1', null as unknown as PatternVisualization, 'test')
+      }).not.toThrow()
+      
       expect(logger.error).toHaveBeenCalledWith(
         '[PatternRenderer] Failed to render pattern',
         expect.objectContaining({
@@ -186,7 +189,10 @@ describe('PatternRenderer', () => {
       )
       
       // Missing keyPoints
-      renderer.renderPattern('pattern-2', { } as unknown as PatternVisualization, 'test')
+      expect(() => {
+        renderer.renderPattern('pattern-2', { } as unknown as PatternVisualization, 'test')
+      }).not.toThrow()
+      
       expect(logger.error).toHaveBeenCalledWith(
         '[PatternRenderer] Failed to render pattern',
         expect.objectContaining({

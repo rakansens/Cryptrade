@@ -180,13 +180,18 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
         stack: error instanceof Error ? error.stack : undefined,
       });
 
+      // Import base errors for type checking first
+      const { MastraBaseError, ApiError, ValidationError: BaseValidationError } = await import('@/lib/errors/base-error');
+      
       // Handle known error types
       if (error instanceof ValidationError) {
         return createErrorResponse(error.message, 400, error.details);
       }
-
-      // Import base errors for type checking
-      const { MastraBaseError, ApiError } = await import('@/lib/errors/base-error');
+      
+      // Handle BaseValidationError from base-error.ts
+      if (error instanceof BaseValidationError) {
+        return createErrorResponse(error.message, 400, error.data as Record<string, unknown>);
+      }
       
       // Handle MastraBaseError instances
       if (error instanceof MastraBaseError) {

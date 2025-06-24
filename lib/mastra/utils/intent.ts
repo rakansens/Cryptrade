@@ -69,7 +69,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       analysisDepth: 'basic',
       requiresWorkflow: false,
       conversationMode: 'casual',
-      emotionalTone: 'neutral'
+      emotionalTone: detectEmotionalTone(userQuery)
     };
   }
   
@@ -83,7 +83,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
       analysisDepth: 'basic',
       requiresWorkflow: true,
       conversationMode: 'casual',
-      emotionalTone: 'neutral'
+      emotionalTone: detectEmotionalTone(userQuery)
     };
   }
   
@@ -94,7 +94,7 @@ export function analyzeIntent(userQuery: string): IntentAnalysisResult {
     analysisDepth: 'basic',
     requiresWorkflow: true,
     conversationMode: 'casual',
-    emotionalTone: 'neutral'
+    emotionalTone: detectEmotionalTone(userQuery)
   };
 }
 
@@ -189,6 +189,7 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
     /フィボナッチ.*表示して/,
     /サポートライン.*表示/,
     /レジスタンスライン.*表示/,
+    /サポート.*レジスタンス.*表示/,
     /サポレジ.*表示/,
     /チャート.*フィット/,
     /ズーム.*イン/,
@@ -211,15 +212,16 @@ export function detectUIControl(userQuery: string, queryLower: string): IntentAn
   const hasCryptoSymbol = extractSymbol(userQuery) !== undefined;
   if (hasDrawingUIKeyword && hasCryptoSymbol && 
       (queryLower.includes('サポートライン') || queryLower.includes('レジスタンスライン') || 
-       queryLower.includes('トレンドライン'))) {
+       queryLower.includes('トレンドライン')) &&
+      !queryLower.includes('引いて') && !queryLower.includes('描いて') && !queryLower.includes('draw')) {
     // This should be handled as a proposal request, not UI control
     return null;
   }
   
   // Check if this is actually a trading analysis request
   if ((queryLower.includes('rsi') && queryLower.includes('見')) ||
-      (queryLower.includes('サポート') && queryLower.includes('レジスタンス') && !queryLower.includes('引')) ||
-      queryLower.includes('トレンド分析')) {
+      (queryLower.includes('サポート') && queryLower.includes('レジスタンス') && !queryLower.includes('引') && !queryLower.includes('表示')) ||
+      (queryLower.includes('トレンド分析') && !queryLower.includes('引いて') && !queryLower.includes('描いて'))) {
     // These should be handled as trading analysis, not UI control
     return null;
   }
@@ -336,6 +338,17 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
     return null;
   }
 
+  // Skip if this is a clear UI control command (分析のために線を引く etc.)
+  const uiActionPatterns = [
+    /分析.*ため.*引いて/,
+    /分析.*ため.*描いて/,
+    /調べる.*ため.*引いて/
+  ];
+  
+  if (uiActionPatterns.some(pattern => pattern.test(queryLower))) {
+    return null;
+  }
+  
   // Special case: drawing lines with symbols should be treated as proposals
   const hasCryptoSymbol = extractSymbol(userQuery) !== undefined;
   if (hasCryptoSymbol && hasProposalDrawingKeyword && 
@@ -431,6 +444,12 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
   const proposalKeywords = ['提案', '候補', 'おすすめ', '推奨', 'どこに', 'suggest', 'recommend', 'proposal'];
   proposalKeywords.some(keyword => queryLower.includes(keyword));
 
+  // Skip if there are no proposal keywords (let UI control handle pure drawing commands)
+  const hasProposalKeyword = proposalKeywords.some(keyword => queryLower.includes(keyword));
+  if (!hasProposalKeyword) {
+    return null;
+  }
+  
   // For helper function compatibility: if called directly, detect drawing commands without proposal keywords
   if (hasSpecificDrawingKeyword || (hasContextualKeyword && !generalUIKeywords.some(k => queryLower.includes(k))) || supportResistanceWithDisplay) {
     let proposalType: 'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all' = 'all';
@@ -573,7 +592,7 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   const marketChatKeywords = [
     '最近', '調子', '相場', '市場',
     'ビットコイン', 'イーサリアム', '暗号通貨', '仮想通貨', 'クリプト',
-    '上がり', '下がり', '動き', 'トレンド', '傾向', '様子',
+    '上がり', '下がり', '上がって', '下がって', '動き', 'トレンド', '傾向', '様子',
     '将来性', '見通し'  // Add keywords that were causing false positives
   ];
 
@@ -595,6 +614,11 @@ export function detectMarketChat(userQuery: string, queryLower: string): IntentA
   // Check for casual conversation patterns
   const casualPatterns = /(どう？|どう思う|どうかな)/;
   const isCasualTone = casualPatterns.test(queryLower);
+
+  // Skip if this is an analysis request
+  if (queryLower.includes('分析') || queryLower.includes('分析して')) {
+    return null;
+  }
 
   if ((hasMarketChatKeyword && (queryLower.length < 50 || isCasualTone)) || hasCasualMarketPhrase) {
     return {
@@ -674,7 +698,7 @@ export function extractSymbol(query: string): string | undefined {
   ];
   // Remove special characters but keep spaces and parentheses for proper detection
   const cleanQuery = query.replace(/[!！？?@#$%^&*_+=\[\]{};:'",.<>\/\\|`~]/g, ' ');
-  cleanQuery.toUpperCase();
+  const cleanQueryUpper = cleanQuery.toUpperCase();
   
   // 日本語の通貨名マッピング
   const japaneseCurrencyMap: Record<string, string> = {
@@ -730,9 +754,9 @@ export function extractSymbol(query: string): string | undefined {
   }
 
   // 既にUSDTが付いているかチェック
-  const usdtMatch = cleanQuery.match(/\b([A-Z]{2,5})USDT\b/i);
+  const usdtMatch = cleanQueryUpper.match(/\b([A-Z]{2,5})USDT\b/);
   if (usdtMatch && usdtMatch[1]) {
-    return usdtMatch[0].toUpperCase();
+    return usdtMatch[0];
   }
 
   // Check for symbols in parentheses first (e.g., リップル（XRP）)
@@ -756,7 +780,7 @@ export function extractSymbol(query: string): string | undefined {
   // 英語のシンボルをチェック（単語境界を考慮）
   for (const symbol of symbols) {
     const symbolRegex = new RegExp(`\\b${symbol}\\b`, 'i');
-    if (symbolRegex.test(cleanQuery)) {
+    if (symbolRegex.test(cleanQuery) || symbolRegex.test(query)) {
       return symbol + 'USDT';
     }
   }

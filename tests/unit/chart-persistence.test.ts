@@ -9,7 +9,19 @@ import type { TimeframeState } from '@/lib/api/chart-drawing-api';
 import { logger } from '@/lib/utils/logger';
 
 // Mock dependencies
-jest.mock('@/lib/api/chart-drawing-api');
+jest.mock('@/lib/api/chart-drawing-api', () => ({
+  ChartDrawingAPI: {
+    saveDrawings: jest.fn().mockResolvedValue(undefined),
+    loadDrawings: jest.fn().mockResolvedValue([]),
+    savePatterns: jest.fn().mockResolvedValue(undefined),
+    loadPatterns: jest.fn().mockResolvedValue([]),
+    saveTimeframeState: jest.fn().mockResolvedValue(undefined),
+    loadTimeframeState: jest.fn().mockResolvedValue(null),
+    deleteDrawing: jest.fn().mockResolvedValue(undefined),
+    deletePattern: jest.fn().mockResolvedValue(undefined),
+    clearSession: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),

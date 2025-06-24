@@ -14,7 +14,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Mock fetch for Binance API
 const mockFetch = jest.fn();
-global.fetch = mockFetch as any;
+(global as any).fetch = mockFetch;
 
 // Helper to create mock response
 const createMockResponse = (data: any) => ({
@@ -34,7 +34,8 @@ const createErrorResponse = (status: number) => ({
 describe('chartDataAnalysisTool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockClear();
+    mockFetch.mockReset();
+    (global as any).fetch = mockFetch;
   });
 
   afterEach(() => {

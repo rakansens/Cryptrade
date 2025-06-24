@@ -188,28 +188,19 @@ describe('ui-events.types', () => {
 
   describe('Event helper functions', () => {
     let mockListener: ReturnType<typeof jest.fn>;
-    let originalWindow: Window & typeof globalThis;
 
     beforeEach(() => {
       mockListener = jest.fn();
-      // Mock window for Node environment
-      originalWindow = global.window;
-      (global as unknown as { window: typeof window }).window = {
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-        CustomEvent: jest.fn((type: string, options?: CustomEventInit<unknown>) => ({
-          type,
-          detail: options?.detail
-        }))
-      } as unknown as typeof window;
+      // Mock window methods using jest.spyOn
+      jest.spyOn(window, 'addEventListener');
+      jest.spyOn(window, 'removeEventListener');
+      jest.spyOn(window, 'dispatchEvent');
     });
 
     afterEach(() => {
       // Clean up any event listeners
       jest.clearAllMocks();
-      // Restore original window
-      global.window = originalWindow;
+      jest.restoreAllMocks();
     });
 
     describe('createCustomEvent', () => {
