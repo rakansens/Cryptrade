@@ -9,13 +9,14 @@ describe('Intent Analysis Debug', () => {
     ];
 
     testCases.forEach(({ query, queryLower }) => {
-      console.log(`\nTesting detectGreeting: "${query}"`);
+    // console.log(`\nTesting detectGreeting: "${query}"`); // Removed by test quality fix
       const result = detectGreeting(query, queryLower);
-      console.log(`Result:`, result);
+    // console.log(`Result:`, result); // Removed by test quality fix
     });
   });
 
   test.skip('analyzeIntent function - debug test', () => {
+    // TODO: This test is skipped and needs investigation
     const testCases = [
       { query: 'こんにちは！', expectedIntent: 'greeting' },
       { query: 'おはようございます！今日も頑張りましょう', expectedIntent: 'greeting' },
@@ -40,6 +41,7 @@ describe('Intent Analysis Debug', () => {
   });
 
   test.skip('regex pattern test - debug test', () => {
+    // TODO: This test is skipped and needs investigation
     const greetingPatterns = [
       /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?\.?$/i,
       /^(よろしく)\.?$/i,
@@ -58,12 +60,12 @@ describe('Intent Analysis Debug', () => {
     testStrings.forEach(str => {
       const strLower = str.toLowerCase();
       const matchesAny = greetingPatterns.some(pattern => pattern.test(str) || pattern.test(strLower));
-      console.log(`\n"${str}" matches greeting: ${matchesAny}`);
+    // console.log(`\n"${str}" matches greeting: ${matchesAny}`); // Removed by test quality fix
       greetingPatterns.forEach((pattern, idx) => {
         const matchOriginal = pattern.test(str);
         const matchLower = pattern.test(strLower);
         if (matchOriginal || matchLower) {
-          console.log(`  ✓ Pattern ${idx}: original=${matchOriginal}, lower=${matchLower}`);
+    // console.log(`  ✓ Pattern ${idx}: original=${matchOriginal}, lower=${matchLower}`); // Removed by test quality fix
         }
       });
     });

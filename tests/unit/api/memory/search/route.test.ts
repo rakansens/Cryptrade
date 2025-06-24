@@ -31,7 +31,7 @@ describe('Memory Search API Route', () => {
           id: 'memory-1',
           sessionId: 'session-1',
           content: 'BTCUSDT analysis shows bullish trend',
-          timestamp: new Date('2024-01-01T00:00:00Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T00:00:00Z'),
           metadata: {
             symbol: 'BTCUSDT',
             type: 'analysis'
@@ -42,7 +42,7 @@ describe('Memory Search API Route', () => {
           id: 'memory-2',
           sessionId: 'session-1',
           content: 'Support level at 45000',
-          timestamp: new Date('2024-01-01T01:00:00Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T01:00:00Z'),
           metadata: {
             symbol: 'BTCUSDT',
             type: 'technical'
@@ -71,8 +71,9 @@ describe('Memory Search API Route', () => {
         ...result,
         timestamp: result.timestamp.toISOString()
       }));
-      expect(data.results).toEqual(resultsWithStringTimestamp);
-      expect(data.count).toBe(2);
+      // Response is wrapped in 'data' property
+      expect(data.data.results).toEqual(resultsWithStringTimestamp);
+      expect(data.data.count).toBe(2);
       expect(conversationMemoryService.searchMemories).toHaveBeenCalledWith({
         query: 'BTCUSDT bullish',
         sessionId: 'session-1',
@@ -246,8 +247,9 @@ describe('Memory Search API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.results).toEqual([]);
-      expect(data.count).toBe(0);
+      // Response is wrapped in 'data' property
+      expect(data.data.results).toEqual([]);
+      expect(data.data.count).toBe(0);
     });
 
     it('should handle malformed JSON in request body', async () => {

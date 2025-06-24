@@ -155,6 +155,7 @@ describe('Analysis Stream API Route', () => {
     }, 15000);
 
     it.skip('should handle all analysis types (integration test)', async () => {
+    // TODO: This test is skipped and needs investigation
       // Original test that requires actual SSE streaming
       const analysisTypes: Array<'trendline' | 'support-resistance' | 'fibonacci' | 'pattern' | 'all'> = 
         ['trendline', 'support-resistance', 'fibonacci', 'pattern', 'all'];
@@ -238,6 +239,7 @@ describe('Analysis Stream API Route', () => {
     });
 
     it.skip('should stream text character by character for specific steps', async () => {
+    // TODO: This test is skipped and needs investigation
       // Skip in unit tests - this requires actual SSE streaming
       const url = new URL('http://localhost/api/ai/analysis-stream');
       url.searchParams.set('symbol', 'BTCUSDT');
@@ -275,6 +277,7 @@ describe('Analysis Stream API Route', () => {
     });
 
     it.skip('should handle stream errors gracefully', async () => {
+    // TODO: This test is skipped and needs investigation
       // Skip in unit tests - this requires actual SSE streaming
       // Mock tool to throw error
       mockProposalGenerationTool.execute.mockRejectedValueOnce(
@@ -301,6 +304,7 @@ describe('Analysis Stream API Route', () => {
     });
 
     it.skip('should generate unique session ID if not provided', async () => {
+    // TODO: This test is skipped and needs investigation
       // Skip in unit tests - this requires actual SSE streaming
       const url = new URL('http://localhost/api/ai/analysis-stream');
       url.searchParams.set('symbol', 'BTCUSDT');

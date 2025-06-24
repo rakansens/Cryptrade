@@ -359,8 +359,8 @@ describe('PatternDetector', () => {
       
       // デバッグ出力
       if (patterns.length === 0) {
-        console.log('No doubleBottom patterns detected');
-        console.log('Data range:', mockData.map(d => ({ time: d.time, low: d.low })));
+    // console.log('No doubleBottom patterns detected'); // Removed by test quality fix
+    // console.log('Data range:', mockData.map(d => ({ time: d.time, low: d.low }))); // Removed by test quality fix
       }
       
       expect(patterns.some(p => p.type === 'doubleBottom')).toBe(true);
@@ -1147,7 +1147,7 @@ describe('PatternDetector', () => {
       
       // パターンが検出されない場合はスキップ
       if (patternsWithoutMTF.length === 0) {
-        console.log('No patterns detected without MTF, skipping test');
+    // console.log('No patterns detected without MTF, skipping test'); // Removed by test quality fix
         return;
       }
       

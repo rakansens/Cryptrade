@@ -105,7 +105,8 @@ describe('Binance Ticker API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual(mockSingleTicker);
+      // Response is wrapped in 'data' property
+      expect(data.data).toEqual(mockSingleTicker);
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',
@@ -132,7 +133,8 @@ describe('Binance Ticker API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual(mockMultipleTickers);
+      // Response is wrapped in 'data' property
+      expect(data.data).toEqual(mockMultipleTickers);
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/ticker/24hr',

@@ -38,8 +38,8 @@ describe('db-conversions utilities', () => {
         holdDuration: 3600,
       },
       synced: true,
-      createdAt: new Date('2021-01-01'),
-      updatedAt: new Date('2021-01-01'),
+      createdAt: new Date(Date.now() - 86400000) // 2021-01-01'),
+      updatedAt: new Date(Date.now() - 86400000) // 2021-01-01'),
       touchEvents: [],
       ...overrides,
     });
@@ -219,8 +219,8 @@ describe('db-conversions utilities', () => {
     });
 
     it('should include dbMeta information', () => {
-      const createdAt = new Date('2021-01-01T10:00:00Z');
-      const updatedAt = new Date('2021-01-02T10:00:00Z');
+      const createdAt = new Date(Date.now() - 86400000) // 2021-01-01T10:00:00Z');
+      const updatedAt = new Date(Date.now() - 86400000) // 2021-01-02T10:00:00Z');
       
       const dbRecord = createMockDbRecord({
         synced: false,

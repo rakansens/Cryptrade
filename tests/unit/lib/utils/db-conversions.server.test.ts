@@ -39,8 +39,8 @@ describe('db-conversions.server utilities', () => {
         holdDuration: 3600,
       },
       synced: true,
-      createdAt: new Date('2021-01-01'),
-      updatedAt: new Date('2021-01-01'),
+      createdAt: new Date(Date.now() - 86400000) // 2021-01-01'),
+      updatedAt: new Date(Date.now() - 86400000) // 2021-01-01'),
       touchEvents: [],
       ...overrides,
     });
@@ -55,7 +55,7 @@ describe('db-conversions.server utilities', () => {
           result: 'bounce',
           volume: new Decimal('1000'),
           strength: new Decimal('0.8'),
-          createdAt: new Date('2021-01-01'),
+          createdAt: new Date(Date.now() - 86400000) // 2021-01-01'),
         },
         {
           id: 'touch-2',
@@ -65,7 +65,7 @@ describe('db-conversions.server utilities', () => {
           result: 'breakout',
           volume: null,
           strength: new Decimal('0.9'),
-          createdAt: new Date('2021-01-01'),
+          createdAt: new Date(Date.now() - 86400000) // 2021-01-01'),
         },
       ];
 

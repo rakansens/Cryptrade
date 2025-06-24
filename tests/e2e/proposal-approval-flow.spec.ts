@@ -20,7 +20,7 @@ test.describe('Proposal Approval Flow', () => {
     
     // Get initial proposal count
     const pendingProposals = await page.locator('text=/件の提案待ち/').textContent();
-    console.log('Pending proposals:', pendingProposals);
+    // console.log('Pending proposals:', pendingProposals); // Removed by test quality fix
     
     // Click approve on first proposal
     const firstApproveButton = page.locator('button[title="承認"]').first();

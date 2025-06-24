@@ -319,6 +319,7 @@ test.describe('API Endpoints E2E Tests', () => {
       
       // For now, we'll skip the actual WebSocket test
       test.skip();
+    // TODO: This test is skipped and needs investigation
     });
   });
 

@@ -16,19 +16,19 @@ describe('E2E Agent UI Integration', () => {
   beforeAll(async () => {
     // This test is intended to be run manually with MCP Puppeteer tools
     // since Jest doesn't have direct access to the MCP tools
-    console.log('⚠️  This test requires manual execution with MCP Puppeteer tools');
-    console.log('🚀 Make sure the dev server is running: npm run dev');
-    console.log('📋 Test steps to perform manually:');
-    console.log('');
-    console.log('1. Navigate to:', TEST_URL);
-    console.log('2. Open chat panel');
-    console.log('3. Send message: "BTCに変更して" (Change to BTC)');
-    console.log('4. Verify symbol changes in chart');
-    console.log('5. Send message: "チャートをフィットして" (Fit chart)');
-    console.log('6. Verify chart fitting behavior');
-    console.log('7. Send message: "移動平均線を表示して" (Show moving averages)');
-    console.log('8. Verify indicator appears on chart');
-    console.log('');
+    // console.log('⚠️  This test requires manual execution with MCP Puppeteer tools'); // Removed by test quality fix
+    // console.log('🚀 Make sure the dev server is running: npm run dev'); // Removed by test quality fix
+    // console.log('📋 Test steps to perform manually:'); // Removed by test quality fix
+    // console.log(''); // Removed by test quality fix
+    // console.log('1. Navigate to:', TEST_URL); // Removed by test quality fix
+    // console.log('2. Open chat panel'); // Removed by test quality fix
+    // console.log('3. Send message: "BTCに変更して" (Change to BTC)'); // Removed by test quality fix
+    // console.log('4. Verify symbol changes in chart'); // Removed by test quality fix
+    // console.log('5. Send message: "チャートをフィットして" (Fit chart)'); // Removed by test quality fix
+    // console.log('6. Verify chart fitting behavior'); // Removed by test quality fix
+    // console.log('7. Send message: "移動平均線を表示して" (Show moving averages)'); // Removed by test quality fix
+    // console.log('8. Verify indicator appears on chart'); // Removed by test quality fix
+    // console.log(''); // Removed by test quality fix
   }, TIMEOUT);
 
   it('should be manually tested with MCP Puppeteer tools', () => {
@@ -45,7 +45,7 @@ describe('E2E Agent UI Integration', () => {
     ];
 
     expect(testSteps.length).toBeGreaterThan(0);
-    console.log('✅ Manual test steps documented');
+    // console.log('✅ Manual test steps documented'); // Removed by test quality fix
   });
 
   // Example of what a real Puppeteer test would look like
@@ -79,7 +79,7 @@ describe('E2E Agent UI Integration', () => {
 
     // This would be implemented with actual MCP Puppeteer calls
     expect(exampleTestFlow).toBeDefined();
-    console.log('📋 Example test flow structure created');
+    // console.log('📋 Example test flow structure created'); // Removed by test quality fix
   });
 });
 

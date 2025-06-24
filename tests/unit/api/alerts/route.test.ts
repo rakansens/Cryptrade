@@ -15,6 +15,57 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+// Mock the API utilities
+jest.mock('@/app/api/utils/responses', () => ({
+  createApiSuccessResponse: jest.fn((data) => {
+    const { NextResponse } = require('next/server');
+    return NextResponse.json({
+      success: true,
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  }),
+  createApiErrorResponse: jest.fn((error, status) => {
+    const { NextResponse } = require('next/server');
+    return NextResponse.json(
+      {
+        error,
+        timestamp: new Date().toISOString(),
+      },
+      { status }
+    );
+  }),
+  handleApiError: jest.fn((error, defaultMessage) => {
+    const { NextResponse } = require('next/server');
+    return NextResponse.json(
+      {
+        error: defaultMessage,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
+  }),
+  parseRequestBody: jest.fn(async (request, schema) => {
+    try {
+      const body = await request.json();
+      const data = schema.parse(body);
+      return { data, error: null };
+    } catch (error) {
+      const { NextResponse } = require('next/server');
+      return {
+        data: null,
+        error: NextResponse.json(
+          {
+            error: 'Invalid input',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        ),
+      };
+    }
+  }),
+}));
+
 describe('Alerts API Route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -417,8 +468,8 @@ describe('Alerts API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.success).toBe(false);
       expect(data.error).toContain('Invalid input');
+      expect(data.timestamp).toBeDefined();
       expect(AlertService.createAlert).not.toHaveBeenCalled();
     });
 
@@ -441,8 +492,8 @@ describe('Alerts API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.success).toBe(false);
       expect(data.error).toContain('Invalid input');
+      expect(data.timestamp).toBeDefined();
       expect(AlertService.createAlert).not.toHaveBeenCalled();
     });
 

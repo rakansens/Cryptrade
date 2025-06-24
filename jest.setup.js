@@ -452,6 +452,18 @@ jest.mock('ai', () => ({
   }),
 }));
 
+// Mock Next.js headers module
+jest.mock('next/headers', () => ({
+  cookies: jest.fn(() => ({
+    get: jest.fn(),
+    set: jest.fn(),
+    delete: jest.fn(),
+    has: jest.fn(),
+    getAll: jest.fn(() => []),
+  })),
+  headers: jest.fn(() => new Headers()),
+}));
+
 // Mock Next.js specific modules for API routes
 jest.mock('next/server', () => {
   class MockNextRequest {
@@ -598,7 +610,8 @@ jest.mock('@/lib/api/create-api-handler', () => {
                     error: { 
                       message: 'Invalid query parameters',
                       errors: error.errors 
-                    } 
+                    },
+                    timestamp: new Date().toISOString()
                   }),
                   { status: 400 }
                 );
@@ -620,9 +633,16 @@ jest.mock('@/lib/api/create-api-handler', () => {
             },
           });
           
+          // Wrap result in success response format
+          const successResponse = {
+            success: true,
+            ...(result !== undefined && { data: result }),
+            timestamp: new Date().toISOString(),
+          };
+          
           // Return NextResponse
           return new (require('next/server').NextResponse)(
-            JSON.stringify(result),
+            JSON.stringify(successResponse),
             { 
               status: 200,
               headers: { 'content-type': 'application/json' },
@@ -638,13 +658,27 @@ jest.mock('@/lib/api/create-api-handler', () => {
             status = 401;
           } else if (error.constructor.name === 'ValidationError') {
             status = 400;
-            errorResponse = { 
-              error: { 
+            // ValidationError from base-error.ts has field and value in data property
+            if (error.data && error.data.field) {
+              errorResponse = { 
+                error: { 
+                  message: error.message,
+                  field: error.data.field,
+                  value: error.data.value 
+                },
                 message: error.message,
-                field: error.field,
-                value: error.value 
-              } 
-            };
+                timestamp: new Date().toISOString()
+              };
+            } else {
+              // ValidationError from error-handler.ts
+              errorResponse = { 
+                error: { 
+                  message: error.message
+                },
+                message: error.message,
+                timestamp: new Date().toISOString()
+              };
+            }
           } else if (error.constructor.name === 'ApiError') {
             // ApiError stores statusCode in data field
             status = (error.data && error.data.statusCode) || error.statusCode || 500;
@@ -657,7 +691,14 @@ jest.mock('@/lib/api/create-api-handler', () => {
             };
             
             errorResponse = { 
-              error: errorObject
+              error: errorObject,
+              timestamp: new Date().toISOString()
+            };
+          } else {
+            // Generic error
+            errorResponse = { 
+              error: { message: error.message || 'Internal server error' },
+              timestamp: new Date().toISOString()
             };
           }
           

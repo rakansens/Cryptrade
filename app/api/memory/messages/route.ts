@@ -7,7 +7,7 @@ import { z } from 'zod';
 const createMessageSchema = z.object({
   sessionId: z.string(),
   role: z.enum(['user', 'assistant', 'system']),
-  content: z.string(),
+  content: z.string().min(1),
   agentId: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
 });

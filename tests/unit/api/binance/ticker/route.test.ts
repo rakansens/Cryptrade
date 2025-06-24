@@ -47,7 +47,8 @@ describe('Binance Ticker API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual(mockTickerData);
+      // Response is wrapped in 'data' property
+      expect(data.data).toEqual(mockTickerData);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',
         expect.objectContaining({
@@ -117,8 +118,9 @@ describe('Binance Ticker API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBe(2);
+      // Response is wrapped in 'data' property
+      expect(Array.isArray(data.data)).toBe(true);
+      expect(data.data.length).toBe(2);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/ticker/24hr',
         expect.any(Object)

@@ -279,9 +279,9 @@ test.describe('Performance', () => {
     
     // 理想的には3秒以内
     if (responseTime < 3000) {
-      console.log(`✅ Excellent response time: ${responseTime}ms`);
+    // console.log(`✅ Excellent response time: ${responseTime}ms`); // Removed by test quality fix
     } else {
-      console.log(`⚠️  Slow response time: ${responseTime}ms`);
+    // console.log(`⚠️  Slow response time: ${responseTime}ms`); // Removed by test quality fix
     }
   });
 });

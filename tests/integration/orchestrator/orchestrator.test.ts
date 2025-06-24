@@ -292,21 +292,21 @@ describe('Orchestrator Agent Integration Tests', () => {
         console.log = originalConsoleLog;
         console.error = originalConsoleError;
         
-        console.log(`\n=== BEFORE CALLING ORCHESTRATOR ===`);
-        console.log(`Query: "${query}"`);
-        console.log(`Expected intent: ${expectedIntent}`);
+    // console.log(`\n=== BEFORE CALLING ORCHESTRATOR ===`); // Removed by test quality fix
+    // console.log(`Query: "${query}"`); // Removed by test quality fix
+    // console.log(`Expected intent: ${expectedIntent}`); // Removed by test quality fix
         
         const result = await executeImprovedOrchestrator(query, testSessionId, defaultContext);
         
         // Always log debug output for failing tests
-        console.log(`\n=== AFTER CALLING ORCHESTRATOR ===`);
-        console.log(`Expected: ${expectedIntent}, Got: ${result.analysis.intent}`);
-        console.log(`Confidence: ${result.analysis.confidence}`);
-        console.log(`Reasoning: ${result.analysis.reasoning}`);
-        console.log(`Full analysis:`, JSON.stringify(result.analysis, null, 2));
-        console.log(`Success: ${result.success}`);
-        console.log(`Execution time: ${result.executionTime}ms`);
-        console.log(`Has execution result: ${!!result.executionResult}`);
+    // console.log(`\n=== AFTER CALLING ORCHESTRATOR ===`); // Removed by test quality fix
+    // console.log(`Expected: ${expectedIntent}, Got: ${result.analysis.intent}`); // Removed by test quality fix
+    // console.log(`Confidence: ${result.analysis.confidence}`); // Removed by test quality fix
+    // console.log(`Reasoning: ${result.analysis.reasoning}`); // Removed by test quality fix
+    // console.log(`Full analysis:`, JSON.stringify(result.analysis, null, 2)); // Removed by test quality fix
+    // console.log(`Success: ${result.success}`); // Removed by test quality fix
+    // console.log(`Execution time: ${result.executionTime}ms`); // Removed by test quality fix
+    // console.log(`Has execution result: ${!!result.executionResult}`); // Removed by test quality fix
         
         expect(result.analysis.intent).toBe(expectedIntent);
         expect(result.analysis.confidence).toBeGreaterThan(CONFIDENCE_THRESHOLD);
@@ -558,7 +558,7 @@ afterAll(() => {
     fail: intentSummary.fail,
   };
 
-  console.log('[Intent Analysis Summary]', summary);
+    // console.log('[Intent Analysis Summary]', summary); // Removed by test quality fix
 
   const reportsDir = path.join(__dirname, '../../../reports');
   if (!fs.existsSync(reportsDir)) {

@@ -46,20 +46,7 @@ jest.mock('@/lib/mastra/agents/trading.agent', () => {
         // Intent analysis from query
         const intent = actualIntentModule.analyzeIntent(query);
         
-        // Debug log for testing (commented out)
-        // console.log('AI Tool Selection Debug:', {
-        //   query,
-        //   intent: {
-        //     intent: intent.intent,
-        //     isEntryProposal: intent.isEntryProposal,
-        //     isProposalMode: intent.isProposalMode,
-        //     proposalType: intent.proposalType
-        //   },
-        //   context
-        // });
-        
         if (intent.isEntryProposal || (context.isProposalMode && context.proposalType === 'entry')) {
-          // console.log('Selecting entryProposalGeneration');
           selectedTool = 'entryProposalGeneration';
           toolArgs = {
             symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT',
@@ -68,21 +55,19 @@ jest.mock('@/lib/mastra/agents/trading.agent', () => {
             riskPercentage: 1,
             maxProposals: 3,
           };
-        } else if (intent.isProposalMode === true || (context.isProposalMode === true && context.proposalType)) {
-          // console.log('Selecting proposalGeneration');
+        } else if (intent.isProposalMode === true || (context.isProposalMode === true && context.proposalType) || 
+                   query.toLowerCase().includes('proposal') || query.toLowerCase().includes('propose') || 
+                   query.toLowerCase().includes('suggest')) {
           selectedTool = 'proposalGeneration';
           toolArgs = {
             symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT',
             interval: context.interval || '1h',
-            analysisType: intent.proposalType || context.proposalType,
+            analysisType: intent.proposalType || context.proposalType || 'general',
             maxProposals: 5,
           };
         } else if (query.toLowerCase().includes('価格') || query.toLowerCase().includes('price')) {
-          // console.log('Selecting marketData');
           selectedTool = 'marketData';
           toolArgs = { symbol: intent.extractedSymbol || context.extractedSymbol || 'BTCUSDT' };
-        } else {
-          // console.log('No tool selected');
         }
         
         if (selectedTool) {
@@ -141,7 +126,7 @@ describe('AI Tool Selection', () => {
 
       // Debug what we got
       if (mockToolCalls.length === 0) {
-        console.log('No tool calls made. Intent:', intent);
+    // console.log('No tool calls made. Intent:', intent); // Removed by test quality fix
       }
 
       expect(mockToolCalls).toHaveLength(1);

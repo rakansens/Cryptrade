@@ -148,7 +148,7 @@ describe('Parallel Orchestrator Integration', () => {
       expect(parDuration).toBeLessThan(5000); // Should be under 5 seconds
       
       // Log performance comparison
-      console.log(`Sequential: ${seqDuration}ms, Parallel: ${parDuration}ms`);
+    // console.log(`Sequential: ${seqDuration}ms, Parallel: ${parDuration}ms`); // Removed by test quality fix
     });
   });
   

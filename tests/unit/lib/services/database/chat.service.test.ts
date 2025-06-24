@@ -59,13 +59,16 @@ jest.mock('@/config/env', () => ({
 }));
 
 describe('ChatDatabaseService', () => {
+  const now = new Date();
+  const oneMinuteAgo = new Date(now.getTime() - 60000);
+  
   const mockSession: ConversationSession = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     userId: '550e8400-e29b-41d4-a716-446655440000',
     summary: 'Test Session',
-    createdAt: new Date('2024-01-01T00:00:00Z'),
-    updatedAt: new Date('2024-01-01T00:00:00Z'),
-    lastActiveAt: new Date('2024-01-01T00:00:00Z'),
+    createdAt: oneMinuteAgo,
+    updatedAt: oneMinuteAgo,
+    lastActiveAt: now,
   };
 
   const mockMessage: ConversationMessage = {
@@ -73,7 +76,7 @@ describe('ChatDatabaseService', () => {
     sessionId: mockSession.id,
     role: 'user',
     content: 'Test message',
-    timestamp: new Date('2024-01-01T00:01:00Z'),
+    timestamp: now,
     metadata: null,
   };
 
@@ -284,30 +287,34 @@ describe('ChatDatabaseService', () => {
       const mockFindMany = jest.fn().mockRejectedValue(new Error('Database connection failed'));
       (prisma.conversationSession as any) = { findMany: mockFindMany };
       
-      // Setup the cache to return data when called with the specific key
-      (chatCaches.sessionLists.get as jest.Mock).mockImplementation((key) => {
-        if (key === '550e8400-e29b-41d4-a716-446655440000') {
-          return cachedSessions;
+      // Setup the cache to return null to force database call
+      (chatCaches.sessionLists.get as jest.Mock).mockReturnValue(null);
+
+      // Mock isDevelopment to return true for this test
+      const { isDevelopment } = jest.requireMock('@/config/env');
+      jest.mocked(isDevelopment).mockReturnValue(true);
+
+      // Mock withDatabase to simulate database failure and fallback behavior
+      const originalWithDatabase = jest.requireMock('@/lib/utils/db-connection').withDatabase;
+      jest.mocked(withDatabase).mockImplementationOnce(async (fn, fallbackFn) => {
+        try {
+          return await fn();
+        } catch (error) {
+          // Call the fallback function when database fails
+          return await fallbackFn();
         }
-        return null;
       });
 
-      try {
-        await ChatDatabaseService.getUserSessions('550e8400-e29b-41d4-a716-446655440000');
-      } catch (error) {
-        // Database error is expected to be caught and logged
-      }
+      const result = await ChatDatabaseService.getUserSessions('550e8400-e29b-41d4-a716-446655440000');
 
       // Verify that the service attempted to query the database
       expect(mockFindMany).toHaveBeenCalled();
       
-      // The implementation may use withDatabase wrapper which handles errors
-      // The exact behavior depends on whether withDatabase provides a fallback
-      // In any case, errors should be logged
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('[ChatDB]'),
-        expect.any(Object)
-      );
+      // Since there's no cache and database failed, it should return empty array in dev mode
+      expect(result).toEqual([]);
+      
+      // Should log a warning about returning empty array
+      expect(logger.warn).toHaveBeenCalledWith('[ChatDB] Returning empty array in development mode');
     });
 
     it('should apply rate limiting', async () => {

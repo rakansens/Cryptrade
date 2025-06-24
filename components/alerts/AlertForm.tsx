@@ -12,10 +12,14 @@ export function AlertForm({ userId }: { userId: string }) {
   const [price, setPrice] = useState('');
 
   const handleCreate = async () => {
-    const conditions: AlertConditions = { priceAbove: parseFloat(price) };
-    await createAlert(symbol, conditions);
-    setSymbol('');
-    setPrice('');
+    try {
+      const conditions: AlertConditions = { priceAbove: parseFloat(price) };
+      await createAlert(symbol, conditions);
+      setSymbol('');
+      setPrice('');
+    } catch (error) {
+      // Don't clear form on error
+    }
   };
 
   return (

@@ -159,7 +159,7 @@ jest.doMock('@/lib/binance/connection-manager', () => {
             this.isConnected = false;
             
             if (this.ws && typeof window !== 'undefined' && (window as any).location?.hostname !== 'localhost') {
-              console.warn('[WebSocket] Connection issue detected');
+    // console.warn('[WebSocket] Connection issue detected'); // Removed by test quality fix
             }
           };
         }

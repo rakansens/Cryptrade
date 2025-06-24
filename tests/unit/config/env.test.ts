@@ -253,6 +253,7 @@ describe('Environment Configuration', () => {
     });
 
     it('should call process.exit(1) in non-test environment on validation failure', async () => {
+    // TODO: This test is skipped and needs investigation
       // Arrange - Override jest.setup.js defaults
       restoreEnv();
       // Delete all env vars to ensure clean state
@@ -427,6 +428,7 @@ describe('Environment Configuration', () => {
         }
 
         // Assert - should call process.exit(1) in production
+    // TODO: This test is skipped and needs investigation
         expect(mockExit).toHaveBeenCalledWith(1);
       } finally {
         if (originalWindow) {

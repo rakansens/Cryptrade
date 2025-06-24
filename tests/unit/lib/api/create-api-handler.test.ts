@@ -45,7 +45,12 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual({ result: 'success' });
+      // Response is wrapped in 'data' property with additional metadata
+      expect(data).toMatchObject({
+        data: { result: 'success' },
+        success: true,
+        timestamp: expect.any(String)
+      });
       expect(mockHandler).toHaveBeenCalledWith({
         data: { data: 'test' },
         request,
@@ -106,7 +111,8 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
+      // Error responses include timestamp
+      expect(data).toMatchObject({
         error: {
           message: 'Invalid query parameters',
           errors: expect.arrayContaining([
@@ -115,7 +121,8 @@ describe('create-api-handler', () => {
               message: expect.any(String)
             })
           ])
-        }
+        },
+        timestamp: expect.any(String)
       });
     });
 

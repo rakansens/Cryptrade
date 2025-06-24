@@ -86,9 +86,9 @@ describe('useViewPersistence', () => {
         const viewPersistence = useViewPersistence();
         // Log the result
         if (viewPersistence) {
-          console.log('Hook returned:', viewPersistence);
+    // console.log('Hook returned:', viewPersistence); // Removed by test quality fix
         } else {
-          console.log('Hook returned undefined');
+    // console.log('Hook returned undefined'); // Removed by test quality fix
         }
         return null;
       };
@@ -104,7 +104,7 @@ describe('useViewPersistence', () => {
       
       // If current is defined but properties are not, log what we have
       if (result.current && !result.current.currentView) {
-        console.log('result.current exists but missing properties:', Object.keys(result.current));
+    // console.log('result.current exists but missing properties:', Object.keys(result.current)); // Removed by test quality fix
       }
       
       expect(result.current.currentView).toBe('home');

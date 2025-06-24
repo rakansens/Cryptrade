@@ -74,15 +74,38 @@ export class PatternRenderer {
     patternType: string,
     metrics?: PatternMetrics
   ): void {
+    // Validate visualization object first (outside try-catch for rendering)
+    if (!visualization) {
+      logger.error('[PatternRenderer] Failed to render pattern', { 
+        id, 
+        error: {
+          message: 'Visualization object is null or undefined',
+          name: 'Error'
+        },
+        patternType,
+        visualization: 'null'
+      });
+      return;
+    }
+    
+    if (!visualization.keyPoints || !Array.isArray(visualization.keyPoints)) {
+      logger.error('[PatternRenderer] Failed to render pattern', { 
+        id, 
+        error: {
+          message: 'Visualization keyPoints is missing or not an array',
+          name: 'Error'
+        },
+        patternType,
+        visualization: visualization ? {
+          hasKeyPoints: !!visualization.keyPoints,
+          keyPointsIsArray: Array.isArray(visualization.keyPoints),
+          keys: Object.keys(visualization)
+        } : 'null'
+      });
+      return;
+    }
+    
     try {
-      // Validate visualization object
-      if (!visualization) {
-        throw new Error('Visualization object is null or undefined');
-      }
-      
-      if (!visualization.keyPoints || !Array.isArray(visualization.keyPoints)) {
-        throw new Error('Visualization keyPoints is missing or not an array');
-      }
       
       logger.info('[PatternRenderer] Starting pattern render', {
         instanceId: this.instanceId,
@@ -153,7 +176,7 @@ export class PatternRenderer {
           keys: Object.keys(visualization)
         } : 'null'
       });
-      throw error; // Re-throw to propagate the error
+      throw error; // Re-throw rendering errors
     }
   }
   

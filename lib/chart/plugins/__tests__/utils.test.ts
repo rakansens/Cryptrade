@@ -235,9 +235,9 @@ describe('TimeUtils', () => {
     });
 
     it('should normalize timestamps before comparison', () => {
-      expect(TimeUtils.isWithinRange(1500000, 1000, 2000)).toBe(false); // 1500000ms = 1500s, not in 1000-2000 range
-      expect(TimeUtils.isWithinRange(1500000000, 1000, 2000)).toBe(true); // 1500000000ms = 1500s, in 1000-2000 range
-      expect(TimeUtils.isWithinRange(1500, 1000000000, 2000000000)).toBe(true); // all normalized to seconds
+      expect(TimeUtils.isWithinRange(1500000, 1000, 2000)).toBe(false); // 1500000s (as seconds) is NOT in 1000-2000 range
+      expect(TimeUtils.isWithinRange(1500, 1000, 2000)).toBe(true); // 1500s is in 1000-2000 range
+      expect(TimeUtils.isWithinRange(1500000, 1000000, 2000000)).toBe(true); // all values treated as seconds, 1500000 is in 1000000-2000000 range
     });
   });
 

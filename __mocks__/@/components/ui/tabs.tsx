@@ -130,11 +130,12 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, any>(
 TabsTrigger.displayName = 'TabsTrigger';
 
 export const TabsContent = React.forwardRef<HTMLDivElement, any>(
-  ({ children, value, className, ...props }, ref) => {
+  ({ children, value, className, forceMount, ...props }, ref) => {
     const { activeTab } = React.useContext(TabsContext);
     const isActive = activeTab === value;
     
-    if (!isActive) return null;
+    // If forceMount is true, render even when inactive but hidden
+    if (!isActive && !forceMount) return null;
     
     return (
       <div 
@@ -146,6 +147,7 @@ export const TabsContent = React.forwardRef<HTMLDivElement, any>(
         className={className}
         data-testid={`tab-content-${value}`}
         data-state={isActive ? 'active' : 'inactive'}
+        style={!isActive && forceMount ? { display: 'none' } : undefined}
         {...props}
       >
         {children}

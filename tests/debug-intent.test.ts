@@ -11,10 +11,10 @@ describe('Debug Intent Analysis', () => {
     ];
 
     testCases.forEach(query => {
-      console.log(`\nTesting: "${query}"`);
+    // console.log(`\nTesting: "${query}"`); // Removed by test quality fix
       const result = analyzeIntent(query);
-      console.log(`Result: intent="${result.intent}", confidence=${result.confidence}`);
-      console.log(`Reasoning: ${result.reasoning}`);
+    // console.log(`Result: intent="${result.intent}", confidence=${result.confidence}`); // Removed by test quality fix
+    // console.log(`Reasoning: ${result.reasoning}`); // Removed by test quality fix
     });
   });
 });

@@ -46,7 +46,7 @@ test.describe('Real-time Data Updates', () => {
     
     // 初期価格を記録
     const initialPrice = await priceDisplay.textContent();
-    console.log('Initial price:', initialPrice);
+    // console.log('Initial price:', initialPrice); // Removed by test quality fix
 
     // WebSocket経由の価格更新を待つ
     await page.waitForFunction(
@@ -64,7 +64,7 @@ test.describe('Real-time Data Updates', () => {
       const currentPrice = await priceDisplay.textContent();
       if (currentPrice !== initialPrice && currentPrice !== '') {
         priceChanged = true;
-        console.log('Price changed to:', currentPrice);
+    // console.log('Price changed to:', currentPrice); // Removed by test quality fix
         break;
       }
     }
@@ -92,27 +92,27 @@ test.describe('Real-time Data Updates', () => {
       
       const chartElement = document.querySelector('[data-testid="chart-container"]');
       if (!chartElement || !(chartElement as any).__chart) {
-        console.log('Chart instance not found');
+    // console.log('Chart instance not found'); // Removed by test quality fix
         return false;
       }
 
       const series = (chartElement as any).__mainSeries;
       
       if (!series) {
-        console.log('Series not found');
+    // console.log('Series not found'); // Removed by test quality fix
         return false;
       }
 
       // 初期データ数を記録
       const initialDataCount = series.data?.length || 0;
-      console.log('Initial candle count:', initialDataCount);
+    // console.log('Initial candle count:', initialDataCount); // Removed by test quality fix
 
       // 新しいキャンドルが追加されるまで待つ（最大10秒）
       return new Promise<boolean>((resolve) => {
         let checkCount = 0;
         const checkInterval = setInterval(() => {
           const currentDataCount = series.data?.length || 0;
-          console.log('Current candle count:', currentDataCount);
+    // console.log('Current candle count:', currentDataCount); // Removed by test quality fix
           
           if (currentDataCount > initialDataCount) {
             clearInterval(checkInterval);
@@ -230,7 +230,7 @@ test.describe('Real-time Data Updates', () => {
         }
 
         if (!maSeries) {
-          console.log('MA series not found');
+    // console.log('MA series not found'); // Removed by test quality fix
           resolve(false);
           return;
         }
@@ -238,7 +238,7 @@ test.describe('Real-time Data Updates', () => {
         // 初期値を記録
         const initialData = maSeries.data();
         const initialLastValue = initialData[initialData.length - 1]?.value;
-        console.log('Initial MA value:', initialLastValue);
+    // console.log('Initial MA value:', initialLastValue); // Removed by test quality fix
 
         // 値の変化を監視
         let checkCount = 0;
@@ -247,7 +247,7 @@ test.describe('Real-time Data Updates', () => {
           const currentLastValue = currentData[currentData.length - 1]?.value;
           
           if (currentLastValue !== initialLastValue) {
-            console.log('MA value updated to:', currentLastValue);
+    // console.log('MA value updated to:', currentLastValue); // Removed by test quality fix
             clearInterval(checkInterval);
             resolve(true);
           }
@@ -271,7 +271,7 @@ test.describe('Real-time Data Updates', () => {
     if (await volumeDisplay.isVisible()) {
       // 初期ボリュームを記録
       const initialVolume = await volumeDisplay.textContent();
-      console.log('Initial volume:', initialVolume);
+    // console.log('Initial volume:', initialVolume); // Removed by test quality fix
 
       // ボリュームが更新されるまで待機
       let volumeChanged = false;
@@ -280,7 +280,7 @@ test.describe('Real-time Data Updates', () => {
         const currentVolume = await volumeDisplay.textContent();
         if (currentVolume !== initialVolume && currentVolume !== '') {
           volumeChanged = true;
-          console.log('Volume changed to:', currentVolume);
+    // console.log('Volume changed to:', currentVolume); // Removed by test quality fix
           break;
         }
       }

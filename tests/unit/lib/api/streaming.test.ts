@@ -245,7 +245,6 @@ describe('StreamingResponseBuilder', () => {
       const decoder = new TextDecoder();
       const chunks: string[] = [];
 
-      // let false = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -285,7 +284,6 @@ describe('StreamingResponseBuilder', () => {
       const decoder = new TextDecoder();
       const chunks: string[] = [];
 
-      // let false = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -360,7 +358,10 @@ describe('StreamingResponseBuilder', () => {
       reader.releaseLock();
     });
 
+    // TODO: This test has timing issues and needs to be refactored
+    // It's testing legitimate error handling but the implementation causes timeouts
     it.skip('should handle transform errors - circular references', async () => {
+    // TODO: This test is skipped and needs investigation
       // Create a circular reference that will cause JSON.stringify to fail
       const circularRef: any = { name: 'test' };
       circularRef.self = circularRef;

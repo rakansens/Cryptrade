@@ -56,7 +56,7 @@ test.describe('Chaos Drawing Tests - Sprint 2', () => {
       });
       
       // Log disconnection
-      console.log('[Chaos Test] WebSocket disconnected');
+    // console.log('[Chaos Test] WebSocket disconnected'); // Removed by test quality fix
       
       // Wait 2 seconds
       await page.waitForTimeout(2000);
@@ -66,7 +66,7 @@ test.describe('Chaos Drawing Tests - Sprint 2', () => {
         window.history.pushState({}, '', '/');
       });
       
-      console.log('[Chaos Test] WebSocket reconnection allowed');
+    // console.log('[Chaos Test] WebSocket reconnection allowed'); // Removed by test quality fix
     });
 
     // Step 4: Attempt drawing during recovery
@@ -145,7 +145,7 @@ test.describe('Chaos Drawing Tests - Sprint 2', () => {
           callCount++;
           // Fail 30% of the time on first 2 attempts
           if (callCount <= 2 && Math.random() < 0.3) {
-            console.log('[Chaos] Injecting random failure');
+    // console.log('[Chaos] Injecting random failure'); // Removed by test quality fix
             return false;
           }
         }
@@ -250,11 +250,7 @@ test.describe('Chaos Drawing Tests - Sprint 2', () => {
     // Get metrics
     const queueMetrics = await page.evaluate(() => (window as any).queueMetrics);
     
-    console.log('[Chaos Test] Stress test metrics:', {
-      totalTime,
-      maxQueueSize: queueMetrics.maxQueueSize,
-      avgProcessingTime: totalTime / 10,
-    });
+    // console.log('[Chaos Test] Stress test metrics:', { // Removed by test quality fix
 
     // Verify all completed
     const stressDrawingCount = await page.evaluate(() => {

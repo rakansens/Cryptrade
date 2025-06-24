@@ -105,7 +105,8 @@ describe('Binance Klines API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual(
+      // Response is wrapped in 'data' property
+      expect(data.data).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             time: expect.any(Number),

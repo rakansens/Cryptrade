@@ -1,3 +1,6 @@
+// Unmock the AlertService to test the actual implementation
+jest.unmock('@/lib/services/alert.service');
+
 import { AlertService } from '@/lib/services/alert.service';
 
 // Mock console.warn for testing

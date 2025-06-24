@@ -62,8 +62,8 @@ describe('useWebSocket', () => {
 
       // Log for debugging
       if (result.current.readyState === undefined) {
-        console.error('readyState is undefined');
-        console.error('WebSocket.CLOSED in test:', WebSocket.CLOSED);
+    // console.error('readyState is undefined'); // Removed by test quality fix
+    // console.error('WebSocket.CLOSED in test:', WebSocket.CLOSED); // Removed by test quality fix
       }
 
       // Check actual values - use defined values if readyState is undefined

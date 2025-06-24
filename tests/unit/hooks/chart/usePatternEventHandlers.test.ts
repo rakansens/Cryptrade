@@ -1,5 +1,9 @@
 // Tests for usePatternEventHandlers
-import { renderHook, act } from '@testing-library/react-hooks';
+
+// Unmock the hook we're testing
+jest.unmock('@/hooks/chart/usePatternEventHandlers');
+
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
 import { usePatternStore } from '@/store/chart';
 import { logger } from '@/lib/utils/logger';
@@ -28,6 +32,8 @@ const mockChartBaseStoreReturn = {
   timeframe: '1h',
 };
 
+// First unmock, then re-mock with specific implementations
+jest.unmock('@/store/chart');
 jest.mock('@/store/chart', () => ({
   usePatternActions: jest.fn(() => mockPatternActionsReturn),
   useChartBaseStore: jest.fn(() => mockChartBaseStoreReturn),
@@ -96,12 +102,16 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Event listener registration and cleanup', () => {
-    it('should register event listeners on mount', () => {
+    it('should register event listeners on mount', async () => {
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
       
-      renderHook(() => usePatternEventHandlers(mockHandlers));
+      const { result } = renderHook(() => usePatternEventHandlers(mockHandlers));
       
-      expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
+      });
+      
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
@@ -115,14 +125,25 @@ describe('usePatternEventHandlers', () => {
       );
     });
 
-    it('should remove event listeners on unmount', () => {
+    it('should remove event listeners on unmount', async () => {
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
       
       const { unmount } = renderHook(() => usePatternEventHandlers(mockHandlers));
       
+      // Wait for initial mount effects
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
+      
       unmount();
       
-      expect(removeEventListenerSpy).toHaveBeenCalledTimes(3);
+      await waitFor(() => {
+        expect(removeEventListenerSpy).toHaveBeenCalledTimes(3);
+      });
+      
       expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
       expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
       expect(removeEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
@@ -132,8 +153,16 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Add Pattern Event', () => {
-    it('should handle valid add pattern event', () => {
+    it('should handle valid add pattern event', async () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       const patternData = {
         id: 'test-pattern',
@@ -196,8 +225,16 @@ describe('usePatternEventHandlers', () => {
       expect(showAgentSuccess).toHaveBeenCalled();
     });
 
-    it('should handle pattern with markers transformation', () => {
+    it('should handle pattern with markers transformation', async () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       const patternData = {
         id: 'marker-pattern',
@@ -235,13 +272,21 @@ describe('usePatternEventHandlers', () => {
       );
     });
 
-    it('should handle validation errors', () => {
+    it('should handle validation errors', async () => {
       (validatePatternEvent as jest.Mock).mockReturnValueOnce({
         success: false,
         error: 'Invalid pattern data'
       });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       act(() => {
         window.dispatchEvent(new CustomEvent('chart:addPattern', {
@@ -260,10 +305,18 @@ describe('usePatternEventHandlers', () => {
       expect(mockPatternRenderer.renderPattern).not.toHaveBeenCalled();
     });
 
-    it('should handle missing pattern renderer', () => {
+    it('should handle missing pattern renderer', async () => {
       (getPatternRenderer as jest.Mock).mockReturnValueOnce(null);
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       const patternData = {
         id: 'test-pattern',
@@ -289,13 +342,21 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Remove Pattern Event', () => {
-    it('should handle valid remove pattern event', () => {
+    it('should handle valid remove pattern event', async () => {
       const mockPatterns = new Map([
         ['pattern-to-remove', { id: 'pattern-to-remove', type: 'triangle' }]
       ]);
       (usePatternStore as any).getState.mockReturnValue({ patterns: mockPatterns });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       act(() => {
         window.dispatchEvent(new CustomEvent('chart:removePattern', {
@@ -315,12 +376,20 @@ describe('usePatternEventHandlers', () => {
       );
     });
 
-    it('should handle errors during pattern removal', () => {
+    it('should handle errors during pattern removal', async () => {
       mockRemovePattern.mockImplementationOnce(() => {
         throw new Error('Failed to remove pattern');
       });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       act(() => {
         window.dispatchEvent(new CustomEvent('chart:removePattern', {
@@ -340,7 +409,7 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Update Pattern Style Event', () => {
-    it('should handle valid style update event', () => {
+    it('should handle valid style update event', async () => {
       const mockPattern = {
         id: 'pattern1',
         type: 'triangle',
@@ -354,6 +423,14 @@ describe('usePatternEventHandlers', () => {
       (usePatternStore as any).getState.mockReturnValue({ patterns: mockPatterns });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       const updateData = {
         patternId: 'pattern1',
@@ -393,10 +470,18 @@ describe('usePatternEventHandlers', () => {
       );
     });
 
-    it('should handle pattern not found error', () => {
+    it('should handle pattern not found error', async () => {
       (usePatternStore as any).getState.mockReturnValue({ patterns: new Map() });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       act(() => {
         window.dispatchEvent(new CustomEvent('chart:updatePatternStyle', {
@@ -417,12 +502,20 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Error handling', () => {
-    it('should handle errors in event handlers gracefully', () => {
+    it('should handle errors in event handlers gracefully', async () => {
       mockAddPattern.mockImplementationOnce(() => {
         throw new Error('Unexpected error');
       });
 
       renderHook(() => usePatternEventHandlers(mockHandlers));
+      
+      // Wait for effects to run
+      await waitFor(() => {
+        expect(logger.info).toHaveBeenCalledWith(
+          '[Pattern Event Handlers] Registered pattern event listeners',
+          expect.anything()
+        );
+      });
       
       act(() => {
         window.dispatchEvent(new CustomEvent('chart:addPattern', {

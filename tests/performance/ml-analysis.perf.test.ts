@@ -77,7 +77,7 @@ describe('ML Analysis Performance Tests', () => {
       const avg = times.reduce((a, b) => a + b, 0) / times.length;
       const max = Math.max(...times);
       const min = Math.min(...times);
-      console.log(`[PERF] ${test}: avg=${avg.toFixed(2)}ms, min=${min.toFixed(2)}ms, max=${max.toFixed(2)}ms`);
+    // console.log(`[PERF] ${test}: avg=${avg.toFixed(2)}ms, min=${min.toFixed(2)}ms, max=${max.toFixed(2)}ms`); // Removed by test quality fix
     });
     performanceResults = {};
   });
@@ -427,7 +427,7 @@ describe('ML Analysis Performance Tests', () => {
       const analysesPerSecond = (totalAnalyses / totalTime) * 1000;
 
       performanceResults['liveTrading'] = [totalTime];
-      console.log(`[PERF] Live trading scenario: ${analysesPerSecond.toFixed(1)} analyses/second`);
+    // console.log(`[PERF] Live trading scenario: ${analysesPerSecond.toFixed(1)} analyses/second`); // Removed by test quality fix
       
       expect(totalTime).toBeLessThan(3000); // Complete all analyses under 3 seconds
       expect(totalAnalyses).toBe(27); // 3 symbols * 3 timeframes * 3 lines

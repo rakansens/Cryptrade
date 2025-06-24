@@ -441,6 +441,6 @@ test.describe('Drawing Types Phase 2 - Trendline & Fibonacci', () => {
     
     expect(metrics.drawing_success_total?.value).toBeGreaterThanOrEqual(75);
     
-    console.log(`Performance test completed in ${totalTime}ms for 75 drawings`);
+    // console.log(`Performance test completed in ${totalTime}ms for 75 drawings`); // Removed by test quality fix
   });
 });

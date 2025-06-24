@@ -402,12 +402,7 @@ describe('A2A Entry Proposal Integration', () => {
       
       // Log the response structure for debugging
       if (response) {
-        console.log('A2A Response structure:', {
-          hasSteps: !!response.steps,
-          hasToolResults: !!response.toolResults,
-          hasProposalGroup: !!response.proposalGroup,
-          responseKeys: Object.keys(response),
-        });
+    // console.log('A2A Response structure:', { // Removed by test quality fix
       }
     });
   });

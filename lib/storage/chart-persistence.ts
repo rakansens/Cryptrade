@@ -170,7 +170,11 @@ export class ChartPersistenceManager {
         }
       } else {
         try {
-          return await this.loadDrawingsFromLocal();
+          const drawings = await this.loadDrawingsFromLocal();
+          logger.info('[ChartPersistence] Drawings loaded from localStorage', { 
+            count: drawings.length 
+          });
+          return drawings;
         } catch (localError) {
           logger.error('[ChartPersistence] Failed to load drawings', { error: localError });
           return [];
@@ -262,7 +266,11 @@ export class ChartPersistenceManager {
           throw new Error(`Failed to load patterns from database: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
         }
       } else {
-        return this.loadPatternsFromLocal();
+        const patterns = this.loadPatternsFromLocal();
+        logger.info('[ChartPersistence] Patterns loaded from local storage', { 
+          count: patterns.length 
+        });
+        return patterns;
       }
     } catch (error) {
       logger.error('[ChartPersistence] Failed to load patterns', { error });

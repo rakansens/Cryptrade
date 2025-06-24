@@ -13,13 +13,8 @@ describe('API Endpoints Integration Tests', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default mock response
-    mockFetch.mockResolvedValue(
-      new Response(JSON.stringify({}), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    );
+    // Reset to default - will be overridden per test
+    mockFetch.mockReset();
   });
   
   // Helper function to make API requests
@@ -49,6 +44,13 @@ describe('API Endpoints Integration Tests', () => {
 
   describe('Health Check Endpoints', () => {
     test('GET /api/health should return 200', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'ok', timestamp: Date.now() }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+      
       const { response, data } = await makeRequest('/api/health');
       
       expect(response.status).toBe(200);
@@ -60,11 +62,22 @@ describe('API Endpoints Integration Tests', () => {
   describe('Chat API Endpoints', () => {
     describe('POST /api/chat', () => {
       test('should handle basic chat message', async () => {
+        const sessionId = `test-${Date.now()}`;
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ 
+            response: 'Hello! How can I help you?',
+            sessionId: sessionId
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/chat', {
           method: 'POST',
           body: JSON.stringify({
             message: 'Hello',
-            sessionId: `test-${Date.now()}`,
+            sessionId: sessionId,
           }),
         });
         
@@ -74,6 +87,13 @@ describe('API Endpoints Integration Tests', () => {
       });
 
       test('should return 400 for missing message', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Message is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response } = await makeRequest('/api/chat', {
           method: 'POST',
           body: JSON.stringify({
@@ -87,6 +107,22 @@ describe('API Endpoints Integration Tests', () => {
 
     describe('POST /api/chat/proposal', () => {
       test('should generate proposal', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ 
+            proposal: {
+              type: 'entry',
+              symbol: 'BTCUSDT',
+              confidence: 0.85,
+              entryPrice: 50000,
+              targetPrice: 55000,
+              stopLoss: 48000
+            }
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/chat/proposal', {
           method: 'POST',
           body: JSON.stringify({
@@ -112,6 +148,13 @@ describe('API Endpoints Integration Tests', () => {
 
     describe('POST /api/memory/save', () => {
       test('should save conversation to memory', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/memory/save', {
           method: 'POST',
           body: JSON.stringify({
@@ -133,6 +176,13 @@ describe('API Endpoints Integration Tests', () => {
     describe('GET /api/memory/recall', () => {
       test('should recall conversation from memory', async () => {
         // First save something
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         await makeRequest('/api/memory/save', {
           method: 'POST',
           body: JSON.stringify({
@@ -143,6 +193,21 @@ describe('API Endpoints Integration Tests', () => {
         });
         
         // Then recall
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ 
+            conversations: [
+              {
+                message: 'Test recall',
+                response: 'Test response',
+                timestamp: Date.now()
+              }
+            ]
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest(
           `/api/memory/recall?sessionId=${testSessionId}`
         );
@@ -155,6 +220,13 @@ describe('API Endpoints Integration Tests', () => {
 
     describe('POST /api/memory/search', () => {
       test('should search conversations', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ results: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/memory/search', {
           method: 'POST',
           body: JSON.stringify({
@@ -173,6 +245,13 @@ describe('API Endpoints Integration Tests', () => {
   describe('UI Events API', () => {
     describe('POST /api/ui-events', () => {
       test('should dispatch UI event', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/ui-events', {
           method: 'POST',
           body: JSON.stringify({
@@ -189,6 +268,13 @@ describe('API Endpoints Integration Tests', () => {
       });
 
       test('should return 400 for invalid event', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Invalid event' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response } = await makeRequest('/api/ui-events', {
           method: 'POST',
           body: JSON.stringify({
@@ -203,6 +289,16 @@ describe('API Endpoints Integration Tests', () => {
 
     describe('GET /api/ui-events (SSE)', () => {
       test('should establish SSE connection', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response('data: {"type":"connected"}\n\n', {
+            status: 200,
+            headers: { 
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache'
+            }
+          })
+        );
+        
         const { response } = await makeRequest('/api/ui-events');
         
         expect(response.status).toBe(200);
@@ -215,6 +311,13 @@ describe('API Endpoints Integration Tests', () => {
   describe('Analysis API Endpoints', () => {
     describe('POST /api/ai/analysis-stream', () => {
       test('should stream analysis', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response('data: {"type":"analysis","content":"Starting analysis..."}\n\n', {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' }
+          })
+        );
+        
         const { response } = await makeRequest('/api/ai/analysis-stream', {
           method: 'POST',
           body: JSON.stringify({
@@ -233,6 +336,18 @@ describe('API Endpoints Integration Tests', () => {
   describe('Market Data API', () => {
     describe('GET /api/binance/ticker', () => {
       test('should fetch ticker data', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ 
+            symbol: 'BTCUSDT',
+            price: '45000.00',
+            priceChange: '500.00',
+            priceChangePercent: '1.12'
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/binance/ticker?symbol=BTCUSDT');
         
         expect(response.status).toBe(200);
@@ -243,6 +358,13 @@ describe('API Endpoints Integration Tests', () => {
       });
 
       test('should return 400 for missing symbol', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Symbol is required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response } = await makeRequest('/api/binance/ticker');
         
         expect(response.status).toBe(400);
@@ -251,6 +373,22 @@ describe('API Endpoints Integration Tests', () => {
 
     describe('GET /api/binance/klines', () => {
       test('should fetch kline data', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify([
+            {
+              time: 1640000000000,
+              open: '45000.00',
+              high: '46000.00',
+              low: '44500.00',
+              close: '45500.00',
+              volume: '1234.56'
+            }
+          ]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest(
           '/api/binance/klines?symbol=BTCUSDT&interval=1h&limit=100'
         );
@@ -275,6 +413,16 @@ describe('API Endpoints Integration Tests', () => {
   describe('WebSocket API', () => {
     describe('GET /api/ws/status', () => {
       test('should return WebSocket status', async () => {
+        mockFetch.mockResolvedValueOnce(
+          new Response(JSON.stringify({ 
+            status: 'connected',
+            connections: 1
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        
         const { response, data } = await makeRequest('/api/ws/status');
         
         expect(response.status).toBe(200);
@@ -286,12 +434,26 @@ describe('API Endpoints Integration Tests', () => {
 
   describe('Error Handling', () => {
     test('should return 404 for non-existent endpoint', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+      
       const { response } = await makeRequest('/api/non-existent');
       
       expect(response.status).toBe(404);
     });
 
     test('should handle malformed JSON', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+      
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
@@ -306,6 +468,18 @@ describe('API Endpoints Integration Tests', () => {
 
   describe('Rate Limiting', () => {
     test('should include rate limit headers', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'ok' }), {
+          status: 200,
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-ratelimit-limit': '100',
+            'x-ratelimit-remaining': '99',
+            'x-ratelimit-reset': String(Date.now() + 3600000)
+          }
+        })
+      );
+      
       const { response } = await makeRequest('/api/health');
       
       // Check for rate limit headers if implemented
@@ -323,6 +497,18 @@ describe('API Endpoints Integration Tests', () => {
 
   describe('CORS Headers', () => {
     test('should include appropriate CORS headers', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'ok' }), {
+          status: 200,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
+        })
+      );
+      
       const { response } = await makeRequest('/api/health');
       
       // Check for CORS headers if needed

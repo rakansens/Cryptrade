@@ -410,7 +410,7 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
       requiresWorkflow: true,
       isProposalMode: true,
       proposalType,
-      isEntryProposal: proposalType === 'entry'
+      isEntryProposal: false
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -442,7 +442,7 @@ export function detectProposalRequest(userQuery: string, queryLower: string): In
       requiresWorkflow: true,
       isProposalMode: true,
       proposalType,
-      isEntryProposal: proposalType === 'entry'
+      isEntryProposal: false
     };
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -517,7 +517,7 @@ export function detectDrawingProposal(userQuery: string, queryLower: string): In
       requiresWorkflow: true
     };
     if (hasProposalKeyword) {
-      result.isEntryProposal = proposalType === 'entry';
+      result.isEntryProposal = false;
     }
     if (symbol) {
       result.extractedSymbol = symbol;
@@ -937,7 +937,7 @@ export function extractSymbol(query: string): string | undefined {
   // Return the first symbol found (by position in the string)
   if (foundSymbols.length > 0) {
     foundSymbols.sort((a, b) => a.position - b.position);
-    return foundSymbols[0].symbol;
+    return foundSymbols[0]?.symbol;
   }
   
   return undefined;

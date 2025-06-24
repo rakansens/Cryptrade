@@ -254,12 +254,13 @@ export const TimeUtils = {
   normalizeTime(timestamp: number): number {
     // JavaScriptのDateオブジェクトと互換性のある形式に変換
     if (timestamp < 1e10) {
-      // Unix秒タイムスタンプの場合
+      // Unix秒タイムスタンプの場合（10桁未満）
       return timestamp;
     } else if (timestamp < 1e13) {
-      // Unix ミリ秒タイムスタンプの場合、秒に変換
+      // Unix ミリ秒タイムスタンプの場合（10桁以上13桁未満）、秒に変換
       return Math.floor(timestamp / 1000);
     }
+    // 13桁以上の場合はそのまま返す（マイクロ秒など）
     return timestamp;
   },
   

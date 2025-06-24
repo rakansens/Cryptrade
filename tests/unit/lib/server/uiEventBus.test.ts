@@ -37,21 +37,21 @@ describe('UI Event Bus', () => {
       try {
         // Try different approaches
         const path = require.resolve('@/lib/server/uiEventBus')
-        console.log('Resolved path:', path)
+    // console.log('Resolved path:', path) // Removed by test quality fix
         module = require('@/lib/server/uiEventBus')
-        console.log('Loaded module keys:', Object.keys(module || {}))
-        console.log('Module content:', module)
+    // console.log('Loaded module keys:', Object.keys(module || {})) // Removed by test quality fix
+    // console.log('Module content:', module) // Removed by test quality fix
       } catch (error) {
-        console.error('Module loading error:', error)
+    // console.error('Module loading error:', error) // Removed by test quality fix
         
         // Try relative path
         try {
           const relativePath = require.resolve('../../../../lib/server/uiEventBus')
-          console.log('Relative path resolved:', relativePath)
+    // console.log('Relative path resolved:', relativePath) // Removed by test quality fix
           module = require('../../../../lib/server/uiEventBus')
-          console.log('Module loaded with relative path:', module)
+    // console.log('Module loaded with relative path:', module) // Removed by test quality fix
         } catch (relativeError) {
-          console.error('Relative path error:', relativeError)
+    // console.error('Relative path error:', relativeError) // Removed by test quality fix
         }
       }
       
@@ -62,7 +62,7 @@ describe('UI Event Bus', () => {
   describe('uiEventBus', () => {
     it('exports EventEmitter instance', () => {
       const module = require('../../../../lib/server/uiEventBus')
-      console.log('Module in test:', module)
+    // console.log('Module in test:', module) // Removed by test quality fix
       const { uiEventBus } = module
       expect(uiEventBus).toBeInstanceOf(EventEmitter)
     })

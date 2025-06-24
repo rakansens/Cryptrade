@@ -4,17 +4,15 @@ import { GET } from '@/app/api/binance/klines/route';
 // Mock global fetch
 global.fetch = jest.fn();
 
-// Mock validation helpers
+// Mock only the validateBinanceKlines function to return processed data
 jest.mock('@/types/market', () => ({
-  BinanceKlinesResponseSchema: {
-    safeParse: jest.fn()
-  },
-  validateBinanceKlines: jest.fn(data => data)
+  ...jest.requireActual('@/types/market'),
+  validateBinanceKlines: jest.fn()
 }));
 
 describe('Binance Klines API Route', () => {
   const mockFetch = global.fetch as jest.Mock;
-  const { BinanceKlinesResponseSchema, validateBinanceKlines } = require('@/types/market');
+  const { validateBinanceKlines } = require('@/types/market');
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,11 +53,7 @@ describe('Binance Klines API Route', () => {
         json: async () => mockRawKlines
       } as Response);
 
-      BinanceKlinesResponseSchema.safeParse.mockReturnValueOnce({
-        success: true,
-        data: mockRawKlines
-      });
-
+      // validateBinanceKlines will be called with the raw klines data
       validateBinanceKlines.mockReturnValueOnce(mockProcessedKlines);
 
       const request = new NextRequest('http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=1h&limit=100');
@@ -67,7 +61,11 @@ describe('Binance Klines API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual(mockProcessedKlines);
+      expect(data).toMatchObject({
+        success: true,
+        data: mockProcessedKlines,
+        timestamp: expect.any(String)
+      });
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=100',
         expect.objectContaining({
@@ -148,11 +146,7 @@ describe('Binance Klines API Route', () => {
         json: async () => []
       } as Response);
 
-      BinanceKlinesResponseSchema.safeParse.mockReturnValueOnce({
-        success: true,
-        data: []
-      });
-
+      // validateBinanceKlines will be called with empty array
       validateBinanceKlines.mockReturnValueOnce([]);
 
       const request = new NextRequest('http://localhost:3000/api/binance/klines?symbol=ETHUSDT&interval=1h');
@@ -160,7 +154,11 @@ describe('Binance Klines API Route', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual([]);
+      expect(data).toMatchObject({
+        success: true,
+        data: [],
+        timestamp: expect.any(String)
+      });
     });
 
     it('should validate interval parameter', async () => {
@@ -172,11 +170,7 @@ describe('Binance Klines API Route', () => {
           json: async () => []
         } as Response);
 
-        BinanceKlinesResponseSchema.safeParse.mockReturnValueOnce({
-          success: true,
-          data: []
-        });
-
+        // validateBinanceKlines will be called with empty array for each valid interval
         validateBinanceKlines.mockReturnValueOnce([]);
 
         const request = new NextRequest(`http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=${interval}`);
@@ -235,11 +229,7 @@ describe('Binance Klines API Route', () => {
           json: async () => mockRawKlines
         } as Response);
 
-        BinanceKlinesResponseSchema.safeParse.mockReturnValueOnce({
-          success: true,
-          data: mockRawKlines
-        });
-
+        // validateBinanceKlines will be called with the raw klines data
         validateBinanceKlines.mockReturnValueOnce(mockProcessedData);
       });
 
@@ -250,6 +240,105 @@ describe('Binance Klines API Route', () => {
       });
 
       expect(mockFetch).toHaveBeenCalledTimes(5);
+    });
+
+    it('should handle invalid klines format from Binance API', async () => {
+      // Mock invalid response that doesn't match the expected klines format
+      const invalidResponse = {
+        error: "Invalid data"
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => invalidResponse
+      } as Response);
+
+      const request = new NextRequest('http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=1h');
+      const response = await GET(request);
+
+      expect(response.status).toBe(502);
+      const data = await response.json();
+      expect(data.error).toMatchObject({
+        message: 'Invalid data format from upstream API',
+        context: expect.objectContaining({
+          symbol: 'BTCUSDT',
+          interval: '1h',
+          validationError: expect.any(Object)
+        })
+      });
+    });
+
+    it('should handle malformed klines data (not enough elements)', async () => {
+      // Mock klines with not enough elements (should have at least 6)
+      const malformedKlines = [
+        [1640995200000, "46000.00", "46500.00"] // Only 3 elements instead of at least 6
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => malformedKlines
+      } as Response);
+
+      const request = new NextRequest('http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=1h');
+      const response = await GET(request);
+
+      expect(response.status).toBe(502);
+      const data = await response.json();
+      expect(data.error.message).toBe('Invalid data format from upstream API');
+    });
+
+    it('should validate processed kline data structure', async () => {
+      const mockRawKlines = [
+        [
+          1640995200000, // Open time
+          "46000.00",    // Open
+          "46500.00",    // High
+          "45800.00",    // Low
+          "46200.00",    // Close
+          "1000.00",     // Volume
+          1640998800000, // Close time
+          "46000000.00", // Quote asset volume
+          1000,          // Number of trades
+          "500.00",      // Taker buy base asset volume
+          "23000000.00", // Taker buy quote asset volume
+          "0"            // Ignore
+        ]
+      ];
+
+      const expectedProcessedData = [
+        {
+          time: 1640995200,
+          open: 46000,
+          high: 46500,
+          low: 45800,
+          close: 46200,
+          volume: 1000
+        }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockRawKlines
+      } as Response);
+
+      // Mock validateBinanceKlines to test that it's called with valid parsed data
+      validateBinanceKlines.mockImplementationOnce((data) => {
+        // Verify the data passed to validateBinanceKlines is valid
+        expect(data).toEqual(mockRawKlines);
+        return expectedProcessedData;
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=1h');
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toMatchObject({
+        success: true,
+        data: expectedProcessedData,
+        timestamp: expect.any(String)
+      });
+      expect(validateBinanceKlines).toHaveBeenCalledWith(mockRawKlines);
     });
   });
 });

@@ -51,6 +51,8 @@
     "generate:api-key": "node scripts/generate-api-key.js",
     "test:lib": "TEST_TYPE=unit jest tests/unit/lib",
     "test:lib:watch": "TEST_TYPE=unit jest --watch tests/unit/lib",
+    "test:quality": "node scripts/check-test-quality.js",
+    "test:quality:fix": "node scripts/check-test-quality.js --fix",
     "test:store": "TEST_TYPE=unit jest tests/unit/store",
     "test:store:watch": "TEST_TYPE=unit jest --watch tests/unit/store",
     "test:types": "TEST_TYPE=unit jest tests/unit/types",

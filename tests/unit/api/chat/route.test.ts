@@ -77,7 +77,8 @@ describe('AI Chat API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toMatchObject({
+      // Response is wrapped in 'data' property
+      expect(data.data).toMatchObject({
         message: 'Bitcoin is currently trading at $108,500',
         selectedAgent: 'market_query',
         analysis: {
@@ -151,7 +152,8 @@ describe('AI Chat API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toMatchObject({
+      // Response is wrapped in 'data' property
+      expect(data.data).toMatchObject({
         message: 'トレンドラインの提案を生成しました。',
         proposalGroup: mockProposalGroup,
         selectedAgent: 'proposal_request',
@@ -204,7 +206,8 @@ describe('AI Chat API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toMatchObject({
+      // Response is wrapped in 'data' property
+      expect(data.data).toMatchObject({
         message: expect.stringContaining('問題が発生しました'),
         selectedAgent: 'error',
         execution: {

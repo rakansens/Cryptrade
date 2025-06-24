@@ -6,7 +6,7 @@ import { useAnalysisFormatting } from '@/hooks/use-analysis-formatting';
 
 describe('useAnalysisFormatting', () => {
   // Mock current time for consistent testing
-  const mockDate = new Date('2024-01-15T12:00:00Z');
+  const mockDate = new Date(Date.now() - 86400000) // 2024-01-15T12:00:00Z');
   const originalDate = Date;
 
   beforeEach(() => {

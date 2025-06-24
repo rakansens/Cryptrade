@@ -54,7 +54,7 @@ describe('useCandlestickData', () => {
     
     // Setup mocks
     jest.mocked(useIsClient).mockImplementation(() => {
-      console.log('useIsClient called, returning true');
+    // console.log('useIsClient called, returning true'); // Removed by test quality fix
       return true;
     });
     jest.mocked(useMarketActions).mockReturnValue(mockMarketActions);
@@ -73,16 +73,16 @@ describe('useCandlestickData', () => {
     
     // Mock binanceAPI.fetchKlines to return our mock data
     (binanceAPI.fetchKlines as jest.Mock).mockImplementation((...args) => {
-      console.log('fetchKlines called with:', args);
+    // console.log('fetchKlines called with:', args); // Removed by test quality fix
       return Promise.resolve(mockKlines);
     });
     
     // Add logging to debug
     (logger.info as jest.Mock).mockImplementation((...args) => {
-      console.log('logger.info:', ...args);
+    // console.log('logger.info:', ...args); // Removed by test quality fix
     });
     (logger.error as jest.Mock).mockImplementation((...args) => {
-      console.log('logger.error:', ...args);
+    // console.log('logger.error:', ...args); // Removed by test quality fix
     });
     
     // Default subscribe mock that returns unsubscribe function
@@ -116,9 +116,9 @@ describe('useCandlestickData', () => {
 
       // Check if the hook attempted to load data
       if ((binanceAPI.fetchKlines as jest.Mock).mock.calls.length === 0) {
-        console.log('fetchKlines was not called. Checking hook state...');
-        console.log('result.current:', result.current);
-        console.log('useIsClient mock calls:', (useIsClient as jest.Mock).mock.calls.length);
+    // console.log('fetchKlines was not called. Checking hook state...'); // Removed by test quality fix
+    // console.log('result.current:', result.current); // Removed by test quality fix
+    // console.log('useIsClient mock calls:', (useIsClient as jest.Mock).mock.calls.length); // Removed by test quality fix
       }
 
       expect(binanceAPI.fetchKlines).toHaveBeenCalledWith('BTCUSDT', '1h', 1000);

@@ -31,17 +31,17 @@ describe('useViewPersistence simple test', () => {
   it('should return an object with expected properties', () => {
     const { result } = renderHook(() => useViewPersistence());
     
-    console.log('Hook result:', result.current);
+    // console.log('Hook result:', result.current); // Removed by test quality fix
     
     // First, check if we get anything at all
     expect(result.current).toBeDefined();
     
     // Check the type of what we get
-    console.log('Type of result.current:', typeof result.current);
+    // console.log('Type of result.current:', typeof result.current); // Removed by test quality fix
     
     // If it's an object, check its keys
     if (result.current && typeof result.current === 'object') {
-      console.log('Keys:', Object.keys(result.current));
+    // console.log('Keys:', Object.keys(result.current)); // Removed by test quality fix
     }
     
     // Basic expectations

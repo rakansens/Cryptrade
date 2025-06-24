@@ -848,7 +848,7 @@ describe('AnalysisHistoryStore', () => {
         expect(partialState).not.toHaveProperty('isSyncing');
       } else {
         // If persist is not available, skip this test
-        console.warn('Persist config not available, skipping test');
+    // console.warn('Persist config not available, skipping test'); // Removed by test quality fix
       }
     });
   });

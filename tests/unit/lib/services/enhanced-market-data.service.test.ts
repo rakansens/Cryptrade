@@ -104,7 +104,7 @@ describe('EnhancedMarketDataService', () => {
         expect(result.timeframes['1d']).toBeDefined();
         expect(result.fetchedAt).toBeGreaterThan(0);
       } catch (error) {
-        console.error('[Test] Failed to fetch multi-timeframe data:', error);
+    // console.error('[Test] Failed to fetch multi-timeframe data:', error); // Removed by test quality fix
         throw error;
       }
     });

@@ -926,12 +926,12 @@ describe('EnhancedConversationMemoryStore', () => {
       
       store.updateSession(sessionId, {
         summary: 'Updated summary',
-        lastActiveAt: new Date('2024-01-01'),
+        lastActiveAt: new Date(Date.now() - 86400000) // 2024-01-01'),
       });
       
       const session = store.getSession(sessionId);
       expect(session.summary).toBe('Updated summary');
-      expect(session.lastActiveAt).toEqual(new Date('2024-01-01'));
+      expect(session.lastActiveAt).toEqual(new Date(Date.now() - 86400000) // 2024-01-01'));
     });
 
     it('should not update non-existent session', () => {

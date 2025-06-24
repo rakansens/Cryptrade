@@ -268,7 +268,7 @@ describe('Market Data Cache Integration', () => {
       expect(result.metadata.fromCache).toBe(true);
       expect(latency).toBeLessThan(50);
       
-      console.log(`Warm cache latency: ${latency}ms`);
+    // console.log(`Warm cache latency: ${latency}ms`); // Removed by test quality fix
     });
 
     it('should handle concurrent requests efficiently', async () => {
@@ -306,7 +306,7 @@ describe('Market Data Cache Integration', () => {
       const stats = cache.getStats();
       
       expect(stats.hitRate).toBeGreaterThan(0);
-      console.log(`Cache hit rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+    // console.log(`Cache hit rate: ${(stats.hitRate * 100).toFixed(2)}%`); // Removed by test quality fix
     });
   });
 
@@ -403,12 +403,7 @@ describe('Market Data Cache Integration', () => {
       expect(stats.avgLatency).toBeDefined();
       expect(stats.latencyPercentiles.p95).toBeGreaterThan(0);
       
-      console.log('Performance Stats:', {
-        hitRate: `${(stats.hitRate * 100).toFixed(2)}%`,
-        avgLatency: `${stats.avgLatency.toFixed(2)}ms`,
-        p95Latency: `${stats.latencyPercentiles.p95.toFixed(2)}ms`,
-        p99Latency: `${stats.latencyPercentiles.p99.toFixed(2)}ms`
-      });
+    // console.log('Performance Stats:', { // Removed by test quality fix
     });
 
     it('should achieve target performance improvement', async () => {
@@ -443,11 +438,7 @@ describe('Market Data Cache Integration', () => {
       const avgWarm = warmLatencies.reduce((a, b) => a + b) / warmLatencies.length;
       const improvement = ((avgCold - avgWarm) / avgCold) * 100;
       
-      console.log('Performance Improvement:', {
-        avgColdLatency: `${avgCold.toFixed(2)}ms`,
-        avgWarmLatency: `${avgWarm.toFixed(2)}ms`,
-        improvement: `${improvement.toFixed(1)}%`
-      });
+    // console.log('Performance Improvement:', { // Removed by test quality fix
       
       expect(avgWarm).toBeLessThan(300); // Target: under 300ms
       expect(improvement).toBeGreaterThan(50); // At least 50% improvement

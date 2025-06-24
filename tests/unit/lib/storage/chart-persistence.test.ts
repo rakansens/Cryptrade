@@ -263,9 +263,7 @@ describe('ChartPersistenceManager', () => {
       expect(savedData).toHaveLength(1);
       expect(savedData[0]).toMatchObject({
         id: 'pattern-1',
-        data: expect.objectContaining({
-          type: 'head-and-shoulders'
-        })
+        type: 'headAndShoulders'
       });
       
       expect(logger.info).toHaveBeenCalledWith(

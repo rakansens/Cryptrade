@@ -292,7 +292,7 @@ describe('Proposal System Integration Tests', () => {
       
       // Skip if result doesn't contain executionResult (might be conversational)
       if (!result.executionResult) {
-        console.warn('Skipping risk management test - no executionResult');
+    // console.warn('Skipping risk management test - no executionResult'); // Removed by test quality fix
         return;
       }
       

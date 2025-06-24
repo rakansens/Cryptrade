@@ -75,11 +75,12 @@ describe('Logs Stats API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toMatchObject({
+      // Response is wrapped in 'data' property
+      expect(data.data).toMatchObject({
         ...mockStats,
         timestamp: expect.any(String)
       });
-      expect(data.filter).toBeUndefined();
+      expect(data.data.filter).toBeUndefined();
       expect(mockGetStats).toHaveBeenCalledWith({});
     });
 
@@ -91,7 +92,8 @@ describe('Logs Stats API Route', () => {
       const data = await response.json();
 
       expect(mockGetStats).toHaveBeenCalledWith({ level: 'error' });
-      expect(data.filter).toEqual({ level: 'error' });
+      // Response is wrapped in 'data' property
+      expect(data.data.filter).toEqual({ level: 'error' });
     });
 
     it('should filter stats by multiple levels', async () => {
@@ -102,7 +104,8 @@ describe('Logs Stats API Route', () => {
       const data = await response.json();
 
       expect(mockGetStats).toHaveBeenCalledWith({ level: ['error', 'warn'] });
-      expect(data.filter).toEqual({ level: ['error', 'warn'] });
+      // Response is wrapped in 'data' property
+      expect(data.data.filter).toEqual({ level: ['error', 'warn'] });
     });
 
     it('should filter stats by source', async () => {
@@ -127,7 +130,8 @@ describe('Logs Stats API Route', () => {
       expect(mockGetStats).toHaveBeenCalledWith({
         timeRange: { from, to }
       });
-      expect(data.filter).toEqual({
+      // Response is wrapped in 'data' property
+      expect(data.data.filter).toEqual({
         timeRange: { from, to }
       });
     });
@@ -188,8 +192,9 @@ describe('Logs Stats API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.total).toBe(0);
-      expect(data.errorRate).toBe(0);
+      // Response is wrapped in 'data' property
+      expect(data.data.total).toBe(0);
+      expect(data.data.errorRate).toBe(0);
     });
 
     it('should handle getStats errors', async () => {
@@ -254,8 +259,9 @@ describe('Logs Stats API Route', () => {
       const response = await GET(request);
       const data = await response.json();
 
-      expect(data).toMatchObject(detailedStats);
-      expect(data.timestamp).toBeDefined();
+      // Response is wrapped in 'data' property
+      expect(data.data).toMatchObject(detailedStats);
+      expect(data.data.timestamp).toBeDefined();
     });
   });
 });

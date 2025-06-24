@@ -59,7 +59,11 @@ describe('Logs API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual(mockLogs);
+      expect(data).toMatchObject({
+        success: true,
+        data: mockLogs,
+      });
+      expect(data.timestamp).toBeDefined();
       
       expect(mockQuery).toHaveBeenCalledWith(
         {},
@@ -252,7 +256,11 @@ describe('Logs API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual({ deleted: 10 });
+      expect(data).toMatchObject({
+        success: true,
+        data: { deleted: 10 },
+      });
+      expect(data.timestamp).toBeDefined();
       // Note: The actual implementation calls cleanup() without parameters
       // The filter is validated but not passed to cleanup
       expect(mockCleanup).toHaveBeenCalledWith();
@@ -333,7 +341,11 @@ describe('Logs API Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual({ deleted: 5 });
+      expect(data).toMatchObject({
+        success: true,
+        data: { deleted: 5 },
+      });
+      expect(data.timestamp).toBeDefined();
       expect(mockCleanup).toHaveBeenCalledWith();
     });
 
@@ -360,9 +372,9 @@ describe('Logs API Route', () => {
       expect(data).toMatchObject({
         error: {
           message: 'Invalid query parameters'
-        },
-        timestamp: expect.any(String)
+        }
       });
+      expect(data.timestamp).toBeDefined();
       expect(mockCleanup).not.toHaveBeenCalled();
     });
   });

@@ -20,6 +20,7 @@ jest.mock('@/lib/api/chart-drawing-api', () => ({
     deleteDrawing: jest.fn().mockResolvedValue(undefined),
     deletePattern: jest.fn().mockResolvedValue(undefined),
     clearSession: jest.fn().mockResolvedValue(undefined),
+    migrateFromLocalStorage: jest.fn().mockResolvedValue(undefined),
   },
 }));
 jest.mock('@/lib/utils/logger', () => ({

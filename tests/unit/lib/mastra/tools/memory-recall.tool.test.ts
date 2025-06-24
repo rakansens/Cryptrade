@@ -39,7 +39,7 @@ describe('memoryRecallTool', () => {
           id: 'msg-1',
           role: 'user',
           content: 'Hello',
-          timestamp: new Date('2024-01-01T10:00:00Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T10:00:00Z'),
           agentId: 'agent-1',
           metadata: { intent: 'greeting' },
         },
@@ -47,7 +47,7 @@ describe('memoryRecallTool', () => {
           id: 'msg-2',
           role: 'assistant',
           content: 'Hi there!',
-          timestamp: new Date('2024-01-01T10:00:10Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T10:00:10Z'),
         },
       ];
 
@@ -126,7 +126,7 @@ describe('memoryRecallTool', () => {
           id: 'msg-10',
           role: 'user',
           content: 'What is the price of BTC?',
-          timestamp: new Date('2024-01-01T12:00:00Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T12:00:00Z'),
           agentId: 'agent-1',
           metadata: { symbols: ['BTC'] },
         },
@@ -170,7 +170,7 @@ describe('memoryRecallTool', () => {
           id: 'msg-20',
           role: 'user',
           content: 'BTC price inquiry',
-          timestamp: new Date('2024-01-01T13:00:00Z'),
+          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T13:00:00Z'),
         },
       ];
 
