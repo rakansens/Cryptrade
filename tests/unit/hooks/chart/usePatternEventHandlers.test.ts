@@ -3,18 +3,27 @@ const mockAddPattern = jest.fn();
 const mockRemovePattern = jest.fn();
 const mockClearPatterns = jest.fn();
 
-jest.mock('@/store/chart', () => ({
-  usePatternActions: jest.fn(() => ({
-    addPattern: mockAddPattern,
-    removePattern: mockRemovePattern,
-    clearPatterns: mockClearPatterns,
-  })),
-  useChartBaseStore: jest.fn(() => ({
-    symbol: 'BTCUSDT',
-    timeframe: '1h',
-  })),
-  usePatternStore: jest.fn()
-}));
+jest.mock('@/store/chart', () => {
+  const actualModule = jest.requireActual('@/store/chart');
+  return {
+    ...actualModule,
+    usePatternActions: jest.fn(() => ({
+      addPattern: mockAddPattern,
+      removePattern: mockRemovePattern,
+      clearPatterns: mockClearPatterns,
+    })),
+    useChartBaseStore: jest.fn(() => ({
+      symbol: 'BTCUSDT',
+      timeframe: '1h',
+    })),
+    usePatternStore: Object.assign(jest.fn(), {
+      getState: jest.fn(() => ({
+        patterns: new Map()
+      })),
+      setState: jest.fn()
+    })
+  };
+});
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -42,7 +51,7 @@ jest.mock('@/types/events/pattern-events', () => ({
 }));
 
 import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { usePatternEventHandlers } from '@/hooks/chart/usePatternEventHandlers';
 import { usePatternActions, useChartBaseStore, usePatternStore } from '@/store/chart';
 import { logger } from '@/lib/utils/logger';
@@ -71,6 +80,9 @@ describe('usePatternEventHandlers', () => {
     }],
   ]);
 
+  // Create stable references for handlers
+  const getPatternRendererFn = () => mockPatternRenderer;
+  
   beforeEach(() => {
     jest.clearAllMocks();
     
@@ -84,7 +96,7 @@ describe('usePatternEventHandlers', () => {
     // Initialize mockHandlers with stable references
     mockHandlers = {
       patternRenderer: mockPatternRenderer,
-      getPatternRenderer: () => mockPatternRenderer, // Use regular function instead of jest.fn
+      getPatternRenderer: getPatternRendererFn,
       chart: {} as any,
       series: {} as any,
     } as ChartEventHandlers;
@@ -110,25 +122,17 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Initial state and mounting', () => {
-    it('should register event listeners on mount', async () => {
+    it('should register event listeners on mount', () => {
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
       
-      // Render the hook 
-      let result: any;
-      await act(async () => {
-        result = renderHook(() => usePatternEventHandlers(mockHandlers));
-      });
-      
-      // Wait for useEffect to run
-      await waitFor(() => {
-        expect(addEventListenerSpy).toHaveBeenCalled();
-      });
+      // Render the hook - useEffect should run synchronously in tests
+      const { result } = renderHook(() => usePatternEventHandlers(mockHandlers));
       
       // Check that addEventListener was called
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:addPattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:removePattern', expect.any(Function));
       expect(addEventListenerSpy).toHaveBeenCalledWith('chart:updatePatternStyle', expect.any(Function));
-      expect(addEventListenerSpy).toHaveBeenCalledTimes(3);
 
       expect(logger.info).toHaveBeenCalledWith(
         '[Pattern Event Handlers] Registered pattern event listeners',
@@ -138,17 +142,15 @@ describe('usePatternEventHandlers', () => {
       addEventListenerSpy.mockRestore();
     });
 
-    it('should remove event listeners on unmount', async () => {
+    it('should remove event listeners on unmount', () => {
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
       const { unmount } = renderHook(() => usePatternEventHandlers(mockHandlers));
 
-      // Wait for initial mount
-      await waitFor(() => {
-        expect(logger.info).toHaveBeenCalledWith(
-          '[Pattern Event Handlers] Registered pattern event listeners',
-          expect.objectContaining({ eventCount: 3 })
-        );
-      });
+      // Verify initial mount
+      expect(logger.info).toHaveBeenCalledWith(
+        '[Pattern Event Handlers] Registered pattern event listeners',
+        expect.objectContaining({ eventCount: 3 })
+      );
 
       unmount();
 
@@ -162,7 +164,7 @@ describe('usePatternEventHandlers', () => {
   });
 
   describe('Add Pattern Event', () => {
-    it('should handle valid add pattern event', async () => {
+    it('should handle valid add pattern event', () => {
       renderHook(() => usePatternEventHandlers(mockHandlers));
 
       const event = new CustomEvent('chart:addPattern', {
@@ -196,21 +198,20 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
-        expect(mockAddPattern).toHaveBeenCalledWith(
-          'pattern123',
-          expect.objectContaining({
-            id: 'pattern123',
-            type: 'head_and_shoulders',
-            symbol: 'BTCUSDT',
-            interval: '1h',
-          })
-        );
-      });
+      // Verify immediately since effects are synchronous in tests
+      expect(mockAddPattern).toHaveBeenCalledWith(
+        'pattern123',
+        expect.objectContaining({
+          id: 'pattern123',
+          type: 'head_and_shoulders',
+          symbol: 'BTCUSDT',
+          interval: '1h',
+        })
+      );
       
       expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
       expect(showAgentSuccess).toHaveBeenCalled();
@@ -240,13 +241,12 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
-        expect(mockAddPattern).toHaveBeenCalled();
-      });
+      // Verify immediately since effects are synchronous in tests
+      expect(mockAddPattern).toHaveBeenCalled();
       
       // Verify transformation of markers to keyPoints
       const addPatternCall = mockAddPattern.mock.calls[0];
@@ -260,13 +260,12 @@ describe('usePatternEventHandlers', () => {
         detail: { invalid: 'data' },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
-        expect(handleValidationError).toHaveBeenCalled();
-      });
+      // Verify immediately since effects are synchronous in tests
+      expect(handleValidationError).toHaveBeenCalled();
       
       expect(mockAddPattern).not.toHaveBeenCalled();
     });
@@ -287,11 +286,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(logger.warn).toHaveBeenCalledWith('[Pattern Event] Pattern renderer not available');
       });
       
@@ -315,11 +314,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(mockRemovePattern).toHaveBeenCalledWith('pattern1');
       });
       
@@ -338,11 +337,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(logger.info).toHaveBeenCalledWith(
           '[Pattern Event] Current patterns in store:',
           expect.objectContaining({
@@ -367,11 +366,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(mockRemovePattern).toHaveBeenCalled();
       });
       
@@ -405,11 +404,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(mockPatternRenderer.removePattern).toHaveBeenCalledWith('pattern1');
       });
       
@@ -453,11 +452,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(usePatternStore.setState).toHaveBeenCalled();
       });
     });
@@ -480,11 +479,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(logger.warn).toHaveBeenCalledWith(
           '[Pattern Event] Pattern not found for style update',
           { patternId: 'nonexistent' }
@@ -514,11 +513,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(logger.error).toHaveBeenCalledWith('[Pattern Event] Pattern renderer not available for style update');
       });
       
@@ -560,11 +559,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         // Verify area style was updated
         expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
       });
@@ -597,11 +596,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         expect(handleAgentError).toHaveBeenCalledWith(
           expect.any(Error),
           expect.objectContaining({ eventType: 'chart:addPattern' }),
@@ -642,11 +641,11 @@ describe('usePatternEventHandlers', () => {
         },
       });
 
-      await act(async () => {
+      act(() => {
         window.dispatchEvent(event);
       });
 
-      await waitFor(() => {
+      // Verify immediately since effects are synchronous in tests
         // Verify the pattern was re-rendered with transformed visualization
         expect(mockPatternRenderer.renderPattern).toHaveBeenCalled();
       });

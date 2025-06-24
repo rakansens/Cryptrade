@@ -579,7 +579,7 @@ jest.mock('@/lib/api/create-api-handler', () => {
               queryData[key] = value;
             });
             data = queryData;
-          } else if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
+          } else if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' || request.method === 'DELETE') {
             try {
               data = await request.json();
             } catch {
