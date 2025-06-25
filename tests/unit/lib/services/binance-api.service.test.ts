@@ -40,6 +40,14 @@ jest.mock('@/lib/api/client', () => ({
   ApiClient: jest.fn()
 }));
 
+// Type for mocked service methods
+interface MockedServiceMethods {
+  get: jest.Mock;
+  post: jest.Mock;
+  put: jest.Mock;
+  delete: jest.Mock;
+}
+
 // Spy on the BaseService methods
 const createMockService = () => {
   const BinanceAPIService = jest.requireActual<typeof import('@/lib/binance/api-service')>('@/lib/binance/api-service').BinanceAPIService;
@@ -51,17 +59,14 @@ const createMockService = () => {
   const mockPut = jest.fn();
   const mockDelete = jest.fn();
   
-  // Override the methods
-  // @ts-ignore
-  service.get = mockGet;
-  // @ts-ignore
-  service.post = mockPost;
-  // @ts-ignore
-  service.put = mockPut;
-  // @ts-ignore
-  service.delete = mockDelete;
+  // Override the methods using type assertion
+  const serviceWithMocks = service as BinanceAPIService & MockedServiceMethods;
+  serviceWithMocks.get = mockGet;
+  serviceWithMocks.post = mockPost;
+  serviceWithMocks.put = mockPut;
+  serviceWithMocks.delete = mockDelete;
   
-  return { service, mockGet, mockPost, mockPut, mockDelete };
+  return { service: serviceWithMocks, mockGet, mockPost, mockPut, mockDelete };
 };
 
 // Now import the service after mocks are set up
@@ -79,7 +84,8 @@ describe('BinanceAPIService', () => {
     jest.clearAllMocks();
     
     // Mock window to ensure we're testing server-side behavior
-    (global as any).window = undefined;
+    const globalWithWindow = global as typeof globalThis & { window?: Window };
+    globalWithWindow.window = undefined;
     
     // Create service instance with mocked methods
     const mocks = createMockService();
@@ -405,7 +411,8 @@ describe('BinanceAPIService', () => {
 
   describe('Browser vs Server behavior', () => {
     it('should initialize with correct basePath for server environment', () => {
-      (global as any).window = undefined;
+      const globalWithWindow = global as typeof globalThis & { window?: Window };
+      globalWithWindow.window = undefined;
       
       const serverService = new BinanceAPIService();
       
@@ -416,7 +423,8 @@ describe('BinanceAPIService', () => {
     });
 
     it('should initialize with correct basePath for browser environment', () => {
-      (global as any).window = {};
+      const globalWithWindow = global as typeof globalThis & { window?: Window };
+      globalWithWindow.window = {} as Window;
       
       const browserService = new BinanceAPIService();
       
@@ -424,7 +432,7 @@ describe('BinanceAPIService', () => {
       // Test that the service works in browser environment
       expect(browserService.isValidSymbol('BTCUSDT')).toBe(true);
       
-      (global as any).window = undefined;
+      globalWithWindow.window = undefined;
     });
   });
 });

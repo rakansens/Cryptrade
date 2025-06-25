@@ -171,8 +171,14 @@ tests/unit/lib/mastra/utils: 10ファイル
    - CI/CDパイプラインでの自動レポート
 
 ## Follow-ups
-- [ ] Trading Agentのテスト実装
-- [ ] Session Management APIのテスト実装
+- [x] Trading Agentのテスト実装（モック設定の問題あり）
+- [x] Session Management APIのテスト実装（完了）
+- [x] Analysis APIのテスト実装（完了 - 4ファイル、29テスト）
+- [x] Core Services のテスト実装
+  - base-service.ts（完了 - 21テスト）
+  - conversation-memory.service.ts（スキップ - シングルトンモック問題）
+- [ ] Chart Indicators (MacdChart, RsiChart)のテスト実装
+- [ ] Mastra Components (orchestrator.handlers, orchestrator.utils)のテスト実装
 - [ ] テストファイル構成の整理
 - [ ] カバレッジ測定ツールの導入（jest --coverage）
 - [ ] テスト作成ガイドラインの更新

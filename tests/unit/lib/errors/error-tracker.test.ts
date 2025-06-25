@@ -6,19 +6,32 @@ import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
 import { ErrorTracker, trackException, trackAgentError, trackToolError, trackApiError } from '@/lib/errors/error-tracker';
 
+// Type definitions for error options
+interface BaseErrorOptions {
+  name?: string;
+  code: string;
+  correlationId?: string;
+  data?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  category?: string;
+  severity?: string;
+  retryable?: boolean;
+  retryAfter?: number;
+}
+
 // Create mock error classes that match the expected interface
 class MastraBaseError extends Error {
   code: string;
   timestamp: Date;
   correlationId?: string;
-  data?: any;
-  context?: any;
+  data?: Record<string, unknown>;
+  context?: Record<string, unknown>;
   category: string;
   severity: string;
   retryable: boolean;
   retryAfter?: number;
 
-  constructor(message: string, options: any) {
+  constructor(message: string, options: BaseErrorOptions) {
     super(message);
     this.name = options.name || this.constructor.name;
     this.code = options.code;
@@ -52,7 +65,7 @@ class MastraBaseError extends Error {
 }
 
 class ApiError extends MastraBaseError {
-  constructor(message: string, statusCode: number, options?: any) {
+  constructor(message: string, statusCode: number, options?: Partial<BaseErrorOptions>) {
     const { correlationId, ...restOptions } = options || {};
     super(message, {
       code: `API_${statusCode}`,
@@ -67,7 +80,7 @@ class ApiError extends MastraBaseError {
 }
 
 class AgentError extends MastraBaseError {
-  constructor(message: string, agentName: string, options?: any) {
+  constructor(message: string, agentName: string, options?: Partial<BaseErrorOptions>) {
     super(message, {
       code: 'AGENT_EXECUTION_ERROR',
       category: 'AGENT_ERROR',
@@ -78,7 +91,7 @@ class AgentError extends MastraBaseError {
 }
 
 class ToolError extends MastraBaseError {
-  constructor(message: string, toolName: string, options?: any) {
+  constructor(message: string, toolName: string, options?: Partial<BaseErrorOptions>) {
     super(message, {
       code: 'TOOL_EXECUTION_ERROR',
       category: 'TOOL_ERROR',
@@ -89,7 +102,7 @@ class ToolError extends MastraBaseError {
 }
 
 class ValidationError extends MastraBaseError {
-  constructor(message: string, field: string, value: any, options?: any) {
+  constructor(message: string, field: string, value: unknown, options?: Partial<BaseErrorOptions>) {
     super(message, {
       code: 'VALIDATION_ERROR',
       category: 'VALIDATION_ERROR',
@@ -101,7 +114,7 @@ class ValidationError extends MastraBaseError {
 }
 
 class RateLimitError extends MastraBaseError {
-  constructor(message: string, retryAfter: number, options?: any) {
+  constructor(message: string, retryAfter: number, options?: Partial<BaseErrorOptions>) {
     super(message, {
       code: 'RATE_LIMIT_EXCEEDED',
       category: 'RATE_LIMIT_ERROR',
@@ -114,7 +127,7 @@ class RateLimitError extends MastraBaseError {
 }
 
 class AuthError extends MastraBaseError {
-  constructor(message: string, options?: any) {
+  constructor(message: string, options?: Partial<BaseErrorOptions>) {
     super(message, {
       code: 'AUTH_ERROR',
       category: 'AUTH_ERROR',
@@ -150,8 +163,8 @@ describe('ErrorTracker', () => {
   let tracker: ErrorTracker;
 
   beforeEach(() => {
-    // Clear singleton instance
-    (ErrorTracker as any).instance = undefined;
+    // Clear singleton instance using type assertion to access private property
+    (ErrorTracker as unknown as { instance?: ErrorTracker }).instance = undefined;
     tracker = ErrorTracker.getInstance();
     jest.clearAllMocks();
     mockLogger.error.mockClear();
@@ -192,8 +205,8 @@ describe('ErrorTracker', () => {
     it('should not set up flush interval in test environment', () => {
       const setIntervalSpy = jest.spyOn(global, 'setInterval');
       
-      // Force recreation
-      (ErrorTracker as any).instance = undefined;
+      // Force recreation using type assertion to access private property
+      (ErrorTracker as unknown as { instance?: ErrorTracker }).instance = undefined;
       ErrorTracker.getInstance();
       
       expect(setIntervalSpy).not.toHaveBeenCalled();
@@ -278,7 +291,8 @@ describe('ErrorTracker', () => {
       });
 
       // Set telemetry endpoint to enable flushing
-      (env as any).TELEMETRY_ENDPOINT = 'http://telemetry.test';
+      const envWithTelemetry = env as typeof env & { TELEMETRY_ENDPOINT: string };
+      envWithTelemetry.TELEMETRY_ENDPOINT = 'http://telemetry.test';
 
       const error = new MastraBaseError('Critical error', {
         code: 'CRITICAL_ERROR',
@@ -303,11 +317,14 @@ describe('ErrorTracker', () => {
 
     it('should handle tracking errors gracefully', () => {
       // Create an error that will cause issues when serializing
-      const circularRef: any = { prop: null };
+      interface CircularReference {
+        prop: CircularReference | null;
+      }
+      const circularRef = { prop: null } as CircularReference;
       circularRef.prop = circularRef;
       
       const problematicError = new Error('Test');
-      (problematicError as any).circular = circularRef;
+      (problematicError as Error & { circular: CircularReference }).circular = circularRef;
 
       // Mock logger.error to throw
       const originalError = logger.error;
@@ -329,7 +346,9 @@ describe('ErrorTracker', () => {
 
     it('should log to console in development', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      (env as any).NODE_ENV = 'development';
+      const envWithNodeEnv = env as typeof env & { NODE_ENV: string };
+      const originalNodeEnv = envWithNodeEnv.NODE_ENV;
+      envWithNodeEnv.NODE_ENV = 'development';
 
       const error = new Error('Dev error');
       tracker.trackException(error);
@@ -337,7 +356,7 @@ describe('ErrorTracker', () => {
       expect(consoleSpy).toHaveBeenCalledWith('🚨 Error Tracked:', error);
 
       // Restore
-      (env as any).NODE_ENV = 'test';
+      envWithNodeEnv.NODE_ENV = originalNodeEnv;
       consoleSpy.mockRestore();
     });
   });
@@ -417,8 +436,12 @@ describe('ErrorTracker', () => {
 
   describe('flush', () => {
     beforeEach(() => {
-      (env as any).TELEMETRY_ENDPOINT = 'http://telemetry.test';
-      (env as any).TELEMETRY_API_KEY = 'test-key';
+      const envWithTelemetry = env as typeof env & { 
+        TELEMETRY_ENDPOINT: string;
+        TELEMETRY_API_KEY: string; 
+      };
+      envWithTelemetry.TELEMETRY_ENDPOINT = 'http://telemetry.test';
+      envWithTelemetry.TELEMETRY_API_KEY = 'test-key';
     });
 
     it('should flush errors to telemetry endpoint', async () => {
@@ -431,7 +454,7 @@ describe('ErrorTracker', () => {
       tracker.trackException(new Error('Error 2'));
 
       // Manually trigger flush
-      await (tracker as any).flush();
+      await (tracker as unknown as { flush(): Promise<void> }).flush();
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://telemetry.test/errors',
@@ -457,7 +480,7 @@ describe('ErrorTracker', () => {
       tracker.trackException(new Error('Error 2'));
 
       // Manually trigger flush
-      await (tracker as any).flush();
+      await (tracker as unknown as { flush(): Promise<void> }).flush();
 
       expect(mockLogger.warn).toHaveBeenCalledWith('Failed to flush errors', {
         error: 'Error: Network error'
@@ -469,15 +492,16 @@ describe('ErrorTracker', () => {
     });
 
     it('should skip flush if buffer is empty', async () => {
-      await (tracker as any).flush();
+      await (tracker as unknown as { flush(): Promise<void> }).flush();
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('should not flush if no telemetry endpoint', async () => {
-      (env as any).TELEMETRY_ENDPOINT = '';
+      const envWithTelemetry = env as typeof env & { TELEMETRY_ENDPOINT: string };
+      envWithTelemetry.TELEMETRY_ENDPOINT = '';
 
       tracker.trackException(new Error('Error 1'));
-      await (tracker as any).flush();
+      await (tracker as unknown as { flush(): Promise<void> }).flush();
 
       expect(global.fetch).not.toHaveBeenCalled();
     });
@@ -756,23 +780,28 @@ describe('ErrorTracker', () => {
   describe('Production mode behavior', () => {
     it('should not log to console in production', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      const originalEnv = env.NODE_ENV;
-      (env as any).NODE_ENV = 'production';
+      const envWithNodeEnv = env as typeof env & { NODE_ENV: string };
+      const originalEnv = envWithNodeEnv.NODE_ENV;
+      envWithNodeEnv.NODE_ENV = 'production';
 
       tracker.trackException(new Error('Production error'));
 
       expect(consoleSpy).not.toHaveBeenCalled();
 
       // Restore
-      (env as any).NODE_ENV = originalEnv;
+      envWithNodeEnv.NODE_ENV = originalEnv;
       consoleSpy.mockRestore();
     });
 
     it('should attempt Sentry integration in production', () => {
-      const originalEnv = env.NODE_ENV;
-      const originalSentry = env.ENABLE_SENTRY;
-      (env as any).NODE_ENV = 'production';
-      (env as any).ENABLE_SENTRY = true;
+      const envWithSentry = env as typeof env & { 
+        NODE_ENV: string;
+        ENABLE_SENTRY: boolean;
+      };
+      const originalEnv = envWithSentry.NODE_ENV;
+      const originalSentry = envWithSentry.ENABLE_SENTRY;
+      envWithSentry.NODE_ENV = 'production';
+      envWithSentry.ENABLE_SENTRY = true;
 
       // Note: Actual Sentry integration would be mocked
       tracker.trackException(new Error('Sentry error'));
@@ -781,8 +810,8 @@ describe('ErrorTracker', () => {
       expect(logger.error).toHaveBeenCalled();
 
       // Restore
-      (env as any).NODE_ENV = originalEnv;
-      (env as any).ENABLE_SENTRY = originalSentry;
+      envWithSentry.NODE_ENV = originalEnv;
+      envWithSentry.ENABLE_SENTRY = originalSentry;
     });
   });
 
@@ -794,7 +823,9 @@ describe('ErrorTracker', () => {
       });
 
       // Set telemetry endpoint for flushing
-      (env as any).TELEMETRY_ENDPOINT = 'http://test.com';
+      const envWithTelemetry = env as typeof env & { TELEMETRY_ENDPOINT: string };
+      const originalEndpoint = envWithTelemetry.TELEMETRY_ENDPOINT;
+      envWithTelemetry.TELEMETRY_ENDPOINT = 'http://test.com';
 
       tracker.trackException(new Error('Error'));
       tracker.destroy();
@@ -804,7 +835,7 @@ describe('ErrorTracker', () => {
       expect(global.fetch).toHaveBeenCalled();
 
       // Restore
-      (env as any).TELEMETRY_ENDPOINT = '';
+      envWithTelemetry.TELEMETRY_ENDPOINT = originalEndpoint || '';
     });
   });
 

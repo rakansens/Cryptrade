@@ -1,3 +1,6 @@
+// Ensure the actual SharedDataStore is used, not a mock
+jest.unmock('@/lib/mastra/utils/shared-data-store');
+
 import { SharedDataStore, sharedData, StoredData } from '@/lib/mastra/utils/shared-data-store';
 import { logger } from '@/lib/utils/logger';
 import { isDevelopment } from '@/config/env';
@@ -16,7 +19,7 @@ jest.mock('@/config/env', () => ({
   isDevelopment: jest.fn(() => false)
 }));
 
-describe.skip('SharedDataStore', () => { // TODO: Fix singleton state issue between tests
+describe('SharedDataStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();

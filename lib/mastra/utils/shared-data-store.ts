@@ -19,7 +19,7 @@ export interface StoredData<T = unknown> {
 }
 
 export class SharedDataStore {
-  private static instance: SharedDataStore;
+  private static instance: SharedDataStore | null = null;
   private store: Map<string, Map<string, StoredData>> = new Map();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
@@ -265,7 +265,7 @@ export class SharedDataStore {
         instance.cleanupInterval = null;
       }
       instance.store.clear();
-      SharedDataStore.instance = null!;
+      SharedDataStore.instance = null;
     }
   }
 }
