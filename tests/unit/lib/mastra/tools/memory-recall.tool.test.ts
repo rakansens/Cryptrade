@@ -123,13 +123,14 @@ describe('memoryRecallTool', () => {
   });
 
   describe('execute - search operation', () => {
-    it.skip('should perform semantic search successfully', async () => {
+    it('should perform semantic search successfully', async () => {
+      const fixedDate = new Date('2024-01-01T12:00:00.000Z');
       const mockSearchResults = [
         {
           id: 'msg-10',
           role: 'user',
           content: 'What is the price of BTC?',
-          timestamp: new Date(Date.now() - 86400000) // 2024-01-01T12:00:00Z'),
+          timestamp: fixedDate,
           agentId: 'agent-1',
           metadata: { symbols: ['BTC'] },
         },

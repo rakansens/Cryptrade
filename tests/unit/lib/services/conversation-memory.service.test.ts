@@ -5,45 +5,28 @@
  * 
  * For comprehensive testing, integration tests would be more appropriate,
  * or the service could be refactored to support dependency injection.
+ * 
+ * TODO: Consider refactoring the service to use dependency injection pattern
+ * to enable better unit testing.
  */
 
+import { conversationMemoryService, ConversationMemoryService } from '@/lib/services/conversation-memory.service';
+
 describe('ConversationMemoryService', () => {
-  describe.skip('searchMemories', () => {
-    it('should search memories with semantic embedding', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
+  describe('searchMemories', () => {
+    it('should have searchMemories method', () => {
+      // ConversationMemoryService is a singleton
+      expect(conversationMemoryService.searchMemories).toBeDefined();
+      expect(typeof conversationMemoryService.searchMemories).toBe('function');
     });
 
-    it('should filter by sessionId', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
-
-    it('should filter by type (agentId)', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
-
-    it('should filter by symbol', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
-
-    it('should filter by date range', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
-
-    it('should calculate cosine similarity correctly', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
-
-    it('should handle errors gracefully', () => {
-      // Skipped due to singleton mocking issues
-      expect(true).toBe(true);
-    });
+    // Integration tests would go here when the service is refactored
+    // to support dependency injection
   });
+
+  // Helper method tests are skipped because private methods cannot be accessed
+  // on the singleton instance. These would be better tested through integration tests
+  // or by refactoring the service to support dependency injection.
 
   // Basic smoke test to ensure the module can be imported
   it('should export conversationMemoryService', () => {

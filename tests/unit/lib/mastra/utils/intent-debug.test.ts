@@ -15,8 +15,7 @@ describe('Intent Analysis Debug', () => {
     });
   });
 
-  test.skip('analyzeIntent function - debug test', () => {
-    // TODO: This test is skipped and needs investigation
+  test('analyzeIntent function should correctly identify intents', () => {
     const testCases = [
       { query: 'こんにちは！', expectedIntent: 'greeting' },
       { query: 'おはようございます！今日も頑張りましょう', expectedIntent: 'greeting' },
@@ -24,24 +23,18 @@ describe('Intent Analysis Debug', () => {
       { query: '疲れたなあ...', expectedIntent: 'small_talk' },
     ];
 
-    const results: any[] = [];
     testCases.forEach(({ query, expectedIntent }) => {
       const result = analyzeIntent(query);
-      results.push({
-        query,
-        expectedIntent,
-        actualIntent: result.intent,
-        confidence: result.confidence,
-        reasoning: result.reasoning,
-      });
+      
+      // Check that the intent is correctly identified
+      expect(result.intent).toBe(expectedIntent);
+      expect(result.confidence).toBeGreaterThan(0);
+      expect(result.confidence).toBeLessThanOrEqual(1);
+      expect(result.reasoning).toBeTruthy();
     });
-
-    // Force failure to see results
-    throw new Error(`Debug results:\n${JSON.stringify(results, null, 2)}`);
   });
 
-  test.skip('regex pattern test - debug test', () => {
-    // TODO: This test is skipped and needs investigation
+  test('regex patterns should match expected greetings', () => {
     const greetingPatterns = [
       /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?\.?$/i,
       /^(よろしく)\.?$/i,
@@ -49,28 +42,34 @@ describe('Intent Analysis Debug', () => {
       /^(こんにちは|おはよう|おはようございます|こんばんは|はじめまして|hello|hi|hey|yo|やあ|どうも)[!！]?[、。\s]/i,
     ];
 
-    const testStrings = [
+    const shouldMatch = [
       'こんにちは！',
       'こんにちは',
-      'おはようございます！今日も頑張りましょう',
       'hello',
       'hi',
+      'よろしく',
+      'hi there',
+      'おはようございます！',
     ];
 
-    testStrings.forEach(str => {
+    const shouldNotMatch = [
+      'さようなら',
+      'ビットコインの価格は？',
+      'thank you',
+    ];
+
+    // Test patterns that should match
+    shouldMatch.forEach(str => {
       const strLower = str.toLowerCase();
       const matchesAny = greetingPatterns.some(pattern => pattern.test(str) || pattern.test(strLower));
-    // console.log(`\n"${str}" matches greeting: ${matchesAny}`); // Removed by test quality fix
-      greetingPatterns.forEach((pattern, idx) => {
-        const matchOriginal = pattern.test(str);
-        const matchLower = pattern.test(strLower);
-        if (matchOriginal || matchLower) {
-    // console.log(`  ✓ Pattern ${idx}: original=${matchOriginal}, lower=${matchLower}`); // Removed by test quality fix
-        }
-      });
+      expect(matchesAny).toBe(true);
     });
-    
-    // Force output
-    throw new Error('Forced output for debugging');
+
+    // Test patterns that should not match
+    shouldNotMatch.forEach(str => {
+      const strLower = str.toLowerCase();
+      const matchesAny = greetingPatterns.some(pattern => pattern.test(str) || pattern.test(strLower));
+      expect(matchesAny).toBe(false);
+    });
   });
 });
