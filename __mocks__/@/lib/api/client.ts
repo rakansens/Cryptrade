@@ -8,11 +8,12 @@ export const mockPut = jest.fn();
 export const mockDelete = jest.fn();
 
 // Mock constructor
-const mockApiClient = jest.fn().mockImplementation(() => ({
+const mockApiClient = jest.fn().mockImplementation((config) => ({
   get: mockGet,
   post: mockPost,
   put: mockPut,
   delete: mockDelete,
+  config: config,
 }));
 
 export const ApiClient = mockApiClient;
@@ -35,3 +36,26 @@ export type ApiClientConfig = {
     window: number;
   };
 };
+
+// Export default client creation functions (for compatibility)
+export const createBinanceClient = jest.fn(() => new ApiClient({
+  baseUrl: '/api/binance',
+  timeout: 30000,
+  retries: 3,
+  retryDelay: 1000,
+  rateLimit: {
+    requests: 10,
+    window: 1000,
+  },
+}));
+
+export const createExternalBinanceClient = jest.fn(() => new ApiClient({
+  baseUrl: 'https://api.binance.com/api/v3',
+  timeout: 5000,
+  retries: 2,
+  retryDelay: 500,
+  rateLimit: {
+    requests: 5,
+    window: 1000,
+  },
+}));
