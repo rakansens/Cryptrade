@@ -50,9 +50,14 @@ describe('Binance Ticker API Route', () => {
 
       const request = new NextRequest('http://localhost:3000/api/binance/ticker?symbol=BTCUSDT');
       const response = await GET(request);
+      const data = await response.json();
+      
+      // Log error details if status is not 200
+      if (response.status !== 200) {
+        console.error('Response error:', data);
+      }
 
       expect(response.status).toBe(200);
-      const data = await response.json();
       // Response is wrapped in 'data' property
       expect(data.data).toEqual(mockTickerData);
       expect(mockFetch).toHaveBeenCalledWith(
