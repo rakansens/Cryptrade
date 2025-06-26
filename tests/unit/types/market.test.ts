@@ -95,12 +95,28 @@ describe('validateBinanceKlines - Dual Mode', () => {
       [1640995260000, "47200", "47300", "47000", "47100", "987.65", 1640995319999, "46000000", 95, "493.83", "23000000", "0"]
     ];
     
-    // Test should handle fallback processing gracefully without throwing
-    expect(() => {
-      const result = prodValidateBinanceKlines(mixedData);
-      // Should either return filtered results or gracefully handle errors
-      expect(Array.isArray(result)).toBe(true);
-    }).not.toThrow();
+    // In production mode, it should filter out invalid entries and return valid ones
+    const result = prodValidateBinanceKlines(mixedData);
+    
+    // Should return an array with only valid entries (2 out of 4)
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      time: 1640995200, // Convert from milliseconds to seconds
+      open: 47000,
+      high: 47500,
+      low: 46800,
+      close: 47200,
+      volume: 1234.56
+    });
+    expect(result[1]).toEqual({
+      time: 1640995260,
+      open: 47200,
+      high: 47300,
+      low: 47000,
+      close: 47100,
+      volume: 987.65
+    });
     
     // Restore original environment and console
     Object.defineProperty(process.env, 'NODE_ENV', {
