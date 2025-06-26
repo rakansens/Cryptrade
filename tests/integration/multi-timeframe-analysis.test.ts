@@ -14,49 +14,65 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
-// Mock the API client to return test data
-jest.mock('@/lib/api/client', () => {
-  const generateMockKlines = () => {
-    const klines: ProcessedKline[] = [];
-    const startTime = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const interval = 60 * 60 * 1000;
-    let currentPrice = 50000;
-    let time = startTime;
-    
-    for (let i = 0; i < 500; i++) {
-      const trend = Math.sin(i * 0.02) * 0.001;
-      const noise = (Math.random() - 0.5) * 0.01;
-      const priceChange = trend + noise;
-      currentPrice *= (1 + priceChange);
+// Import MSW for proper API mocking
+import { http, HttpResponse, server } from '../setup/msw-setup';
+
+// Set up MSW handlers for the test
+beforeAll(() => {
+  // Override the default handlers for this test suite
+  server.use(
+    http.get('http://localhost:3000/api/binance/klines', ({ request }) => {
+      const url = new URL(request.url);
+      const symbol = url.searchParams.get('symbol');
+      const interval = url.searchParams.get('interval');
+      const limit = parseInt(url.searchParams.get('limit') || '500', 10);
       
-      const volatility = currentPrice * 0.005;
-      const open = currentPrice;
-      const close = currentPrice * (1 + priceChange);
-      const high = Math.max(open, close) + Math.random() * volatility;
-      const low = Math.min(open, close) - Math.random() * volatility;
-      const volume = 100 + Math.random() * 1000;
+      // Generate mock klines data
+      const klines: ProcessedKline[] = [];
+      const startTime = Date.now() - limit * 60 * 60 * 1000;
+      let currentPrice = 50000;
       
-      klines.push({ time, open, high, low, close, volume });
-      time += interval;
-      currentPrice = close;
-    }
-    
-    return klines;
-  };
-  
-  return {
-    ApiClient: jest.fn().mockImplementation(() => ({
-      get: jest.fn().mockImplementation((url: unknown, _params?: unknown) => {
-        if (typeof url === 'string' && url.includes('/klines')) {
-          return Promise.resolve({ data: generateMockKlines(), status: 200 });
+      for (let i = 0; i < limit; i++) {
+        const time = startTime + i * 60 * 60 * 1000;
+        const trend = Math.sin(i * 0.02) * 0.001;
+        const noise = (Math.random() - 0.5) * 0.01;
+        const priceChange = trend + noise;
+        currentPrice *= (1 + priceChange);
+        
+        const volatility = currentPrice * 0.005;
+        const open = currentPrice;
+        const close = currentPrice * (1 + priceChange);
+        const high = Math.max(open, close) + Math.random() * volatility;
+        const low = Math.min(open, close) - Math.random() * volatility;
+        const volume = 100 + Math.random() * 1000;
+        
+        klines.push({ time, open, high, low, close, volume });
+        currentPrice = close;
+      }
+      
+      // Add support/resistance levels to the generated data
+      const supportLevel = 49000;
+      const resistanceLevel = 51000;
+      
+      klines.forEach((kline) => {
+        if (kline.low < supportLevel && Math.random() > 0.3) {
+          kline.low = supportLevel;
+          kline.close = Math.max(kline.close, supportLevel + 100);
         }
-        return Promise.resolve({ data: [], status: 200 });
-      }),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn()
-    }))
-  };
+        
+        if (kline.high > resistanceLevel && Math.random() > 0.3) {
+          kline.high = resistanceLevel;
+          kline.close = Math.min(kline.close, resistanceLevel - 100);
+        }
+        
+        // Ensure OHLC consistency
+        kline.open = Math.min(Math.max(kline.open, kline.low), kline.high);
+        kline.close = Math.min(Math.max(kline.close, kline.low), kline.high);
+      });
+      
+      return HttpResponse.json(klines);
+    })
+  );
 });
 
 describe('Multi-Timeframe Analysis', () => {

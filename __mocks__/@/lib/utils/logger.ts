@@ -1,12 +1,9 @@
+// Mock for logger
 export const logger = {
-  error: jest.fn(),
-  warn: jest.fn(),
   info: jest.fn(),
   debug: jest.fn(),
-  time: jest.fn(),
-  timeEnd: jest.fn(),
-  willLog: jest.fn(() => true),
-  setLevel: jest.fn(),
-  getLevel: jest.fn(() => 'error'),
-  clearThrottle: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  trace: jest.fn(),
+  fatal: jest.fn()
 };
