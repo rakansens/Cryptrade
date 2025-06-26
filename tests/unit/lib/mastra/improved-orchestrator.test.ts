@@ -286,12 +286,17 @@ describe('Improved Orchestrator Agent', () => {
         throw new Error('Analysis failed');
       });
 
-      const result = await executeImprovedOrchestrator('test query', 'test-session');
+      const result = await executeImprovedOrchestrator('トレンドラインを引いて', 'test-session');
       
-      expect(result.success).toBe(false);
-      expect(result.analysis.intent).toBe('conversational');
-      expect(result.analysis.confidence).toBe(0.5);
-      expect(result.analysis.reasoning).toContain('フォールバック');
+      // TDD Phase 2 Refactor: Now properly handles errors and returns success=true
+      // when fallback mechanism successfully processes the request
+      expect(result.success).toBe(true);
+      // Fallback uses local analyzeUserIntent, so it correctly identifies UI control intent
+      expect(result.analysis.intent).toBe('ui_control');
+      expect(result.analysis.confidence).toBeGreaterThanOrEqual(0.6);
+      // Verify that execution result is provided (processed by appropriate agent)
+      expect(result.executionResult).toBeDefined();
+      expect(result.executionResult?.metadata?.processedBy).toBe('chart-control-agent');
     });
   });
 

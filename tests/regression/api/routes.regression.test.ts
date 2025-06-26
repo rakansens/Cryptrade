@@ -144,8 +144,8 @@ describe('API Routes Regression Tests', () => {
       expect(response.status).toBe(200);
       data.results.forEach((result) => {
         const date = new Date(result.timestamp);
-        expect(date.getTime()).toBeGreaterThanOrEqual(new Date(Date.now() - 86400000) // 2025-06-01').getTime());
-        expect(date.getTime()).toBeLessThanOrEqual(new Date(Date.now() - 86400000) // 2025-06-17').getTime());
+        expect(date.getTime()).toBeGreaterThanOrEqual(new Date('2025-06-01').getTime());
+        expect(date.getTime()).toBeLessThanOrEqual(new Date('2025-06-17').getTime());
       });
     });
 
