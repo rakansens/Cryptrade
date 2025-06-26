@@ -112,7 +112,9 @@ jest.mock('@mastra/core', () => ({
       metadata: {}
     })
   })),
-  Message: jest.fn()
+  Message: jest.fn(),
+  createTool: jest.fn(),
+  createAgent: jest.fn()
 }));
 
 // Mock the tools
@@ -131,7 +133,7 @@ describe('OrchestratorAgent Extended Tests', () => {
     mockMemoryStore = require('@/lib/store/enhanced-conversation-memory.store').useEnhancedConversationMemory.getState();
     
     // Reset mockMemoryStore functions to their default implementations
-    mockMemoryStore.currentSessionId = 'test-session-id';
+    // Note: currentSessionId is a getter-only property, so we don't set it directly
     mockMemoryStore.createSession = jest.fn().mockResolvedValue('test-session-id');
     mockMemoryStore.addMessage = jest.fn().mockResolvedValue(undefined);
     mockMemoryStore.getProcessedMessages = jest.fn(() => []);

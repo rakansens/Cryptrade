@@ -864,7 +864,7 @@ ${intent === 'ui_control' ? `
     return {
       response: responseText,
       metadata: {
-        processedBy: 'orchestrator-fallback',
+        processedBy: 'fallback',
         intent,
         extractedSymbol,
         fallbackReason: 'agent-execution-failed',
@@ -887,7 +887,7 @@ ${intent === 'ui_control' ? `
     return {
       response: staticFallbacks[intent] || staticFallbacks['conversational'],
       metadata: {
-        processedBy: 'orchestrator-static-fallback',
+        processedBy: 'fallback',
         intent,
         extractedSymbol,
         fallbackReason: 'fallback-generation-failed',

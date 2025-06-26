@@ -42,17 +42,27 @@ const mockSupportResistanceLevels = [
     price: 45000,
     strength: 0.85,
     touchCount: 5,
-    timeframeSupport: ['1h', '4h', '1d'],
+    timeframeSupport: ['15m', '1h', '4h', '1d'],
     confidenceScore: 0.9,
     firstSeen: Date.now() - 86400000,
     lastSeen: Date.now() - 3600000,
     type: 'support' as const
   },
   {
+    price: 49500,
+    strength: 0.8,
+    touchCount: 6,
+    timeframeSupport: ['15m', '1h', '4h', '1d'],
+    confidenceScore: 0.88,
+    firstSeen: Date.now() - 86400000,
+    lastSeen: Date.now() - 1800000,
+    type: 'support' as const
+  },
+  {
     price: 48000,
     strength: 0.75,
     touchCount: 4,
-    timeframeSupport: ['1h', '4h'],
+    timeframeSupport: ['15m', '1h', '4h'],
     confidenceScore: 0.85,
     firstSeen: Date.now() - 86400000,
     lastSeen: Date.now() - 7200000,
@@ -68,9 +78,21 @@ const mockConfluenceZones = [
       center: 45000
     },
     strength: 0.85,
-    timeframeCount: 3,
-    supportingTimeframes: ['1h', '4h', '1d'],
+    timeframeCount: 4,
+    supportingTimeframes: ['15m', '1h', '4h', '1d'],
     levels: [mockSupportResistanceLevels[0]],
+    type: 'support' as const
+  },
+  {
+    priceRange: {
+      min: 49450,
+      max: 49550,
+      center: 49500
+    },
+    strength: 0.8,
+    timeframeCount: 4,
+    supportingTimeframes: ['15m', '1h', '4h', '1d'],
+    levels: [mockSupportResistanceLevels[2]],
     type: 'support' as const
   }
 ];
@@ -81,9 +103,19 @@ export class EnhancedMarketDataService {
 
   fetchMultiTimeframeData = jest.fn().mockResolvedValue(mockMultiTimeframeData);
   
-  findMultiTimeframeSupportResistance = jest.fn().mockReturnValue(mockSupportResistanceLevels);
+  findMultiTimeframeSupportResistance = jest.fn().mockImplementation((options = {}) => {
+    const { minTimeframes = 1 } = options;
+    return mockSupportResistanceLevels.filter(level =>
+      level.timeframeSupport.length >= minTimeframes
+    );
+  });
   
-  findConfluenceZones = jest.fn().mockReturnValue(mockConfluenceZones);
+  findConfluenceZones = jest.fn().mockImplementation((options = {}) => {
+    const { minTimeframes = 2 } = options;
+    return mockConfluenceZones.filter(zone =>
+      zone.timeframeCount >= minTimeframes
+    );
+  });
   
   calculateCrossTimeframeValidation = jest.fn().mockReturnValue({
     validationScore: 0.75,
