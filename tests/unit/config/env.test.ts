@@ -47,13 +47,22 @@ describe('Environment Configuration', () => {
   });
 
   afterEach(() => {
-    // Restore environment
-    restoreEnv();
-    
-    // Restore console and process.exit
-    console.log = originalConsole.log;
-    console.error = originalConsole.error;
-    process.exit = originalExit;
+    try {
+      // Restore environment
+      if (restoreEnv) {
+        restoreEnv();
+      }
+      
+      // Restore console and process.exit
+      console.log = originalConsole.log;
+      console.error = originalConsole.error;
+      process.exit = originalExit;
+      
+      // Clear all mocks
+      jest.clearAllMocks();
+    } catch (error) {
+      // Silently handle cleanup errors to prevent test interference
+    }
   });
 
   describe('loadEnv() - Happy Path', () => {

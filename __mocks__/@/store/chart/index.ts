@@ -1,10 +1,10 @@
 /**
- * Updated: 2024-12-27 - テスト用の簡単なモック実装に修正
- * Changes: Simplified mock implementation for test compatibility
+ * Updated: 2024-12-27 - Chart Storeテストエラー修正
+ * Changes: Fixed mock state management and test compatibility
  */
 
-// Simple mock state that works with test expectations
-let mockState: any = {
+// Create initial state factory
+const createInitialState = () => ({
   symbol: 'BTCUSDT',
   timeframe: '1h',
   isChartReady: false,
@@ -18,7 +18,10 @@ let mockState: any = {
   undoStack: [] as any[],
   redoStack: [] as any[],
   patterns: new Map()
-};
+});
+
+// Simple mock state that works with test expectations
+let mockState: any = createInitialState();
 
 const mockActions = {
   setSymbol: jest.fn((symbol) => { mockState.symbol = symbol; }),
@@ -72,32 +75,31 @@ const mockActions = {
   getPattern: jest.fn((id) => mockState.patterns.get(id)),
   clearPatterns: jest.fn(() => { mockState.patterns.clear(); }),
   reset: jest.fn(() => {
-    mockState = {
-      symbol: 'BTCUSDT',
-      timeframe: '1h',
-      isChartReady: false,
-      error: null,
-      indicators: { ma: false, rsi: false, macd: false, boll: false },
-      settings: { ma: { ma1: 5, ma2: 10, ma3: 20 }, rsi: { period: 14 }, macd: {}, boll: {} },
-      drawingMode: null,
-      drawings: [],
-      selectedDrawingId: null,
-      isDrawing: false,
-      undoStack: [],
-      redoStack: [],
-      patterns: new Map()
-    };
+    const newState = createInitialState();
+    Object.assign(mockState, newState);
   })
 };
 
-// Combined state and actions
+// Combined state and actions - ensure fresh state references
 const createStore = () => ({ ...mockState, ...mockActions });
 
-export const useChartStore = jest.fn((selector) => selector ? selector(createStore()) : createStore());
-export const useChartBaseStore = jest.fn(() => ({ ...mockState, ...mockActions }));
-export const useIndicatorStore = jest.fn(() => ({ ...mockState, ...mockActions }));
-export const useDrawingStore = jest.fn(() => ({ ...mockState, ...mockActions }));
-export const usePatternStore = jest.fn(() => ({ ...mockState, ...mockActions }));
+// Global reset for each test
+global.beforeEach = global.beforeEach || jest.fn();
+global.beforeEach(() => {
+  const newState = createInitialState();
+  Object.assign(mockState, newState);
+  jest.clearAllMocks();
+});
+
+export const useChartStore = jest.fn((selector) => {
+  const store = createStore();
+  return selector ? selector(store) : store;
+});
+
+export const useChartBaseStore = jest.fn(() => createStore());
+export const useIndicatorStore = jest.fn(() => createStore());
+export const useDrawingStore = jest.fn(() => createStore());
+export const usePatternStore = jest.fn(() => createStore());
 export const useChartSymbol = jest.fn(() => mockState.symbol);
 export const useChartTimeframe = jest.fn(() => mockState.timeframe);
 export const useChartIndicators = jest.fn(() => mockState.indicators);

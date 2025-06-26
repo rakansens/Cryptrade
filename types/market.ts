@@ -422,3 +422,65 @@ export function validateBinanceKlineMessage(data: unknown): BinanceKlineMessage 
     return null;
   }
 }
+
+// =============================================================================
+// ENHANCED TYPE SAFETY FUNCTIONS - t-wada TDD implementation
+// =============================================================================
+
+export function isProcessedKline(data: unknown): data is ProcessedKline {
+  return ProcessedKlineSchema.safeParse(data).success;
+}
+
+export function isBinanceTicker24hr(data: unknown): data is BinanceTicker24hr {
+  return BinanceTicker24hrSchema.safeParse(data).success;
+}
+
+export function safeParseProcessedKline(data: unknown): ProcessedKline | null {
+  const result = ProcessedKlineSchema.safeParse(data);
+  return result.success ? result.data : null;
+}
+
+export function validateMarketDataBatch(data: unknown[]): { valid: ProcessedKline[]; invalid: unknown[] } {
+  const valid: ProcessedKline[] = [];
+  const invalid: unknown[] = [];
+  
+  data.forEach(item => {
+    if (isProcessedKline(item)) {
+      valid.push(item);
+    } else {
+      invalid.push(item);
+    }
+  });
+  
+  return { valid, invalid };
+}
+
+export function validateProcessedKlineWithDetails(data: unknown): {
+  success: boolean;
+  data?: ProcessedKline;
+  errors?: string[]
+} {
+  const result = ProcessedKlineSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  
+  const errors = result.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+  return { success: false, errors };
+}
+
+export function fastValidateKlines(data: unknown[]): boolean {
+  // Fast validation - just check structure without full Zod parsing
+  if (!Array.isArray(data)) return false;
+  
+  return data.every(item => {
+    return item &&
+           typeof item === 'object' &&
+           'time' in item &&
+           'open' in item &&
+           'high' in item &&
+           'low' in item &&
+           'close' in item &&
+           'volume' in item;
+  });
+}
