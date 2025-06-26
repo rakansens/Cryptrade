@@ -2,6 +2,7 @@ import { GET, PATCH, DELETE } from '@/app/api/chat/sessions/[sessionId]/route';
 import { NextRequest } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
+import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
 jest.mock('@/lib/services/database/chat.service', () => ({
@@ -19,6 +20,12 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn()
+}));
+
+const mockedGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+
 describe('/api/chat/sessions/[sessionId]', () => {
   const sessionId = 'test-session-123';
   const mockRouteContext = {
@@ -27,6 +34,11 @@ describe('/api/chat/sessions/[sessionId]', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // By default, mock as authenticated for all tests
+    mockedGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', email: 'test@example.com' }
+    } as any);
   });
 
   describe('GET', () => {
@@ -176,6 +188,50 @@ describe('/api/chat/sessions/[sessionId]', () => {
       expect(data).toEqual({ error: 'Failed to get session' });
       expect(logger.error).toHaveBeenCalledWith('[API] Failed to get session', { error: mockError });
     });
+
+    describe('Authentication', () => {
+      it('should reject unauthenticated requests', async () => {
+        mockedGetServerSession.mockResolvedValue(null);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123');
+        const response = await GET(request, mockRouteContext);
+        const data = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(data).toEqual({ error: 'Unauthorized - Please login' });
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.getSession).not.toHaveBeenCalled();
+      });
+
+      it('should allow authenticated requests', async () => {
+        const mockSession = {
+          id: sessionId,
+          summary: 'Test Session',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        (ChatDatabaseService.getSession as jest.Mock).mockResolvedValue(mockSession);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123');
+        const response = await GET(request, mockRouteContext);
+
+        expect(response.status).toBe(200);
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.getSession).toHaveBeenCalled();
+      });
+
+      it('should handle session validation errors', async () => {
+        mockedGetServerSession.mockRejectedValue(new Error('Session validation failed'));
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123');
+        const response = await GET(request, mockRouteContext);
+        const data = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(data).toEqual({ error: 'Failed to get session' });
+      });
+    });
   });
 
   describe('PATCH', () => {
@@ -238,6 +294,41 @@ describe('/api/chat/sessions/[sessionId]', () => {
       expect(data).toEqual({ error: 'Failed to update session' });
       expect(logger.error).toHaveBeenCalled();
     });
+
+    describe('Authentication', () => {
+      it('should reject unauthenticated requests', async () => {
+        mockedGetServerSession.mockResolvedValue(null);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123', {
+          method: 'PATCH',
+          body: JSON.stringify({ title: 'New Title' }),
+        });
+
+        const response = await PATCH(request, mockRouteContext);
+        const data = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(data).toEqual({ error: 'Unauthorized - Please login' });
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.updateSessionTitle).not.toHaveBeenCalled();
+      });
+
+      it('should allow authenticated requests', async () => {
+        // Mock successful update
+        (ChatDatabaseService.updateSessionTitle as jest.Mock).mockResolvedValue(undefined);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123', {
+          method: 'PATCH',
+          body: JSON.stringify({ title: 'Authenticated Update' }),
+        });
+
+        const response = await PATCH(request, mockRouteContext);
+
+        expect(response.status).toBe(200);
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.updateSessionTitle).toHaveBeenCalledWith(sessionId, 'Authenticated Update');
+      });
+    });
   });
 
   describe('DELETE', () => {
@@ -286,6 +377,39 @@ describe('/api/chat/sessions/[sessionId]', () => {
       expect(response.status).toBe(200);
       expect(data).toEqual({ success: true });
       expect(ChatDatabaseService.deleteSession).toHaveBeenCalledWith('non-existent-session');
+    });
+
+    describe('Authentication', () => {
+      it('should reject unauthenticated requests', async () => {
+        mockedGetServerSession.mockResolvedValue(null);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123', {
+          method: 'DELETE',
+        });
+
+        const response = await DELETE(request, mockRouteContext);
+        const data = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(data).toEqual({ error: 'Unauthorized - Please login' });
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.deleteSession).not.toHaveBeenCalled();
+      });
+
+      it('should allow authenticated requests', async () => {
+        // Mock successful deletion
+        (ChatDatabaseService.deleteSession as jest.Mock).mockResolvedValue(undefined);
+
+        const request = new NextRequest('http://localhost:3000/api/chat/sessions/test-session-123', {
+          method: 'DELETE',
+        });
+
+        const response = await DELETE(request, mockRouteContext);
+
+        expect(response.status).toBe(200);
+        expect(mockedGetServerSession).toHaveBeenCalled();
+        expect(ChatDatabaseService.deleteSession).toHaveBeenCalledWith(sessionId);
+      });
     });
   });
 });

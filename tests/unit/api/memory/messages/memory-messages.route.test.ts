@@ -37,20 +37,24 @@ describe('POST /api/memory/messages', () => {
   });
 
   it('should create a message successfully', async () => {
+    const messageId = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const sessionId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const timestampOffset = Math.floor(Math.random() * 86400000); // Random time within last day
+    
     const mockMessage = {
-      id: 'msg-123',
-      sessionId: 'session-123',
+      id: messageId,
+      sessionId: sessionId,
       role: 'user',
       content: 'Hello, world!',
       agentId: null,
       metadata: {},
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
+      timestamp: new Date(Date.now() - timestampOffset),
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
 
     const requestBody = {
-      sessionId: 'session-123',
+      sessionId: sessionId,
       role: 'user',
       content: 'Hello, world!',
     };
@@ -69,8 +73,8 @@ describe('POST /api/memory/messages', () => {
     expect(response.status).toBe(200);
     expect(data).toMatchObject({
       message: {
-        id: 'msg-123',
-        sessionId: 'session-123',
+        id: messageId,
+        sessionId: sessionId,
         role: 'user',
         content: 'Hello, world!',
         timestamp: expect.any(String),
@@ -79,7 +83,7 @@ describe('POST /api/memory/messages', () => {
 
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
-        sessionId: 'session-123',
+        sessionId: sessionId,
         role: 'user',
         content: 'Hello, world!',
         agentId: null,
@@ -90,31 +94,37 @@ describe('POST /api/memory/messages', () => {
     expect(logger.info).toHaveBeenCalledWith(
       '[API] Conversation message created',
       {
-        messageId: 'msg-123',
-        sessionId: 'session-123',
+        messageId: messageId,
+        sessionId: sessionId,
       }
     );
   });
 
   it('should create a message with optional fields', async () => {
+    const messageId = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const sessionId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const agentId = `agent-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const confidence = 0.8 + Math.random() * 0.2; // 0.8 to 1.0
+    const timestampOffset = Math.floor(Math.random() * 172800000); // Random time within last 2 days
+    
     const mockMessage = {
-      id: 'msg-456',
-      sessionId: 'session-456',
+      id: messageId,
+      sessionId: sessionId,
       role: 'assistant',
       content: 'Here is my response',
-      agentId: 'agent-123',
-      metadata: { context: 'trading', confidence: 0.95 },
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
+      agentId: agentId,
+      metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
+      timestamp: new Date(Date.now() - timestampOffset),
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
 
     const requestBody = {
-      sessionId: 'session-456',
+      sessionId: sessionId,
       role: 'assistant',
       content: 'Here is my response',
-      agentId: 'agent-123',
-      metadata: { context: 'trading', confidence: 0.95 },
+      agentId: agentId,
+      metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
     };
 
     const request = new NextRequest('http://localhost/api/memory/messages', {
@@ -131,22 +141,22 @@ describe('POST /api/memory/messages', () => {
     expect(response.status).toBe(200);
     expect(data).toMatchObject({
       message: {
-        id: 'msg-456',
-        sessionId: 'session-456',
+        id: messageId,
+        sessionId: sessionId,
         role: 'assistant',
         content: 'Here is my response',
-        agentId: 'agent-123',
-        metadata: { context: 'trading', confidence: 0.95 },
+        agentId: agentId,
+        metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
       },
     });
 
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
-        sessionId: 'session-456',
+        sessionId: sessionId,
         role: 'assistant',
         content: 'Here is my response',
-        agentId: 'agent-123',
-        metadata: { context: 'trading', confidence: 0.95 },
+        agentId: agentId,
+        metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
       },
     });
   });
@@ -298,20 +308,24 @@ describe('POST /api/memory/messages', () => {
   });
 
   it('should handle system role messages', async () => {
+    const messageId = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const sessionId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const timestampOffset = Math.floor(Math.random() * 259200000); // Random time within last 3 days
+    
     const mockMessage = {
-      id: 'msg-789',
-      sessionId: 'session-789',
+      id: messageId,
+      sessionId: sessionId,
       role: 'system',
       content: 'System notification',
       agentId: null,
       metadata: { type: 'notification' },
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
+      timestamp: new Date(Date.now() - timestampOffset),
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
 
     const requestBody = {
-      sessionId: 'session-789',
+      sessionId: sessionId,
       role: 'system',
       content: 'System notification',
       metadata: { type: 'notification' },
@@ -333,34 +347,44 @@ describe('POST /api/memory/messages', () => {
   });
 
   it('should handle large metadata objects', async () => {
+    const rsiValue = Math.floor(30 + Math.random() * 70); // RSI between 30 and 100
+    const macdValue = -2 + Math.random() * 4; // MACD between -2 and 2
+    const maValue = Math.floor(40000 + Math.random() * 20000); // MA between 40k and 60k
+    const confidenceValue = 0.7 + Math.random() * 0.3; // confidence between 0.7 and 1.0
+    
     const largeMetadata = {
       context: 'trading',
       analysis: {
         indicators: ['RSI', 'MACD', 'MA'],
-        values: { RSI: 65, MACD: 0.5, MA: 45000 },
+        values: { RSI: rsiValue, MACD: parseFloat(macdValue.toFixed(2)), MA: maValue },
       },
       patterns: ['ascending triangle', 'support level'],
-      confidence: 0.85,
+      confidence: parseFloat(confidenceValue.toFixed(2)),
       timestamp: new Date().toISOString(),
     };
 
+    const messageId = `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const sessionId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const agentId = `analyzer-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const timestampOffset = Math.floor(Math.random() * 604800000); // Random time within last week
+    
     const mockMessage = {
-      id: 'msg-large',
-      sessionId: 'session-large',
+      id: messageId,
+      sessionId: sessionId,
       role: 'assistant',
       content: 'Analysis complete',
-      agentId: 'analyzer',
+      agentId: agentId,
       metadata: largeMetadata,
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
+      timestamp: new Date(Date.now() - timestampOffset),
     };
 
     mockCreate.mockResolvedValueOnce(mockMessage);
 
     const requestBody = {
-      sessionId: 'session-large',
+      sessionId: sessionId,
       role: 'assistant',
       content: 'Analysis complete',
-      agentId: 'analyzer',
+      agentId: agentId,
       metadata: largeMetadata,
     };
 
@@ -380,15 +404,18 @@ describe('POST /api/memory/messages', () => {
   });
 
   it('should handle concurrent message creation', async () => {
-    const createMockMessage = (index: number) => ({
-      id: `msg-concurrent-${index}`,
-      sessionId: `session-concurrent-${index}`,
-      role: 'user',
-      content: `Message ${index}`,
-      agentId: null,
-      metadata: {},
-      timestamp: new Date(Date.now() - 86400000), // 1 day ago
-    });
+    const createMockMessage = (index: number) => {
+      const timestampOffset = Math.floor(Math.random() * 172800000); // Random time within last 2 days
+      return {
+        id: `msg-concurrent-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
+        sessionId: `session-concurrent-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
+        role: 'user',
+        content: `Message ${index}`,
+        agentId: null,
+        metadata: {},
+        timestamp: new Date(Date.now() - timestampOffset),
+      };
+    };
 
     const requests = Array(5).fill(null).map((_, index) => {
       mockCreate.mockResolvedValueOnce(createMockMessage(index));

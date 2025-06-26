@@ -26,7 +26,7 @@ describe('AlertForm', () => {
   it('should render alert form with input fields', () => {
     render(<AlertForm userId="user-123" />);
     
-    expect(screen.getByPlaceholderText('Symbol')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Price above')).toBeInTheDocument();
     expect(screen.getByText('Create Alert')).toBeInTheDocument();
   });
@@ -35,7 +35,7 @@ describe('AlertForm', () => {
     const user = userEvent.setup();
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     await user.type(symbolInput, 'BTCUSDT');
     
     expect(symbolInput).toHaveValue('BTCUSDT');
@@ -48,7 +48,7 @@ describe('AlertForm', () => {
     const priceInput = screen.getByPlaceholderText('Price above');
     await user.type(priceInput, '50000');
     
-    expect(priceInput).toHaveValue('50000');
+    expect(priceInput).toHaveValue(50000);
   });
 
   it('should create alert with valid inputs', async () => {
@@ -57,7 +57,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -77,7 +77,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol') as HTMLInputElement;
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)') as HTMLInputElement;
     const priceInput = screen.getByPlaceholderText('Price above') as HTMLInputElement;
     const createButton = screen.getByText('Create Alert');
     
@@ -98,7 +98,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -120,44 +120,47 @@ describe('AlertForm', () => {
     const createButton = screen.getByText('Create Alert');
     
     await user.type(priceInput, '1000');
-    fireEvent.click(createButton);
     
-    await waitFor(() => {
-      expect(mockCreateAlert).toHaveBeenCalledWith('', { priceAbove: 1000 });
-    });
+    // Button should be disabled when symbol is empty
+    expect(createButton).toBeDisabled();
+    
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 
   it('should handle empty price input', async () => {
     const user = userEvent.setup();
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const createButton = screen.getByText('Create Alert');
     
     await user.type(symbolInput, 'ETHUSDT');
-    fireEvent.click(createButton);
     
-    await waitFor(() => {
-      expect(mockCreateAlert).toHaveBeenCalledWith('ETHUSDT', { priceAbove: NaN });
-    });
+    // Button should be disabled when price is empty
+    expect(createButton).toBeDisabled();
+    
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 
   it('should handle invalid price input', async () => {
     const user = userEvent.setup();
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
     await user.type(symbolInput, 'BTCUSDT');
     await user.type(priceInput, 'invalid');
     
-    fireEvent.click(createButton);
+    // Number input with invalid value makes the input empty and button disabled
+    expect(priceInput).toHaveValue(null);
+    expect(createButton).toBeDisabled();
     
-    await waitFor(() => {
-      expect(mockCreateAlert).toHaveBeenCalledWith('BTCUSDT', { priceAbove: NaN });
-    });
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 
   it('should handle createAlert error', async () => {
@@ -166,7 +169,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -181,7 +184,7 @@ describe('AlertForm', () => {
     
     // Form should not be cleared on error
     expect(symbolInput).toHaveValue('BTCUSDT');
-    expect(priceInput).toHaveValue('50000');
+    expect(priceInput).toHaveValue(50000);
   });
 
   it('should pass userId to useAlerts hook', () => {
@@ -196,7 +199,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -212,7 +215,7 @@ describe('AlertForm', () => {
     // Wait for form to clear
     await waitFor(() => {
       expect(symbolInput).toHaveValue('');
-      expect(priceInput).toHaveValue('');
+      expect(priceInput).toHaveValue(null);
     });
     
     // Second alert
@@ -229,11 +232,10 @@ describe('AlertForm', () => {
 
   it('should handle spaces in symbol input', async () => {
     const user = userEvent.setup();
-    mockCreateAlert.mockResolvedValueOnce({ success: true });
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -242,10 +244,13 @@ describe('AlertForm', () => {
     
     fireEvent.click(createButton);
     
+    // Should show validation error for symbol with spaces
     await waitFor(() => {
-      // Note: The current implementation doesn't trim spaces
-      expect(mockCreateAlert).toHaveBeenCalledWith('  BTCUSDT  ', { priceAbove: 50000 });
+      expect(screen.getByText('Symbol must be at most 10 characters')).toBeInTheDocument();
     });
+    
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 
   it('should handle very large price values', async () => {
@@ -254,7 +259,7 @@ describe('AlertForm', () => {
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -263,18 +268,21 @@ describe('AlertForm', () => {
     
     fireEvent.click(createButton);
     
+    // Should show validation error message for price too large
     await waitFor(() => {
-      expect(mockCreateAlert).toHaveBeenCalledWith('BTCUSDT', { priceAbove: 999999999.99 });
+      expect(screen.getByText('Price must be less than 1,000,000')).toBeInTheDocument();
     });
+    
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 
   it('should handle negative price values', async () => {
     const user = userEvent.setup();
-    mockCreateAlert.mockResolvedValueOnce({ success: true });
     
     render(<AlertForm userId="user-123" />);
     
-    const symbolInput = screen.getByPlaceholderText('Symbol');
+    const symbolInput = screen.getByPlaceholderText('Symbol (e.g., BTCUSDT)');
     const priceInput = screen.getByPlaceholderText('Price above');
     const createButton = screen.getByText('Create Alert');
     
@@ -283,9 +291,12 @@ describe('AlertForm', () => {
     
     fireEvent.click(createButton);
     
+    // Should show validation error message
     await waitFor(() => {
-      // Note: The current implementation doesn't validate negative prices
-      expect(mockCreateAlert).toHaveBeenCalledWith('BTCUSDT', { priceAbove: -100 });
+      expect(screen.getByText('Price must be greater than 0')).toBeInTheDocument();
     });
+    
+    // Verify createAlert was never called
+    expect(mockCreateAlert).not.toHaveBeenCalled();
   });
 });

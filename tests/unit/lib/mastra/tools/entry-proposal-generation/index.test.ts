@@ -23,6 +23,18 @@ jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calcul
   calculateEntryPoints: jest.fn(),
 }));
 
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
+  analyzeMarketContext: jest.fn(),
+}));
+
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
+  calculateRiskManagement: jest.fn(),
+}));
+
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
+  evaluateEntryConditions: jest.fn(),
+}));
+
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { EntryProposalGenerationTool } from '@/lib/mastra/tools/entry-proposal-generation/index';
 import type { EntryProposalGenerationInput } from '@/lib/mastra/tools/entry-proposal-generation/index';
@@ -32,15 +44,15 @@ import type { MarketContext } from '@/types/trading';
 // Type cast the execute function to avoid TypeScript errors
 const executeEntryProposalTool = EntryProposalGenerationTool.execute as any;
 
-jest.mock('../calculators/risk-calculator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator', () => ({
   calculateRiskManagement: jest.fn(),
 }));
 
-jest.mock('../analyzers/market-context-analyzer', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer', () => ({
   analyzeMarketContext: jest.fn(),
 }));
 
-jest.mock('../analyzers/condition-evaluator', () => ({
+jest.mock('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator', () => ({
   evaluateEntryConditions: jest.fn(),
 }));
 
@@ -122,16 +134,16 @@ describe('EntryProposalGenerationTool', () => {
     const { binanceAPI } = require('@/lib/binance/api-service');
     binanceAPI.fetchKlines.mockResolvedValue(mockMarketData);
 
-    const { analyzeMarketContext } = require('../analyzers/market-context-analyzer');
+    const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
     analyzeMarketContext.mockResolvedValue(mockMarketContext);
 
-    const { calculateEntryPoints } = require('../calculators/entry-calculator');
+    const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
     calculateEntryPoints.mockResolvedValue(mockEntryPoints);
 
-    const { calculateRiskManagement } = require('../calculators/risk-calculator');
+    const { calculateRiskManagement } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator');
     calculateRiskManagement.mockResolvedValue(mockRiskParams);
 
-    const { evaluateEntryConditions } = require('../analyzers/condition-evaluator');
+    const { evaluateEntryConditions } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/condition-evaluator');
     evaluateEntryConditions.mockResolvedValue(mockConditions);
   });
 
@@ -166,6 +178,7 @@ describe('EntryProposalGenerationTool', () => {
 
     it('should handle market data fetch failure', async () => {
       const { binanceAPI } = require('@/lib/binance/api-service');
+      binanceAPI.fetchKlines.mockReset();
       binanceAPI.fetchKlines.mockRejectedValue(new Error('API error'));
 
       const result = await executeEntryProposalTool({ 
@@ -178,6 +191,7 @@ describe('EntryProposalGenerationTool', () => {
 
     it('should handle insufficient market data', async () => {
       const { binanceAPI } = require('@/lib/binance/api-service');
+      binanceAPI.fetchKlines.mockReset();
       binanceAPI.fetchKlines.mockResolvedValue(mockMarketData.slice(0, 30));
 
       const result = await executeEntryProposalTool({ 
@@ -189,7 +203,8 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should handle no valid entry points', async () => {
-      const { calculateEntryPoints } = require('../calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
+      calculateEntryPoints.mockReset();
       calculateEntryPoints.mockResolvedValue([]);
 
       const result = await executeEntryProposalTool({ 
@@ -201,7 +216,7 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should respect maxProposals limit', async () => {
-      const { calculateEntryPoints } = require('../calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
       calculateEntryPoints.mockResolvedValue([
         ...mockEntryPoints,
         ...mockEntryPoints,
@@ -231,7 +246,7 @@ describe('EntryProposalGenerationTool', () => {
 
       expect(result.success).toBe(true);
       
-      const { calculateEntryPoints } = require('../calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
       expect(calculateEntryPoints).toHaveBeenCalledWith(
         expect.objectContaining({
           analysisResults,
@@ -265,7 +280,7 @@ describe('EntryProposalGenerationTool', () => {
 
       expect(result.success).toBe(true);
       
-      const { calculateRiskManagement } = require('../calculators/risk-calculator');
+      const { calculateRiskManagement } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator');
       expect(calculateRiskManagement).toHaveBeenCalledWith(
         expect.objectContaining({
           riskPercentage: 2.5,
@@ -274,7 +289,7 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should calculate priority correctly', async () => {
-      const { calculateRiskManagement } = require('../calculators/risk-calculator');
+      const { calculateRiskManagement } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/risk-calculator');
       
       // High priority: high confidence and good risk/reward
       calculateRiskManagement.mockResolvedValueOnce({
@@ -304,7 +319,8 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should handle only long positions', async () => {
-      const { calculateEntryPoints } = require('../calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
+      calculateEntryPoints.mockReset();
       calculateEntryPoints.mockResolvedValue([mockEntryPoints[0]]);
 
       const result = await executeEntryProposalTool({ 
@@ -316,7 +332,8 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should handle only short positions', async () => {
-      const { calculateEntryPoints } = require('../calculators/entry-calculator');
+      const { calculateEntryPoints } = require('@/lib/mastra/tools/entry-proposal-generation/calculators/entry-calculator');
+      calculateEntryPoints.mockReset();
       calculateEntryPoints.mockResolvedValue([mockEntryPoints[1]]);
 
       const result = await executeEntryProposalTool({ 
@@ -329,6 +346,7 @@ describe('EntryProposalGenerationTool', () => {
 
     it('should dispatch UI event on success', async () => {
       const { uiEventDispatcher } = require('@/lib/utils/ui-event-dispatcher');
+      uiEventDispatcher.dispatchProposalGenerated.mockReset();
       
       const result = await executeEntryProposalTool({ 
         context: baseInput 
@@ -340,7 +358,8 @@ describe('EntryProposalGenerationTool', () => {
     });
 
     it('should handle unexpected errors', async () => {
-      const { analyzeMarketContext } = require('../analyzers/market-context-analyzer');
+      const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
+      analyzeMarketContext.mockReset();
       analyzeMarketContext.mockRejectedValue(new Error('Unexpected error'));
 
       const result = await executeEntryProposalTool({ 
@@ -409,7 +428,7 @@ describe('EntryProposalGenerationTool', () => {
       const volatilityLevels = ['low', 'normal', 'high'] as const;
       
       for (const volatility of volatilityLevels) {
-        const { analyzeMarketContext } = require('../analyzers/market-context-analyzer');
+        const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
         analyzeMarketContext.mockResolvedValue({
           ...mockMarketContext,
           volatility,
@@ -432,7 +451,7 @@ describe('EntryProposalGenerationTool', () => {
       const trends = ['bullish', 'bearish', 'neutral'] as const;
       
       for (const trend of trends) {
-        const { analyzeMarketContext } = require('../analyzers/market-context-analyzer');
+        const { analyzeMarketContext } = require('@/lib/mastra/tools/entry-proposal-generation/analyzers/market-context-analyzer');
         analyzeMarketContext.mockResolvedValue({
           ...mockMarketContext,
           trend,

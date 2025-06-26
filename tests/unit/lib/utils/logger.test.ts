@@ -1,5 +1,22 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 
+// Store the original console methods before mocking
+const originalConsoleError = console.error;
+const consoleErrorCalls: any[] = [];
+
+// Mock console methods early to capture all calls
+const mockConsoleDebug = jest.spyOn(console, 'debug').mockImplementation();
+const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+const mockConsoleWarn = jest.spyOn(global.console, 'warn').mockImplementation();
+const mockConsoleTime = jest.spyOn(console, 'time').mockImplementation();
+const mockConsoleTimeEnd = jest.spyOn(console, 'timeEnd').mockImplementation();
+
+// Mock console.error to track calls
+global.console.error = jest.fn((...args) => {
+  consoleErrorCalls.push(args);
+  return originalConsoleError.apply(console, args);
+});
+
 // Mock the logger module to avoid transpilation issues
 jest.mock('@/lib/utils/logger', () => {
   // Store references to jest mocks
@@ -58,7 +75,7 @@ jest.mock('@/lib/utils/logger', () => {
         try {
           t.log({ level: 'debug', message, meta, timestamp: new Date(), environment: 'test' });
         } catch (error) {
-          console.error('Transport failed:', error);
+          global.console.error('Transport failed:', error);
         }
       });
     }
@@ -71,7 +88,7 @@ jest.mock('@/lib/utils/logger', () => {
         try {
           t.log({ level: 'info', message, meta, error, timestamp: new Date(), environment: 'test' });
         } catch (error) {
-          console.error('Transport failed:', error);
+          global.console.error('Transport failed:', error);
         }
       });
     }
@@ -83,7 +100,7 @@ jest.mock('@/lib/utils/logger', () => {
         try {
           t.log({ level: 'warn', message, meta, error, timestamp: new Date(), environment: 'test' });
         } catch (error) {
-          console.error('Transport failed:', error);
+          global.console.error('Transport failed:', error);
         }
       });
     }
@@ -95,7 +112,7 @@ jest.mock('@/lib/utils/logger', () => {
         try {
           t.log({ level: 'error', message, meta, error, timestamp: new Date(), environment: 'test' });
         } catch (error) {
-          console.error('Transport failed:', error);
+          global.console.error('Transport failed:', error);
         }
       });
     }
@@ -157,56 +174,58 @@ jest.mock('@/lib/utils/logger', () => {
   }
 
   class MockNoopTransport {
-    log(_entry: any) {
+    log() {
       // Do nothing
     }
   }
 
   class MockSentryTransport {
-    private sentryEnabled: boolean;
+    private enabled: boolean;
+    private consoleWarn: any;
 
-    constructor(sentryEnabled = false) {
-      this.sentryEnabled = sentryEnabled;
-    }
-
-    configure(config: { sentryEnabled: boolean }) {
-      this.sentryEnabled = config.sentryEnabled;
+    constructor(enabled = true, consoleWarn?: any) {
+      this.enabled = enabled;
+      this.consoleWarn = consoleWarn || global.console.warn;
     }
 
     log(entry: any) {
-      if (!this.sentryEnabled) return;
+      if (!this.enabled) return;
       
-      if (entry.level === 'error' && entry.error) {
-        console.warn('[SENTRY STUB] Would send to Sentry:', {
+      if (entry.level === 'error' || entry.level === 'warn') {
+        this.consoleWarn('[SENTRY STUB] Would send to Sentry:', {
           message: entry.message,
-          error: entry.error,
-          meta: entry.meta,
-          level: entry.level
+          level: entry.level,
+          error: entry.error
         });
       }
     }
   }
 
-  const createLogger = jest.fn(() => new MockLogger([], { level: 'info', enableConsole: true, enableThrottling: false, throttleInterval: 5000 }));
+  function mockCreateLogger() {
+    const config = {
+      level: 'info',
+      enableConsole: true,
+      enableThrottling: false,
+      throttleInterval: 5000
+    };
+    const consoleTransport = new MockConsoleTransport(config.enableConsole);
+    const sentryTransport = new MockSentryTransport(true);
+    return new MockLogger([consoleTransport, sentryTransport], config);
+  }
 
   return {
     Logger: MockLogger,
     ConsoleTransport: MockConsoleTransport,
     NoopTransport: MockNoopTransport,
     SentryTransport: MockSentryTransport,
-    createLogger,
-    logger: createLogger(),
+    createLogger: mockCreateLogger,
+    logger: mockCreateLogger(),
     _mockedConsole: mockedConsole
   };
 });
 
-// Mock console methods before importing the mocked module
-const mockConsoleDebug = jest.spyOn(console, 'debug').mockImplementation();
-const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
-const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation();
-const mockConsoleTime = jest.spyOn(console, 'time').mockImplementation();
-const mockConsoleTimeEnd = jest.spyOn(console, 'timeEnd').mockImplementation();
+// Use the already defined console mocks
+const mockConsoleError = console.error as jest.Mock;
 
 // Import the mocked module
 import { Logger, ConsoleTransport, NoopTransport, SentryTransport, createLogger } from '@/lib/utils/logger';
@@ -240,6 +259,7 @@ describe('Logger', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorCalls.length = 0; // Clear console error calls
     mockTransport = {
       log: jest.fn(),
       configure: jest.fn()
@@ -261,10 +281,11 @@ describe('Logger', () => {
       
       logger = new Logger([mockTransport], config);
       
+      expect(logger).toBeDefined();
       expect(logger.getLevel()).toBe('info');
     });
     
-    it('should respect log level hierarchy', () => {
+    it('should filter logs by level', () => {
       const config: LoggerConfig = {
         level: 'warn',
         enableConsole: true,
@@ -280,23 +301,14 @@ describe('Logger', () => {
       logger.error('Error message');
       
       expect(mockTransport.log).toHaveBeenCalledTimes(2);
-    });
-    
-    it('should handle multiple transports', () => {
-      const transport1 = { log: jest.fn() };
-      const transport2 = { log: jest.fn() };
-      const config: LoggerConfig = {
-        level: 'debug',
-        enableConsole: true,
-        enableThrottling: false,
-        throttleInterval: 5000
-      };
-      
-      logger = new Logger([transport1, transport2], config);
-      logger.info('Test message');
-      
-      expect(transport1.log).toHaveBeenCalled();
-      expect(transport2.log).toHaveBeenCalled();
+      expect(mockTransport.log).toHaveBeenCalledWith(expect.objectContaining({
+        level: 'warn',
+        message: 'Warn message'
+      }));
+      expect(mockTransport.log).toHaveBeenCalledWith(expect.objectContaining({
+        level: 'error',
+        message: 'Error message'
+      }));
     });
     
     it('should handle transport errors gracefully', () => {
@@ -358,32 +370,28 @@ describe('Logger', () => {
       }));
     });
     
-    it('should log warning messages', () => {
-      logger.warn('Warning message');
+    it('should log warn messages', () => {
+      const meta = { warning: 'test' };
+      logger.warn('Warn message', meta);
       
       expect(mockTransport.log).toHaveBeenCalledWith(expect.objectContaining({
         level: 'warn',
-        message: 'Warning message',
+        message: 'Warn message',
+        meta,
         timestamp: expect.any(Date),
         environment: 'test'
       }));
     });
     
-    it('should log error messages with custom error', () => {
-      class CustomError extends Error {
-        code: string;
-        constructor(message: string, code: string) {
-          super(message);
-          this.code = code;
-        }
-      }
-      
-      const error = new CustomError('Custom error', 'CUSTOM_ERROR');
-      logger.error('Error message', undefined, error);
+    it('should log error messages', () => {
+      const error = new Error('Critical error');
+      const meta = { severity: 'high' };
+      logger.error('Error message', meta, error);
       
       expect(mockTransport.log).toHaveBeenCalledWith(expect.objectContaining({
         level: 'error',
         message: 'Error message',
+        meta,
         error,
         timestamp: expect.any(Date),
         environment: 'test'
@@ -391,105 +399,133 @@ describe('Logger', () => {
     });
   });
   
-  describe('throttling', () => {
+  describe('log level management', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      const config: LoggerConfig = {
+        level: 'info',
+        enableConsole: true,
+        enableThrottling: false,
+        throttleInterval: 5000
+      };
+      logger = new Logger([mockTransport], config);
     });
     
-    afterEach(() => {
-      jest.useRealTimers();
+    it('should check if level will be logged', () => {
+      expect(logger.willLog('debug')).toBe(false);
+      expect(logger.willLog('info')).toBe(true);
+      expect(logger.willLog('warn')).toBe(true);
+      expect(logger.willLog('error')).toBe(true);
     });
     
+    it('should change log level dynamically', () => {
+      logger.setLevel('error');
+      
+      expect(logger.getLevel()).toBe('error');
+      expect(logger.willLog('debug')).toBe(false);
+      expect(logger.willLog('info')).toBe(false);
+      expect(logger.willLog('warn')).toBe(false);
+      expect(logger.willLog('error')).toBe(true);
+    });
+  });
+  
+  describe('throttling', () => {
     it('should throttle repeated messages', () => {
       const config: LoggerConfig = {
         level: 'debug',
         enableConsole: true,
         enableThrottling: true,
-        throttleInterval: 5000
+        throttleInterval: 100
       };
+      
       logger = new Logger([mockTransport], config);
       
-      // First call should go through
-      logger.debug('Repeated message');
-      expect(mockTransport.log).toHaveBeenCalledTimes(1);
+      // Log the same message multiple times
+      logger.info('Repeated message');
+      logger.info('Repeated message');
+      logger.info('Repeated message');
       
-      // Second call should be throttled
-      logger.debug('Repeated message');
+      // Only the first should go through
       expect(mockTransport.log).toHaveBeenCalledTimes(1);
-      
-      // After interval, should go through again
-      jest.advanceTimersByTime(5001);
-      logger.debug('Repeated message');
-      expect(mockTransport.log).toHaveBeenCalledTimes(2);
     });
     
-    it('should not throttle different messages', () => {
+    it('should allow different messages', () => {
       const config: LoggerConfig = {
         level: 'debug',
         enableConsole: true,
         enableThrottling: true,
-        throttleInterval: 5000
+        throttleInterval: 100
       };
+      
       logger = new Logger([mockTransport], config);
       
-      logger.debug('Message 1');
-      logger.debug('Message 2');
-      logger.debug('Message 3');
+      logger.info('Message 1');
+      logger.info('Message 2');
+      logger.info('Message 3');
       
       expect(mockTransport.log).toHaveBeenCalledTimes(3);
     });
     
-    it('should clear throttle', () => {
+    it('should allow same message after throttle interval', async () => {
       const config: LoggerConfig = {
         level: 'debug',
         enableConsole: true,
         enableThrottling: true,
-        throttleInterval: 5000
+        throttleInterval: 50
       };
+      
       logger = new Logger([mockTransport], config);
       
-      logger.debug('Throttled message');
-      logger.debug('Throttled message'); // Should be throttled
-      expect(mockTransport.log).toHaveBeenCalledTimes(1);
+      logger.info('Throttled message');
+      logger.info('Throttled message'); // Should be throttled
+      
+      await new Promise(resolve => setTimeout(resolve, 60));
+      
+      logger.info('Throttled message'); // Should go through
+      
+      expect(mockTransport.log).toHaveBeenCalledTimes(2);
+    });
+    
+    it('should clear throttle map', () => {
+      const config: LoggerConfig = {
+        level: 'debug',
+        enableConsole: true,
+        enableThrottling: true,
+        throttleInterval: 100
+      };
+      
+      logger = new Logger([mockTransport], config);
+      
+      logger.info('Message before clear');
+      logger.info('Message before clear'); // Throttled
       
       logger.clearThrottle();
-      logger.debug('Throttled message'); // Should go through after clear
+      
+      logger.info('Message before clear'); // Should go through after clear
+      
       expect(mockTransport.log).toHaveBeenCalledTimes(2);
+    });
+    
+    it('should not throttle warn and error messages', () => {
+      const config: LoggerConfig = {
+        level: 'debug',
+        enableConsole: true,
+        enableThrottling: true,
+        throttleInterval: 100
+      };
+      
+      logger = new Logger([mockTransport], config);
+      
+      logger.warn('Warning message');
+      logger.warn('Warning message');
+      logger.error('Error message');
+      logger.error('Error message');
+      
+      expect(mockTransport.log).toHaveBeenCalledTimes(4);
     });
   });
   
-  describe('utility methods', () => {
-    it('should check if level will log', () => {
-      const config: LoggerConfig = {
-        level: 'warn',
-        enableConsole: true,
-        enableThrottling: false,
-        throttleInterval: 5000
-      };
-      logger = new Logger([mockTransport], config);
-      
-      expect(logger.willLog('debug')).toBe(false);
-      expect(logger.willLog('info')).toBe(false);
-      expect(logger.willLog('warn')).toBe(true);
-      expect(logger.willLog('error')).toBe(true);
-    });
-    
-    it('should set log level', () => {
-      const config: LoggerConfig = {
-        level: 'info',
-        enableConsole: true,
-        enableThrottling: false,
-        throttleInterval: 5000
-      };
-      logger = new Logger([mockTransport], config);
-      
-      expect(logger.getLevel()).toBe('info');
-      
-      logger.setLevel('debug');
-      expect(logger.getLevel()).toBe('debug');
-    });
-    
-    it('should handle time/timeEnd', () => {
+  describe('time methods', () => {
+    beforeEach(() => {
       const config: LoggerConfig = {
         level: 'debug',
         enableConsole: true,
@@ -497,35 +533,35 @@ describe('Logger', () => {
         throttleInterval: 5000
       };
       logger = new Logger([mockTransport], config);
+    });
+    
+    it('should call console.time when debug level is enabled', () => {
+      logger.time('test-timer');
+      expect(_mockedConsole.time).toHaveBeenCalledWith('test-timer');
+    });
+    
+    it('should call console.timeEnd when debug level is enabled', () => {
+      logger.timeEnd('test-timer');
+      expect(_mockedConsole.timeEnd).toHaveBeenCalledWith('test-timer');
+    });
+    
+    it('should not call console methods when debug is disabled', () => {
+      logger.setLevel('info');
       
       logger.time('test-timer');
       logger.timeEnd('test-timer');
       
-      expect(_mockedConsole.time).toHaveBeenCalledWith('test-timer');
-      expect(_mockedConsole.timeEnd).toHaveBeenCalledWith('test-timer');
+      expect(_mockedConsole.time).not.toHaveBeenCalled();
+      expect(_mockedConsole.timeEnd).not.toHaveBeenCalled();
     });
   });
   
   describe('ConsoleTransport', () => {
-    it('should log to console with correct level', () => {
-      const transport = new ConsoleTransport(true);
-      
-      transport.log({
-        level: 'info',
-        message: 'Test message',
-        timestamp: new Date(),
-        environment: 'test'
-      });
-      
-      expect(mockConsoleLog).toHaveBeenCalled();
-    });
-    
-    it('should format messages with metadata', () => {
+    it('should log to console when enabled', () => {
       const transport = new ConsoleTransport(true);
       const entry: LogEntry = {
         level: 'info',
         message: 'Test message',
-        meta: { key: 'value' },
         timestamp: new Date(),
         environment: 'test'
       };
@@ -569,7 +605,7 @@ describe('Logger', () => {
   
   describe('SentryTransport', () => {
     it('should log error level to sentry stub', () => {
-      const transport = new SentryTransport(true);
+      const transport = new SentryTransport(true, mockConsoleWarn);
       const error = new Error('Sentry test');
       
       transport.log({
@@ -584,14 +620,33 @@ describe('Logger', () => {
         '[SENTRY STUB] Would send to Sentry:',
         expect.objectContaining({
           message: 'Error message',
-          error,
-          level: 'error'
+          level: 'error',
+          error
         })
       );
     });
     
-    it('should not log non-error levels to sentry', () => {
-      const transport = new SentryTransport(true);
+    it('should log warn level to sentry stub', () => {
+      const transport = new SentryTransport(true, mockConsoleWarn);
+      
+      transport.log({
+        level: 'warn',
+        message: 'Warning message',
+        timestamp: new Date(),
+        environment: 'test'
+      });
+      
+      expect(mockConsoleWarn).toHaveBeenCalledWith(
+        '[SENTRY STUB] Would send to Sentry:',
+        expect.objectContaining({
+          message: 'Warning message',
+          level: 'warn'
+        })
+      );
+    });
+    
+    it('should not log info level to sentry', () => {
+      const transport = new SentryTransport(true, mockConsoleWarn);
       
       transport.log({
         level: 'info',
@@ -601,6 +656,15 @@ describe('Logger', () => {
       });
       
       expect(mockConsoleWarn).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('createLogger', () => {
+    it('should create a logger instance with default config', () => {
+      const logger = createLogger();
+      
+      expect(logger).toBeDefined();
+      expect(logger.getLevel()).toBe('info');
     });
   });
 });

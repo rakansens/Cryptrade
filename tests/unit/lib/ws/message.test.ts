@@ -43,159 +43,225 @@ describe('WSManager E2E - Message Handling', () => {
   });
 
   describe('Message Reception', () => {
-    it('should receive trade messages', (done) => {
+    it('should receive trade messages', async () => {
       const tradeData = BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000.00');
       
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          expect(data).toHaveProperty('e', 'trade');
-          expect(data).toHaveProperty('s', 'BTCUSDT');
-          expect(data).toHaveProperty('p', '50000.00');
-          subscription.unsubscribe();
-          done();
-        },
-        error: done.fail
+      const messagePromise = new Promise((resolve) => {
+        const subscription = manager.subscribe('btcusdt@trade').subscribe({
+          next: (data) => {
+            subscription.unsubscribe();
+            resolve(data);
+          },
+          error: (error) => {
+            throw error;
+          }
+        });
       });
 
-      // Wait for connection then send message
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        if (ws) {
-          ws.simulateMessage(tradeData);
-        }
-      }, 20);
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        setTimeout(() => resolve(undefined), 1000);
+      });
+      
+      if (ws) {
+        ws.simulateMessage(tradeData);
+      }
+      
+      const data = await messagePromise;
+      expect(data).toHaveProperty('e', 'trade');
+      expect(data).toHaveProperty('s', 'BTCUSDT');
+      expect(data).toHaveProperty('p', '50000.00');
     });
 
-    it('should receive kline messages', (done) => {
+    it('should receive kline messages', async () => {
       const klineData = BinanceMessageGenerator.klineMessage('ETHUSDT', '1h');
       
-      const subscription = manager.subscribe('ethusdt@kline_1h').subscribe({
-        next: (data) => {
-          expect(data).toHaveProperty('e', 'kline');
-          expect(data).toHaveProperty('s', 'ETHUSDT');
-          expect(data['k']).toHaveProperty('i', '1h');
-          subscription.unsubscribe();
-          done();
-        },
-        error: done.fail
+      const messagePromise = new Promise((resolve) => {
+        const subscription = manager.subscribe('ethusdt@kline_1h').subscribe({
+          next: (data) => {
+            subscription.unsubscribe();
+            resolve(data);
+          },
+          error: (error) => {
+            throw error;
+          }
+        });
       });
 
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/ethusdt@kline_1h');
-        if (ws) {
-          ws.simulateMessage(klineData);
-        }
-      }, 20);
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/ethusdt@kline_1h');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        setTimeout(() => resolve(undefined), 1000);
+      });
+      
+      if (ws) {
+        ws.simulateMessage(klineData);
+      }
+      
+      const data = await messagePromise;
+      expect(data).toHaveProperty('e', 'kline');
+      expect(data).toHaveProperty('s', 'ETHUSDT');
+      expect(data['k']).toHaveProperty('i', '1h');
     });
 
-    it('should receive depth messages', (done) => {
+    it('should receive depth messages', async () => {
       const depthData = BinanceMessageGenerator.depthMessage('BNBUSDT');
       
-      const subscription = manager.subscribe('bnbusdt@depth').subscribe({
-        next: (data) => {
-          expect(data).toHaveProperty('e', 'depthUpdate');
-          expect(data).toHaveProperty('s', 'BNBUSDT');
-          expect(data).toHaveProperty('b'); // bids
-          expect(data).toHaveProperty('a'); // asks
-          subscription.unsubscribe();
-          done();
-        },
-        error: done.fail
+      const messagePromise = new Promise((resolve) => {
+        const subscription = manager.subscribe('bnbusdt@depth').subscribe({
+          next: (data) => {
+            subscription.unsubscribe();
+            resolve(data);
+          },
+          error: (error) => {
+            throw error;
+          }
+        });
       });
 
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/bnbusdt@depth');
-        if (ws) {
-          ws.simulateMessage(depthData);
-        }
-      }, 20);
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/bnbusdt@depth');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        setTimeout(() => resolve(undefined), 1000);
+      });
+      
+      if (ws) {
+        ws.simulateMessage(depthData);
+      }
+      
+      const data = await messagePromise;
+      expect(data).toHaveProperty('e', 'depthUpdate');
+      expect(data).toHaveProperty('s', 'BNBUSDT');
+      expect(data).toHaveProperty('b'); // bids
+      expect(data).toHaveProperty('a'); // asks
     });
   });
 
   describe('Message Broadcasting', () => {
-    it('should broadcast messages to all subscribers', (done) => {
+    it('should broadcast messages to all subscribers', async () => {
       const testMessage = BinanceMessageGenerator.tradeMessage('BTCUSDT', '55000');
-      let receivedCount = 0;
       const expectedCount = 3;
+      const receivedMessages: any[] = [];
       
-      const checkComplete = () => {
-        receivedCount++;
-        if (receivedCount === expectedCount) {
-          done();
-        }
-      };
+      // Create multiple subscribers with promises
+      const messagePromises = Array.from({ length: expectedCount }, (_, i) => 
+        new Promise((resolve) => {
+          const subscription = manager.subscribe('btcusdt@trade').subscribe({
+            next: (data) => {
+              receivedMessages.push({ subscriber: i, data });
+              subscription.unsubscribe();
+              resolve(data);
+            }
+          });
+        })
+      );
       
-      // Create multiple subscribers
-      const sub1 = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          expect(data['p']).toBe('55000');
-          checkComplete();
-        }
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        setTimeout(() => resolve(undefined), 1000);
       });
       
-      const sub2 = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          expect(data['p']).toBe('55000');
-          checkComplete();
-        }
+      if (ws) {
+        ws.simulateMessage(testMessage);
+      }
+      
+      // Wait for all subscribers to receive the message
+      const results = await Promise.all(messagePromises);
+      
+      // Verify all subscribers received the message
+      expect(results).toHaveLength(expectedCount);
+      results.forEach(data => {
+        expect(data['p']).toBe('55000');
       });
-      
-      const sub3 = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          expect(data['p']).toBe('55000');
-          checkComplete();
-        }
-      });
-      
-      // Send message
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        if (ws) {
-          ws.simulateMessage(testMessage);
-        }
-      }, 20);
-      
-      // Cleanup
-      setTimeout(() => {
-        sub1.unsubscribe();
-        sub2.unsubscribe();
-        sub3.unsubscribe();
-      }, 100);
     });
   });
 
   describe('Message Ordering', () => {
-    it('should maintain message order', (done) => {
+    it('should maintain message order', async () => {
       const messages: any[] = [];
       const messageCount = 10;
       
-      const subscription = manager.subscribe('btcusdt@trade').subscribe({
-        next: (data) => {
-          messages.push(data);
-          
-          if (messages.length === messageCount) {
-            // Verify order
-            for (let i = 0; i < messageCount; i++) {
-              expect(messages[i].t).toBe(i); // Check trade ID order
+      const allMessagesPromise = new Promise((resolve) => {
+        const subscription = manager.subscribe('btcusdt@trade').subscribe({
+          next: (data) => {
+            messages.push(data);
+            
+            if (messages.length === messageCount) {
+              subscription.unsubscribe();
+              resolve(messages);
             }
-            subscription.unsubscribe();
-            done();
+          },
+          error: (error) => {
+            throw error;
           }
-        },
-        error: done.fail
+        });
       });
       
-      // Send messages in order
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        if (ws) {
-          for (let i = 0; i < messageCount; i++) {
-            const msg = BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000');
-            msg.t = i; // Set trade ID
-            ws.simulateMessage(msg);
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
           }
+        };
+        checkInstance();
+        setTimeout(() => resolve(undefined), 1000);
+      });
+      
+      if (ws) {
+        // Send messages in order
+        for (let i = 0; i < messageCount; i++) {
+          const msg = BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000');
+          msg.t = i; // Set trade ID
+          ws.simulateMessage(msg);
         }
-      }, 20);
+      }
+      
+      // Wait for all messages to be received
+      const receivedMessages = await allMessagesPromise;
+      
+      // Verify order
+      expect(receivedMessages).toHaveLength(messageCount);
+      for (let i = 0; i < messageCount; i++) {
+        expect((receivedMessages as any[])[i].t).toBe(i); // Check trade ID order
+      }
     });
   });
 

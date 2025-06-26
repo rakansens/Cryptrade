@@ -314,12 +314,15 @@ test.describe('API Endpoints E2E Tests', () => {
       // Wait for WebSocket connection
       const wsPromise = page.waitForEvent('websocket');
       
-      // Trigger an action that creates WebSocket connection
-      // This depends on your application's implementation
+      // NOTE: This test is skipped because it requires specific WebSocket
+      // implementation details that are not yet available.
+      // To enable this test:
+      // 1. Implement WebSocket endpoint in the application
+      // 2. Add client-side code that establishes WebSocket connection
+      // 3. Update this test to trigger the connection and verify messages
       
-      // For now, we'll skip the actual WebSocket test
       test.skip();
-    // TODO: This test is skipped and needs investigation
+      // TODO: Enable when WebSocket implementation is complete
     });
   });
 

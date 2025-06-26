@@ -166,7 +166,7 @@ export class BinanceAPIService extends BaseService {
 
   // Utility method to validate symbol format
   public isValidSymbol(symbol: string): boolean {
-    return /^[A-Z]{2,10}USDT?$/.test(symbol.toUpperCase());
+    return /^[A-Z]{2,10}USDT$/.test(symbol.toUpperCase());
   }
 
   // Get exchange info (optional - for symbol validation)

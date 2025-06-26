@@ -258,7 +258,6 @@ export const marketDataResilientTool = createTool({
         low24h,
         analysis,
         metadata: {
-          fromCache: false,
           latency: Date.now() - startTime,
           volatility,
           ttl: dynamicTTL,

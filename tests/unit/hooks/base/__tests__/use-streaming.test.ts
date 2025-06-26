@@ -30,17 +30,19 @@ afterAll(() => {
 });
 
 describe('useStreaming', () => {
-  jest.setTimeout(10000); // Increase timeout for streaming tests
-  
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
     // Reset fetch mock
     (global.fetch as jest.Mock).mockReset();
-    // Don't use fake timers for streaming tests
+    // Mock Math.random for consistent test results
+    jest.spyOn(Math, 'random').mockReturnValue(0.5);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   describe('basic functionality', () => {
@@ -165,9 +167,11 @@ describe('useStreaming', () => {
       );
 
       await act(async () => {
-        result.current.connect();
-        // Give it a moment to start reading
-        await new Promise(resolve => setTimeout(resolve, 50));
+        const connectPromise = result.current.connect();
+        // Wait for connection to be established
+        await waitFor(() => {
+          expect(mockReader.read).toHaveBeenCalled();
+        }, { timeout: 1000 });
       });
 
       expect(result.current.isStreaming).toBe(true);
@@ -176,14 +180,351 @@ describe('useStreaming', () => {
         result.current.disconnect();
       });
 
-      // Wait for state update
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      });
+      // Wait for state update without fixed timing
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(false);
+      }, { timeout: 1000 });
 
       expect(abortSpy).toHaveBeenCalled();
       expect(result.current.isStreaming).toBe(false);
-    }, 15000);
+    }, 5000); // Reduced timeout
+  });
+
+  describe('edge cases and error handling', () => {
+    it('should handle malformed JSON in stream', async () => {
+      const mockResponse = {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            const encoder = new TextEncoder();
+            // Send malformed JSON
+            controller.enqueue(encoder.encode('data: {invalid json}\n\n'));
+            controller.close();
+          }
+        })
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const onError = jest.fn();
+      const parseResponse = jest.fn().mockImplementation((chunk: string) => {
+        if (chunk === '{invalid json}') {
+          throw new SyntaxError('Unexpected token i in JSON at position 1');
+        }
+        return JSON.parse(chunk);
+      });
+      
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onError,
+          parseResponse
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(expect.any(SyntaxError));
+      });
+    });
+
+    it('should handle network errors during connection', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      const onError = jest.fn();
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onError
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      });
+      expect(result.current.isStreaming).toBe(false);
+    });
+
+    it('should handle stream interruption', async () => {
+      const mockReader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {"chunk": 1}\n\n')
+          })
+          .mockRejectedValueOnce(new Error('Stream interrupted')),
+        releaseLock: jest.fn()
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader
+        }
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const onError = jest.fn();
+      const onMessage = jest.fn();
+      
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onError,
+          onMessage
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      await waitFor(() => {
+        expect(onMessage).toHaveBeenCalledWith({ chunk: 1 });
+      });
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      });
+    });
+
+    it('should handle empty stream data', async () => {
+      const mockResponse = {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            const encoder = new TextEncoder();
+            // Send empty data chunks
+            controller.enqueue(encoder.encode('data: \n\n'));
+            controller.enqueue(encoder.encode('\n\n'));
+            controller.enqueue(encoder.encode('data: null\n\n'));
+            controller.close();
+          }
+        })
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const onMessage = jest.fn();
+      
+      // Custom parseResponse that handles null correctly
+      const parseResponse = jest.fn().mockImplementation((chunk: string) => {
+        // Parse 'null' as actual null value (this is what should trigger onMessage)
+        if (chunk === 'null') return null;
+        // Return undefined for empty chunks (should not trigger onMessage)
+        if (!chunk.trim()) return undefined;
+        try {
+          return JSON.parse(chunk);
+        } catch {
+          return undefined;
+        }
+      });
+      
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onMessage,
+          parseResponse
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      // Should handle empty data gracefully without calling onMessage for empty chunks
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(false);
+      });
+
+      // Should only call onMessage for the null value (not for empty chunks)
+      expect(onMessage).toHaveBeenCalledTimes(1);
+      expect(onMessage).toHaveBeenCalledWith(null);
+    });
+
+    it('should handle large message chunks', async () => {
+      const largeObject = {
+        data: 'x'.repeat(10000), // 10KB string
+        metadata: {
+          timestamp: Date.now(),
+          size: 10000
+        }
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            const encoder = new TextEncoder();
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(largeObject)}\n\n`));
+            controller.close();
+          }
+        })
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const onMessage = jest.fn();
+      
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onMessage
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      await waitFor(() => {
+        expect(onMessage).toHaveBeenCalledWith(largeObject);
+      });
+    });
+
+    it('should handle rapid successive messages', async () => {
+      const messages = Array.from({ length: 100 }, (_, i) => ({ id: i, message: `Message ${i}` }));
+      
+      const mockResponse = {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            const encoder = new TextEncoder();
+            // Send all messages rapidly
+            messages.forEach(msg => {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`));
+            });
+            controller.close();
+          }
+        })
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const onMessage = jest.fn();
+      
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false,
+          onMessage
+        })
+      );
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      await waitFor(() => {
+        expect(onMessage).toHaveBeenCalledTimes(100);
+      });
+
+      // Verify all messages were received in order
+      messages.forEach((msg, index) => {
+        expect(onMessage).toHaveBeenNthCalledWith(index + 1, msg);
+      });
+    });
+
+    it('should handle stream timeout scenarios', async () => {
+      jest.useFakeTimers();
+      
+      const mockReader = {
+        read: jest.fn().mockImplementation(() => {
+          // Return a promise that never resolves (simulating timeout)
+          return new Promise(() => {});
+        }),
+        releaseLock: jest.fn()
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader
+        }
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false
+        })
+      );
+
+      act(() => {
+        result.current.connect();
+      });
+
+      // Fast-forward time to simulate timeout
+      act(() => {
+        jest.advanceTimersByTime(30000); // 30 seconds
+      });
+
+      // The hook should still be in streaming state since we don't have timeout logic
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(true);
+      });
+
+      // Manually disconnect to clean up
+      act(() => {
+        result.current.disconnect();
+      });
+
+      jest.useRealTimers();
+    });
+
+    it('should handle concurrent connection attempts', async () => {
+      const mockResponse = {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"connected": true}\n\n'));
+            controller.close();
+          }
+        })
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      const { result } = renderHook(() => 
+        useStreaming({
+          endpoint: '/api/stream',
+          autoConnect: false
+        })
+      );
+
+      // First connection attempt should succeed
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      // Wait for the connection to be established and then finish
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(false); // Connection finished
+      });
+
+      // Second attempt while not streaming should also work
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      // Should have called fetch twice (once for each attempt)
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('stream processing', () => {
@@ -193,9 +534,14 @@ describe('useStreaming', () => {
         body: new ReadableStream({
           start(controller) {
             const encoder = new TextEncoder();
-            controller.enqueue(encoder.encode('data: {"event": "start"}\n\n'));
-            controller.enqueue(encoder.encode('data: {"event": "data", "value": 42}\n\n'));
-            controller.enqueue(encoder.encode('data: {"event": "end"}\n\n'));
+            const testData = [
+              { event: 'start' },
+              { event: 'data', value: 50 }, // Fixed value instead of Math.random()
+              { event: 'end' }
+            ];
+            testData.forEach(item => {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(item)}\n\n`));
+            });
             controller.close();
           }
         })
@@ -218,11 +564,10 @@ describe('useStreaming', () => {
         expect(messages.length).toBe(3);
       }, { timeout: 5000 });
 
-      expect(messages).toEqual([
-        { event: 'start' },
-        { event: 'data', value: 42 },
-        { event: 'end' }
-      ]);
+      expect(messages).toHaveLength(3);
+      expect(messages[0]).toEqual({ event: 'start' });
+      expect(messages[1]).toEqual({ event: 'data', value: 50 });
+      expect(messages[2]).toEqual({ event: 'end' });
     });
 
     it('should handle plain JSON lines', async () => {

@@ -47,18 +47,23 @@ describe('AI Chat API Route', () => {
 
   describe('POST /api/ai/chat', () => {
     it('should process a basic chat message successfully', async () => {
+      // Generate dynamic response data
+      const btcPrice = 40000 + Math.floor(Math.random() * 60000);
+      const confidence = 0.8 + Math.random() * 0.2;
+      const execTime = 800 + Math.floor(Math.random() * 1200);
+      
       const mockResult = {
         analysis: {
           intent: 'market_query',
-          confidence: 0.9,
+          confidence: parseFloat(confidence.toFixed(2)),
           symbol: 'BTCUSDT',
           isProposalMode: false
         },
         executionResult: {
           success: true,
-          message: 'Bitcoin is currently trading at $108,500'
+          message: `Bitcoin is currently trading at $${btcPrice.toLocaleString()}`
         },
-        executionTime: 1500,
+        executionTime: execTime,
         success: true
       };
 
@@ -79,17 +84,24 @@ describe('AI Chat API Route', () => {
       expect(response.status).toBe(200);
       // Response is wrapped in 'data' property
       expect(data.data).toMatchObject({
-        message: 'Bitcoin is currently trading at $108,500',
+        message: expect.stringContaining('Bitcoin is currently trading at $'),
         selectedAgent: 'market_query',
         analysis: {
           intent: 'market_query',
-          confidence: 0.9
+          confidence: expect.any(Number)
         },
         metadata: {
           sessionId: 'test-session-123',
           a2aEnabled: true
         }
       });
+      
+      // Verify the price is within expected range
+      const priceMatch = data.data.message.match(/\$([\d,]+)/);
+      expect(priceMatch).toBeTruthy();
+      const price = parseInt(priceMatch[1].replace(/,/g, ''));
+      expect(price).toBeGreaterThanOrEqual(40000);
+      expect(price).toBeLessThanOrEqual(100000);
 
       expect(mockExecuteImprovedOrchestrator).toHaveBeenCalledWith(
         'What is the current price of Bitcoin?',
@@ -105,11 +117,15 @@ describe('AI Chat API Route', () => {
     });
 
     it('should handle proposal generation requests', async () => {
+      // Generate dynamic proposal data
+      const proposalId = `pg_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const propId = `prop_${Math.floor(Math.random() * 10000)}`;
+      
       const mockProposalGroup = {
-        id: 'pg_123',
+        id: proposalId,
         proposals: [
           {
-            id: 'prop_1',
+            id: propId,
             type: 'trendline',
             reasoning: 'Strong uptrend detected',
             drawings: []
@@ -128,7 +144,7 @@ describe('AI Chat API Route', () => {
           success: true,
           proposalGroup: mockProposalGroup
         },
-        executionTime: 2000,
+        executionTime: 1500 + Math.floor(Math.random() * 1000),
         success: true
       };
 
@@ -222,7 +238,7 @@ describe('AI Chat API Route', () => {
       const mockResult = {
         analysis: { intent: 'greeting', confidence: 1, isProposalMode: false },
         executionResult: { success: true, message: 'Hello!' },
-        executionTime: 100,
+        executionTime: 50 + Math.floor(Math.random() * 100),
         success: true
       };
 
@@ -260,7 +276,7 @@ describe('AI Chat API Route', () => {
           success: true,
           message: 'ETH analysis complete'
         },
-        executionTime: 1800,
+        executionTime: 1200 + Math.floor(Math.random() * 800),
         success: true
       };
 

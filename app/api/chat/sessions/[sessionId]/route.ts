@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
+import { getServerSession } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,14 @@ export async function GET(
   const { sessionId } = await params;
 
   try {
+    // Check authentication
+    const authSession = await getServerSession();
+    if (!authSession) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
     const includeMessages = request.nextUrl.searchParams.get('include') === 'messages';
     
     if (includeMessages) {
@@ -72,6 +81,14 @@ export async function PATCH(
   const { sessionId } = await routeContext.params;
 
   try {
+    // Check authentication
+    const authSession = await getServerSession();
+    if (!authSession) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
     const { title } = await request.json();
     await ChatDatabaseService.updateSessionTitle(sessionId, title);
     
@@ -92,6 +109,14 @@ export async function DELETE(
   const { sessionId } = await routeContext.params;
 
   try {
+    // Check authentication
+    const authSession = await getServerSession();
+    if (!authSession) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
     await ChatDatabaseService.deleteSession(sessionId);
     
     return NextResponse.json({ success: true });

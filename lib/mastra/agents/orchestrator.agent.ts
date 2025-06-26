@@ -22,6 +22,11 @@ export interface OrchestratorAgentContext {
   marketStatus?: string;
   language?: string;
   runtimeContext?: any;
+  sessionId?: string;
+  marketContext?: {
+    condition: 'volatile' | 'stable';
+    volatility: 'high' | 'low';
+  };
 }
 
 /**
@@ -36,6 +41,15 @@ export interface OrchestratorAgentContext {
 
 // Re-export IntentAnalysisResult for other modules
 export type { IntentAnalysisResult } from '../utils/intent';
+
+// Extended analysis result with orchestrator context
+export interface ExtendedIntentAnalysisResult extends IntentAnalysisResult {
+  userLevel?: string;
+  marketContext?: {
+    condition: 'volatile' | 'stable';
+    volatility: 'high' | 'low';
+  };
+}
 
 // 簡潔なスキーマ定義 - not used currently
 // const IntentAnalysisOutput = z.object({
@@ -293,6 +307,9 @@ export async function executeImprovedOrchestrator(
   // Continue with sequential processing for simple queries
   const memoryStore = useEnhancedConversationMemory.getState();
   
+  // Extract context from runtimeContext
+  const context: OrchestratorAgentContext | undefined = runtimeContext as OrchestratorAgentContext;
+  
   // Ensure session exists with enhanced processors
   const activeSessionId = sessionId || memoryStore.currentSessionId || 
     await createEnhancedSession(undefined, {
@@ -379,12 +396,32 @@ export async function executeImprovedOrchestrator(
       unifiedAnalysis: JSON.stringify(unifiedAnalysis, null, 2),
     });
     
-    // Convert to IntentAnalysisResult format
-    const analysis: IntentAnalysisResult = {
+    // Adjust analysis depth based on user level from context
+    let adjustedAnalysisDepth: 'basic' | 'detailed' | 'comprehensive' = unifiedAnalysis.analysisDepth;
+    if (context?.userLevel) {
+      switch (context.userLevel) {
+        case 'beginner':
+          adjustedAnalysisDepth = 'basic';
+          break;
+        case 'intermediate':
+          adjustedAnalysisDepth = unifiedAnalysis.analysisDepth === 'comprehensive' ? 'detailed' : unifiedAnalysis.analysisDepth;
+          break;
+        case 'expert':
+          adjustedAnalysisDepth = unifiedAnalysis.analysisDepth === 'basic' ? 'detailed' : unifiedAnalysis.analysisDepth;
+          break;
+        default:
+          adjustedAnalysisDepth = unifiedAnalysis.analysisDepth;
+      }
+    }
+    
+    // Convert to ExtendedIntentAnalysisResult format
+    const analysis: ExtendedIntentAnalysisResult = {
       intent: adjustedIntent,
       confidence: unifiedAnalysis.confidence,
       reasoning: unifiedAnalysis.reasoning + (adjustedIntent !== unifiedAnalysis.intent ? ' (コンテキスト調整済み)' : ''),
-      analysisDepth: unifiedAnalysis.analysisDepth,
+      analysisDepth: adjustedAnalysisDepth,
+      userLevel: context?.userLevel,
+      marketContext: context?.marketContext,
       ...(unifiedAnalysis.extractedSymbol !== undefined && { extractedSymbol: unifiedAnalysis.extractedSymbol }),
       ...(unifiedAnalysis.isProposalMode !== undefined && { isProposalMode: unifiedAnalysis.isProposalMode }),
       ...(unifiedAnalysis.proposalType !== undefined && { proposalType: unifiedAnalysis.proposalType }),
@@ -581,6 +618,8 @@ export async function executeImprovedOrchestrator(
         analysisDepth: analysis.analysisDepth,
         isProposalMode: analysis.isProposalMode,
         proposalType: analysis.proposalType,
+        userLevel: analysis.userLevel,
+        marketContext: context?.marketContext,
       } as any,
       executionResult: executionResult as OrchestratorExecutionResult,
       executionTime,

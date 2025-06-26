@@ -20,8 +20,10 @@ const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation()
 describe('UIEventProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    // Setup default mock implementation - do nothing
-    mockUseUIEventStream.mockImplementation(() => {})
+    // Setup default mock implementation - return expected object
+    mockUseUIEventStream.mockImplementation(() => ({
+      publish: jest.fn()
+    }))
   })
 
   afterEach(() => {

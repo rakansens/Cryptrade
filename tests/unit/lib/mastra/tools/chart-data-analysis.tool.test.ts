@@ -61,15 +61,33 @@ describe('chartDataAnalysisTool', () => {
     jest.restoreAllMocks();
   });
 
-  const mockCandleData = [
-    [1704067200000, "42000", "42500", "41800", "42300", "1000"],
-    [1704070800000, "42300", "42600", "42100", "42400", "1100"],
-    [1704074400000, "42400", "42800", "42200", "42600", "1200"],
-    [1704078000000, "42600", "42900", "42500", "42700", "1050"],
-    [1704081600000, "42700", "43000", "42600", "42900", "1300"],
-  ];
+  const generateMockCandleData = () => {
+    const baseTime = Date.now() - 5 * 3600000; // 5 hours ago
+    const basePrice = 40000 + Math.floor(Math.random() * 20000);
+    const candles = [];
+    
+    for (let i = 0; i < 5; i++) {
+      const time = baseTime + i * 3600000;
+      const open = basePrice + i * 100 + (Math.random() - 0.5) * 500;
+      const close = open + (Math.random() - 0.5) * 400;
+      const high = Math.max(open, close) + Math.random() * 200;
+      const low = Math.min(open, close) - Math.random() * 200;
+      const volume = 900 + Math.random() * 400;
+      
+      candles.push([
+        time,
+        open.toFixed(0),
+        high.toFixed(0),
+        low.toFixed(0),
+        close.toFixed(0),
+        volume.toFixed(0)
+      ]);
+    }
+    
+    return candles;
+  };
 
-  const fixedBaseTime = new Date('2024-01-15T12:00:00.000Z').getTime();
+  const fixedBaseTime = Date.now() - 86400000; // 24 hours ago for consistent testing
   
   const createMockCandles = (count: number, basePrice: number = 50000) => {
     const candles = [];
@@ -251,7 +269,7 @@ describe('chartDataAnalysisTool', () => {
       const uptrendCandles = [];
       for (let i = 0; i < 50; i++) {
         const time = fixedBaseTime - (50 - i) * 3600000;
-        const price = 40000 + i * 100; // Steady uptrend
+        const price = 40000 + i * 200; // Steady uptrend without randomization
         uptrendCandles.push([
           time,
           price.toString(),

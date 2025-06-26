@@ -20,31 +20,39 @@ describe('Binance Klines API Route', () => {
 
   describe('GET /api/binance/klines', () => {
     it('should fetch klines successfully with valid parameters', async () => {
+      // Generate dynamic test data
+      const baseTime = Date.now() - 3600000; // 1 hour ago
+      const openPrice = 40000 + Math.floor(Math.random() * 20000);
+      const highPrice = openPrice + Math.floor(Math.random() * 1000);
+      const lowPrice = openPrice - Math.floor(Math.random() * 1000);
+      const closePrice = lowPrice + Math.floor(Math.random() * (highPrice - lowPrice));
+      const volume = Math.floor(100 + Math.random() * 2000);
+      
       const mockRawKlines = [
         [
-          1640995200000, // Open time
-          "46000.00",    // Open
-          "46500.00",    // High
-          "45800.00",    // Low
-          "46200.00",    // Close
-          "1000.00",     // Volume
-          1640998800000, // Close time
-          "46000000.00", // Quote asset volume
-          1000,          // Number of trades
-          "500.00",      // Taker buy base asset volume
-          "23000000.00", // Taker buy quote asset volume
-          "0"            // Ignore
+          baseTime,                    // Open time
+          openPrice.toFixed(2),        // Open
+          highPrice.toFixed(2),        // High
+          lowPrice.toFixed(2),         // Low
+          closePrice.toFixed(2),       // Close
+          volume.toFixed(2),           // Volume
+          baseTime + 3600000,          // Close time (1 hour later)
+          (volume * closePrice).toFixed(2), // Quote asset volume
+          Math.floor(100 + Math.random() * 1000), // Number of trades
+          (volume * 0.5).toFixed(2),   // Taker buy base asset volume
+          (volume * closePrice * 0.5).toFixed(2), // Taker buy quote asset volume
+          "0"                          // Ignore
         ]
       ];
 
       const mockProcessedKlines = [
         {
-          time: 1640995200,
-          open: 46000,
-          high: 46500,
-          low: 45800,
-          close: 46200,
-          volume: 1000
+          time: Math.floor(baseTime / 1000), // Convert to seconds
+          open: parseFloat(openPrice.toFixed(2)),
+          high: parseFloat(highPrice.toFixed(2)),
+          low: parseFloat(lowPrice.toFixed(2)),
+          close: parseFloat(closePrice.toFixed(2)),
+          volume: parseFloat(volume.toFixed(2))
         }
       ];
 
@@ -213,12 +221,24 @@ describe('Binance Klines API Route', () => {
     });
 
     it('should handle concurrent requests', async () => {
+      // Generate dynamic data for concurrent requests
+      const baseTime = Date.now() - 3600000;
+      const price = 40000 + Math.floor(Math.random() * 20000);
+      const volume = 100 + Math.floor(Math.random() * 2000);
+      
       const mockRawKlines = [[
-        1640995200000, "46000.00", "46500.00", "45800.00", "46200.00", "1000.00",
-        1640998800000, "46000000.00", 1000, "500.00", "23000000.00", "0"
+        baseTime, price.toFixed(2), (price + 500).toFixed(2), (price - 200).toFixed(2), (price + 200).toFixed(2), volume.toFixed(2),
+        baseTime + 3600000, (volume * price).toFixed(2), Math.floor(100 + Math.random() * 1000), (volume * 0.5).toFixed(2), (volume * price * 0.5).toFixed(2), "0"
       ]];
       
-      const mockProcessedData = [{ time: 1640995200, open: 46000, high: 46500, low: 45800, close: 46200, volume: 1000 }];
+      const mockProcessedData = [{ 
+        time: Math.floor(baseTime / 1000), 
+        open: parseFloat(price.toFixed(2)), 
+        high: parseFloat((price + 500).toFixed(2)), 
+        low: parseFloat((price - 200).toFixed(2)), 
+        close: parseFloat((price + 200).toFixed(2)), 
+        volume: parseFloat(volume.toFixed(2)) 
+      }];
 
       const requests = Array(5).fill(null).map(() => 
         new NextRequest('http://localhost:3000/api/binance/klines?symbol=BTCUSDT&interval=1h')
@@ -272,8 +292,10 @@ describe('Binance Klines API Route', () => {
 
     it('should handle malformed klines data (not enough elements)', async () => {
       // Mock klines with not enough elements (should have at least 6)
+      const timestamp = Date.now() - 3600000;
+      const price = (40000 + Math.random() * 20000).toFixed(2);
       const malformedKlines = [
-        [1640995200000, "46000.00", "46500.00"] // Only 3 elements instead of at least 6
+        [timestamp, price, (parseFloat(price) + 500).toFixed(2)] // Only 3 elements instead of at least 6
       ];
 
       mockFetch.mockResolvedValueOnce({
@@ -290,31 +312,40 @@ describe('Binance Klines API Route', () => {
     });
 
     it('should validate processed kline data structure', async () => {
+      // Generate dynamic test data for validation
+      const currentTime = Date.now();
+      const baseTime = currentTime - 3600000;
+      const open = 40000 + Math.floor(Math.random() * 20000);
+      const high = open + Math.floor(Math.random() * 2000);
+      const low = open - Math.floor(Math.random() * 1000);
+      const close = low + Math.floor(Math.random() * (high - low));
+      const vol = 100 + Math.floor(Math.random() * 2000);
+      
       const mockRawKlines = [
         [
-          1640995200000, // Open time
-          "46000.00",    // Open
-          "46500.00",    // High
-          "45800.00",    // Low
-          "46200.00",    // Close
-          "1000.00",     // Volume
-          1640998800000, // Close time
-          "46000000.00", // Quote asset volume
-          1000,          // Number of trades
-          "500.00",      // Taker buy base asset volume
-          "23000000.00", // Taker buy quote asset volume
-          "0"            // Ignore
+          baseTime,                    // Open time
+          open.toFixed(2),             // Open
+          high.toFixed(2),             // High
+          low.toFixed(2),              // Low
+          close.toFixed(2),            // Close
+          vol.toFixed(2),              // Volume
+          baseTime + 3600000,          // Close time
+          (vol * close).toFixed(2),    // Quote asset volume
+          Math.floor(100 + Math.random() * 1000), // Number of trades
+          (vol * 0.5).toFixed(2),      // Taker buy base asset volume
+          (vol * close * 0.5).toFixed(2), // Taker buy quote asset volume
+          "0"                          // Ignore
         ]
       ];
 
       const expectedProcessedData = [
         {
-          time: 1640995200,
-          open: 46000,
-          high: 46500,
-          low: 45800,
-          close: 46200,
-          volume: 1000
+          time: Math.floor(baseTime / 1000),
+          open: parseFloat(open.toFixed(2)),
+          high: parseFloat(high.toFixed(2)),
+          low: parseFloat(low.toFixed(2)),
+          close: parseFloat(close.toFixed(2)),
+          volume: parseFloat(vol.toFixed(2))
         }
       ];
 

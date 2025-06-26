@@ -656,4 +656,173 @@ describe('ChartPersistenceManager', () => {
       expect(loaded[0]?.metadata).toEqual(complexDrawing.metadata);
     });
   });
+
+  describe('Concurrent Operations', () => {
+    describe('Concurrent Data Saving', () => {
+      it('should handle concurrent drawings save without data corruption', async () => {
+        // Prepare different drawings for concurrent saves
+        const drawings1: ChartDrawing[] = [
+          { ...mockDrawing, id: 'concurrent-1', style: { ...mockDrawing.style, color: '#FF0000' } }
+        ];
+        const drawings2: ChartDrawing[] = [
+          { ...mockDrawing, id: 'concurrent-2', style: { ...mockDrawing.style, color: '#00FF00' } }
+        ];
+        const drawings3: ChartDrawing[] = [
+          { ...mockDrawing, id: 'concurrent-3', style: { ...mockDrawing.style, color: '#0000FF' } }
+        ];
+
+        // Execute concurrent saves
+        const promises = [
+          ChartPersistenceManager.saveDrawings(drawings1),
+          ChartPersistenceManager.saveDrawings(drawings2),
+          ChartPersistenceManager.saveDrawings(drawings3)
+        ];
+
+        // All saves should complete successfully
+        const results = await Promise.all(promises);
+        
+        // Verify all operations completed
+        expect(results).toHaveLength(3);
+        
+        // Verify API was called for each save operation
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledTimes(3);
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith('default', drawings1);
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith('default', drawings2);
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith('default', drawings3);
+      });
+    });
+
+    describe('Concurrent Read-Write Operations', () => {
+      it('should maintain data consistency during concurrent read-write operations', async () => {
+        const initialDrawings: ChartDrawing[] = [
+          { ...mockDrawing, id: 'initial-1' }
+        ];
+        const newDrawings: ChartDrawing[] = [
+          { ...mockDrawing, id: 'updated-1', style: { ...mockDrawing.style, color: '#00FF00' } }
+        ];
+
+        // Setup initial data
+        (ChartDrawingAPI.loadDrawings as jest.Mock).mockResolvedValue(initialDrawings);
+        (ChartDrawingAPI.saveDrawings as jest.Mock).mockResolvedValue(undefined);
+
+        // Execute concurrent read and write operations
+        const readPromise = ChartPersistenceManager.loadDrawings();
+        const writePromise = ChartPersistenceManager.saveDrawings(newDrawings);
+
+        // Both operations should complete successfully
+        const [loadedDrawings, saveResult] = await Promise.all([readPromise, writePromise]);
+
+        // Verify read operation completed
+        expect(loadedDrawings).toEqual(initialDrawings);
+        
+        // Verify write operation completed
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith('default', newDrawings);
+        
+        // Both operations should have been called
+        expect(ChartDrawingAPI.loadDrawings).toHaveBeenCalled();
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalled();
+      });
+
+      it('should handle concurrent pattern read-write operations', async () => {
+        const initialPatterns: PatternData[] = [mockPattern];
+        const newPatterns: PatternData[] = [
+          { ...mockPattern, confidence: 0.95, tradingImplication: 'bullish' }
+        ];
+
+        // Setup mocks
+        (ChartDrawingAPI.loadPatterns as jest.Mock).mockResolvedValue(initialPatterns);
+        (ChartDrawingAPI.savePatterns as jest.Mock).mockResolvedValue(undefined);
+
+        // Execute concurrent operations
+        const [loadedPatterns] = await Promise.all([
+          ChartPersistenceManager.loadPatterns(),
+          ChartPersistenceManager.savePatterns(newPatterns)
+        ]);
+
+        // Verify operations completed successfully
+        expect(loadedPatterns).toEqual(initialPatterns);
+        expect(ChartDrawingAPI.savePatterns).toHaveBeenCalledWith('default', newPatterns);
+      });
+    });
+
+    describe('Concurrent Session Operations', () => {
+      it('should isolate concurrent operations across different sessions', async () => {
+        const session1Id = 'session-1';
+        const session2Id = 'session-2';
+        
+        const session1Drawings: ChartDrawing[] = [
+          { ...mockDrawing, id: 'session1-drawing', style: { ...mockDrawing.style, color: '#FF0000' } }
+        ];
+        const session2Drawings: ChartDrawing[] = [
+          { ...mockDrawing, id: 'session2-drawing', style: { ...mockDrawing.style, color: '#0000FF' } }
+        ];
+
+        // Configure different sessions and execute concurrent operations
+        ChartPersistenceManager.configure({ sessionId: session1Id });
+        const session1Promise = ChartPersistenceManager.saveDrawings(session1Drawings);
+
+        ChartPersistenceManager.configure({ sessionId: session2Id });
+        const session2Promise = ChartPersistenceManager.saveDrawings(session2Drawings);
+
+        // Wait for both operations to complete
+        await Promise.all([session1Promise, session2Promise]);
+
+        // Verify each session called the API with correct session ID
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith(session1Id, session1Drawings);
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledWith(session2Id, session2Drawings);
+        expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalledTimes(2);
+      });
+
+      it('should handle concurrent session cleanup operations', async () => {
+        const session1Id = 'cleanup-session-1';
+        const session2Id = 'cleanup-session-2';
+
+        // Setup mocks for cleanup operations
+        (ChartDrawingAPI.clearSession as jest.Mock).mockResolvedValue(undefined);
+
+        // Configure different sessions and execute concurrent cleanup
+        ChartPersistenceManager.configure({ sessionId: session1Id });
+        const cleanup1Promise = ChartPersistenceManager.clearAll();
+
+        ChartPersistenceManager.configure({ sessionId: session2Id });
+        const cleanup2Promise = ChartPersistenceManager.clearAll();
+
+        // Wait for both cleanup operations
+        await Promise.all([cleanup1Promise, cleanup2Promise]);
+
+        // Verify cleanup was called for each session
+        expect(ChartDrawingAPI.clearSession).toHaveBeenCalledWith(session1Id);
+        expect(ChartDrawingAPI.clearSession).toHaveBeenCalledWith(session2Id);
+        expect(ChartDrawingAPI.clearSession).toHaveBeenCalledTimes(2);
+      });
+
+      it('should handle concurrent session state updates', async () => {
+        const session1State: TimeframeState = {
+          symbol: 'BTCUSDT',
+          timeframe: '1h',
+          timestamp: Date.now()
+        };
+        const session2State: TimeframeState = {
+          symbol: 'ETHUSDT',
+          timeframe: '4h',
+          timestamp: Date.now()
+        };
+
+        // Setup different sessions and save states concurrently
+        ChartPersistenceManager.configure({ sessionId: 'state-session-1' });
+        const state1Promise = ChartPersistenceManager.saveTimeframeState(session1State);
+
+        ChartPersistenceManager.configure({ sessionId: 'state-session-2' });
+        const state2Promise = ChartPersistenceManager.saveTimeframeState(session2State);
+
+        // Wait for both operations
+        await Promise.all([state1Promise, state2Promise]);
+
+        // Verify state was saved for each session
+        expect(ChartDrawingAPI.saveTimeframeState).toHaveBeenCalledWith('state-session-1', session1State);
+        expect(ChartDrawingAPI.saveTimeframeState).toHaveBeenCalledWith('state-session-2', session2State);
+        expect(ChartDrawingAPI.saveTimeframeState).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
 });

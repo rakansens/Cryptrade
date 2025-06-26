@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { conversationMemoryService } from '@/lib/services/conversation-memory.service';
 import { z } from 'zod';
 import { createApiHandler } from '@/lib/api/create-api-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 // Request validation schema
 const memorySearchSchema = z.object({
@@ -22,6 +23,15 @@ const memorySearchSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
     const url = new URL(request.url);
     const query = url.searchParams.get('query');
     const sessionId = url.searchParams.get('sessionId');

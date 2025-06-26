@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
 import { z } from 'zod';
+import { getServerSession } from '@/lib/auth/server';
 
 // Message schema
 const createMessageSchema = z.object({
@@ -14,6 +15,15 @@ const createMessageSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const data = createMessageSchema.parse(body);
 

@@ -4,9 +4,11 @@ const restoreEnv = mockTestEnv();
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/alerts/route';
 import { AlertService } from '@/lib/services/alert.service';
+import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
 jest.mock('@/lib/services/alert.service');
+jest.mock('@/lib/auth/server');
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -66,9 +68,14 @@ jest.mock('@/app/api/utils/responses', () => ({
   }),
 }));
 
+const mockedGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+
 describe('Alerts API Route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set default authenticated session
+    const mockSession = { user: { id: 'user-123' } };
+    mockedGetServerSession.mockResolvedValue(mockSession as any);
   });
 
   afterAll(() => {
@@ -76,6 +83,48 @@ describe('Alerts API Route', () => {
   });
 
   describe('GET /api/alerts', () => {
+    describe('Authentication', () => {
+      it('should reject unauthenticated requests', async () => {
+        mockedGetServerSession.mockResolvedValue(null);
+
+        const request = new NextRequest('http://localhost/api/alerts');
+        const response = await GET(request);
+        const data = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(data.error).toBe('Unauthorized - Please login');
+        expect(AlertService.getUserAlerts).not.toHaveBeenCalled();
+      });
+
+      it('should handle authenticated requests without session user id', async () => {
+        const mockSession = { user: null };
+        mockedGetServerSession.mockResolvedValue(mockSession as any);
+        const mockUserId = 'user-123';
+
+        const request = new NextRequest('http://localhost/api/alerts', {
+          headers: { 'x-user-id': mockUserId },
+        });
+        const response = await GET(request);
+
+        expect(response.status).toBe(400);
+        const data = await response.json();
+        expect(data.error).toBe('Missing user id');
+      });
+
+      it('should handle authenticated requests with session user id', async () => {
+        const mockUserId = 'user-456';
+        const mockSession = { user: { id: mockUserId } };
+        mockedGetServerSession.mockResolvedValue(mockSession as any);
+        (AlertService.getUserAlerts as jest.Mock).mockResolvedValueOnce([]);
+
+        const request = new NextRequest('http://localhost/api/alerts');
+        const response = await GET(request);
+
+        expect(response.status).toBe(200);
+        expect(AlertService.getUserAlerts).toHaveBeenCalledWith(mockUserId);
+      });
+    });
+    
     it('should return user alerts successfully', async () => {
       const mockUserId = 'user-123';
       const mockAlerts = [
@@ -99,11 +148,7 @@ describe('Alerts API Route', () => {
 
       (AlertService.getUserAlerts as jest.Mock).mockResolvedValueOnce(mockAlerts);
 
-      const request = new NextRequest('http://localhost/api/alerts', {
-        headers: {
-          'x-user-id': mockUserId,
-        },
-      });
+      const request = new NextRequest('http://localhost/api/alerts');
 
       const response = await GET(request);
       const data = await response.json();
@@ -118,6 +163,9 @@ describe('Alerts API Route', () => {
     });
 
     it('should return 400 when user id is missing', async () => {
+      const mockSession = { user: null };
+      mockedGetServerSession.mockResolvedValue(mockSession as any);
+      
       const request = new NextRequest('http://localhost/api/alerts');
 
       const response = await GET(request);
@@ -132,15 +180,10 @@ describe('Alerts API Route', () => {
     });
 
     it('should handle service errors', async () => {
-      const mockUserId = 'user-123';
       const serviceError = new Error('Database error');
       (AlertService.getUserAlerts as jest.Mock).mockRejectedValueOnce(serviceError);
 
-      const request = new NextRequest('http://localhost/api/alerts', {
-        headers: {
-          'x-user-id': mockUserId,
-        },
-      });
+      const request = new NextRequest('http://localhost/api/alerts');
 
       const response = await GET(request);
       const data = await response.json();
@@ -154,13 +197,11 @@ describe('Alerts API Route', () => {
 
     it('should return empty array when user has no alerts', async () => {
       const mockUserId = 'user-456';
+      const mockSession = { user: { id: mockUserId } };
+      mockedGetServerSession.mockResolvedValue(mockSession as any);
       (AlertService.getUserAlerts as jest.Mock).mockResolvedValueOnce([]);
 
-      const request = new NextRequest('http://localhost/api/alerts', {
-        headers: {
-          'x-user-id': mockUserId,
-        },
-      });
+      const request = new NextRequest('http://localhost/api/alerts');
 
       const response = await GET(request);
       const data = await response.json();
@@ -175,6 +216,53 @@ describe('Alerts API Route', () => {
   });
 
   describe('POST /api/alerts', () => {
+    describe('Authentication', () => {
+      it('should reject unauthenticated requests', async () => {
+        mockedGetServerSession.mockResolvedValue(null);
+
+        const request = new NextRequest('http://localhost/api/alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbol: 'BTCUSDT',
+            conditions: { priceAbove: 50000 }
+          })
+        });
+
+        const response = await POST(request);
+        const data = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(data.error).toBe('Unauthorized - Please login');
+        expect(AlertService.createAlert).not.toHaveBeenCalled();
+      });
+
+      it('should handle authenticated requests with session user id', async () => {
+        const mockUserId = 'session-user-456';
+        const mockSession = { user: { id: mockUserId } };
+        mockedGetServerSession.mockResolvedValue(mockSession as any);
+        (AlertService.createAlert as jest.Mock).mockResolvedValueOnce({ id: 'alert-123' });
+
+        const request = new NextRequest('http://localhost/api/alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbol: 'BTCUSDT',
+            conditions: { priceAbove: 50000 }
+          })
+        });
+
+        const response = await POST(request);
+
+        expect(response.status).toBe(200);
+        expect(AlertService.createAlert).toHaveBeenCalledWith({
+          userId: mockUserId,
+          symbol: 'BTCUSDT',
+          conditions: { priceAbove: 50000 }
+        });
+      });
+    });
+
     it('should create price above alert successfully', async () => {
       const mockUserId = 'user-123';
       const alertData = {
@@ -197,7 +285,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -240,7 +327,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -257,8 +343,11 @@ describe('Alerts API Route', () => {
     });
 
     it('should create volume alert successfully', async () => {
+      const mockUserId = 'user-456';
+      const mockSession = { user: { id: mockUserId } };
+      mockedGetServerSession.mockResolvedValue(mockSession as any);
+      
       const alertData = {
-        userId: 'user-456', // userId in body takes precedence
         symbol: 'BTCUSDT',
         conditions: {
           volumeAbove: 1000000,
@@ -266,6 +355,7 @@ describe('Alerts API Route', () => {
       };
       const mockCreatedAlert = {
         id: 'alert-789',
+        userId: mockUserId,
         ...alertData,
         isActive: true,
         createdAt: new Date(),
@@ -277,7 +367,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user-123', // This should be overridden by body userId
         },
         body: JSON.stringify(alertData),
       });
@@ -287,7 +376,7 @@ describe('Alerts API Route', () => {
 
       expect(response.status).toBe(200);
       expect(AlertService.createAlert).toHaveBeenCalledWith({
-        userId: 'user-456',
+        userId: mockUserId,
         symbol: 'BTCUSDT',
         conditions: { volumeAbove: 1000000 },
       });
@@ -319,7 +408,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -329,7 +417,7 @@ describe('Alerts API Route', () => {
 
       expect(response.status).toBe(200);
       expect(AlertService.createAlert).toHaveBeenCalledWith({
-        userId: mockUserId,
+        userId: 'user-123',
         symbol: 'BTCUSDT',
         conditions: {
           indicatorCrossover: {
@@ -363,7 +451,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -402,7 +489,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -422,6 +508,9 @@ describe('Alerts API Route', () => {
     });
 
     it('should return 400 when user id is missing', async () => {
+      const mockSession = { user: null };
+      mockedGetServerSession.mockResolvedValue(mockSession as any);
+      
       const alertData = {
         symbol: 'BTCUSDT',
         conditions: {
@@ -459,7 +548,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user-123',
         },
         body: JSON.stringify(alertData),
       });
@@ -483,7 +571,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user-123',
         },
         body: JSON.stringify(alertData),
       });
@@ -513,7 +600,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user-123',
         },
         body: JSON.stringify(alertData),
       });
@@ -528,7 +614,6 @@ describe('Alerts API Route', () => {
     });
 
     it('should handle service errors', async () => {
-      const mockUserId = 'user-123';
       const alertData = {
         symbol: 'BTCUSDT',
         conditions: {
@@ -542,7 +627,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': mockUserId,
         },
         body: JSON.stringify(alertData),
       });
@@ -562,7 +646,6 @@ describe('Alerts API Route', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user-123',
         },
         body: 'invalid json',
       });

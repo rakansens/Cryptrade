@@ -29,6 +29,8 @@ import type {
 describe('AnalysisAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-01-01T00:00:00.000Z'));
     (process.env as any).NODE_ENV = 'test';
     (global.fetch as jest.Mock).mockReset();
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
@@ -42,6 +44,11 @@ describe('AnalysisAPI', () => {
       }
       return `${prefix}_${JSON.stringify(params)}`;
     });
+  });
+  
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   describe('saveAnalysis', () => {
@@ -57,7 +64,7 @@ describe('AnalysisAPI', () => {
           drawingData: {
             id: 'test-drawing',
             type: 'horizontal' as const,
-            points: [{ time: Date.now() / 1000, value: 50000 }],
+            points: [{ time: 1735689600, value: 50000 }], // Fixed timestamp: 2025-01-01T00:00:00.000Z / 1000
             style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
           }
         },
@@ -244,7 +251,7 @@ describe('AnalysisAPI', () => {
             drawingData: {
               id: 'drawing-1',
               type: 'horizontal' as const,
-              points: [{ time: Date.now() / 1000, value: 50000 }],
+              points: [{ time: 1735689600, value: 50000 }], // Fixed timestamp: 2025-01-01T00:00:00.000Z / 1000
               style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
             }
           },
@@ -427,7 +434,7 @@ describe('AnalysisAPI', () => {
             drawingData: {
               id: 'drawing-1',
               type: 'horizontal' as const,
-              points: [{ time: Date.now() / 1000, value: 50000 }],
+              points: [{ time: 1735689600, value: 50000 }], // Fixed timestamp: 2025-01-01T00:00:00.000Z / 1000
               style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
             }
           },
@@ -641,7 +648,7 @@ describe('AnalysisAPI', () => {
           drawingData: {
             id: 'drawing-db-1',
             type: 'horizontal' as const,
-            points: [{ time: Date.now() / 1000, value: 50000 }],
+            points: [{ time: 1735689600, value: 50000 }], // Fixed timestamp: 2025-01-01T00:00:00.000Z / 1000
             style: { color: '#00FF00', lineWidth: 2, lineStyle: "solid" as const, showLabels: true }
           }
         },

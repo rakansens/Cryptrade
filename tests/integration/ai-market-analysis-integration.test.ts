@@ -267,7 +267,7 @@ describe('AI Chat + Market Analysis Integration', () => {
       expect(pendingProposals.length).toBeGreaterThan(0);
     });
 
-    it('should update analysis based on real-time data', (done) => {
+    it('should update analysis based on real-time data', async () => {
       const symbol = 'BTCUSDT';
       let analysisCount = 0;
       
@@ -285,106 +285,130 @@ describe('AI Chat + Market Analysis Integration', () => {
         marketStore.addKline(symbol, kline);
       });
       
-      // Subscribe to real-time updates
-      const subscription = wsManager.subscribe(`${symbol.toLowerCase()}@kline_1m`).subscribe({
-        next: async (data) => {
-          // Add new kline
-          const kline = {
-            time: Math.floor((data as any)['k']['t'] / 1000),
-            open: parseFloat((data as any)['k']['o']),
-            high: parseFloat((data as any)['k']['h']),
-            low: parseFloat((data as any)['k']['l']),
-            close: parseFloat((data as any)['k']['c']),
-            volume: parseFloat((data as any)['k']['v'])
-          };
-          
-          marketStore.addKline(symbol, kline);
-          
-          // Trigger analysis if significant price change
-          const latestKlines = marketStore.klines[`${symbol}_1m`];
-          const priceChange = Math.abs(kline.close - latestKlines[latestKlines.length - 2]?.close || 0);
-          
-          if (priceChange > 100) {
-            analysisCount++;
-            
-            // Perform new analysis
-            /**
-             * @todo Fix agent API usage for real-time analysis
-             * @fixme Currently using mock data instead of actual agent API
-             * @description Should use actual mastra agent API for real-time price movement analysis
-             */
-            // const result = await (await mastra.getAgent('tradingAgent')).generate({
-            //   messages: [{ role: 'system', content: 'Significant price movement detected' }],
-            //   symbol,
-            //   marketData: latestKlines
-            // });
-            
-            // Mock result for now
-            const result = {
-              analysis: 'Price movement analysis'
+      // Create a promise that resolves when we've received 2 analyses
+      const analysisComplete = new Promise<void>((resolve) => {
+        // Subscribe to real-time updates
+        const subscription = wsManager.subscribe(`${symbol.toLowerCase()}@kline_1m`).subscribe({
+          next: async (data) => {
+            // Add new kline
+            const kline = {
+              time: Math.floor((data as any)['k']['t'] / 1000),
+              open: parseFloat((data as any)['k']['o']),
+              high: parseFloat((data as any)['k']['h']),
+              low: parseFloat((data as any)['k']['l']),
+              close: parseFloat((data as any)['k']['c']),
+              volume: parseFloat((data as any)['k']['v'])
             };
             
-            // Add analysis to chat
-            chatStore.addMessage({
-              id: `analysis-${analysisCount}`,
-              role: 'assistant',
-              content: `Price alert: ${result.analysis}`,
-              timestamp: Date.now()
-            });
+            marketStore.addKline(symbol, kline);
             
-            if (analysisCount >= 2) {
-              subscription.unsubscribe();
-              done();
+            // Trigger analysis if significant price change
+            const latestKlines = marketStore.klines[`${symbol}_1m`];
+            const priceChange = Math.abs(kline.close - latestKlines[latestKlines.length - 2]?.close || 0);
+            
+            if (priceChange > 100) {
+              analysisCount++;
+              
+              // Perform new analysis
+              /**
+               * @todo Fix agent API usage for real-time analysis
+               * @fixme Currently using mock data instead of actual agent API
+               * @description Should use actual mastra agent API for real-time price movement analysis
+               */
+              // const result = await (await mastra.getAgent('tradingAgent')).generate({
+              //   messages: [{ role: 'system', content: 'Significant price movement detected' }],
+              //   symbol,
+              //   marketData: latestKlines
+              // });
+              
+              // Mock result for now
+              const result = {
+                analysis: 'Price movement analysis'
+              };
+              
+              // Add analysis to chat
+              chatStore.addMessage({
+                id: `analysis-${analysisCount}`,
+                role: 'assistant',
+                content: `Price alert: ${result.analysis}`,
+                timestamp: Date.now()
+              });
+              
+              if (analysisCount >= 2) {
+                subscription.unsubscribe();
+                resolve();
+              }
             }
           }
-        }
+        });
       });
       
-      // Simulate price movements
-      setTimeout(() => {
-        const ws = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_1m`);
-        if (ws) {
-          // First significant move
-          ws.simulateMessage({
-            e: 'kline',
-            E: Date.now(),
+      // Wait for WebSocket connection and simulate price movements
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_1m`);
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        // Timeout after 1 second
+        setTimeout(() => resolve(undefined), 1000);
+      });
+      
+      if (ws) {
+        // First significant move
+        ws.simulateMessage({
+          e: 'kline',
+          E: Date.now(),
+          s: symbol,
+          k: {
+            t: Date.now() - 60000,
+            T: Date.now(),
             s: symbol,
-            k: {
-              t: Date.now() - 60000,
-              T: Date.now(),
-              s: symbol,
-              i: '1m',
-              o: '50050',
-              c: '50200', // +150 move
-              h: '50250',
-              l: '50000',
-              v: '200',
-              x: true
-            }
-          });
-          
-          // Second significant move
-          setTimeout(() => {
-            ws.simulateMessage({
-              e: 'kline',
-              E: Date.now(),
-              s: symbol,
-              k: {
-                t: Date.now(),
-                T: Date.now() + 60000,
-                s: symbol,
-                i: '1m',
-                o: '50200',
-                c: '50350', // +150 move
-                h: '50400',
-                l: '50150',
-                v: '250',
-                x: true
-              }
-            });
-          }, 100);
-        }
-      }, 50);
+            i: '1m',
+            o: '50050',
+            c: '50200', // +150 move
+            h: '50250',
+            l: '50000',
+            v: '200',
+            x: true
+          }
+        });
+        
+        // Wait a bit then send second significant move
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        ws.simulateMessage({
+          e: 'kline',
+          E: Date.now(),
+          s: symbol,
+          k: {
+            t: Date.now(),
+            T: Date.now() + 60000,
+            s: symbol,
+            i: '1m',
+            o: '50200',
+            c: '50350', // +150 move
+            h: '50400',
+            l: '50150',
+            v: '250',
+            x: true
+          }
+        });
+      }
+      
+      // Wait for analyses to complete
+      await analysisComplete;
+      
+      // Verify we got 2 analyses
+      expect(analysisCount).toBe(2);
+      const messages = chatStore.messages.filter((m: any) => m.id.startsWith('analysis-'));
+      expect(messages).toHaveLength(2);
     });
   });
 

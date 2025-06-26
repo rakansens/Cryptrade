@@ -38,12 +38,13 @@ describe('Circuit Breaker API Route', () => {
 
   describe('GET /api/monitoring/circuit-breaker', () => {
     it('should return circuit breaker status', async () => {
+      const currentTime = Date.now();
       const mockStatus = {
         state: 'closed',
         failureCount: 0,
         lastFailureTime: null,
         nextAttemptTime: null,
-        successRate: 100,
+        successRate: 85 + Math.floor(Math.random() * 15),
       };
 
       mockGetStatus.mockReturnValue(mockStatus);
@@ -70,12 +71,13 @@ describe('Circuit Breaker API Route', () => {
     });
 
     it('should handle open circuit breaker state', async () => {
+      const currentTime = Date.now();
       const mockStatus = {
         state: 'open',
-        failureCount: 5,
-        lastFailureTime: new Date().toISOString(),
-        nextAttemptTime: new Date(Date.now() + 60000).toISOString(),
-        successRate: 0,
+        failureCount: 3 + Math.floor(Math.random() * 7),
+        lastFailureTime: new Date(currentTime - 5000).toISOString(),
+        nextAttemptTime: new Date(currentTime + 60000 + Math.floor(Math.random() * 30000)).toISOString(),
+        successRate: Math.floor(Math.random() * 20),
       };
 
       mockGetStatus.mockReturnValue(mockStatus);
@@ -90,12 +92,13 @@ describe('Circuit Breaker API Route', () => {
     });
 
     it('should handle half-open circuit breaker state', async () => {
+      const currentTime = Date.now();
       const mockStatus = {
         state: 'half-open',
-        failureCount: 3,
-        lastFailureTime: new Date(Date.now() - 30000).toISOString(),
+        failureCount: 1 + Math.floor(Math.random() * 4),
+        lastFailureTime: new Date(currentTime - 30000 - Math.floor(Math.random() * 10000)).toISOString(),
         nextAttemptTime: null,
-        successRate: 40,
+        successRate: 30 + Math.floor(Math.random() * 40),
       };
 
       mockGetStatus.mockReturnValue(mockStatus);

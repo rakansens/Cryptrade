@@ -845,7 +845,7 @@ describe('PatternDetector', () => {
       expect(() => patterns).not.toThrow();
     });
     
-    it.skip('should validate H&S pattern with asymmetric shoulders', () => {
+    it('should validate H&S pattern with asymmetric shoulders', () => {
       // H&S with shoulders at different heights (within 5% tolerance)
       mockData = [
         createMockCandle(1, 100, 102, 98, 100),
@@ -1006,7 +1006,7 @@ describe('PatternDetector', () => {
       expect(patterns.length).toBeGreaterThanOrEqual(0);
     });
     
-    it.skip('should respect lookback period for performance', () => {
+    it('should respect lookback period for performance', () => {
       // Create 500 data points
       const dataset = Array.from({ length: 500 }, (_, i) => 
         createMockCandle(i, 100, 105, 95, 100 + Math.random() * 5)
@@ -1223,6 +1223,241 @@ describe('PatternDetector', () => {
         const baseConfidence = 1; // ダブルトップのデフォルト信頼度
         expect(patterns[0]?.confidence).toBe(baseConfidence); // 1.2倍しても最大値は1
       }
+    });
+  });
+
+  describe('Error handling and edge cases', () => {
+    it('should handle empty data array', () => {
+      detector = new PatternDetector([]);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 20,
+        minConfidence: 0.6
+      });
+      
+      expect(patterns).toEqual([]);
+    });
+
+    it('should handle null or undefined data', () => {
+      // Test with null
+      expect(() => new PatternDetector(null as any)).toThrow();
+      
+      // Test with undefined
+      expect(() => new PatternDetector(undefined as any)).toThrow();
+    });
+
+    it('should handle invalid candlestick data', () => {
+      const invalidData = [
+        { time: 1, open: NaN, high: 100, low: 90, close: 95, volume: 1000 },
+        { time: 2, open: 100, high: Infinity, low: 90, close: 95, volume: 1000 },
+        { time: 3, open: 100, high: 110, low: -Infinity, close: 95, volume: 1000 },
+        { time: 4, open: 100, high: 110, low: 90, close: null as any, volume: 1000 },
+        { time: 5, open: undefined as any, high: 110, low: 90, close: 95, volume: 1000 },
+      ] as CandlestickData[];
+      
+      detector = new PatternDetector(invalidData);
+      expect(() => detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      })).not.toThrow();
+    });
+
+    it('should handle negative prices', () => {
+      const negativeData = [
+        createMockCandle(1, -100, -90, -110, -95),
+        createMockCandle(2, -95, -85, -100, -90),
+        createMockCandle(3, -90, -80, -95, -85),
+      ];
+      
+      detector = new PatternDetector(negativeData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      });
+      
+      // Should handle negative prices gracefully
+      expect(() => patterns).not.toThrow();
+    });
+
+    it('should handle invalid detection parameters', () => {
+      mockData = [
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(2, 105, 115, 100, 110),
+      ];
+      detector = new PatternDetector(mockData);
+
+      // Negative lookback period
+      expect(() => detector.detectPatterns({
+        lookbackPeriod: -10,
+        minConfidence: 0.6
+      })).not.toThrow();
+
+      // Invalid confidence range
+      const patterns1 = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: -0.5
+      });
+      expect(patterns1).toBeDefined();
+
+      const patterns2 = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 1.5
+      });
+      expect(patterns2).toBeDefined();
+    });
+
+    it('should handle data with duplicate timestamps', () => {
+      const duplicateData = [
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(1, 105, 115, 100, 110), // Duplicate timestamp
+        createMockCandle(1, 110, 120, 105, 115), // Another duplicate
+        createMockCandle(2, 115, 125, 110, 120),
+      ];
+      
+      detector = new PatternDetector(duplicateData);
+      expect(() => detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      })).not.toThrow();
+    });
+
+    it('should handle unsorted data', () => {
+      const unsortedData = [
+        createMockCandle(5, 115, 125, 110, 120),
+        createMockCandle(2, 105, 115, 100, 110),
+        createMockCandle(4, 110, 120, 105, 115),
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(3, 108, 118, 103, 113),
+      ];
+      
+      detector = new PatternDetector(unsortedData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      });
+      
+      expect(() => patterns).not.toThrow();
+    });
+
+    it('should handle extremely large price values', () => {
+      const largeValueData = [
+        createMockCandle(1, 1e10, 1.1e10, 9e9, 1.05e10),
+        createMockCandle(2, 1.05e10, 1.15e10, 1e10, 1.1e10),
+        createMockCandle(3, 1.1e10, 1.2e10, 1.05e10, 1.15e10),
+      ];
+      
+      detector = new PatternDetector(largeValueData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      });
+      
+      expect(() => patterns).not.toThrow();
+    });
+
+    it('should handle invalid pattern types', () => {
+      mockData = [
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(2, 105, 115, 100, 110),
+      ];
+      detector = new PatternDetector(mockData);
+
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6,
+        patternTypes: ['invalidPattern' as any, 'anotherInvalid' as any]
+      });
+      
+      // Should return empty array for invalid pattern types
+      expect(patterns).toEqual([]);
+    });
+
+    it('should handle async detection errors', async () => {
+      mockData = [
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(2, 105, 115, 100, 110),
+      ];
+      detector = new PatternDetector(mockData);
+
+      // Mock function that throws error
+      const errorFunction = jest.fn().mockRejectedValue(new Error('API Error'));
+
+      const params: PatternDetectionParams = {
+        lookbackPeriod: 10,
+        minConfidence: 0.6,
+        multiTimeframeOptions: {
+          currentInterval: '15m',
+          getHigherTimeframeData: errorFunction,
+        },
+      };
+
+      // Should handle async errors gracefully
+      await expect(detector.detectPatternsAsync(params)).rejects.toThrow('API Error');
+    });
+
+    it('should handle data with zero volume', () => {
+      const zeroVolumeData = [
+        createMockCandle(1, 100, 110, 90, 105, 0),
+        createMockCandle(2, 105, 115, 100, 110, 0),
+        createMockCandle(3, 110, 120, 105, 115, 0),
+      ];
+      
+      detector = new PatternDetector(zeroVolumeData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      });
+      
+      expect(() => patterns).not.toThrow();
+    });
+
+    it('should handle lookback period larger than data length', () => {
+      mockData = [
+        createMockCandle(1, 100, 110, 90, 105),
+        createMockCandle(2, 105, 115, 100, 110),
+      ];
+      detector = new PatternDetector(mockData);
+
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 100, // Much larger than data length
+        minConfidence: 0.6
+      });
+      
+      // Should handle gracefully
+      expect(() => patterns).not.toThrow();
+      expect(patterns).toBeDefined();
+    });
+
+    it('should handle high-low price inversions', () => {
+      const invertedData = [
+        createMockCandle(1, 100, 90, 110, 105), // High < Low
+        createMockCandle(2, 105, 100, 115, 110), // High < Low
+        createMockCandle(3, 110, 105, 120, 115), // High < Low
+      ];
+      
+      detector = new PatternDetector(invertedData);
+      expect(() => detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      })).not.toThrow();
+    });
+
+    it('should handle all same price values', () => {
+      const flatData = [
+        createMockCandle(1, 100, 100, 100, 100),
+        createMockCandle(2, 100, 100, 100, 100),
+        createMockCandle(3, 100, 100, 100, 100),
+        createMockCandle(4, 100, 100, 100, 100),
+        createMockCandle(5, 100, 100, 100, 100),
+      ];
+      
+      detector = new PatternDetector(flatData);
+      const patterns = detector.detectPatterns({
+        lookbackPeriod: 10,
+        minConfidence: 0.6
+      });
+      
+      // Should not detect patterns in flat data
+      expect(patterns.length).toBe(0);
     });
   });
 });

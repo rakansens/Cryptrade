@@ -26,6 +26,13 @@ console.log('Running Jest with optimized memory settings...');
 console.log(`Memory limit: 4GB`);
 console.log(`Command: ${command}\n`);
 
+// Force TTY for interactive mode
+process.stdout.isTTY = true;
+process.stderr.isTTY = true;
+
+// Remove CI env var if it exists
+delete process.env.CI;
+
 try {
   // Execute Jest with the proper settings
   execSync(command, {

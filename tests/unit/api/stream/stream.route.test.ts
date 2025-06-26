@@ -40,6 +40,13 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
+// Mock the server session to allow authentication
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn().mockResolvedValue({
+    user: { id: 'test-user', email: 'test@example.com' }
+  })
+}));
+
 describe('Logs Stream API Route', () => {
   const mockSubscribe = enhancedLogger.subscribe as jest.Mock;
   let mockCallback: (log: LogEntry) => void;

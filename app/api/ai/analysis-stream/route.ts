@@ -8,6 +8,7 @@ import {
   getAnalysisSteps,
 } from '@/types/analysis-progress';
 import { createSSEHandler, createSSEOptionsHandler, SSEStream } from '@/lib/api/create-sse-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 /**
  * Analysis Progress Streaming API
@@ -87,6 +88,23 @@ export const OPTIONS = createSSEOptionsHandler({ origin: '*' });
 
 async function runAnalysisStream(_request: NextRequest, validatedInput: z.infer<typeof AnalysisStreamRequestSchema>, stream: SSEStream) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      stream.write({ 
+        data: { 
+          type: 'analysis:error',
+          sessionId: `session_${Date.now()}`,
+          timestamp: Date.now(),
+          data: {
+            error: 'Unauthorized - Please login'
+          }
+        } 
+      });
+      stream.close();
+      return;
+    }
+
     const sessionId = validatedInput.sessionId || `session_${Date.now()}`;
 
     logger.info('[Analysis Stream API] Starting analysis stream', {
@@ -94,6 +112,7 @@ async function runAnalysisStream(_request: NextRequest, validatedInput: z.infer<
       interval: validatedInput.interval,
       analysisType: validatedInput.analysisType,
       sessionId,
+      userId: session.user?.id
     });
 
     const sendEvent = (event: AnalysisProgressEvent) => {

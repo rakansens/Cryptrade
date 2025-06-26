@@ -13,28 +13,34 @@ describe('Binance Ticker API Route', () => {
 
   describe('GET /api/binance/ticker', () => {
     it('should fetch ticker data successfully', async () => {
+      // Generate dynamic ticker data
+      const basePrice = 40000 + Math.floor(Math.random() * 20000);
+      const priceChange = (Math.random() - 0.5) * 2000;
+      const currentTime = Date.now();
+      const volume = 5000 + Math.floor(Math.random() * 10000);
+      
       const mockTickerData = {
         symbol: 'BTCUSDT',
-        priceChange: '1000.00',
-        priceChangePercent: '2.17',
-        weightedAvgPrice: '46234.56',
-        prevClosePrice: '46000.00',
-        lastPrice: '47000.00',
-        lastQty: '0.005',
-        bidPrice: '46999.00',
-        bidQty: '0.1',
-        askPrice: '47001.00',
-        askQty: '0.1',
-        openPrice: '46000.00',
-        highPrice: '47500.00',
-        lowPrice: '45500.00',
-        volume: '10000.00',
-        quoteVolume: '462345600.00',
-        openTime: 1640995200000,
-        closeTime: 1641081600000,
-        firstId: 100000,
-        lastId: 200000,
-        count: 100000
+        priceChange: priceChange.toFixed(2),
+        priceChangePercent: ((priceChange / basePrice) * 100).toFixed(2),
+        weightedAvgPrice: (basePrice + priceChange / 2).toFixed(2),
+        prevClosePrice: basePrice.toFixed(2),
+        lastPrice: (basePrice + priceChange).toFixed(2),
+        lastQty: (Math.random() * 0.1).toFixed(3),
+        bidPrice: (basePrice + priceChange - 1).toFixed(2),
+        bidQty: (Math.random() * 1).toFixed(1),
+        askPrice: (basePrice + priceChange + 1).toFixed(2),
+        askQty: (Math.random() * 1).toFixed(1),
+        openPrice: basePrice.toFixed(2),
+        highPrice: (basePrice + Math.abs(priceChange) + Math.random() * 1000).toFixed(2),
+        lowPrice: (basePrice - Math.abs(priceChange) - Math.random() * 1000).toFixed(2),
+        volume: volume.toFixed(2),
+        quoteVolume: (volume * (basePrice + priceChange / 2)).toFixed(2),
+        openTime: currentTime - 86400000,
+        closeTime: currentTime,
+        firstId: Math.floor(Math.random() * 1000000),
+        lastId: Math.floor(Math.random() * 1000000) + 100000,
+        count: Math.floor(50000 + Math.random() * 100000)
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -59,53 +65,39 @@ describe('Binance Ticker API Route', () => {
     });
 
     it('should fetch all tickers when symbol not provided', async () => {
+      // Generate dynamic data for multiple tickers
+      const currentTime = Date.now();
+      const generateTickerData = (symbol: string, basePrice: number) => {
+        const change = (Math.random() - 0.5) * basePrice * 0.05; // ±5% change
+        const volume = 1000 + Math.floor(Math.random() * 5000);
+        return {
+          symbol,
+          priceChange: change.toFixed(2),
+          priceChangePercent: ((change / basePrice) * 100).toFixed(2),
+          weightedAvgPrice: (basePrice + change / 2).toFixed(2),
+          prevClosePrice: basePrice.toFixed(2),
+          lastPrice: (basePrice + change).toFixed(2),
+          lastQty: (Math.random() * 0.5).toFixed(1),
+          bidPrice: (basePrice + change - 1).toFixed(2),
+          bidQty: (Math.random() * 2).toFixed(1),
+          askPrice: (basePrice + change + 1).toFixed(2),
+          askQty: (Math.random() * 2).toFixed(1),
+          openPrice: basePrice.toFixed(2),
+          highPrice: (basePrice + Math.abs(change) + Math.random() * basePrice * 0.02).toFixed(2),
+          lowPrice: (basePrice - Math.abs(change) - Math.random() * basePrice * 0.02).toFixed(2),
+          volume: volume.toFixed(2),
+          quoteVolume: (volume * (basePrice + change / 2)).toFixed(2),
+          openTime: currentTime - 86400000,
+          closeTime: currentTime,
+          firstId: Math.floor(Math.random() * 10000),
+          lastId: Math.floor(Math.random() * 10000) + 1000,
+          count: Math.floor(500 + Math.random() * 2000)
+        };
+      };
+      
       const mockAllTickers = [
-        {
-          symbol: 'BTCUSDT',
-          priceChange: '100.00',
-          priceChangePercent: '1.00',
-          weightedAvgPrice: '47000.00',
-          prevClosePrice: '46000.00',
-          lastPrice: '47000.00',
-          lastQty: '0.1',
-          bidPrice: '46999.00',
-          bidQty: '1.0',
-          askPrice: '47001.00',
-          askQty: '1.0',
-          openPrice: '46000.00',
-          highPrice: '48000.00',
-          lowPrice: '45000.00',
-          volume: '1000.00',
-          quoteVolume: '47000000.00',
-          openTime: Date.now() - 86400000,
-          closeTime: Date.now(),
-          firstId: 1000,
-          lastId: 2000,
-          count: 1000
-        },
-        {
-          symbol: 'ETHUSDT',
-          priceChange: '50.00',
-          priceChangePercent: '1.50',
-          weightedAvgPrice: '3200.00',
-          prevClosePrice: '3150.00',
-          lastPrice: '3200.00',
-          lastQty: '0.5',
-          bidPrice: '3199.00',
-          bidQty: '2.0',
-          askPrice: '3201.00',
-          askQty: '2.0',
-          openPrice: '3150.00',
-          highPrice: '3250.00',
-          lowPrice: '3100.00',
-          volume: '5000.00',
-          quoteVolume: '16000000.00',
-          openTime: Date.now() - 86400000,
-          closeTime: Date.now(),
-          firstId: 5000,
-          lastId: 6000,
-          count: 1000
-        }
+        generateTickerData('BTCUSDT', 40000 + Math.random() * 20000),
+        generateTickerData('ETHUSDT', 2500 + Math.random() * 1000)
       ];
 
       mockFetch.mockResolvedValueOnce({
@@ -216,29 +208,38 @@ describe('Binance Ticker API Route', () => {
     });
 
     it('should handle multiple concurrent requests', async () => {
-      const createMockData = (symbol: string) => ({
-        symbol,
-        priceChange: '100.00',
-        priceChangePercent: '1.00',
-        weightedAvgPrice: '47000.00',
-        prevClosePrice: '46000.00',
-        lastPrice: '47000.00',
-        lastQty: '0.1',
-        bidPrice: '46999.00',
-        bidQty: '1.0',
-        askPrice: '47001.00',
-        askQty: '1.0',
-        openPrice: '46000.00',
-        highPrice: '48000.00',
-        lowPrice: '45000.00',
-        volume: '1000.00',
-        quoteVolume: '47000000.00',
-        openTime: Date.now() - 86400000,
-        closeTime: Date.now(),
-        firstId: 1000,
-        lastId: 2000,
-        count: 1000
-      });
+      const createMockData = (symbol: string) => {
+        const basePrice = symbol === 'BTCUSDT' ? 40000 + Math.random() * 20000 : 
+                         symbol === 'ETHUSDT' ? 2500 + Math.random() * 1000 : 
+                         1000 + Math.random() * 500;
+        const change = (Math.random() - 0.5) * basePrice * 0.03;
+        const volume = 500 + Math.floor(Math.random() * 2000);
+        const currentTime = Date.now();
+        
+        return {
+          symbol,
+          priceChange: change.toFixed(2),
+          priceChangePercent: ((change / basePrice) * 100).toFixed(2),
+          weightedAvgPrice: (basePrice + change / 2).toFixed(2),
+          prevClosePrice: basePrice.toFixed(2),
+          lastPrice: (basePrice + change).toFixed(2),
+          lastQty: (Math.random() * 0.2).toFixed(1),
+          bidPrice: (basePrice + change - 1).toFixed(2),
+          bidQty: (Math.random() * 1.5).toFixed(1),
+          askPrice: (basePrice + change + 1).toFixed(2),
+          askQty: (Math.random() * 1.5).toFixed(1),
+          openPrice: basePrice.toFixed(2),
+          highPrice: (basePrice + Math.abs(change) + Math.random() * basePrice * 0.01).toFixed(2),
+          lowPrice: (basePrice - Math.abs(change) - Math.random() * basePrice * 0.01).toFixed(2),
+          volume: volume.toFixed(2),
+          quoteVolume: (volume * (basePrice + change / 2)).toFixed(2),
+          openTime: currentTime - 86400000,
+          closeTime: currentTime,
+          firstId: Math.floor(Math.random() * 5000),
+          lastId: Math.floor(Math.random() * 5000) + 1000,
+          count: Math.floor(500 + Math.random() * 1500)
+        };
+      };
 
       const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
       
@@ -288,28 +289,34 @@ describe('Binance Ticker API Route', () => {
     });
 
     it('should not set specific cache headers', async () => {
+      // Generate dynamic data for cache test
+      const basePrice = 40000 + Math.floor(Math.random() * 20000);
+      const change = (Math.random() - 0.5) * 1000;
+      const vol = 800 + Math.floor(Math.random() * 2000);
+      const now = Date.now();
+      
       const mockData = {
         symbol: 'BTCUSDT',
-        priceChange: '100.00',
-        priceChangePercent: '1.00',
-        weightedAvgPrice: '47000.00',
-        prevClosePrice: '46000.00',
-        lastPrice: '47000.00',
-        lastQty: '0.1',
-        bidPrice: '46999.00',
-        bidQty: '1.0',
-        askPrice: '47001.00',
-        askQty: '1.0',
-        openPrice: '46000.00',
-        highPrice: '48000.00',
-        lowPrice: '45000.00',
-        volume: '1000.00',
-        quoteVolume: '47000000.00',
-        openTime: Date.now() - 86400000,
-        closeTime: Date.now(),
-        firstId: 1000,
-        lastId: 2000,
-        count: 1000
+        priceChange: change.toFixed(2),
+        priceChangePercent: ((change / basePrice) * 100).toFixed(2),
+        weightedAvgPrice: (basePrice + change / 2).toFixed(2),
+        prevClosePrice: basePrice.toFixed(2),
+        lastPrice: (basePrice + change).toFixed(2),
+        lastQty: (Math.random() * 0.15).toFixed(1),
+        bidPrice: (basePrice + change - 1).toFixed(2),
+        bidQty: (Math.random() * 1.2).toFixed(1),
+        askPrice: (basePrice + change + 1).toFixed(2),
+        askQty: (Math.random() * 1.2).toFixed(1),
+        openPrice: basePrice.toFixed(2),
+        highPrice: (basePrice + Math.abs(change) * 1.5).toFixed(2),
+        lowPrice: (basePrice - Math.abs(change) * 1.5).toFixed(2),
+        volume: vol.toFixed(2),
+        quoteVolume: (vol * (basePrice + change / 2)).toFixed(2),
+        openTime: now - 86400000,
+        closeTime: now,
+        firstId: Math.floor(Math.random() * 2000),
+        lastId: Math.floor(Math.random() * 2000) + 1000,
+        count: Math.floor(800 + Math.random() * 500)
       };
 
       mockFetch.mockResolvedValueOnce({

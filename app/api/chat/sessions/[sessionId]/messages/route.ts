@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
 import { logger } from '@/lib/utils/logger';
 import { isDevelopment } from '@/config/env';
+import { getServerSession } from '@/lib/auth/server';
 
 export async function GET(
   _request: NextRequest,
@@ -10,6 +11,14 @@ export async function GET(
 ) {
   const { sessionId } = await params;
   try {
+    // Check authentication
+    const authSession = await getServerSession();
+    if (!authSession) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
     const messages = await ChatDatabaseService.getMessages(sessionId);
     
     return NextResponse.json({ messages });
@@ -28,6 +37,14 @@ export async function POST(
 ) {
   const { sessionId } = await params;
   try {
+    // Check authentication
+    const authSession = await getServerSession();
+    if (!authSession) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
     const message = await request.json();
     const dbMessage = await ChatDatabaseService.addMessage(sessionId, message);
     

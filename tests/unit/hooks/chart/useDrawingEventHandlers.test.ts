@@ -11,6 +11,7 @@ import {
   executeDrawingOperation,
   prepareDrawingData 
 } from '@/lib/chart/agent-utils';
+import { validateDrawingEvent } from '@/types/events/drawing-events';
 
 // Unmock the hook to use actual implementation
 jest.unmock('@/hooks/chart/useDrawingEventHandlers');
@@ -177,15 +178,20 @@ describe('useDrawingEventHandlers', () => {
       expect(showAgentSuccess).toHaveBeenCalled();
     });
 
-    it('should handle validation error for invalid event', () => {
+    it('should handle validation error for invalid event', async () => {
       // Mock validation failure for this test
-      const { validateDrawingEvent } = require('@/types/events/drawing-events');
-      validateDrawingEvent.mockReturnValueOnce({
+      const validateDrawingEventMock = jest.mocked(validateDrawingEvent);
+      validateDrawingEventMock.mockReturnValueOnce({
         success: false,
         error: { issues: [{ message: 'Invalid data' }] }
       });
 
       renderHook(() => useDrawingEventHandlers(mockHandlers));
+
+      // Wait for useEffect to run
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       const event = new CustomEvent('chart:startDrawing', {
         detail: { invalid: 'data' },

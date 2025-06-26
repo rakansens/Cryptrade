@@ -3,7 +3,7 @@
  */
 
 import { WebSocketSimulator } from './mock-helpers';
-import { mockWebSocketMessages } from '../__fixtures__/websocket/messages';
+// WebSocket message imports removed - using inline objects instead
 
 export class MockWebSocket {
   url: string;
@@ -25,12 +25,18 @@ export class MockWebSocket {
   private autoRespond: boolean = false;
   private responsePatterns: Map<string, (data: any) => any> = new Map();
 
+  // Track all instances for global cleanup
+  private static instances = new Set<MockWebSocket>();
+
   constructor(url: string, protocols?: string | string[]) {
     this.url = url;
     this.readyState = MockWebSocket.CONNECTING;
     
     // Store protocols if needed
     this.protocols = Array.isArray(protocols) ? protocols : protocols ? [protocols] : [];
+    
+    // Add this instance to the global set
+    MockWebSocket.instances.add(this);
     
     // Simulate connection by default
     setTimeout(() => {
@@ -73,6 +79,9 @@ export class MockWebSocket {
     this.readyState = MockWebSocket.CLOSING;
     this.closeCode = code ?? 1000;
     this.closeReason = reason ?? '';
+    
+    // Remove from global instances
+    MockWebSocket.instances.delete(this);
     
     setTimeout(() => {
       this.readyState = MockWebSocket.CLOSED;
@@ -158,13 +167,20 @@ export class MockWebSocket {
       
       // Check response patterns
       for (const [pattern, handler] of this.responsePatterns) {
-        if (pattern instanceof RegExp && pattern.test(message)) {
-          const response = handler(data);
-          if (response) {
-            setTimeout(() => this.mockReceiveMessage(response), 50);
+        if (typeof pattern === 'string' && pattern.startsWith('/') && pattern.endsWith('/')) {
+          try {
+            const regex = new RegExp(pattern.slice(1, -1));
+            if (regex.test(message)) {
+              const response = handler(data);
+              if (response) {
+                setTimeout(() => this.mockReceiveMessage(response), 50);
+              }
+              return;
+            }
+          } catch (e) {
+            // Not a valid regex, skip
           }
-          return;
-        } else if (typeof pattern === 'string' && message.includes(pattern)) {
+        } else if (pattern === message) {
           const response = handler(data);
           if (response) {
             setTimeout(() => this.mockReceiveMessage(response), 50);
@@ -175,7 +191,7 @@ export class MockWebSocket {
       
       // Default auto-responses based on message type
       if (data.type === 'ping') {
-        setTimeout(() => this.mockReceiveMessage(mockWebSocketMessages.heartbeat.pong), 10);
+        setTimeout(() => this.mockReceiveMessage({ type: 'pong', timestamp: Date.now() }), 10);
       } else if (data.type === 'subscribe') {
         setTimeout(() => this.mockReceiveMessage({
           type: 'subscription',
@@ -223,6 +239,26 @@ export class MockWebSocket {
       }
     };
     sendNext();
+  }
+
+  // Global cleanup method for Jest teardown
+  static cleanupAll(): void {
+    console.log(`🧹 Cleaning up ${MockWebSocket.instances.size} MockWebSocket instances`);
+    
+    // Close all open connections
+    for (const ws of [...MockWebSocket.instances]) {
+      if (ws.readyState !== MockWebSocket.CLOSED) {
+        ws.close(1001, 'Global cleanup');
+      }
+    }
+    
+    // Clear the set
+    MockWebSocket.instances.clear();
+  }
+
+  // Helper to get active instance count
+  static getActiveInstanceCount(): number {
+    return MockWebSocket.instances.size;
   }
 }
 

@@ -27,11 +27,15 @@ jest.mock('@/lib/monitoring/trace', () => ({
   },
 }));
 
+// Import mocked functions
+import { incrementMetric, observeMetric } from '@/lib/monitoring/metrics';
+import { traceManager } from '@/lib/monitoring/trace';
+import { RetryWrapper } from '@/lib/utils/retry-wrapper';
+
 describe('DrawingOperationQueue', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the RetryWrapper mock to default behavior
-    const { RetryWrapper } = require('@/lib/utils/retry-wrapper');
     (RetryWrapper as any).mockImplementation(() => ({
       execute: jest.fn((operation) => operation()),
     }));
@@ -255,9 +259,6 @@ describe('DrawingOperationQueue', () => {
 
   describe('retry functionality', () => {
     it('should retry failed operations', async () => {
-      const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
-      const { incrementMetric } = await import('@/lib/monitoring/metrics');
-      
       // Clear previous mocks
       (incrementMetric as jest.Mock).mockClear();
       
@@ -284,6 +285,7 @@ describe('DrawingOperationQueue', () => {
       
       expect(result).toBe('result');
       expect(incrementMetric).toHaveBeenCalledWith('drawing_retry_total');
+      expect(incrementMetric).toHaveBeenCalledWith('drawing_success_total');
       expect(incrementMetric).toHaveBeenCalledTimes(3); // 2 retries + 1 success
       expect(operation).toHaveBeenCalledTimes(1);
     });
@@ -292,7 +294,6 @@ describe('DrawingOperationQueue', () => {
   describe('concurrency control', () => {
     it('should respect maxConcurrency setting', async () => {
       // Reset RetryWrapper mock to default behavior
-      const { RetryWrapper } = require('@/lib/utils/retry-wrapper');
       (RetryWrapper as any).mockImplementation(() => ({
         execute: jest.fn((operation) => operation()),
       }));
@@ -323,7 +324,6 @@ describe('DrawingOperationQueue', () => {
   describe('metrics and tracing', () => {
     it('should track metrics for successful operations', async () => {
       const queue = new DrawingOperationQueue();
-      const { incrementMetric, observeMetric } = await import('@/lib/monitoring/metrics');
       
       await queue.enqueue(() => Promise.resolve('success'));
       
@@ -335,14 +335,11 @@ describe('DrawingOperationQueue', () => {
     });
 
     it('should track metrics for failed operations', async () => {
-      const { incrementMetric, observeMetric } = await import('@/lib/monitoring/metrics');
-      
       // Clear previous calls
       (incrementMetric as jest.Mock).mockClear();
       (observeMetric as jest.Mock).mockClear();
       
       // Update the RetryWrapper mock to propagate errors
-      const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
       (RetryWrapper as any).mockImplementation(() => ({
         execute: jest.fn(async (operation) => {
           return await operation();
@@ -363,7 +360,6 @@ describe('DrawingOperationQueue', () => {
 
     it('should create traces for operations', async () => {
       const queue = new DrawingOperationQueue();
-      const { traceManager } = await import('@/lib/monitoring/trace');
       
       await queue.enqueue(() => Promise.resolve());
       
@@ -396,7 +392,6 @@ describe('DrawingOperationQueue', () => {
 
     it('should handle operations that throw synchronously', async () => {
       // Update the RetryWrapper mock to handle synchronous errors
-      const { RetryWrapper } = await import('@/lib/utils/retry-wrapper');
       (RetryWrapper as any).mockImplementation(() => ({
         execute: jest.fn(async (operation) => {
           try {

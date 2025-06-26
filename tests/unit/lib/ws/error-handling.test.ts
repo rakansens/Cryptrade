@@ -110,34 +110,38 @@ describe('WSManager E2E - Error Handling', () => {
   });
 
   describe('Connection Errors', () => {
-    it('should handle immediate connection failure', (done) => {
+    it('should handle immediate connection failure', async () => {
       manager = new WSManager({
         url: 'wss://invalid.example.com/',
         maxRetryAttempts: 0,
         debug: true
       });
 
-      manager.subscribe('test@stream').subscribe({
-        next: () => {
-          done.fail('Should not receive data on failed connection');
-        },
-        error: (error) => {
-          expect(error).toBeDefined();
-          done();
-        }
+      const errorPromise = new Promise((resolve, reject) => {
+        manager.subscribe('test@stream').subscribe({
+          next: () => {
+            reject(new Error('Should not receive data on failed connection'));
+          },
+          error: (error) => {
+            resolve(error);
+          }
+        });
       });
 
-      // Simulate immediate connection failure
-      setTimeout(() => {
-        const ws = MockWebSocket.getAllInstances()[0];
-        if (ws) {
-          ws.simulateError(new Error('Connection refused'));
-          ws.close(1006, 'Unable to connect');
-        }
-      }, 20);
+      // Wait for WebSocket instance to be created
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const ws = MockWebSocket.getAllInstances()[0];
+      if (ws) {
+        ws.simulateError(new Error('Connection refused'));
+        ws.close(1006, 'Unable to connect');
+      }
+      
+      const error = await errorPromise;
+      expect(error).toBeDefined();
     });
 
-    it('should handle connection timeout', (done) => {
+    it('should handle connection timeout', async () => {
       manager = new WSManager({
         url: 'wss://timeout.example.com/',
         maxRetryAttempts: 1,
@@ -146,25 +150,27 @@ describe('WSManager E2E - Error Handling', () => {
 
       const startTime = Date.now();
 
-      manager.subscribe('test@stream').subscribe({
-        next: () => {},
-        error: (error) => {
-          const elapsed = Date.now() - startTime;
-          expect(error.message).toContain('Max retry attempts');
-          expect(elapsed).toBeGreaterThan(5); // Should have tried to retry
-          done();
-        }
+      const errorPromise = new Promise((resolve) => {
+        manager.subscribe('test@stream').subscribe({
+          next: () => {},
+          error: (error) => {
+            resolve(error);
+          }
+        });
       });
 
-      // Simulate connection that never opens
-      setTimeout(() => {
-        const ws = MockWebSocket.getAllInstances()[0];
-        if (ws) {
-          // Don't open the connection, just error
-          ws.simulateError(new Error('Connection timeout'));
-          ws.close(1006);
-        }
-      }, 20);
+      // Wait for WebSocket instance and simulate timeout
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const ws = MockWebSocket.getAllInstances()[0];
+      if (ws) {
+        ws.simulateError(new Error('Connection timeout'));
+        ws.close(1006);
+      }
+      
+      const error = await errorPromise;
+      const elapsed = Date.now() - startTime;
+      expect((error as Error).message).toContain('Max retry attempts');
+      expect(elapsed).toBeGreaterThan(5);
     }, 10000);
   });
 
@@ -191,10 +197,21 @@ describe('WSManager E2E - Error Handling', () => {
         });
       });
 
-      // Wait for connection
-      await new Promise(resolve => setTimeout(resolve, 30));
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/invalid@stream');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        // Timeout after 1 second
+        setTimeout(() => resolve(undefined), 1000);
+      });
       
-      const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/invalid@stream');
       if (ws) {
         ws.simulateMessage(BinanceMessageGenerator.errorMessage(-1121, 'Invalid symbol'));
       }
@@ -219,10 +236,21 @@ describe('WSManager E2E - Error Handling', () => {
         error: () => {}
       });
 
-      // Wait for connection
-      await new Promise(resolve => setTimeout(resolve, 30));
+      // Wait for connection and get WebSocket instance
+      const ws = await new Promise<MockWebSocket | undefined>((resolve) => {
+        const checkInstance = () => {
+          const instance = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
+          if (instance) {
+            resolve(instance);
+          } else {
+            setTimeout(checkInstance, 10);
+          }
+        };
+        checkInstance();
+        // Timeout after 1 second
+        setTimeout(() => resolve(undefined), 1000);
+      });
       
-      const ws = MockWebSocket.getInstanceByUrl('wss://stream.binance.com:9443/ws/btcusdt@trade');
       if (ws) {
         // Send valid message
         ws.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '50000'));
@@ -238,8 +266,20 @@ describe('WSManager E2E - Error Handling', () => {
         ws.simulateMessage(BinanceMessageGenerator.tradeMessage('BTCUSDT', '51000'));
       }
       
-      // Wait for message processing
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Wait for messages to be processed
+      await new Promise(resolve => {
+        const checkMessages = () => {
+          const validMessages = messages.filter(msg => typeof msg === 'object' && msg !== null);
+          if (validMessages.length >= 2) {
+            resolve(undefined);
+          } else {
+            setTimeout(checkMessages, 10);
+          }
+        };
+        checkMessages();
+        // Timeout after 1 second
+        setTimeout(() => resolve(undefined), 1000);
+      });
       
       subscription.unsubscribe();
       
@@ -323,42 +363,44 @@ describe('WSManager E2E - Error Handling', () => {
   });
 
   describe('Resource Cleanup on Error', () => {
-    it('should cleanup resources after max retries exceeded', (done) => {
+    it('should cleanup resources after max retries exceeded', async () => {
       manager = new WSManager({
         url: 'wss://stream.binance.com:9443/ws/',
         maxRetryAttempts: 1,
         baseRetryDelay: 10
       });
 
-
-      manager.subscribe('btcusdt@trade').subscribe({
-        next: () => {},
-        error: () => {
-          // After error, check cleanup
-          setTimeout(() => {
-            const finalMetrics = manager.getMetrics();
-            expect(finalMetrics.activeConnections).toBe(0);
-            done();
-          }, 30);
-        }
+      const errorPromise = new Promise((resolve) => {
+        manager.subscribe('btcusdt@trade').subscribe({
+          next: () => {},
+          error: (error) => {
+            resolve(error);
+          }
+        });
       });
 
       // Force repeated failures
       let failureCount = 0;
-      const failConnection = () => {
-        const ws = MockWebSocket.getAllInstances().find(w => w.readyState !== MockWebSocket.CLOSED);
-        if (ws) {
-          failureCount++;
-          ws.simulateError(new Error(`Connection failed ${failureCount}`));
-          ws.close(1006);
-          
-          if (failureCount < 3) {
-            setTimeout(failConnection, 15);
+      const failConnection = async () => {
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 20));
+          const ws = MockWebSocket.getAllInstances().find(w => w.readyState !== MockWebSocket.CLOSED);
+          if (ws) {
+            failureCount++;
+            ws.simulateError(new Error(`Connection failed ${failureCount}`));
+            ws.close(1006);
           }
         }
       };
 
-      setTimeout(failConnection, 10);
+      failConnection();
+      await errorPromise;
+      
+      // Wait a bit for cleanup
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const finalMetrics = manager.getMetrics();
+      expect(finalMetrics.activeConnections).toBe(0);
     });
 
     it('should handle errors during destroy', async () => {

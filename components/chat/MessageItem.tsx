@@ -9,6 +9,7 @@ import { EntryProposalCard } from './EntryProposalCard'
 import { AnalysisResultCard } from './AnalysisResultCard'
 import type { ProposalMessage } from '@/types/proposals'
 import { parseAnalysisText, isAnalysisMessage } from '@/lib/utils/parse-analysis'
+import DOMPurify from 'isomorphic-dompurify'
 
 interface MessageItemProps {
   message: ChatMessage
@@ -226,11 +227,20 @@ export const MessageItem = React.memo(function MessageItem({
             )
           }
           
+          // Sanitize HTML content to prevent XSS attacks
+          const sanitizedContent = DOMPurify.sanitize(displayContent, {
+            ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre'],
+            ALLOWED_ATTR: ['class'],
+            ALLOW_DATA_ATTR: false,
+            FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form'],
+            FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur', 'href', 'src']
+          });
+
           return (
             <div className="premium-glass backdrop-blur-sm text-[hsl(var(--text-primary))] rounded-lg px-[var(--space-md)] py-[var(--space-sm)] shadow-sm relative group">
               <div 
                 className="prose prose-sm max-w-none prose-invert text-[var(--font-sm)] leading-[var(--leading-normal)] select-text cursor-text"
-                dangerouslySetInnerHTML={{ __html: displayContent }}
+                dangerouslySetInnerHTML={{ __html: sanitizedContent }}
               />
               <Button
                 variant="ghost"

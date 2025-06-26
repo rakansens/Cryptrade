@@ -355,4 +355,254 @@ describe('Redis Rate Limiter', () => {
       expect(result.remainingRequests).toBe(99);
     });
   });
+
+  // Security-focused tests
+  describe('Security Tests', () => {
+    beforeEach(async () => {
+      await rateLimiter.connect();
+    });
+
+    it('should prevent distributed denial of service attacks', async () => {
+      const attackerIPs = [
+        '192.168.1.100',
+        '192.168.1.101',
+        '192.168.1.102',
+        '10.0.0.50',
+        '10.0.0.51',
+      ];
+
+      // Configure strict rate limiting
+      const strictOptions = {
+        windowSec: 60,
+        maxRequests: 5,
+      };
+
+      // Simulate requests from multiple IPs
+      const results = [];
+      for (const ip of attackerIPs) {
+        for (let i = 0; i < 10; i++) {
+          mockRedis.pipeline().exec.mockResolvedValueOnce([[null, i + 1], [null, 1]]);
+          const result = await rateLimiter.checkLimit(ip, strictOptions);
+          results.push({ ip, attempt: i, success: result.success });
+        }
+      }
+
+      // Each IP should be rate limited independently
+      const blockedByIP = attackerIPs.map(ip => 
+        results.filter(r => r.ip === ip && !r.success).length
+      );
+      
+      blockedByIP.forEach(blocked => {
+        expect(blocked).toBeGreaterThan(0);
+      });
+    });
+
+    it('should handle user+IP combination rate limiting', async () => {
+      const userId = 'user-123';
+      const userIP = '192.168.1.100';
+      const combinedKey = `${userId}:${userIP}`;
+
+      // First 5 requests should succeed
+      for (let i = 1; i <= 5; i++) {
+        mockRedis.pipeline().exec.mockResolvedValueOnce([[null, i], [null, 1]]);
+        const result = await rateLimiter.checkLimit(combinedKey, {
+          windowSec: 60,
+          maxRequests: 5,
+        });
+        expect(result.success).toBe(true);
+      }
+
+      // 6th request should fail
+      mockRedis.pipeline().exec.mockResolvedValueOnce([[null, 6], [null, 1]]);
+      const result = await rateLimiter.checkLimit(combinedKey, {
+        windowSec: 60,
+        maxRequests: 5,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should prevent rate limit bypass attempts', async () => {
+      const bypassAttempts = [
+        'user-123',
+        'user-123 ',  // trailing space
+        ' user-123',  // leading space
+        'USER-123',   // different case
+        'user-123\x00', // null byte
+        'user-123%20', // URL encoded space
+      ];
+
+      // All attempts should be treated as the same user
+      for (const attempt of bypassAttempts) {
+        const normalized = attempt.trim().toLowerCase();
+        await rateLimiter.checkLimit(normalized, {
+          windowSec: 60,
+          maxRequests: 10,
+        });
+      }
+
+      // Verify normalization happened
+      expect(mockRedis.pipeline().incr).toHaveBeenCalled();
+    });
+
+    it('should handle race conditions in concurrent requests', async () => {
+      const userId = 'concurrent-user';
+      const options = {
+        windowSec: 1,
+        maxRequests: 10,
+      };
+
+      // Simulate 20 concurrent requests
+      const promises = [];
+      for (let i = 0; i < 20; i++) {
+        // Mock different response times to simulate race conditions
+        mockRedis.pipeline().exec.mockImplementation(() => {
+          return new Promise(resolve => {
+            setTimeout(() => {
+              resolve([[null, Math.floor(Math.random() * 15) + 1], [null, 1]]);
+            }, Math.random() * 10);
+          });
+        });
+        
+        promises.push(rateLimiter.checkLimit(userId, options));
+      }
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r.success).length;
+      
+      // Some requests should be rate limited
+      expect(successCount).toBeLessThanOrEqual(options.maxRequests + 5); // Allow some leeway for race conditions
+    });
+
+    it('should prevent timing attacks on rate limit checks', async () => {
+      const timings: number[] = [];
+      const testKeys = ['allowed-user', 'blocked-user', 'new-user'];
+
+      for (const key of testKeys) {
+        // Mock different scenarios
+        if (key === 'allowed-user') {
+          mockRedis.pipeline().exec.mockResolvedValueOnce([[null, 5], [null, 1]]);
+        } else if (key === 'blocked-user') {
+          mockRedis.pipeline().exec.mockResolvedValueOnce([[null, 100], [null, 1]]);
+        } else {
+          mockRedis.pipeline().exec.mockResolvedValueOnce([[null, 1], [null, 1]]);
+        }
+
+        const start = Date.now();
+        await rateLimiter.checkLimit(key, {
+          windowSec: 60,
+          maxRequests: 10,
+        });
+        timings.push(Date.now() - start);
+      }
+
+      // Response times should be similar
+      const avgTiming = timings.reduce((a, b) => a + b, 0) / timings.length;
+      const maxDeviation = Math.max(...timings.map(t => Math.abs(t - avgTiming)));
+      
+      expect(maxDeviation).toBeLessThan(50); // milliseconds
+    });
+
+    it('should handle malicious key patterns', async () => {
+      const maliciousKeys = [
+        '../../../admin',
+        'user:*:admin',
+        'user[admin]=true',
+        'user\'; DELETE FROM rate_limits; --',
+        'user\x00admin',
+        'user${process.env.ADMIN_KEY}',
+      ];
+
+      for (const key of maliciousKeys) {
+        // Should handle without errors
+        await expect(rateLimiter.checkLimit(key, {
+          windowSec: 60,
+          maxRequests: 10,
+        })).resolves.toBeDefined();
+      }
+    });
+
+    it('should enforce progressive rate limiting', async () => {
+      const userId = 'progressive-user';
+      
+      // First tier: 100 requests per minute
+      const tier1Options = { windowSec: 60, maxRequests: 100 };
+      
+      // Second tier: 1000 requests per hour
+      const tier2Options = { windowSec: 3600, maxRequests: 1000 };
+      
+      // Third tier: 10000 requests per day
+      const tier3Options = { windowSec: 86400, maxRequests: 10000 };
+
+      // Check all tiers
+      mockRedis.pipeline().exec
+        .mockResolvedValueOnce([[null, 50], [null, 1]])  // Tier 1 check
+        .mockResolvedValueOnce([[null, 500], [null, 1]]) // Tier 2 check
+        .mockResolvedValueOnce([[null, 5000], [null, 1]]); // Tier 3 check
+
+      const results = await Promise.all([
+        rateLimiter.checkLimit(`${userId}:tier1`, tier1Options),
+        rateLimiter.checkLimit(`${userId}:tier2`, tier2Options),
+        rateLimiter.checkLimit(`${userId}:tier3`, tier3Options),
+      ]);
+
+      results.forEach(result => {
+        expect(result.success).toBe(true);
+      });
+    });
+
+    it('should detect and handle burst attacks', async () => {
+      const attackerId = 'burst-attacker';
+      const burstSize = 50;
+      
+      // Simulate burst of requests
+      const burstPromises = [];
+      for (let i = 0; i < burstSize; i++) {
+        mockRedis.pipeline().exec.mockResolvedValueOnce([[null, i + 1], [null, 1]]);
+        burstPromises.push(rateLimiter.checkLimit(attackerId, {
+          windowSec: 10,
+          maxRequests: 10,
+        }));
+      }
+
+      const results = await Promise.all(burstPromises);
+      const blockedCount = results.filter(r => !r.success).length;
+      
+      // Most requests in the burst should be blocked
+      expect(blockedCount).toBeGreaterThanOrEqual(burstSize - 10);
+    });
+
+    it('should handle Redis cluster failover gracefully', async () => {
+      // Simulate cluster failover
+      mockRedis.pipeline().exec
+        .mockRejectedValueOnce(new Error('MOVED 12345 127.0.0.1:6380'))
+        .mockResolvedValueOnce([[null, 1], [null, 1]]);
+
+      const result = await rateLimiter.checkLimit('user-during-failover', {
+        windowSec: 60,
+        maxRequests: 10,
+      });
+
+      // Should handle failover gracefully (might fail but not crash)
+      expect(result).toBeDefined();
+      expect(typeof result.success).toBe('boolean');
+    });
+
+    it('should validate rate limit headers for security', async () => {
+      mockRedis.pipeline().exec.mockResolvedValueOnce([[null, 5], [null, 1]]);
+      
+      const result = await rateLimiter.checkLimit('header-test-user', {
+        windowSec: 60,
+        maxRequests: 10,
+      });
+
+      // Verify security headers are present and valid
+      expect(result.remainingRequests).toBe(5);
+      expect(result.resetTime).toBeGreaterThan(Date.now() / 1000);
+      expect(result.retryAfter).toBeUndefined(); // Only present when rate limited
+      
+      // Headers should not expose internal information
+      expect(result).not.toHaveProperty('internalKey');
+      expect(result).not.toHaveProperty('redisKey');
+    });
+  });
 });

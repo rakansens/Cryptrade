@@ -268,7 +268,7 @@ describe('marketSnapshotTool', () => {
         marketMood: 'neutral',
         topGainers: [],
         topLosers: [],
-        marketHighlight: '',
+        marketHighlight: '市場データの取得に一時的な問題が発生しています。',
         totalMarketCap: 0,
         btcDominance: 0,
       });
@@ -381,7 +381,7 @@ describe('marketSnapshotTool', () => {
         },
       });
 
-      expect(result.marketHighlight).toBe('');
+      expect(result.marketHighlight).toBe('市場データの取得に一時的な問題が発生しています。');
     });
 
     it('should handle different focus options', async () => {

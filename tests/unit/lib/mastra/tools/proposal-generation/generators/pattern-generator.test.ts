@@ -34,7 +34,7 @@ jest.mock('@/lib/mastra/tools/proposal-generation/utils/helpers', () => ({
   }),
 }));
 
-jest.mock('../../analyzers/market-analyzer', () => ({
+jest.mock('@/lib/mastra/tools/proposal-generation/analyzers/market-analyzer', () => ({
   detectCandlePatterns: jest.fn(() => []),
 }));
 

@@ -282,4 +282,155 @@ describe('utils', () => {
       expect(end - start).toBeLessThan(100);
     });
   });
+
+  describe('cn function - Error Cases', () => {
+    it('should handle non-string primitive types', () => {
+      const result = cn(
+        123,
+        true,
+        Symbol('test'),
+        BigInt(9007199254740991)
+      );
+      expect(result).toBe('123');
+    });
+
+    it('should handle functions as input', () => {
+      const func = () => 'class-name';
+      const result = cn(func, 'other-class');
+      expect(result).toBe('other-class');
+    });
+
+    it('should handle circular references in objects', () => {
+      const obj: any = { class1: true };
+      obj.circular = obj;
+      
+      expect(() => cn(obj)).not.toThrow();
+    });
+
+    it('should handle circular references in arrays', () => {
+      const arr: any = ['class1'];
+      arr.push(arr);
+      
+      // Circular references will cause clsx to throw, which is expected behavior
+      expect(() => cn(arr)).toThrow();
+    });
+
+    it('should handle deeply nested structures', () => {
+      const deeplyNested = Array(100).fill(null).reduce(
+        (acc) => [acc],
+        'deeply-nested-class'
+      );
+      
+      expect(() => cn(deeplyNested)).not.toThrow();
+    });
+
+    it('should handle special characters in class names', () => {
+      const result = cn(
+        'class-with-@special',
+        'class-with-$dollar',
+        'class-with-%percent',
+        'class-with-&ampersand'
+      );
+      expect(result).toBe('class-with-@special class-with-$dollar class-with-%percent class-with-&ampersand');
+    });
+
+    it('should handle very long class names', () => {
+      const longClassName = 'a'.repeat(1000);
+      const result = cn(longClassName, 'short-class');
+      expect(result).toContain(longClassName);
+      expect(result).toContain('short-class');
+    });
+
+    it('should handle objects with non-string keys', () => {
+      const obj = {
+        [Symbol('key')]: true,
+        123: true,
+        normalKey: true
+      };
+      
+      expect(() => cn(obj)).not.toThrow();
+    });
+
+    it('should handle arrays with mixed types including errors', () => {
+      const errorObj = new Error('test error');
+      const result = cn(['class1', errorObj, null, 'class2']);
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle Date objects', () => {
+      const date = new Date();
+      const result = cn('class1', date, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle RegExp objects', () => {
+      const regex = /test/g;
+      const result = cn('class1', regex, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle Map and Set objects', () => {
+      const map = new Map([['key', 'value']]);
+      const set = new Set(['value1', 'value2']);
+      const result = cn('class1', map, set, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle Promise objects', () => {
+      const promise = Promise.resolve('async-class');
+      const result = cn('class1', promise, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle WeakMap and WeakSet', () => {
+      const weakMap = new WeakMap();
+      const weakSet = new WeakSet();
+      const result = cn('class1', weakMap, weakSet, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle custom objects with toString method', () => {
+      const customObj = {
+        toString() {
+          return 'custom-class';
+        }
+      };
+      const result = cn('class1', customObj, 'class2');
+      expect(result).toBe('class1 toString class2');
+    });
+
+    it('should handle objects with valueOf method', () => {
+      const customObj = {
+        valueOf() {
+          return 'value-class';
+        }
+      };
+      const result = cn('class1', customObj, 'class2');
+      expect(result).toBe('class1 valueOf class2');
+    });
+
+    it('should handle NaN', () => {
+      const result = cn('class1', NaN, 'class2');
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle Infinity', () => {
+      const result = cn('class1', Infinity, -Infinity, 'class2');
+      expect(result).toBe('class1 Infinity -Infinity class2');
+    });
+
+    it('should handle arrays with gaps', () => {
+      const sparseArray = ['class1', , , 'class2'];
+      const result = cn(sparseArray);
+      expect(result).toBe('class1 class2');
+    });
+
+    it('should handle object with null prototype', () => {
+      const nullProtoObj = Object.create(null);
+      nullProtoObj.class1 = true;
+      nullProtoObj.class2 = false;
+      
+      expect(() => cn(nullProtoObj)).not.toThrow();
+    });
+  });
 });

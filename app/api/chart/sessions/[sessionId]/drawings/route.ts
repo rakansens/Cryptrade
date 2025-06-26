@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { ChartDrawingSchema } from '@/lib/validation/chart-drawing.schema';
 import { z } from 'zod';
 import { prepareChartDrawingData } from '@/lib/utils/db-conversions';
+import { getServerSession } from '@/lib/auth/server';
 
 
 const saveDrawingsSchema = z.object({
@@ -11,8 +12,17 @@ const saveDrawingsSchema = z.object({
 });
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
-  const { sessionId } = await context.params;
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
+    const { sessionId } = await context.params;
     const drawings = await prisma.chartDrawing.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
@@ -51,8 +61,17 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ se
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
-  const { sessionId } = await context.params;
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
+    const { sessionId } = await context.params;
     const body = await request.json();
     const data = saveDrawingsSchema.parse(body);
 

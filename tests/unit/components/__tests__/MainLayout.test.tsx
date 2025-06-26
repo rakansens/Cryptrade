@@ -1,22 +1,12 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MainLayout } from '@/components/MainLayout'
+import { useChart, useChartDrawings } from '@/store/chart.store'
 
 // Mock dependencies
 jest.mock('@/store/chart.store', () => ({
-  useChart: jest.fn(() => ({
-    indicators: {},
-    symbol: 'BTCUSDT',
-    interval: '1h',
-    setSymbol: jest.fn(),
-    setInterval: jest.fn(),
-  })),
-  useChartDrawings: jest.fn(() => ({
-    drawings: [],
-    addDrawing: jest.fn(),
-    removeDrawing: jest.fn(),
-    updateDrawing: jest.fn(),
-  }))
+  useChart: jest.fn(),
+  useChartDrawings: jest.fn()
 }))
 
 jest.mock('@/components/chart/core/CandlestickChart', () => ({
@@ -31,8 +21,8 @@ jest.mock('@/components/chart/toolbar/ChartToolbar', () => ({
 
 jest.mock('@/components/chart/indicators/IndicatorPanel', () => ({
   __esModule: true,
-  default: ({ children, title }: any) => (
-    <div data-testid="indicator-panel" data-title={title}>
+  default: ({ children, title, 'data-testid': dataTestId }: any) => (
+    <div data-testid={dataTestId || `${title.toLowerCase()}-panel`} data-title={title}>
       {children}
     </div>
   )
@@ -73,6 +63,22 @@ jest.mock('@/components/ui/resizable', () => ({
 describe('MainLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Set default mock return values
+    ;(useChart as jest.Mock).mockReturnValue({
+      indicators: {},
+      symbol: 'BTCUSDT',
+      interval: '1h',
+      setSymbol: jest.fn(),
+      setInterval: jest.fn(),
+    })
+    
+    ;(useChartDrawings as jest.Mock).mockReturnValue({
+      drawings: [],
+      addDrawing: jest.fn(),
+      removeDrawing: jest.fn(),
+      updateDrawing: jest.fn(),
+    })
   })
 
   it('renders main layout structure without children', () => {
@@ -103,43 +109,39 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('chart-toolbar')).toBeInTheDocument()
   })
 
-  it('renders indicator panels when indicators are enabled', () => {
-    const { useChart } = require('@/store/chart.store')
-    useChart.mockReturnValue({
+  it('renders indicator panels when indicators are enabled', async () => {
+    ;(useChart as jest.Mock).mockReturnValue({
       indicators: {
         rsi: true,
         macd: true
       },
       symbol: 'BTCUSDT',
-      interval: '1h'
+      interval: '1h',
+      setSymbol: jest.fn(),
+      setInterval: jest.fn(),
     })
     
     render(<MainLayout />)
     
-    // Check for indicator panels
-    const panels = screen.getAllByTestId('indicator-panel')
-    expect(panels).toHaveLength(2)
-    
     // Check for RSI panel
-    const rsiPanel = panels.find(p => p.getAttribute('data-title') === 'RSI (14)')
-    expect(rsiPanel).toBeInTheDocument()
+    expect(screen.getByTestId('rsi (14)-panel')).toBeInTheDocument()
     expect(screen.getByTestId('rsi-chart')).toBeInTheDocument()
     
     // Check for MACD panel
-    const macdPanel = panels.find(p => p.getAttribute('data-title') === 'MACD (12, 26, 9)')
-    expect(macdPanel).toBeInTheDocument()
+    expect(screen.getByTestId('macd (12, 26, 9)-panel')).toBeInTheDocument()
     expect(screen.getByTestId('macd-chart')).toBeInTheDocument()
   })
 
   it('does not render indicator panels when indicators are disabled', () => {
-    const { useChart } = require('@/store/chart.store')
-    useChart.mockReturnValue({
+    ;(useChart as jest.Mock).mockReturnValue({
       indicators: {
         rsi: false,
         macd: false
       },
       symbol: 'BTCUSDT',
-      interval: '1h'
+      interval: '1h',
+      setSymbol: jest.fn(),
+      setInterval: jest.fn(),
     })
     
     render(<MainLayout />)

@@ -12,6 +12,9 @@ export class PatternDetector {
   private data: CandlestickData[];
   
   constructor(data: CandlestickData[]) {
+    if (!data || !Array.isArray(data)) {
+      throw new Error('Invalid data: PatternDetector requires a valid array of candlestick data');
+    }
     this.data = data;
   }
   
@@ -96,8 +99,8 @@ export class PatternDetector {
         return this.enhancePatternsWithMTF(patterns, higherPatterns);
       } catch (error) {
         console.error('Failed to get higher timeframe data:', error);
-        // Return patterns without MTF enhancement
-        return patterns;
+        // Re-throw the error for proper error handling by the caller
+        throw error;
       }
     }
     

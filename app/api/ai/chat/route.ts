@@ -7,6 +7,7 @@ import { extractProposalGroup, debugProposalGroupStructure } from '@/lib/api/hel
 import { buildChatResponse, processOrchestratorResult } from '@/lib/api/helpers/response-builder';
 import { createOrchestratorErrorResponse } from '@/lib/api/helpers/error-handler';
 import { registerAgentsSafely } from '@/lib/api/helpers/request-validator';
+import { getServerSession } from '@/lib/auth/server';
 
 // Define request schema
 const ChatRequestSchema = z.object({
@@ -34,6 +35,12 @@ export const POST = createApiHandler<ChatRequest>({
   
   // Main handler logic
   handler: async ({ data, context }) => {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      throw new Error('Unauthorized - Please login');
+    }
+
     // Register agents
     registerAgentsSafely();
 

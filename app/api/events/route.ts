@@ -1,4 +1,5 @@
 import { createSSEHandler, createSSEOptionsHandler, SSEBroadcast } from '@/lib/api/create-sse-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 /**
  * Server-Sent Events (SSE) エンドポイント
@@ -34,7 +35,21 @@ export function broadcastEvent(payload: BroadcastPayload) {
 
 export const GET = createSSEHandler({
   handler: {
-    onConnect({ stream }) {
+    async onConnect({ stream }) {
+      // Check authentication
+      const session = await getServerSession();
+      if (!session) {
+        stream.write({ 
+          event: 'error',
+          data: { 
+            type: 'auth:error',
+            error: 'Unauthorized - Please login'
+          } 
+        });
+        stream.close();
+        return;
+      }
+
       eventBroadcast.subscribe(stream);
     }
   },

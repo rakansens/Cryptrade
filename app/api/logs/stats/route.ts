@@ -7,6 +7,8 @@
 import { z } from 'zod';
 import { createApiHandler } from '@/lib/api/create-api-handler';
 import { enhancedLogger, type LogFilter, type LogLevel } from '@/lib/logging';
+import { getServerSession } from '@/lib/auth/server';
+import { ValidationError } from '@/lib/errors/base-error';
 
 // Request validation schema
 const logStatsQuerySchema = z.object({
@@ -24,6 +26,16 @@ const logStatsQuerySchema = z.object({
 export const GET = createApiHandler({
   schema: logStatsQuerySchema,
   handler: async ({ data }) => {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      throw new ValidationError(
+        'Unauthorized - Please login',
+        'authorization',
+        null
+      );
+    }
+
     // Build filter from query parameters
     const filter: LogFilter = {};
     

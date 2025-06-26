@@ -293,16 +293,12 @@ describe('renderPatternLines', () => {
       });
     });
 
-    it('should return empty array in development mode when no fallback available', () => {
-      const { isDevelopment } = require('@/config/env');
-      isDevelopment.mockReturnValueOnce(true);
-
+    it('should handle null visualization by throwing error', () => {
       const visualization: PatternVisualization = null as any;
 
-      const result = renderPatternLines('pattern-9', visualization, deps);
-
-      expect(result).toEqual([]);
-      expect(logger.debug).toHaveBeenCalledWith('[PatternLineRenderer] Returning empty array in development');
+      expect(() => renderPatternLines('pattern-9', visualization, deps)).toThrow(
+        'Failed to render pattern lines:'
+      );
     });
 
     it('should throw error in production mode when no fallback available', () => {

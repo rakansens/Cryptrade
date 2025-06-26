@@ -126,6 +126,8 @@ export function createTestEnv(overrides: Partial<EnvMockValues> = {}): EnvMockVa
     DISABLE_CONSOLE_LOGS: 'true',
     ENABLE_SENTRY: 'false',
     USE_NEW_WS_MANAGER: 'false',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test-key-for-testing',
   };
   
   return { ...defaults, ...overrides };

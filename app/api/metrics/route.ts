@@ -4,6 +4,7 @@ import { metricsCollector } from '@/lib/monitoring/metrics';
 import { logger } from '@/lib/utils/logger';
 import { applyCorsHeaders, applySecurityHeaders } from '@/lib/api/middleware';
 import { createErrorResponse } from '@/lib/api/helpers/error-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 // Request validation schema
 const metricsQuerySchema = z.object({
@@ -19,6 +20,12 @@ const metricsQuerySchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return createErrorResponse('Unauthorized - Please login', 401);
+    }
+
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const queryData = {

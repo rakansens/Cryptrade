@@ -2,7 +2,7 @@
  * Mock helper utilities for testing
  */
 
-import { mockWebSocketMessages, mockMessageSequences } from '../__fixtures__/websocket/messages';
+import { mockMessageSequences } from '../__fixtures__/websocket/messages';
 import { mockAuthResponses } from '../__fixtures__/auth/user-states';
 import { mockMarketDataResponses, mockErrorResponses } from '../__fixtures__/api/responses';
 
@@ -109,15 +109,15 @@ export class WebSocketSimulator {
   // Simulate connection lifecycle
   simulateConnection(): WebSocketSimulator {
     this.queueEvent({ type: 'open' }, 0);
-    this.queueEvent(mockWebSocketMessages.connection.connected, 10);
-    this.queueEvent(mockWebSocketMessages.heartbeat.ping, 1000);
-    this.queueEvent(mockWebSocketMessages.heartbeat.pong, 1100);
+    this.queueEvent({ type: 'connected', timestamp: Date.now() }, 10);
+    this.queueEvent({ type: 'ping', timestamp: Date.now() }, 1000);
+    this.queueEvent({ type: 'pong', timestamp: Date.now() }, 1100);
     return this;
   }
 
   // Simulate disconnection
   simulateDisconnection(reason: string = 'Normal closure'): WebSocketSimulator {
-    this.queueEvent(mockWebSocketMessages.connection.disconnected, 0);
+    this.queueEvent({ type: 'disconnected', timestamp: Date.now() }, 0);
     this.queueEvent({ type: 'close', code: 1000, reason }, 100);
     return this;
   }
@@ -126,11 +126,11 @@ export class WebSocketSimulator {
   simulateReconnection(attempts: number = 3): WebSocketSimulator {
     for (let i = 0; i < attempts; i++) {
       const baseDelay = i * 5000;
-      this.queueEvent(mockWebSocketMessages.connection.reconnecting, baseDelay);
+      this.queueEvent({ type: 'reconnecting', attempt: i + 1 }, baseDelay);
       if (i === attempts - 1) {
-        this.queueEvent(mockWebSocketMessages.connection.connected, baseDelay + 2000);
+        this.queueEvent({ type: 'connected', timestamp: Date.now() }, baseDelay + 2000);
       } else {
-        this.queueEvent(mockWebSocketMessages.connection.error, baseDelay + 2000);
+        this.queueEvent({ type: 'error', message: 'Connection failed' }, baseDelay + 2000);
       }
     }
     return this;
@@ -142,7 +142,9 @@ export class WebSocketSimulator {
     const startTime = Date.now();
 
     while (this.eventQueue.length > 0 && this.isRunning) {
-      const { event, delay } = this.eventQueue[0];
+      const nextEvent = this.eventQueue[0];
+      if (!nextEvent) break;
+      const { event, delay } = nextEvent;
       const elapsed = Date.now() - startTime;
 
       if (elapsed >= delay) {
@@ -235,9 +237,18 @@ export class APIInterceptor {
 
     // Try regex matches
     for (const [key, handler] of this.routes) {
-      const [routeMethod, routePath] = key.split(' ');
-      if (routeMethod === method.toUpperCase() && routePath instanceof RegExp && routePath.test(path)) {
-        return handler({ method, url, ...options });
+      const [routeMethod, ...routePathParts] = key.split(' ');
+      const routePath = routePathParts.join(' ');
+      // Check if routePath looks like a regex (starts with /)
+      if (routeMethod === method.toUpperCase() && routePath.startsWith('/') && routePath.endsWith('/')) {
+        try {
+          const regex = new RegExp(routePath.slice(1, -1));
+          if (regex.test(path)) {
+            return handler({ method, url, ...options });
+          }
+        } catch (e) {
+          // Not a valid regex, skip
+        }
       }
     }
 
@@ -379,8 +390,12 @@ export class TimeController {
   // Install time mocks
   install(): void {
     jest.spyOn(Date, 'now').mockImplementation(() => this.now());
-    jest.spyOn(global, 'setTimeout').mockImplementation((cb, delay) => this.setTimeout(cb, delay) as any);
-    jest.spyOn(global, 'clearTimeout').mockImplementation((id) => this.clearTimeout(id));
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb, delay) => this.setTimeout(cb, delay ?? 0) as any);
+    jest.spyOn(global, 'clearTimeout').mockImplementation((id) => {
+      if (typeof id === 'number') {
+        this.clearTimeout(id);
+      }
+    });
   }
 
   // Restore original implementations

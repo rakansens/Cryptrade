@@ -1,0 +1,201 @@
+name: Nightly Tests with Leak Detection
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  leak-detection:
+    name: Run tests with leak detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with leak detection
+        run: |
+          echo "🔍 Running tests with leak detection..."
+          npm test -- --detectOpenHandles --runInBand --logHeapUsage --verbose
+        env:
+          NODE_ENV: test
+          CI: true
+          NODE_OPTIONS: '--max-old-space-size=4096 --expose-gc'
+
+      - name: Run memory profiling tests
+        run: |
+          echo "📊 Running memory profiling..."
+          node scripts/test-memory-profile.js
+        continue-on-error: true
+
+      - name: Generate leak report
+        if: always()
+        run: |
+          echo "📋 Generating leak detection report..."
+          node scripts/generate-leak-report.js > leak-report.txt || true
+
+      - name: Upload leak report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: leak-detection-report
+          path: leak-report.txt
+          retention-days: 7
+
+      - name: Check for memory leaks
+        run: |
+          if grep -q "LEAK DETECTED" leak-report.txt 2>/dev/null; then
+            echo "❌ Memory leaks detected!"
+            cat leak-report.txt
+            exit 1
+          else
+            echo "✅ No memory leaks detected"
+          fi
+
+  performance-testing:
+    name: Performance testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance tests
+        run: |
+          echo "⚡ Running performance tests..."
+          npm test -- --testPathPattern="\.perf\.test\.[jt]s$" --verbose || true
+        env:
+          NODE_ENV: test
+          CI: true
+          PERF_TEST: true
+
+      - name: Generate performance report
+        run: |
+          echo "📊 Generating performance report..."
+          node scripts/generate-perf-report.js > perf-report.json || true
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: perf-report.json
+          retention-days: 30
+
+  integration-test-suite:
+    name: Full integration test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests serially
+        run: |
+          echo "🧪 Running integration tests serially..."
+          npm test -- tests/integration --runInBand --verbose
+        env:
+          NODE_ENV: test
+          CI: true
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+  test-coverage-analysis:
+    name: Deep coverage analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with full coverage
+        run: |
+          echo "📈 Running tests with full coverage..."
+          npm test -- --coverage --coverageReporters=json-summary --coverageReporters=lcov --runInBand
+        env:
+          NODE_ENV: test
+          CI: true
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Generate coverage report
+        run: |
+          echo "📊 Coverage Report"
+          echo "=================="
+          cat coverage/coverage-summary.json | jq '.'
+
+      - name: Check coverage thresholds
+        run: |
+          node scripts/check-coverage-thresholds.js
+        continue-on-error: true
+
+  notify-results:
+    name: Notify results
+    runs-on: ubuntu-latest
+    needs: [leak-detection, performance-testing, integration-test-suite, test-coverage-analysis]
+    if: always()
+
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.leak-detection.result }}" == "failure" ]] || \
+             [[ "${{ needs.performance-testing.result }}" == "failure" ]] || \
+             [[ "${{ needs.integration-test-suite.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-coverage-analysis.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send notification
+        if: steps.status.outputs.status == 'failure'
+        run: |
+          echo "🚨 Nightly tests failed! Check the workflow run for details."
+          # Add notification logic here (Slack, email, etc.)

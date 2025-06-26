@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createApiHandler } from '@/lib/api/create-api-handler';
 import { enhancedLogger, type LogFilter, type PaginationOptions, type LogLevel, type LogEntry } from '@/lib/logging';
 import { ValidationError } from '@/lib/errors/base-error';
+import { getServerSession } from '@/lib/auth/server';
 
 // Request validation schemas
 const logFilterSchema = z.object({
@@ -57,6 +58,16 @@ const logQuerySchema = z.object({
 export const GET = createApiHandler({
   schema: logQuerySchema,
   handler: async ({ data }) => {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      throw new ValidationError(
+        'Unauthorized - Please login',
+        'authorization',
+        null
+      );
+    }
+
     // Parse filter parameters
     const filter: LogFilter = {};
     
@@ -119,6 +130,16 @@ export const GET = createApiHandler({
 export const DELETE = createApiHandler({
   schema: logFilterSchema,
   handler: async ({ data: filter }) => {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      throw new ValidationError(
+        'Unauthorized - Please login',
+        'authorization',
+        null
+      );
+    }
+
     // 安全性チェック: 全削除を防ぐ
     if (Object.keys(filter).length === 0) {
       throw new ValidationError(

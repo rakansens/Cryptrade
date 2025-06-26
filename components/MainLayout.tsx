@@ -63,15 +63,13 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <ResizableHandle className="bg-[hsl(var(--border))] hover:bg-[hsl(var(--color-accent)/0.3)] transition-all duration-[var(--transition-fast)] h-px" />
                   <ResizablePanel defaultSize={20} minSize={10} maxSize={40}>
                     <div className="h-full overflow-hidden premium-glass-subtle">
-                      {typeof window !== 'undefined' && (
-                        <IndicatorPanel 
-                          title="RSI (14)" 
-                          height="auto"
-                          className="h-full"
-                        >
-                          <RsiChart />
-                        </IndicatorPanel>
-                      )}
+                      <IndicatorPanel 
+                        title="RSI (14)" 
+                        height="auto"
+                        className="h-full"
+                      >
+                        <RsiChart />
+                      </IndicatorPanel>
                     </div>
                   </ResizablePanel>
                 </>
@@ -83,15 +81,13 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <ResizableHandle className="bg-[hsl(var(--border))] hover:bg-[hsl(var(--color-accent)/0.3)] transition-all duration-[var(--transition-fast)] h-px" />
                   <ResizablePanel defaultSize={20} minSize={10} maxSize={40}>
                     <div className="h-full overflow-hidden premium-glass-subtle">
-                      {typeof window !== 'undefined' && (
-                        <IndicatorPanel 
-                          title="MACD (12, 26, 9)" 
-                          height="auto"
-                          className="h-full"
-                        >
-                          <MacdChart />
-                        </IndicatorPanel>
-                      )}
+                      <IndicatorPanel 
+                        title="MACD (12, 26, 9)" 
+                        height="auto"
+                        className="h-full"
+                      >
+                        <MacdChart />
+                      </IndicatorPanel>
                     </div>
                   </ResizablePanel>
                 </>

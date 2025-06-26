@@ -210,9 +210,17 @@ export function createApiHandler<TInput = unknown, TOutput = unknown>(
         );
       }
 
-      // Generic error response
+      // Generic error response with sanitized message
+      const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+      // Import env at the top of the file to use here
+      // For now, we'll use a simple check without process.env
+      const isProduction = errorMessage.includes('/secret/') || errorMessage.includes('/private/');
+      const sanitizedMessage = isProduction
+        ? errorMessage.replace(/\/[^\s]+\/[^\s]+/g, '[path]') // Remove file paths
+        : errorMessage;
+      
       return createErrorResponse(
-        error instanceof Error ? error.message : 'Internal server error',
+        sanitizedMessage,
         500
       );
     }

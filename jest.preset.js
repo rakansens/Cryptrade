@@ -25,11 +25,15 @@ module.exports = {
 
   // ESM modules that need to be transformed
   transformIgnorePatterns: [
-    'node_modules/(?!(.*\\.mjs$|@.*/|msw|@supabase|@bundled-es-modules))'
+    'node_modules/(?!(.*\\.mjs$|@.*/|msw|@supabase.*|@bundled-es-modules))'
   ],
 
   // パスエイリアス + 静的モック
   moduleNameMapper: {
+    // Mock Supabase modules that cause ESM issues
+    '^@supabase/realtime-js$': '<rootDir>/__mocks__/@supabase/realtime-js.js',
+    '^@supabase/supabase-js$': '<rootDir>/__mocks__/@supabase/supabase-js.js',
+    '^@supabase/ssr$': '<rootDir>/__mocks__/@supabase/ssr.js',
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/logger$': '<rootDir>/lib/utils/logger.ts',
     '^@/lib/database/client$': '<rootDir>/lib/db/prisma.ts',

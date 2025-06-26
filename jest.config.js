@@ -7,6 +7,10 @@ module.exports = {
   // Ensure coverage provider is set
   coverageProvider: 'v8',
   
+  // Global setup and teardown
+  globalSetup: '<rootDir>/jest.globalSetup.ts',
+  globalTeardown: '<rootDir>/jest.globalTeardown.ts',
+  
   // Override with projects configuration
   projects: [
     {
@@ -97,11 +101,15 @@ module.exports = {
   bail: false,
   detectOpenHandles: false,
   forceExit: true,
-  maxWorkers: 2, // 並列数を減らしてメモリ使用量を削減
-  maxConcurrency: 2, // 同時実行数も合わせて削減
+  maxWorkers: '50%', // CPUコア数の半分を使用
+  maxConcurrency: 5, // 同時実行数を5に設定
   cache: true,
   cacheDirectory: '<rootDir>/.jest-cache',
-  testTimeout: 5000, // デフォルトタイムアウトを5秒に短縮
+  testTimeout: 10000, // タイムアウトを10秒に調整
+  
+  // Reporter settings for progress display
+  // Let Jest auto-detect the best reporter based on TTY
+  verbose: false,
   
   // テストの順序をランダム化しない（デバッグしやすくする）
   testSequencer: '@jest/test-sequencer',

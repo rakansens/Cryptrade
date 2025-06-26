@@ -2,11 +2,15 @@ import { NextRequest } from 'next/server';
 import { AlertService } from '@/lib/services/alert.service';
 import { z } from 'zod';
 import { createApiSuccessResponse, createApiErrorResponse, handleApiError, parseRequestBody } from '@/app/api/utils/responses';
+import { getServerSession } from '@/lib/auth/server';
 
 // Request validation schema
 const createAlertSchema = z.object({
   userId: z.string().optional(),
-  symbol: z.string().min(1),
+  symbol: z.string()
+    .min(1, 'Symbol is required')
+    .max(20, 'Symbol must be at most 20 characters')
+    .regex(/^[A-Z0-9]+$/, 'Symbol must contain only uppercase letters and numbers'),
   conditions: z.object({
     priceAbove: z.number().optional(),
     priceBelow: z.number().optional(),
@@ -28,9 +32,15 @@ const createAlertSchema = z.object({
   ),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const userId = request.headers.get('x-user-id');
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return createApiErrorResponse('Unauthorized - Please login', 401);
+    }
+
+    const userId = session.user?.id;
     if (!userId) {
       return createApiErrorResponse('Missing user id', 400);
     }
@@ -43,11 +53,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    if (!session) {
+      return createApiErrorResponse('Unauthorized - Please login', 401);
+    }
+
     const { data, error } = await parseRequestBody(request, createAlertSchema);
     if (error) return error;
     
     const { symbol, conditions } = data;
-    const userId = data.userId || request.headers.get('x-user-id');
+    const userId = session.user?.id;
     if (!userId) {
       return createApiErrorResponse('Missing user id', 400);
     }

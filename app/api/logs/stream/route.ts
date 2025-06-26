@@ -6,10 +6,22 @@
 
 import { enhancedLogger, type LogFilter, type LogEntry, type LogLevel } from '@/lib/logging';
 import { createSSEHandler, createSSEOptionsHandler } from '@/lib/api/create-sse-handler';
+import { getServerSession } from '@/lib/auth/server';
 
 export const GET = createSSEHandler({
   handler: {
-    onConnect({ request, stream }) {
+    async onConnect({ request, stream }) {
+      // Check authentication
+      const session = await getServerSession();
+      if (!session) {
+        stream.write({ 
+          event: 'error',
+          data: { error: 'Unauthorized - Please login' } 
+        });
+        stream.close();
+        return;
+      }
+
       const { searchParams } = new URL(request.url);
       const filter: LogFilter = {};
 
