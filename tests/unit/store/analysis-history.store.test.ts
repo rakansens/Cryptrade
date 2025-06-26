@@ -871,11 +871,15 @@ describe('AnalysisHistoryStore', () => {
         tracking: {} as any
       };
 
-      await expect(async () => {
-        await act(async () => {
+      await act(async () => {
+        try {
           await result.current.addRecord(invalidRecord);
-        });
-      }).rejects.toThrow('Validation failed');
+          // If we reach here, the test should fail
+          expect(true).toBe(false);
+        } catch (error) {
+          expect(error).toEqual(new Error('Validation failed'));
+        }
+      });
     });
 
     it('should handle updating non-existent record', async () => {

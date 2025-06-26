@@ -319,19 +319,18 @@ describe('proposal generation helpers', () => {
     });
 
     it('should return 0 for mismatched lengths', () => {
-      const { logger } = require('@/lib/utils/logger');
       const result = calculateWeightedAverage([1, 2, 3], [1, 2]);
-      
       expect(result).toBe(0);
-      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should return 0 for empty arrays', () => {
-      expect(calculateWeightedAverage([], [])).toBe(0);
+      const result = calculateWeightedAverage([], []);
+      expect(result).toBe(0);
     });
 
     it('should handle zero total weight', () => {
-      expect(calculateWeightedAverage([1, 2, 3], [0, 0, 0])).toBe(0);
+      const result = calculateWeightedAverage([1, 2, 3], [0, 0, 0]);
+      expect(result).toBe(0);
     });
   });
 

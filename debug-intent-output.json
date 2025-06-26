@@ -1,0 +1,29 @@
+{
+  "query": "BTCの価格",
+  "directIntentAnalysis": {
+    "intent": "price_inquiry",
+    "confidence": 0.9,
+    "reasoning": "価格照会キーワード検出",
+    "extractedSymbol": "BTCUSDT",
+    "requiresWorkflow": true
+  },
+  "orchestratorResult": {
+    "analysisIntent": "price_inquiry",
+    "analysisConfidence": 0.9,
+    "analysisReasoning": "価格照会キーワード検出",
+    "analysisExtractedSymbol": "BTCUSDT",
+    "executionResult": "trading-agent",
+    "fullAnalysis": {
+      "intent": "price_inquiry",
+      "confidence": 0.9,
+      "extractedSymbol": "BTCUSDT",
+      "reasoning": "価格照会キーワード検出",
+      "analysisDepth": "basic"
+    },
+    "hasExecutionResult": true,
+    "success": true,
+    "executionTime": 0
+  },
+  "orchestratorError": null,
+  "errorCaught": false
+}

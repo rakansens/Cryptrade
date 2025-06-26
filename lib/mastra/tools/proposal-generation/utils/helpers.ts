@@ -155,11 +155,22 @@ export function calculateWeightedAverage(
   values: number[],
   weights: number[]
 ): number {
-  if (values.length !== weights.length || values.length === 0) {
+  if (values.length !== weights.length) {
     logger.warn('[Helpers] Invalid input for weighted average', {
       valuesLength: values.length,
       weightsLength: weights.length,
     });
+    return 0;
+  }
+
+  if (values.length === 0) {
+    logger.warn('[Helpers] Empty values array for weighted average');
+    return 0;
+  }
+
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (totalWeight === 0) {
+    logger.warn('[Helpers] Total weight is zero for weighted average');
     return 0;
   }
   
@@ -167,9 +178,8 @@ export function calculateWeightedAverage(
     const weight = weights[i];
     return weight !== undefined ? sum + val * weight : sum;
   }, 0);
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   
-  return safeDivide(weightedSum, totalWeight);
+  return weightedSum / totalWeight;
 }
 
 /**

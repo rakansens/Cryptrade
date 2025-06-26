@@ -1,0 +1,26 @@
+{
+  "query": "BTCの価格",
+  "result": {
+    "success": true,
+    "executionTime": 0,
+    "analysis": {
+      "intent": "price_inquiry",
+      "confidence": 0.9,
+      "extractedSymbol": "BTCUSDT",
+      "reasoning": "価格照会キーワード検出",
+      "analysisDepth": "basic"
+    },
+    "hasExecutionResult": true,
+    "memoryContext": "No previous context available."
+  },
+  "caughtError": null,
+  "capturedErrors": [],
+  "testEnvironment": {
+    "nodeEnv": "test",
+    "jestWorkerPresent": true,
+    "availableModules": {
+      "hasLogger": true,
+      "hasMemoryStore": false
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { openai } from '@ai-sdk/openai';
 import { generateCorrelationId } from '@/types/agent-payload';
 import { traceManager } from '@/lib/monitoring/trace';
 import { logger } from '@/lib/utils/logger';
-import { agentSelectionTool } from '../tools/agent-selection.tool';
+import { agentSelectionTool } from '@/lib/mastra/tools/agent-selection.tool';
 import { memoryRecallTool } from '../tools/memory-recall.tool';
 import { marketSnapshotTool, trendingTopicsTool } from '../tools/market-snapshot.tool';
 import { marketDataResilientTool } from '../tools/market-data-resilient.tool';
@@ -440,6 +440,8 @@ export async function executeImprovedOrchestrator(
 
     // Step 4: エージェント実行またはOrchestratorで直接処理
     let executionResult;
+
+
     try {
       // 一般会話はOrchestratorで直接処理
       const conversationalIntents = ['market_chat', 'small_talk', 'greeting', 'help_request', 'conversational'];
@@ -517,7 +519,7 @@ export async function executeImprovedOrchestrator(
           
           // Check if we got a valid response
           if (!agentResult || (!agentResult.executionResult?.response && !agentResult.message)) {
-            logger.warn('[Improved Orchestrator] Agent returned no response, using fallback', {
+            logger.warn('[Improved Orchestrator] no response from agent, fallback', {
               correlationId,
               targetAgent,
               agentResult: JSON.stringify(agentResult).substring(0, 200),
@@ -548,7 +550,12 @@ export async function executeImprovedOrchestrator(
             };
           }
         } catch (agentError) {
-          logger.error('[Improved Orchestrator] Agent execution error, using fallback', {
+          logger.warn('[Improved Orchestrator] Agent execution failed', {
+            correlationId,
+            targetAgent,
+            error: String(agentError),
+          });
+          logger.error('[Improved Orchestrator] Agent execution failed', {
             correlationId,
             targetAgent,
             error: String(agentError),
@@ -893,12 +900,18 @@ ${intent === 'ui_control' ? `
  * Detect if a query is complex and requires parallel processing
  */
 function detectComplexQuery(userQuery: string): boolean {
-  // Length-based detection
+  // --------------------------------------------------------------------------------
+  // 0. Quick check – simple price inquiry queries are NOT complex.
+  if (/\b(価格|いくら|price)\b/i.test(userQuery) && userQuery.length < 50) {
+    return false;
+  }
+
+  // 1. Length-based detection
   if (userQuery.length > 100) {
     return true;
   }
   
-  // Multiple operations detection
+  // 2. Multiple operations detection
   const multipleOperations = 
     (userQuery.includes('して') && (userQuery.match(/して/g) || []).length > 1) ||
     (userQuery.includes('また') || userQuery.includes('そして') || userQuery.includes('さらに'));
@@ -907,13 +920,13 @@ function detectComplexQuery(userQuery: string): boolean {
     return true;
   }
   
-  // Multiple symbols detection
+  // 3. Multiple symbols detection
   const cryptoSymbols = userQuery.match(/[A-Z]{3,}(?:USDT)?/g) || [];
   if (cryptoSymbols.length > 1) {
     return true;
   }
   
-  // Complex intent keywords
+  // 4. Complex intent keywords
   const complexKeywords = [
     '分析.*提案',
     '価格.*分析',
@@ -932,7 +945,7 @@ function detectComplexQuery(userQuery: string): boolean {
     return true;
   }
   
-  // Queries asking for multiple types of information
+  // 5. Queries asking for multiple types of information
   const multipleInfoTypes = [
     ['価格', '分析'],
     ['チャート', '分析'],

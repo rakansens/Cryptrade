@@ -55,6 +55,9 @@ jest.mock('@/config/csp-production.config', () => ({
   }),
 }));
 
+// Import the mocked functions
+const { validateProductionConfig: mockValidateProductionConfig, getProductionCSPDirectives: mockGetProductionCSPDirectives } = require('@/config/csp-production.config');
+
 describe('CSP Security Middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -235,11 +238,9 @@ describe('CSP Security Middleware', () => {
     });
 
     it('should validate production configuration', () => {
-      const { validateProductionConfig } = require('@/config/csp-production.config');
-      
       const header = buildCSPHeader('test', false);
       
-      expect(validateProductionConfig).toHaveBeenCalled();
+      expect(mockValidateProductionConfig).toHaveBeenCalled();
       expect(header).toBeDefined();
     });
   });
@@ -373,10 +374,8 @@ describe('CSP Security Middleware', () => {
     });
 
     it('should handle production config validation errors gracefully', () => {
-      const { validateProductionConfig } = require('@/config/csp-production.config');
-      
       // Mock validation errors
-      validateProductionConfig.mockReturnValueOnce(['Error 1', 'Error 2']);
+      mockValidateProductionConfig.mockReturnValueOnce(['Error 1', 'Error 2']);
       
       // Should still build header despite errors
       const header = buildCSPHeader('test', false);
@@ -398,10 +397,8 @@ describe('CSP Security Middleware', () => {
     });
 
     it('should handle missing directive in production config', () => {
-      const { getProductionCSPDirectives } = require('@/config/csp-production.config');
-      
       // Mock incomplete production config
-      getProductionCSPDirectives.mockReturnValueOnce({
+      mockGetProductionCSPDirectives.mockReturnValueOnce({
         'default-src': ["'self'"],
         // Missing other directives
       });

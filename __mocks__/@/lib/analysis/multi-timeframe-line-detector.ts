@@ -1,139 +1,181 @@
-// Mock for MultiTimeframeLineDetector
-import type { 
-  DetectionResult, 
-  DetectionConfig, 
-  HorizontalLine, 
-  Trendline 
-} from '@/lib/analysis/multi-timeframe-line-detector';
-
-const mockHorizontalLines: HorizontalLine[] = [
-  {
-    id: 'horizontal-1',
-    type: 'resistance',
-    price: 50000,
-    strength: 0.8,
-    confidence: 0.9,
-    touchCount: 5,
-    supportingTimeframes: ['1h', '4h'],
-    points: [
-      { x: Date.now() - 86400000, y: 50000 },
-      { x: Date.now() - 43200000, y: 49950 },
-      { x: Date.now(), y: 50020 }
-    ],
-    metadata: {
-      algorithm: 'multi-timeframe',
-      detectedAt: Date.now()
+// Mock for Multi-timeframe Line Detector
+const mockDetectionResult = {
+  horizontalLines: [
+    {
+      id: 'line-1',
+      type: 'support' as const,
+      price: 45000,
+      strength: 0.85,
+      confidence: 0.9,
+      touchCount: 5,
+      supportingTimeframes: ['1h', '4h', '1d'],
+      firstDetected: Date.now() - 86400000,
+      lastTouched: Date.now() - 3600000,
+      points: [
+        { time: Date.now() - 86400000, price: 45000, timeframe: '1h' },
+        { time: Date.now() - 57600000, price: 45050, timeframe: '4h' },
+        { time: Date.now() - 28800000, price: 44980, timeframe: '1d' },
+        { time: Date.now() - 3600000, price: 45020, timeframe: '1h' }
+      ],
+      description: 'サポートライン - 5回タッチ、3つの時間足で確認',
+      tradingImplication: 'bullish' as const,
+      targetLevels: [45900, 47250],
+      stopLossLevel: 44100
+    },
+    {
+      id: 'line-2',
+      type: 'resistance' as const,
+      price: 48000,
+      strength: 0.75,
+      confidence: 0.85,
+      touchCount: 4,
+      supportingTimeframes: ['1h', '4h'],
+      firstDetected: Date.now() - 57600000,
+      lastTouched: Date.now() - 7200000,
+      points: [
+        { time: Date.now() - 57600000, price: 48000, timeframe: '1h' },
+        { time: Date.now() - 7200000, price: 48020, timeframe: '4h' }
+      ],
+      description: 'レジスタンスライン - 4回タッチ、2つの時間足で確認',
+      tradingImplication: 'bearish' as const,
+      targetLevels: [47040, 45600],
+      stopLossLevel: 48960
     }
-  },
-  {
-    id: 'horizontal-2',
-    type: 'support',
-    price: 49000,
-    strength: 0.7,
-    confidence: 0.85,
-    touchCount: 4,
-    supportingTimeframes: ['15m', '1h', '4h'],
-    points: [
-      { x: Date.now() - 172800000, y: 49000 },
-      { x: Date.now() - 86400000, y: 48980 },
-      { x: Date.now(), y: 49010 }
-    ],
-    metadata: {
-      algorithm: 'multi-timeframe',
-      detectedAt: Date.now()
+  ],
+  trendlines: [],
+  confluenceZones: [
+    {
+      priceRange: {
+        min: 44950,
+        max: 45050,
+        center: 45000
+      },
+      strength: 0.85,
+      timeframeCount: 3,
+      supportingTimeframes: ['1h', '4h', '1d'],
+      type: 'support' as const,
+      description: 'Strong support confluence zone'
     }
+  ],
+  summary: {
+    totalLines: 2,
+    highConfidenceLines: 2,
+    multiTimeframeLines: 2,
+    averageStrength: 0.8,
+    detectionTime: 150
   }
-];
+};
 
-const mockTrendlines: Trendline[] = [
-  {
-    id: 'trendline-1',
-    type: 'trendline',
-    price: 49500, // Current price on the line
-    strength: 0.75,
-    confidence: 0.8,
-    touchCount: 3,
-    supportingTimeframes: ['1h', '4h'],
-    points: [
-      { x: Date.now() - 172800000, y: 48500 },
-      { x: Date.now() - 86400000, y: 49000 },
-      { x: Date.now(), y: 49500 }
-    ],
-    slope: 0.0057,
-    intercept: 48500,
-    metadata: {
-      algorithm: 'multi-timeframe',
-      detectedAt: Date.now(),
-      direction: 'ascending'
-    }
-  }
-];
-
+// Mock class constructor
 export class MultiTimeframeLineDetector {
-  private config: DetectionConfig = {
-    minTimeframes: 2,
-    priceTolerancePercent: 0.5,
+  private config = {
     minTouchCount: 3,
+    priceTolerancePercent: 0.5,
+    strengthThreshold: 0.7,
+    minTimeframes: 2,
     confluenceZoneWidth: 1.0,
-    strengthThreshold: 0.6,
     recencyWeight: 0.3
   };
 
-  async detectLines(symbol: string, customConfig?: Partial<DetectionConfig>): Promise<DetectionResult> {
-    const config = { ...this.config, ...customConfig };
+  constructor() {}
+  
+  detectLines = jest.fn().mockImplementation(async (symbol: string, customConfig?: any) => {
+    // Merge default config with custom config
+    const finalConfig = { ...this.config, ...customConfig };
     
-    // Filter lines based on config
-    const horizontalLines = mockHorizontalLines.filter(line => 
-      line.strength >= config.strengthThreshold &&
-      line.touchCount >= config.minTouchCount &&
-      line.supportingTimeframes.length >= config.minTimeframes
-    );
-
-    const trendlines = mockTrendlines.filter(line =>
-      line.strength >= config.strengthThreshold &&
-      line.touchCount >= config.minTouchCount &&
-      line.supportingTimeframes.length >= config.minTimeframes
-    );
-
-    const allLines = [...horizontalLines, ...trendlines];
-    const avgStrength = allLines.length > 0 
-      ? allLines.reduce((sum, line) => sum + line.strength, 0) / allLines.length 
-      : 0;
-
+    // Apply custom config to filter results
+    const filteredHorizontalLines = (mockDetectionResult.horizontalLines || [])
+      .filter((line: any) => line && line.strength >= (finalConfig.strengthThreshold || 0.7))
+      .filter((line: any) => line && line.touchCount >= (finalConfig.minTouchCount || 3))
+      .map((line: any) => ({
+        ...line,
+        metadata: { algorithm: 'multi-timeframe' } // Required metadata field
+      }));
+    
+    const filteredTrendlines = (mockDetectionResult.trendlines || []).map((line: any) => ({
+      ...line,
+      metadata: { algorithm: 'multi-timeframe' }
+    }));
+    
     return {
-      symbol,
-      horizontalLines: customConfig?.analysisType === 'trendlines_only' ? [] : horizontalLines,
-      trendlines: customConfig?.analysisType === 'horizontal_only' ? [] : trendlines,
-      confluenceZones: [
-        {
-          priceRange: { min: 49800, max: 50200, center: 50000 },
-          strength: 0.8,
-          timeframeCount: 3,
-          supportingTimeframes: ['15m', '1h', '4h'],
-          type: 'resistance' as const
-        }
-      ],
+      symbol, // Required symbol field
+      horizontalLines: filteredHorizontalLines,
+      trendlines: filteredTrendlines,
+      confluenceZones: mockDetectionResult.confluenceZones,
       summary: {
-        totalLines: allLines.length,
-        highConfidenceLines: allLines.filter(line => line.confidence >= 0.8).length,
-        multiTimeframeLines: allLines.filter(line => line.supportingTimeframes.length >= 2).length,
-        averageStrength: avgStrength,
-        detectionTime: 150
+        ...mockDetectionResult.summary,
+        totalLines: filteredHorizontalLines.length + filteredTrendlines.length,
+        highConfidenceLines: [...filteredHorizontalLines, ...filteredTrendlines]
+          .filter(line => line.confidence >= 0.8).length,
+        multiTimeframeLines: [...filteredHorizontalLines, ...filteredTrendlines]
+          .filter(line => line.supportingTimeframes.length >= 2).length,
+        averageStrength: [...filteredHorizontalLines, ...filteredTrendlines].length > 0
+          ? [...filteredHorizontalLines, ...filteredTrendlines]
+            .reduce((sum, line) => sum + line.strength, 0) /
+            [...filteredHorizontalLines, ...filteredTrendlines].length
+          : 0
       },
-      config
+      config: finalConfig // Required config field
     };
-  }
-
-  updateConfig(newConfig: Partial<DetectionConfig>): void {
+  });
+  
+  updateConfig = jest.fn().mockImplementation((newConfig: any) => {
     this.config = { ...this.config, ...newConfig };
-  }
-
-  getConfig(): DetectionConfig {
+  });
+  
+  getConfig = jest.fn().mockImplementation(() => {
     return { ...this.config };
-  }
+  });
 }
+
+// Legacy exports for backward compatibility
+export const detectLines = jest.fn().mockResolvedValue(mockDetectionResult);
+export const updateConfig = jest.fn();
 
 export const multiTimeframeLineDetector = new MultiTimeframeLineDetector();
 
 // Export types for compatibility
-export type { DetectionResult, DetectionConfig, HorizontalLine, Trendline };
+export interface DetectedLine {
+  id: string;
+  type: 'support' | 'resistance' | 'trendline';
+  price: number;
+  strength: number;
+  confidence: number;
+  touchCount: number;
+  supportingTimeframes: string[];
+  firstDetected: number;
+  lastTouched: number;
+  points: Array<{
+    time: number;
+    price: number;
+    timeframe: string;
+  }>;
+  description?: string;
+  tradingImplication?: 'bullish' | 'bearish' | 'neutral';
+  targetLevels?: number[];
+  stopLossLevel?: number;
+}
+
+export interface LineDetectionResult {
+  horizontalLines: DetectedLine[];
+  trendlines: DetectedLine[];
+  confluenceZones: Array<{
+    priceRange: {
+      min: number;
+      max: number;
+      center: number;
+    };
+    strength: number;
+    timeframeCount: number;
+    supportingTimeframes: string[];
+    type: 'support' | 'resistance' | 'pivot';
+    description?: string;
+  }>;
+  summary: {
+    totalLines: number;
+    highConfidenceLines: number;
+    multiTimeframeLines: number;
+    averageStrength: number;
+    detectionTime: number;
+  };
+}

@@ -27,6 +27,8 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add specific mocks for agent tools
+        '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
         // Add specific UI component mocks
         '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
         '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',
@@ -45,6 +47,8 @@ module.exports = {
         '^@radix-ui/react-slider$': '<rootDir>/__mocks__/@radix-ui/react-slider.tsx',
         '^@radix-ui/react-tabs$': '<rootDir>/__mocks__/@radix-ui/react-tabs.tsx',
         '^framer-motion$': '<rootDir>/__mocks__/framer-motion.tsx',
+        '^@/lib/services/enhanced-market-data\.service$': '<rootDir>/__mocks__/@/lib/services/enhanced-market-data.service.ts',
+        '^@mastra/core$': '<rootDir>/__mocks__/@mastra/core.js',
       },
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
       collectCoverageFrom: preset.collectCoverageFrom,
@@ -66,6 +70,8 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add specific mocks for agent tools
+        '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
         // Add specific UI component mocks
         '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
         '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',
@@ -84,6 +90,8 @@ module.exports = {
         '^@radix-ui/react-slider$': '<rootDir>/__mocks__/@radix-ui/react-slider.tsx',
         '^@radix-ui/react-tabs$': '<rootDir>/__mocks__/@radix-ui/react-tabs.tsx',
         '^framer-motion$': '<rootDir>/__mocks__/framer-motion.tsx',
+        '^@/lib/services/enhanced-market-data\.service$': '<rootDir>/__mocks__/@/lib/services/enhanced-market-data.service.ts',
+        '^@mastra/core$': '<rootDir>/__mocks__/@mastra/core.js',
       },
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
       collectCoverageFrom: preset.collectCoverageFrom,

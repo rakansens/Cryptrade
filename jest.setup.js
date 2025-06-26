@@ -498,27 +498,10 @@ const StorageMock = require('./tests/setup/storage-mock');
 global.localStorage = new StorageMock();
 global.sessionStorage = new StorageMock();
 
-// Mock @mastra/core module
-jest.mock('@mastra/core', () => ({
-  Agent: jest.fn().mockImplementation(() => ({
-    runThread: jest.fn(),
-    runWorkflow: jest.fn(),
-  })),
-  Tool: jest.fn().mockImplementation((config) => ({
-    ...config,
-    execute: config.execute || jest.fn(),
-  })),
-  createTool: jest.fn((config) => config),
-  createWorkflow: jest.fn((config) => ({
-    ...config,
-    execute: jest.fn(),
-  })),
-  Mastra: jest.fn().mockImplementation(() => ({
-    getAgent: jest.fn(),
-    getWorkflow: jest.fn(),
-    getTool: jest.fn(),
-  })),
-}));
+// Mock @mastra/core is mapped via moduleNameMapper; explicit mock here causes recursion ↴ Removed.
+
+// Mock API response helpers
+jest.mock('@/app/api/utils/responses', () => require('../__mocks__/@/app/api/utils/responses.ts'));
 
 // Mock nanoid
 jest.mock('nanoid', () => ({
@@ -1790,3 +1773,10 @@ if (global.gc) {
     }
   });
 }
+
+// Force EnhancedMarketDataService custom mock before tests execute
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const emdMock = require('./__mocks__/@/lib/services/enhanced-market-data.service.ts');
+  jest.setMock('@/lib/services/enhanced-market-data.service', emdMock);
+} catch (e) {}

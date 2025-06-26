@@ -1,7 +1,7 @@
 import { GET, POST } from '@/app/api/chat/sessions/route';
 import { NextRequest } from 'next/server';
 import { ChatDatabaseService } from '@/lib/services/database/chat.service';
-import { createApiSuccessResponse, handleApiError, parseRequestBody } from '@/app/api/utils/responses';
+import { createApiSuccessResponse, createApiErrorResponse, parseRequestBody } from '@/app/api/utils/responses';
 import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
@@ -14,6 +14,7 @@ jest.mock('@/lib/services/database/chat.service', () => ({
 
 jest.mock('@/app/api/utils/responses', () => ({
   createApiSuccessResponse: jest.fn((data) => new Response(JSON.stringify(data), { status: 200 })),
+  createApiErrorResponse: jest.fn((error, status) => new Response(JSON.stringify({ error: error instanceof Error ? error.message : error }), { status: status || 500 })),
   handleApiError: jest.fn((error, message, status) => new Response(JSON.stringify({ error: message }), { status: status || 500 })),
   parseRequestBody: jest.fn(),
 }));
@@ -106,7 +107,7 @@ describe('/api/chat/sessions', () => {
 
       const response = await GET(request);
 
-      expect(handleApiError).toHaveBeenCalledWith(mockError, 'Failed to get sessions');
+      expect(createApiErrorResponse).toHaveBeenCalledWith('Database connection failed', 500);
     });
 
     describe('Authentication', () => {
@@ -118,11 +119,7 @@ describe('/api/chat/sessions', () => {
         const response = await GET(request);
 
         expect(mockedGetServerSession).toHaveBeenCalled();
-        expect(handleApiError).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Unauthorized - Please login' }),
-          'Unauthorized',
-          401
-        );
+        expect(createApiErrorResponse).toHaveBeenCalledWith('Unauthorized - Please login', 401);
         expect(ChatDatabaseService.getUserSessions).not.toHaveBeenCalled();
       });
 
@@ -144,10 +141,7 @@ describe('/api/chat/sessions', () => {
         
         const response = await GET(request);
 
-        expect(handleApiError).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Session validation failed' }),
-          'Failed to get sessions'
-        );
+        expect(createApiErrorResponse).toHaveBeenCalledWith('Session validation failed', 500);
       });
     });
   });
@@ -241,7 +235,7 @@ describe('/api/chat/sessions', () => {
 
       const response = await POST(request);
 
-      expect(handleApiError).toHaveBeenCalledWith(mockError, 'Failed to create session');
+      expect(createApiErrorResponse).toHaveBeenCalledWith('Database error', 500);
     });
 
     it('should enforce title length constraints', async () => {
@@ -295,11 +289,7 @@ describe('/api/chat/sessions', () => {
         const response = await POST(request);
 
         expect(mockedGetServerSession).toHaveBeenCalled();
-        expect(handleApiError).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Unauthorized - Please login' }),
-          'Unauthorized',
-          401
-        );
+        expect(createApiErrorResponse).toHaveBeenCalledWith('Unauthorized - Please login', 401);
         expect(parseRequestBody).not.toHaveBeenCalled();
         expect(ChatDatabaseService.createSession).not.toHaveBeenCalled();
       });
@@ -340,10 +330,7 @@ describe('/api/chat/sessions', () => {
         
         const response = await POST(request);
 
-        expect(handleApiError).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Session validation failed' }),
-          'Failed to create session'
-        );
+        expect(createApiErrorResponse).toHaveBeenCalledWith('Session validation failed', 500);
       });
     });
   });
