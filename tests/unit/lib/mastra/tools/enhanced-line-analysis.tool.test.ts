@@ -118,14 +118,22 @@ const mockMultiTimeframeData: MultiTimeframeData = {
   fetchedAt: fixedNow
 };
 
-// Import mocked modules
+// Import mocked modules - these will be replaced by Jest mocks
 import { logger } from '@/lib/utils/logger';
 import { multiTimeframeLineDetector } from '@/lib/analysis/multi-timeframe-line-detector';
 import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
 
+// Ensure proper Jest spy setup for all mock functions
+const mockMultiTimeframeLineDetector = multiTimeframeLineDetector as jest.Mocked<typeof multiTimeframeLineDetector>;
+const mockEnhancedMarketDataService = enhancedMarketDataService as jest.Mocked<typeof enhancedMarketDataService>;
+const mockLoggerModule = logger as jest.Mocked<typeof logger>;
+
 describe('enhancedLineAnalysisTool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Clear global mock calls tracker
+    global.__MOCK_CALLS__ = {};
+    
     (logger as any).info = mockLogger.info;
     (logger as any).error = mockLogger.error;
     (logger as any).warn = mockLogger.warn;

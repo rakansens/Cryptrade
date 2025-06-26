@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, jest } from '@jest/globals';
 import { enhancedMarketDataService } from '@/lib/services/enhanced-market-data.service';
 import { multiTimeframeLineDetector, MultiTimeframeLineDetector } from '@/lib/analysis/multi-timeframe-line-detector';
 import { enhancedLineAnalysisTool } from '@/lib/mastra/tools/enhanced-line-analysis.tool';
