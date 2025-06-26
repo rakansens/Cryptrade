@@ -5,14 +5,7 @@
  */
 
 // Mock dependencies
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
+jest.mock('@/lib/utils/logger');
 
 jest.mock('@/config/env', () => ({
   isDevelopment: jest.fn(() => true),
@@ -533,7 +526,7 @@ describe('LineRenderer', () => {
         line1: '#FF0000',
       });
       
-      expect(require('@/lib/utils/logger').logger.warn).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Pattern not found'),
         expect.any(Object)
       );

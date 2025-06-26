@@ -5,14 +5,7 @@
  */
 
 // Mock dependencies
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
+jest.mock('@/lib/utils/logger');
 
 jest.mock('@/config/env', () => ({
   isDevelopment: jest.fn(() => false),
@@ -24,6 +17,7 @@ import type { PluginContext, MetricStyle } from '@/lib/chart/plugins/interfaces'
 import type { PatternVisualization } from '@/types/pattern';
 import type { ISeriesApi, SeriesType } from 'lightweight-charts';
 import { PluginError } from '@/lib/chart/plugins/interfaces';
+import { logger } from '@/lib/utils/logger';
 
 describe('MetricRenderer', () => {
   let renderer: MetricRenderer;
@@ -475,7 +469,7 @@ describe('MetricRenderer', () => {
     it('should warn about metric update requiring re-render', () => {
       renderer.updateMetric('pattern-1', 'targetLevel', 130);
       
-      expect(require('@/lib/utils/logger').logger.warn).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         '[MetricRenderer] Metric update requires re-rendering. Use remove() and render() instead.'
       );
     });
