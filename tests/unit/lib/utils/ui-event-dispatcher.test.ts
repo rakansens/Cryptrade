@@ -531,10 +531,17 @@ describe('UIEventDispatcher', () => {
 
   describe('singleton instance', () => {
     it('should export singleton instance', () => {
-      // Import fresh to test the exported singleton
-      const { uiEventDispatcher: singletonInstance } = require('@/lib/utils/ui-event-dispatcher');
-      expect(singletonInstance).toBeDefined();
-      expect(singletonInstance).toBeInstanceOf(UIEventDispatcher);
+      // Use the already imported uiEventDispatcher to avoid module resolution issues
+      expect(uiEventDispatcher).toBeDefined();
+      expect(uiEventDispatcher).toBeInstanceOf(UIEventDispatcher);
+      
+      // Verify the exported instance has the expected methods
+      expect(typeof uiEventDispatcher.dispatch).toBe('function');
+      expect(typeof uiEventDispatcher.dispatchBatch).toBe('function');
+      expect(typeof uiEventDispatcher.addEventListener).toBe('function');
+      expect(typeof uiEventDispatcher.removeEventListener).toBe('function');
+      expect(typeof uiEventDispatcher.clearAllListeners).toBe('function');
+      expect(typeof uiEventDispatcher.destroy).toBe('function');
     });
   });
 

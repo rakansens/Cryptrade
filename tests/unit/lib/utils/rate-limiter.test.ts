@@ -287,11 +287,17 @@ describe('createRateLimitedLogger', () => {
 });
 
 describe('rateLimiter singleton', () => {
-  it('should export a singleton instance', async () => {
-    const { rateLimiter } = await import('@/lib/utils/rate-limiter');
+  it('should export a singleton instance', () => {
+    // Use the already imported rateLimiter to avoid module resolution issues
+    expect(globalRateLimiter).toBeDefined();
+    expect(globalRateLimiter).toBeInstanceOf(RateLimiter);
     
-    expect(rateLimiter).toBeDefined();
-    expect(rateLimiter).toBeInstanceOf(RateLimiter);
+    // Verify the exported instance has the expected methods
+    expect(typeof globalRateLimiter.isAllowed).toBe('function');
+    expect(typeof globalRateLimiter.getCount).toBe('function');
+    expect(typeof globalRateLimiter.reset).toBe('function');
+    expect(typeof globalRateLimiter.cleanup).toBe('function');
+    expect(typeof globalRateLimiter.destroy).toBe('function');
   });
 });
 
