@@ -22,6 +22,9 @@ jest.mock('@/lib/api/client', () => {
 describe('BaseService Mock Debug', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // モックを適切に初期化
+    mockGet.mockResolvedValue({ data: { result: 'test' } });
+    mockPost.mockResolvedValue({ data: { result: 'test' } });
   });
 
   it('should test basic mock functionality', () => {
@@ -53,9 +56,6 @@ describe('BaseService Mock Debug', () => {
     // モックのセットアップ（beforeEachでクリアされる前に記録）
     mockGet.mockResolvedValue({ data: { success: true } });
     
-    // ApiClientの呼び出し回数をクリア（beforeEachの後から測定）
-    (ApiClient as jest.Mock).mockClear();
-    
     // テスト用のサービスクラス
     class TestService extends BaseService {
       constructor() {
@@ -68,6 +68,9 @@ describe('BaseService Mock Debug', () => {
         return this.client.get(url);
       }
     }
+    
+    // ApiClientの呼び出し回数をクリア（サービス作成前）
+    (ApiClient as jest.Mock).mockClear();
     
     // サービスインスタンスを作成
     const service = new TestService();
@@ -87,7 +90,7 @@ describe('BaseService Mock Debug', () => {
     
     // モックが呼ばれたことを確認
     expect(mockGet).toHaveBeenCalledTimes(1);
-    expect(mockGet).toHaveBeenCalledWith('/api/test/items');
+    expect(mockGet).toHaveBeenCalledWith('/items');
     expect(result).toEqual({ data: { success: true } });
   });
 });

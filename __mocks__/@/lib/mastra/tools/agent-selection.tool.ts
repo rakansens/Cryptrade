@@ -4,7 +4,15 @@
  * - Orchestratorパターンを適用した構造
  * - A2A通信フローの正確なシミュレーション
  * - UI操作ブロードキャスト機能の実装
+ * - テスト用fallback機能の追加
  */
+
+// Completely isolated state per test execution with unique instance tracking
+let mockState = {
+  shouldFail: false,
+  resetCount: 0,
+  instanceId: `mock-${Date.now()}-${Math.random()}`
+};
 
 // Simple but powerful mock implementation
 const mockExecute = jest.fn();
@@ -14,11 +22,38 @@ export const agentSelectionTool = {
   id: 'ai-agent-selection',
   description: 'Mocked agent selection tool',
   execute: mockExecute,
+  simulateFailure: () => {
+    console.log(`[Mock Debug] simulateFailure called on instance: ${mockState.instanceId}`);
+    mockState.shouldFail = true;
+  },
+  resetState: () => {
+    // Complete state reset with new instance
+    const oldInstanceId = mockState.instanceId;
+    mockState = {
+      shouldFail: false,
+      resetCount: mockState.resetCount + 1,
+      instanceId: `mock-${Date.now()}-${Math.random()}`
+    };
+    console.log(`[Mock Debug] resetState: ${oldInstanceId} -> ${mockState.instanceId}`);
+    // Clear all mock call history
+    mockExecute.mockClear();
+  },
+  // Test helper to verify state
+  _getState: () => ({ ...mockState }),
 };
 
-// Set default implementation to simulate A2A communication
 mockExecute.mockImplementation(async ({ context }) => {
   const { agentType, query, context: userContext, correlationId } = context;
+  
+  console.log(`[Mock Debug] Execute called - Agent: ${agentType}, shouldFail: ${mockState.shouldFail}, instanceId: ${mockState.instanceId}`);
+  
+  // Simulate failure if requested - throw error instead of returning success
+  if (mockState.shouldFail) {
+    console.log(`[Mock Debug] shouldFail triggered for agent: ${agentType}, resetting flag`);
+    mockState.shouldFail = false; // Reset after one failure
+    console.log(`[Mock Debug] Throwing error for agent failure simulation`);
+    throw new Error(`Simulated agent failure: ${agentType}`);
+  }
   
   // Simulate UI operations broadcasting for ui_control agent
   if (agentType === 'ui_control' && typeof window !== 'undefined' && window.dispatchEvent) {
@@ -68,6 +103,7 @@ mockExecute.mockImplementation(async ({ context }) => {
           model: 'fallback-model',
           fallbackType: 'static',
           originalAgent: agentType,
+          processedBy: 'fallback',
           timestamp: Date.now()
         },
       },
@@ -98,6 +134,9 @@ mockExecute.mockImplementation(async ({ context }) => {
           model: 'a2a-communication',
           executionTime: 100,
           toolsUsed: [],
+          processedBy: 'trading-agent',
+          timestamp: Date.now(),
+          resetCount: mockState.resetCount, // Track state for debugging
         },
       },
       message: 'Current BTC price is $50,000',
@@ -112,6 +151,7 @@ mockExecute.mockImplementation(async ({ context }) => {
           model: 'a2a-communication',
           executionTime: 100,
           toolsUsed: [],
+          processedBy: 'chart-control-agent',
         },
         toolResults: [
           {
@@ -174,6 +214,7 @@ mockExecute.mockImplementation(async ({ context }) => {
           model: 'a2a-communication',
           executionTime: 100,
           toolsUsed: [],
+          processedBy: 'trading-agent',
         },
         proposalGroup: {
           id: 'pg_123',

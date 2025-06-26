@@ -36,6 +36,11 @@ export function measurePerformance(options: PerformanceOptions = {}): MethodDeco
     propertyKey: string | symbol,
     descriptor: PropertyDescriptor
   ) {
+    if (!descriptor || !descriptor.value) {
+      console.warn(`[Performance] Invalid descriptor for ${String(propertyKey)}`);
+      return descriptor;
+    }
+    
     const originalMethod = descriptor.value;
     const methodName = options.name || String(propertyKey);
     const className = (target as any).constructor.name;

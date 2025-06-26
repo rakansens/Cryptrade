@@ -1,46 +1,22 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "allowJs": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "types": ["jest", "node"],
-    "lib": ["es2020"],
-    "jsx": "react-jsx",
-    
-    /* Relax strict settings for tests */
     "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
-    "strictPropertyInitialization": false,
-    "noImplicitThis": false,
-    "alwaysStrict": false,
-    
-    /* Relax code quality checks for tests */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "allowUnreachableCode": true,
-    "allowUnusedLabels": true,
-    "useUnknownInCatchVariables": false,
-    
-    /* Test-specific settings */
-    "noEmit": false,
-    "isolatedModules": true,
-    "resolvePackageJsonExports": false,
-    "resolvePackageJsonImports": false,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "sourceMap": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "tsBuildInfoFile": null,
+    "jsx": "react-jsx"
   },
   "include": [
     "**/*.test.ts",
@@ -48,10 +24,8 @@
     "**/*.spec.ts",
     "**/*.spec.tsx",
     "tests/**/*",
-    "**/__tests__/**/*",
-    "jest.setup.js",
     "__mocks__/**/*",
-    "types/**/*"
+    "jest.setup.js"
   ],
   "exclude": [
     "node_modules",

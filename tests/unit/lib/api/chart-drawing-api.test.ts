@@ -450,34 +450,37 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should return null in development mode on error', async () => {
-      const originalEnv = mockEnv.NODE_ENV;
-      mockEnv.NODE_ENV = 'development';
+      // Mock env.NODE_ENV for this test
+      const mockEnvModule = { env: { NODE_ENV: 'development' } };
+      jest.doMock('@/config/env', () => mockEnvModule);
       
-      // Force module reload to pick up new env value
+      // Force module reload
       jest.resetModules();
-      const { ChartDrawingAPI: FreshChartDrawingAPI } = await import('@/lib/api/chart-drawing-api');
+      const { ChartDrawingAPI: DevChartDrawingAPI } = await import('@/lib/api/chart-drawing-api');
+      const { logger: devLogger } = await import('@/lib/utils/logger');
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await FreshChartDrawingAPI.loadTimeframeState('session-1');
+      const result = await DevChartDrawingAPI.loadTimeframeState('session-1');
 
       expect(result).toBeNull();
-      expect(logger.error).toHaveBeenCalled();
-
-      mockEnv.NODE_ENV = originalEnv;
+      expect(devLogger.error).toHaveBeenCalled();
     });
 
     it('should throw error in production mode', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      Object.defineProperty(process.env, "NODE_ENV", { value: 'production', writable: true, configurable: true });
+      // Mock env.NODE_ENV for this test
+      const mockEnvModule = { env: { NODE_ENV: 'production' } };
+      jest.doMock('@/config/env', () => mockEnvModule);
+      
+      // Force module reload
+      jest.resetModules();
+      const { ChartDrawingAPI: ProdChartDrawingAPI } = await import('@/lib/api/chart-drawing-api');
 
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(ChartDrawingAPI.loadTimeframeState('session-1')).rejects.toThrow(
+      await expect(ProdChartDrawingAPI.loadTimeframeState('session-1')).rejects.toThrow(
         'Failed to load timeframe state: Network error'
       );
-
-      Object.defineProperty(process.env, "NODE_ENV", { value: originalEnv, writable: true, configurable: true });
     });
   });
 

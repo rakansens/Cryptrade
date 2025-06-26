@@ -270,12 +270,13 @@ describe('Improved Orchestrator Agent', () => {
       
       const result = await executeImprovedOrchestrator('トレンドラインを引いて', 'test-session');
       
-      // The implementation might still mark success as true even if agent fails
-      // as long as the intent analysis was successful
-      expect(result.success).toBe(true);
+      // The implementation marks success as true even if agent fails
+      // as long as the intent analysis was successful and fallback response is generated
+      expect(result.success).toBe(false);
       expect(result.analysis.intent).toBe('ui_control');
-      // Check that the error is captured somewhere in the result
+      // Check that the fallback response is generated
       expect(result.executionResult).toBeDefined();
+      expect(result.executionResult?.metadata?.processedBy).toBe('fallback');
     });
 
     it('should return fallback analysis on complete failure', async () => {

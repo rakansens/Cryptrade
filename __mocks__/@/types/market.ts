@@ -82,6 +82,11 @@ export function validateBinanceKlines(data: unknown): ProcessedKline[] {
   
   const result = BinanceKlinesResponseSchema.safeParse(data);
   if (!result.success) {
+    console.warn('Binance klines validation failed, attempting fallback parsing', result.error);
+    // Fallback for already processed data
+    if (data.length > 0 && typeof data[0] === 'object' && 'time' in data[0]) {
+      return data as ProcessedKline[];
+    }
     throw new Error('Binance klines validation failed');
   }
   

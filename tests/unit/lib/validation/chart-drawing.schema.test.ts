@@ -439,7 +439,12 @@ describe('PatternDataSchema', () => {
   describe('valid pattern data', () => {
     it('should validate complete pattern data', () => {
       const patternData = {
+        id: 'pattern-1',
         type: 'headAndShoulders',
+        symbol: 'BTCUSDT',
+        interval: '1h',
+        startTime: 1640995200000,
+        endTime: 1641081600000,
         visualization: {
           keyPoints: [
             { x: 100, y: 200 },
@@ -448,9 +453,9 @@ describe('PatternDataSchema', () => {
           lines: []
         },
         metrics: {
-          leftShoulderHeight: 100,
-          headHeight: 120,
-          rightShoulderHeight: 98
+          target: 45000,
+          stopLoss: 52000,
+          breakoutLevel: 48000
         },
         tradingImplication: 'bearish',
         confidence: 0.85
@@ -462,14 +467,22 @@ describe('PatternDataSchema', () => {
 
     it('should accept pattern data with only required fields', () => {
       const minimalPattern = {
+        id: 'pattern-2',
         type: 'triangle',
-        visualization: { type: 'ascending' }
+        symbol: 'ETHUSDT',
+        interval: '4h',
+        startTime: 1640995200000,
+        endTime: 1641081600000,
+        visualization: { type: 'ascending' },
+        tradingImplication: 'bullish',
+        confidence: 0.7
       };
       
       const result = PatternDataSchema.parse(minimalPattern);
+      expect(result.id).toBe('pattern-2');
+      expect(result.symbol).toBe('ETHUSDT');
+      expect(result.interval).toBe('4h');
       expect(result.metrics).toBeUndefined();
-      expect(result.tradingImplication).toBeUndefined();
-      expect(result.confidence).toBeUndefined();
     });
 
     it('should accept confidence values between 0 and 1', () => {
@@ -477,8 +490,14 @@ describe('PatternDataSchema', () => {
       
       confidenceValues.forEach(confidence => {
         const pattern = {
+          id: 'pattern-3',
           type: 'doubleTop',
+          symbol: 'ADAUSDT',
+          interval: '1d',
+          startTime: 1640995200000,
+          endTime: 1641081600000,
           visualization: {},
+          tradingImplication: 'bearish',
           confidence
         };
         
@@ -488,7 +507,12 @@ describe('PatternDataSchema', () => {
 
     it('should accept complex visualization objects', () => {
       const pattern = {
+        id: 'pattern-4',
         type: 'fibonacci',
+        symbol: 'BNBUSDT',
+        interval: '15m',
+        startTime: 1640995200000,
+        endTime: 1641081600000,
         visualization: {
           levels: [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1],
           colors: ['#ff0000', '#00ff00', '#0000ff'],
@@ -496,7 +520,9 @@ describe('PatternDataSchema', () => {
             show: true,
             position: 'right'
           }
-        }
+        },
+        tradingImplication: 'neutral',
+        confidence: 0.8
       };
       
       expect(() => PatternDataSchema.parse(pattern)).not.toThrow();
@@ -535,20 +561,22 @@ describe('PatternDataSchema', () => {
       expect(() => PatternDataSchema.parse(patternMissingType)).toThrow();
     });
     
-    it('should accept missing visualization field since it uses z.any()', () => {
-      // Note: visualization uses z.any() in the schema, which accepts undefined
+    it('should reject missing visualization field since it uses z.record(z.any())', () => {
+      // Note: visualization uses z.record(z.any()) in the schema, which requires an object
       const patternMissingVisualization = {
-        type: 'triangle'
+        id: 'pattern-5',
+        type: 'triangle',
+        symbol: 'DOTUSDT',
+        interval: '30m',
+        startTime: 1640995200000,
+        endTime: 1641081600000,
+        tradingImplication: 'bullish',
+        confidence: 0.6
       };
       
-      // This should actually succeed because z.any() accepts undefined
+      // This should fail because z.record(z.any()) requires an object, not undefined
       const result = PatternDataSchema.safeParse(patternMissingVisualization);
-      expect(result.success).toBe(true);
-      
-      // To properly test, we would need to explicitly check for the field
-      if (result.success) {
-        expect(result.data.visualization).toBeUndefined();
-      }
+      expect(result.success).toBe(false);
     });
   });
 });

@@ -66,7 +66,12 @@ describe('ChartPersistenceManager', () => {
   };
 
   const mockPattern: PatternData = {
+    id: 'pattern-1',
     type: 'headAndShoulders',
+    symbol: 'BTCUSDT',
+    interval: '1h',
+    startTime: 1234567890,
+    endTime: 1234567900,
     confidence: 0.85,
     visualization: {
       lines: [{
@@ -132,7 +137,7 @@ describe('ChartPersistenceManager', () => {
       expect(ChartPersistenceManager.getSessionId()).toBe('new-session');
       expect(ChartDrawingAPI.migrateFromLocalStorage).toHaveBeenCalledWith({
         drawings: [mockDrawing],
-        patterns: [mockPattern],
+        patterns: [mockPattern], // Updated to include the properly structured pattern
         sessionId: 'new-session'
       });
     });
@@ -325,6 +330,10 @@ describe('ChartPersistenceManager', () => {
       expect(stored).toBeDefined();
       expect(typeof stored).toBe('string');
       expect(JSON.parse(stored!)).toEqual([mockPattern]);
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ChartPersistence] Patterns saved to localStorage',
+        { count: 1 }
+      );
     });
 
     it('should validate patterns before saving', async () => {
@@ -361,6 +370,10 @@ describe('ChartPersistenceManager', () => {
       const patterns = await ChartPersistenceManager.loadPatterns();
 
       expect(patterns).toEqual([mockPattern]);
+      expect(logger.info).toHaveBeenCalledWith(
+        '[ChartPersistence] Patterns loaded from local storage',
+        { count: 1 }
+      );
     });
 
     it('should validate loaded patterns and skip invalid ones', async () => {
@@ -416,7 +429,11 @@ describe('ChartPersistenceManager', () => {
         JSON.stringify([mockPattern, pattern2])
       );
 
-      // Since PatternData doesn't have id, we need to check actual behavior
+      // PatternData doesn't have id field, so deletePattern won't work as expected
+      // This test verifies the current behavior - it will attempt deletion but fail silently
+      await ChartPersistenceManager.deletePattern('nonexistent-id');
+      
+      // Patterns should remain unchanged since PatternData has no id to match
       const patterns = await ChartPersistenceManager.loadPatterns();
       expect(patterns).toEqual([mockPattern, pattern2]);
     });
@@ -574,6 +591,7 @@ describe('ChartPersistenceManager', () => {
     it('should handle concurrent operations', async () => {
       (ChartDrawingAPI.saveDrawings as any).mockResolvedValue(undefined);
       (ChartDrawingAPI.savePatterns as any).mockResolvedValue(undefined);
+      (ChartDrawingAPI.saveTimeframeState as any).mockResolvedValue(undefined);
 
       // Perform multiple operations concurrently
       await Promise.all([
@@ -584,6 +602,7 @@ describe('ChartPersistenceManager', () => {
 
       expect(ChartDrawingAPI.saveDrawings).toHaveBeenCalled();
       expect(ChartDrawingAPI.savePatterns).toHaveBeenCalled();
+      expect(ChartDrawingAPI.saveTimeframeState).toHaveBeenCalled();
     });
 
     it('should handle large datasets', async () => {

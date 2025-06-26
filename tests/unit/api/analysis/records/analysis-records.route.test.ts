@@ -1,7 +1,7 @@
 import { POST } from '@/app/api/analysis/records/route';
 import { NextRequest } from 'next/server';
 import { AnalysisService } from '@/lib/services/database/analysis.service';
-import { createApiSuccessResponse, handleApiError } from '@/app/api/utils/responses';
+import { createApiSuccessResponse, createApiErrorResponse } from '@/app/api/utils/responses';
 
 // Mock dependencies
 jest.mock('@/lib/services/database/analysis.service', () => ({
@@ -12,7 +12,7 @@ jest.mock('@/lib/services/database/analysis.service', () => ({
 
 jest.mock('@/app/api/utils/responses', () => ({
   createApiSuccessResponse: jest.fn((data) => new Response(JSON.stringify(data), { status: 200 })),
-  handleApiError: jest.fn((error, message) => new Response(JSON.stringify({ error: message }), { status: 500 })),
+  createApiErrorResponse: jest.fn((message, status = 500) => new Response(JSON.stringify({ error: message }), { status })),
 }));
 
 describe('POST /api/analysis/records', () => {
@@ -82,7 +82,7 @@ describe('POST /api/analysis/records', () => {
 
     const response = await POST(request);
 
-    expect(handleApiError).toHaveBeenCalledWith(mockError, 'Failed to save analysis');
+    expect(createApiErrorResponse).toHaveBeenCalledWith('Database connection failed', 500);
   });
 
   it('should handle invalid JSON in request body', async () => {
@@ -94,7 +94,7 @@ describe('POST /api/analysis/records', () => {
 
     const response = await POST(request);
 
-    expect(handleApiError).toHaveBeenCalled();
+    expect(createApiErrorResponse).toHaveBeenCalled();
     expect(AnalysisService.saveAnalysis).not.toHaveBeenCalled();
   });
 

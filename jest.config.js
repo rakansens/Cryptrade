@@ -29,6 +29,11 @@ module.exports = {
         ...preset.moduleNameMapper,
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
+        // Add API response functions mock
+        '^@/lib/api/responses$': '<rootDir>/__mocks__/@/lib/api/responses.ts',
+        '^@/app/api/utils/responses$': '<rootDir>/__mocks__/@/app/api/utils/responses.ts',
+        // Add schema mocks
+        '^@/schema/(.*)$': '<rootDir>/__mocks__/@/schema/$1.ts',
         // Add specific UI component mocks
         '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
         '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',
@@ -63,7 +68,7 @@ module.exports = {
     {
       displayName: 'integration',
       preset: 'ts-jest',
-      testEnvironment: 'node',
+      testEnvironment: 'jsdom',
       testMatch: [
         '<rootDir>/tests/integration/**/*.test.[jt]s?(x)',
       ],
@@ -72,6 +77,11 @@ module.exports = {
         ...preset.moduleNameMapper,
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
+        // Add API response functions mock
+        '^@/lib/api/responses$': '<rootDir>/__mocks__/@/lib/api/responses.ts',
+        '^@/app/api/utils/responses$': '<rootDir>/__mocks__/@/app/api/utils/responses.ts',
+        // Add schema mocks
+        '^@/schema/(.*)$': '<rootDir>/__mocks__/@/schema/$1.ts',
         // Add specific UI component mocks
         '^@/components/ui/button$': '<rootDir>/__mocks__/@/components/ui/button.tsx',
         '^@/components/ui/input$': '<rootDir>/__mocks__/@/components/ui/input.tsx',

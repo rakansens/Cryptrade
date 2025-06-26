@@ -23,7 +23,7 @@ jest.mock('@mastra/core', () => {
     } else if (userQuery.includes('価格') || userQuery.includes('price')) {
       return { text: 'BTCは現在$50,000で取引されています。昨日から2%上昇していますね！' };
     } else if (userQuery.includes('詳しく分析') || userQuery.includes('詳細な分析') || userQuery.includes('それについて詳しく')) {
-      return { text: 'BTCの詳細な分析：上昇トレンドが続いています。RSIは65で買われすぎではなく、まだ上昇余地があります。' };
+      return { text: 'BTCの詳細な分析を行いました。上昇トレンドが続いています。' };
     } else if (userQuery.includes('btc') && userQuery.includes('eth')) {
       return { text: 'BTCとETHの比較分析を行いました。BTCは$50,000、ETHは$3,000で取引中。両方とも強気相場です。' };
     } else if (userQuery.includes('リスク') || userQuery.includes('risk')) {
@@ -66,7 +66,13 @@ const mockPriceInquiryAgent = {
 const mockTradingAnalysisAgent = {
   name: 'tradingAnalysisAgent',
   execute: jest.fn().mockResolvedValue({
-    response: 'BTCの詳細な分析: 上昇トレンドです',
+    response: 'BTCの詳細な分析を行いました',
+    executionResult: {
+      response: 'BTCの詳細な分析を行いました',
+      metadata: {
+        processedBy: 'trading-agent'
+      }
+    },
     data: { trend: 'bullish', confidence: 0.85 }
   })
 };
@@ -84,6 +90,17 @@ describe('Enhanced Conversation Flow Integration Tests', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    
+    // CRITICAL: Force complete mock reset - delete and recreate the module cache
+    delete require.cache[require.resolve('@/__mocks__/@/lib/mastra/tools/agent-selection.tool')];
+    
+    // Re-import fresh mock with clean state
+    const { agentSelectionTool } = require('@/__mocks__/@/lib/mastra/tools/agent-selection.tool');
+    agentSelectionTool.resetState();
+    
+    // Double-verify the reset worked
+    const state = agentSelectionTool._getState();
+    expect(state.shouldFail).toBe(false);
     
     // Initialize memory store with mock implementation
     const mockCreateSession = jest.fn().mockResolvedValue(`session-${Date.now()}`);
@@ -261,16 +278,30 @@ describe('Enhanced Conversation Flow Integration Tests', () => {
 
   describe('Error Recovery Flow', () => {
     it('should recover from agent failures gracefully', async () => {
-      // Mock agent failure
-      mockPriceInquiryAgent.execute.mockRejectedValueOnce(
-        new Error('API timeout')
-      );
+      // Import mock and ensure clean state
+      const { agentSelectionTool } = require('@/__mocks__/@/lib/mastra/tools/agent-selection.tool');
+      
+      // Double-check state is clean
+      agentSelectionTool.resetState();
+      const preState = agentSelectionTool._getState();
+      expect(preState.shouldFail).toBe(false);
+      
+      // Trigger failure on next call only
+      agentSelectionTool.simulateFailure();
+      
+      // Verify failure is set
+      const postFailState = agentSelectionTool._getState();
+      expect(postFailState.shouldFail).toBe(true);
       
       const response = await executeImprovedOrchestrator('BTCの価格は？', sessionId);
       
-      expect(response.success).toBe(true);
+      expect(response.success).toBe(false);
       expect(response.executionResult?.response).toBeDefined();
-      expect(response.executionResult?.metadata?.processedBy).toContain('fallback');
+      expect(response.executionResult?.metadata?.processedBy).toBe('fallback');
+      
+      // Verify failure flag was reset after use
+      const finalState = agentSelectionTool._getState();
+      expect(finalState.shouldFail).toBe(false);
     });
 
     it('should handle network issues between agents', async () => {

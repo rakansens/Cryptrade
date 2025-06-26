@@ -528,12 +528,19 @@ export async function executeImprovedOrchestrator(
             // Generate a fallback response based on intent
             executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
           } else {
-            // Map targetAgent to processedBy value for test compatibility
-            let processedByValue: string = targetAgent;
-            if (targetAgent === 'price_inquiry' || targetAgent === 'trading_analysis') {
+            // Check if the agent result already has a processedBy value (e.g., from fallback)
+            const existingProcessedBy = (agentResult.executionResult?.metadata as any)?.processedBy;
+            
+            // Map targetAgent to processedBy value for test compatibility, but preserve fallback
+            let processedByValue: string;
+            if (existingProcessedBy === 'fallback') {
+              processedByValue = 'fallback'; // Preserve fallback value
+            } else if (targetAgent === 'price_inquiry' || targetAgent === 'trading_analysis') {
               processedByValue = 'trading-agent';
             } else if (targetAgent === 'ui_control') {
               processedByValue = 'chart-control-agent';
+            } else {
+              processedByValue = targetAgent;
             }
             
             // 専門エージェントの結果にメタデータを追加
@@ -542,7 +549,7 @@ export async function executeImprovedOrchestrator(
               // Ensure we have a response
               response: agentResult.executionResult?.response || agentResult.message || 'No response',
               metadata: {
-                ...(agentResult as any).metadata,
+                ...(agentResult.executionResult?.metadata || {}),
                 processedBy: processedByValue,
                 intent: analysis.intent,
                 delegatedFrom: 'orchestrator',
@@ -561,8 +568,20 @@ export async function executeImprovedOrchestrator(
             error: String(agentError),
           });
           
+          console.log('[DEBUG] Agent selection failed, generating fallback response', {
+            targetAgent,
+            intent: analysis.intent,
+            error: String(agentError),
+          });
+          
           // Generate a fallback response for the error case
           executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
+          
+          console.log('[DEBUG] Fallback response generated:', {
+            hasResponse: !!executionResult,
+            processedBy: executionResult && typeof executionResult === 'object' && 'metadata' in executionResult ?
+              (executionResult as any).metadata?.processedBy : 'unknown',
+          });
         }
       }
       

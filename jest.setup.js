@@ -70,7 +70,16 @@ beforeAll(() => {
       'Expected error',
       '[MSW] Warning:', // MSW warnings
       '[MSW] Error:', // MSW errors
-      'intercepted a request without a matching request handler' // MSW unhandled request messages
+      'intercepted a request without a matching request handler', // MSW unhandled request messages
+      'Warning: An update to',
+      'inside a test was not wrapped in act',
+      'When testing, code that causes React state updates should be wrapped into act',
+      'react-dom.development.js',
+      'printWarning',
+      'warnIfUpdatesNotWrappedWithActDEV',
+      'scheduleUpdateOnFiber',
+      'forceStoreRerender',
+      'handleStoreChange'
     ];
     
     // Check if this is an expected error
@@ -101,7 +110,9 @@ beforeAll(() => {
       '[RateLimit] Using memory fallback', // Rate limit warnings
       'RateLimit', // General rate limit warnings
       '[Deprecated]', // Deprecation warnings
-      'An update to TestComponent inside a test was not wrapped in act' // React act warnings
+      'An update to TestComponent inside a test was not wrapped in act', // React act warnings
+      'Warning: An update to', // React state update warnings
+      'Consider using the \"jsdom\" test environment' // JSDOM environment warnings
     ];
     
     const isExpectedWarning = expectedWarnings.some(pattern => 

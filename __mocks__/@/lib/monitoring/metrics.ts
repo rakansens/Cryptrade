@@ -1,16 +1,21 @@
-// __mocks__/@/lib/monitoring/metrics.ts
-// 変更点: metrics.incrementMetric などの呼び出しをフックする Jest モックを追加
+// Mock for monitoring metrics module
+// Updated to properly mock observeMetric and incrementMetric functions
 
-export const metrics = {
-  incrementMetric: jest.fn(),
-  setMetric: jest.fn(),
-  observeMetric: jest.fn(),
-  recordAgentExecution: jest.fn(),
-  getCacheMetrics: jest.fn(() => ({ hitRate: 1 })),
+export const observeMetric = jest.fn();
+export const incrementMetric = jest.fn();
+
+// Legacy compatibility
+export const recordMetric = jest.fn();
+export const recordCounter = jest.fn();
+
+// Reset all mocks
+export const resetMetrics = () => {
+  observeMetric.mockClear();
+  incrementMetric.mockClear();
+  recordMetric.mockClear();
+  recordCounter.mockClear();
 };
 
-export const incrementMetric = metrics.incrementMetric;
-export const setMetric = metrics.setMetric;
-export const observeMetric = metrics.observeMetric;
-
-export default { metrics, incrementMetric, setMetric, observeMetric }; 
+// Additional utility functions that might be used
+export const getMetricValue = jest.fn();
+export const clearMetrics = jest.fn();
