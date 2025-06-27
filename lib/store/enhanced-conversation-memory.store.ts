@@ -9,6 +9,12 @@ import { isDevelopment } from '@/config/env';
 import { TokenLimiter, ToolCallFilter } from "@/lib/store/processors";
 import type { MemoryProcessor } from "@/lib/store/processors";
 import type { ConversationMessage, ConversationMessageMetadata } from "@/types/conversation-memory";
+import {
+  isEnhancedSessionMetadata,
+  safelyConvertToMessageRole,
+  extractSessionWithoutProcessedMessages,
+  type EnhancedSessionMetadata
+} from "@/store/types/enhanced-conversation-memory";
 /**
  * Enhanced Conversation Memory Store with Database Integration
  * 
@@ -115,7 +121,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                       name: p.getName(),
                       type: p.constructor.name,
                     })),
-                  })) as any,
+                  })) satisfies EnhancedSessionMetadata,
                 },
               });
               
@@ -210,8 +216,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               const updatedSession = state.sessions[message.sessionId];
               if (updatedSession && 'processedMessages' in updatedSession) {
                 // Clear processedMessages by reassigning
-                const { processedMessages, ...rest } = updatedSession as any;
-                state.sessions[message.sessionId] = rest as ConversationSession;
+                const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(updatedSession);
+                state.sessions[message.sessionId] = sessionWithoutProcessed;
               }
               
               // Update token usage
@@ -271,10 +277,10 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               const dbMessage = await prisma.conversationMessage.create({
                 data: {
                   sessionId: message.sessionId,
-                  role: message.role as any,
+                  role: safelyConvertToMessageRole(message.role),
                   content: message.content,
                   ...(message.agentId && { agentId: message.agentId }),
-                  metadata: message.metadata as any,
+                  metadata: message.metadata ? JSON.parse(JSON.stringify(message.metadata)) : undefined,
                 },
               });
               
@@ -327,8 +333,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             // If message count changed, invalidate cache
             if (Math.abs(processedCount - currentCount) > 5) {
               // Clear processedMessages by reassigning
-              const { processedMessages: _, ...rest } = session as any;
-              state.sessions[sessionId] = rest as ConversationSession;
+              const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(session);
+              state.sessions[sessionId] = sessionWithoutProcessed;
             } else {
               return session.processedMessages.slice(-limit);
             }
@@ -404,8 +410,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                 message.metadata = { ...message.metadata, ...metadata };
                 // Clear processed cache
                 // Clear processedMessages by reassigning
-              const { processedMessages: _, ...rest } = session as any;
-              state.sessions[sessionId] = rest as ConversationSession;
+               const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(session);
+               state.sessions[sessionId] = sessionWithoutProcessed;
                 break;
               }
             }
@@ -416,7 +422,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
             try {
               await prisma.conversationMessage.update({
                 where: { id: messageId },
-                data: { metadata: metadata as any },
+                data: { metadata: JSON.parse(JSON.stringify(metadata)) },
               });
               logger.info('[EnhancedConversationMemory] Message metadata updated in DB', { messageId });
             } catch (error) {
@@ -437,8 +443,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               session.messages = [];
               session.lastActiveAt = new Date();
               // Clear processedMessages by reassigning
-              const { processedMessages: _, ...rest } = session as any;
-              state.sessions[sessionId] = rest as ConversationSession;
+              const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(session);
+              state.sessions[sessionId] = sessionWithoutProcessed;
             }
           });
           
@@ -497,8 +503,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               session.processors.push(processor);
               // Clear processed cache to force reprocessing
               // Clear processedMessages by reassigning
-              const { processedMessages: _, ...rest } = session as any;
-              state.sessions[sessionId] = rest as ConversationSession;
+              const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(session);
+              state.sessions[sessionId] = sessionWithoutProcessed;
             }
           });
           
@@ -517,8 +523,8 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               );
               // Clear processed cache
               // Clear processedMessages by reassigning
-              const { processedMessages: _, ...rest } = session as any;
-              state.sessions[sessionId] = rest as ConversationSession;
+              const sessionWithoutProcessed = extractSessionWithoutProcessedMessages(session);
+              state.sessions[sessionId] = sessionWithoutProcessed;
             }
           });
           
@@ -597,7 +603,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                         type: p.constructor.name,
                       })),
                       tokenUsage: session.tokenUsage,
-                    })) as any,
+                    })) satisfies EnhancedSessionMetadata,
                   },
                 });
                 
@@ -606,10 +612,10 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                   await prisma.conversationMessage.create({
                     data: {
                       sessionId: dbSession.id,
-                      role: message.role as any,
+                      role: safelyConvertToMessageRole(message.role),
                       content: message.content,
                       ...(message.agentId && { agentId: message.agentId }),
-                      metadata: message.metadata as any,
+                      metadata: message.metadata ? JSON.parse(JSON.stringify(message.metadata)) : undefined,
                       timestamp: message.timestamp,
                     },
                   });
@@ -669,7 +675,7 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                         type: p.constructor.name,
                       })),
                       tokenUsage: session.tokenUsage,
-                    })) as any,
+                    })) satisfies EnhancedSessionMetadata,
                   },
                 });
               }
@@ -685,10 +691,10 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                     data: {
                       id: message.id,
                       sessionId: session.id,
-                      role: message.role as any,
+                      role: safelyConvertToMessageRole(message.role),
                       content: message.content,
                       ...(message.agentId && { agentId: message.agentId }),
-                      metadata: message.metadata as any,
+                      metadata: message.metadata ? JSON.parse(JSON.stringify(message.metadata)) : undefined,
                       timestamp: message.timestamp,
                     },
                   });
@@ -722,14 +728,14 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
               if (sessionData) {
                 // Reconstruct processors from metadata
                 let processors = DEFAULT_PROCESSORS;
-                const sessionWithMetadata = dbSession as any;
+                const sessionWithMetadata = dbSession;
                 if (sessionWithMetadata.metadata && typeof sessionWithMetadata.metadata === 'object') {
                   const metadata = sessionWithMetadata.metadata;
-                  if (metadata.processors && Array.isArray(metadata.processors)) {
-                    processors = metadata.processors.map((p: any) => {
+                  if (isEnhancedSessionMetadata(metadata)) {
+                    processors = metadata.processors.map((p) => {
                       if (p.type === 'TokenLimiter') {
-                        const match = p.name.match(/TokenLimiter\((\d+)\)/);
-                        return new TokenLimiter(match ? parseInt(match[1]) : 127000);
+                        const match = p.name?.match(/TokenLimiter\((\d+)\)/);
+                        return new TokenLimiter(match?.[1] ? parseInt(match[1]) : 127000);
                       } else if (p.type === 'ToolCallFilter') {
                         return new ToolCallFilter();
                       }
@@ -756,7 +762,9 @@ const enhancedStoreImplementation = (set: SetState, get: GetState): EnhancedConv
                   }),
                   ...(dbSession.summary ? { summary: dbSession.summary } : {}),
                   processors,
-                  tokenUsage: (sessionWithMetadata.metadata as any)?.tokenUsage || { total: 0, input: 0, output: 0 },
+                  tokenUsage: isEnhancedSessionMetadata(sessionWithMetadata.metadata)
+                    ? sessionWithMetadata.metadata.tokenUsage
+                    : { total: 0, input: 0, output: 0 },
                 };
               }
             }
@@ -872,7 +880,7 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
   migrate: (persistedState: EnhancedConversationMemoryStore | unknown, version: number) => {
     if (version < 3) {
       return {
-        ...(persistedState as any),
+        ...(persistedState as EnhancedConversationMemoryStore),
         isDbEnabled: true,
         isSyncing: false,
         defaultProcessors: DEFAULT_PROCESSORS,
@@ -891,12 +899,15 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
       return localStorage;
     }
     // SSR/Edge: return noop storage compatible with Storage interface
-    const noopStorage = {
+    const noopStorage: Storage = {
+      length: 0,
       getItem: () => null,
       setItem: () => {},
       removeItem: () => {},
+      clear: () => {},
+      key: () => null,
     };
-    return noopStorage as any;
+    return noopStorage;
   })
 };
 
@@ -904,7 +915,7 @@ const persistConfig: PersistOptions<EnhancedConversationMemoryStore> = {
 export const useEnhancedConversationMemory = create<EnhancedConversationMemoryStore>()(
   devtools(
     persist(
-      immer(enhancedStoreImplementation as any),
+      immer(enhancedStoreImplementation),
       persistConfig
     ),
     { name: 'enhanced-conversation-memory' }

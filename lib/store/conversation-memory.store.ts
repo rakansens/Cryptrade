@@ -1,9 +1,27 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { StateCreator } from 'zustand';
 import { logger } from '@/lib/utils/logger';
 import { ConversationMemoryAPI } from '@/lib/api/conversation-memory-api';
+
+// Type guard function for ConversationMessage validation
+export function isConversationMessage(obj: unknown): obj is ConversationMessage {
+  if (!obj || typeof obj !== 'object') return false;
+  
+  const message = obj as Record<string, unknown>;
+  
+  return (
+    typeof message['sessionId'] === 'string' &&
+    typeof message['role'] === 'string' &&
+    ['user', 'assistant', 'system'].includes(message['role'] as string) &&
+    typeof message['content'] === 'string' &&
+    (message['agentId'] === undefined || typeof message['agentId'] === 'string') &&
+    (message['metadata'] === undefined || (
+      typeof message['metadata'] === 'object' &&
+      message['metadata'] !== null
+    ))
+  );
+}
 import type { ConversationMessage, ConversationSession } from "@/types/conversation-memory";
 import { isDevelopment } from '@/config/env';
 import { embeddingService } from '@/lib/services/semantic-embedding.service';
@@ -117,7 +135,25 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
           // Save to database if enabled
           if (state.isDbEnabled) {
             try {
-              const dbMessage = await ConversationMemoryAPI.addMessage(message as any);
+              // Type-safe message for API using the API's expected type
+              const apiMessage: Parameters<typeof ConversationMemoryAPI.addMessage>[0] = {
+                sessionId: message.sessionId,
+                role: message.role,
+                content: message.content,
+                ...(message.agentId && { agentId: message.agentId }),
+                ...(message.metadata && {
+                  metadata: {
+                    ...message.metadata,
+                    // Ensure index signature compatibility
+                    ...(message.metadata.embedding && { embedding: message.metadata.embedding }),
+                    ...(message.metadata.isToolCall && { isToolCall: message.metadata.isToolCall }),
+                    ...(message.metadata.toolName && { toolName: message.metadata.toolName }),
+                    ...(message.metadata.toolResult && { toolResult: message.metadata.toolResult }),
+                    ...(message.metadata.tokenCount && { tokenCount: message.metadata.tokenCount }),
+                  } satisfies NonNullable<Parameters<typeof ConversationMemoryAPI.addMessage>[0]['metadata']>
+                }),
+              };
+              const dbMessage = await ConversationMemoryAPI.addMessage(apiMessage);
               
               // Update message ID to match DB
               set((state) => {
@@ -284,7 +320,13 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
                     role: message.role,
                     content: message.content,
                     ...(message.agentId && { agentId: message.agentId }),
-                    ...(message.metadata && { metadata: message.metadata as any }),
+                    ...(message.metadata && {
+                      metadata: {
+                        ...message.metadata,
+                        // Type-safe metadata conversion
+                        ...(message.metadata.embedding && { embedding: message.metadata.embedding }),
+                      } satisfies NonNullable<Parameters<typeof ConversationMemoryAPI.addMessage>[0]['metadata']>
+                    }),
                   });
                 }
               }
@@ -316,7 +358,13 @@ const storeImplementation = (set: SetState, get: GetState): ConversationMemorySt
                   role: message.role,
                   content: message.content,
                   ...(message.agentId && { agentId: message.agentId }),
-                  ...(message.metadata && { metadata: message.metadata as any }),
+                  ...(message.metadata && {
+                    metadata: {
+                      ...message.metadata,
+                      // Type-safe metadata conversion
+                      ...(message.metadata.embedding && { embedding: message.metadata.embedding }),
+                    } satisfies NonNullable<Parameters<typeof ConversationMemoryAPI.addMessage>[0]['metadata']>
+                  }),
                 });
               }
             }
@@ -370,18 +418,11 @@ const persistConfig = {
   }),
 };
 
-// Create store with type assertions to avoid deep instantiation issues
-// This is a known issue with Zustand when using multiple middleware
-// Solution: Cast the store implementation to StateCreator
-const storeCreator: StateCreator<
-  ConversationMemoryStore,
-  [['zustand/devtools', never], ['zustand/persist', unknown], ['zustand/immer', never]]
-> = storeImplementation as any;
-
+// Create store with simplified typing to avoid deep instantiation
 export const useConversationMemory = create<ConversationMemoryStore>()(
   devtools(
     persist(
-      immer(storeCreator),
+      immer(storeImplementation),
       persistConfig
     ),
     { name: 'conversation-memory' }

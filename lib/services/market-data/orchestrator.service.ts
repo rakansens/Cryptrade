@@ -25,6 +25,40 @@ import type {
 } from './types';
 import type { ProcessedKline } from '../../../types/market';
 
+export interface OrchestratorPipelineResult {
+  symbol: string;
+  data: Record<string, { data: ProcessedKline[] }>;
+  analysis: {
+    trends: string[];
+    signals: string[];
+    score: number;
+    processingTimeMs: number;
+  };
+  aggregatedData: AggregatedData;
+  validation: {
+    isValid: boolean;
+    score: number;
+    errors: string[];
+    warnings?: string[];
+    metadata?: Record<string, unknown>;
+  };
+  metadata: {
+    processingTimeMs: number;
+    servicesUsed: string[];
+    cacheHitRate: number;
+    performanceMetrics: {
+      fetchTime: number;
+      cacheTime: number;
+      analysisTime: number;
+      aggregationTime: number;
+      validationTime: number;
+      totalTime: number;
+      throughputPerSecond: number;
+      memoryUsage: NodeJS.MemoryUsage;
+    };
+  };
+}
+
 export interface OrchestratorConfig {
   maxConcurrentOperations?: number;
   circuitBreakerThreshold?: number;
@@ -281,9 +315,8 @@ export class OrchestratorService {
    */
   async orchestrateMarketDataPipeline(
     symbol: string,
-    timeframes: string[] = ['1m'],
     signal?: AbortSignal
-  ): Promise<any> {
+  ): Promise<OrchestratorPipelineResult> {
     const startTime = performance.now();
     
     try {
@@ -334,7 +367,7 @@ export class OrchestratorService {
 
       return {
         symbol,
-        data: mockData,
+        data: mockData as Record<string, { data: { time: number; open: number; high: number; low: number; close: number; volume: number; }[] }>,
         analysis: {
           trends: ['bullish'],
           signals: ['buy'],
@@ -354,15 +387,23 @@ export class OrchestratorService {
           },
           processingTimeMs: totalTime
         },
-        validation: { isValid: true, score: 0.98, errors: [] },
+        validation: {
+          isValid: true,
+          score: 0.98,
+          errors: [],
+          warnings: [],
+          metadata: {}
+        },
         metadata: {
           processingTimeMs: totalTime,
           servicesUsed: ['DataFetcher', 'AnalysisEngine', 'Aggregator'],
           cacheHitRate: 0.95,
           performanceMetrics: {
             fetchTime: totalTime * 0.4,
+            cacheTime: totalTime * 0.1,
             analysisTime: totalTime * 0.2,
             aggregationTime: totalTime * 0.2,
+            validationTime: totalTime * 0.1,
             totalTime: totalTime,
             throughputPerSecond: 1000 / totalTime,
             memoryUsage: process.memoryUsage()
@@ -490,7 +531,7 @@ export class OrchestratorService {
   ): Promise<AggregatedData> {
     const consolidatedData = this.extractKlineData(fetchResult);
     const convertedData = this.convertTimeframeData(fetchResult.data);
-    const mergedResult = await this.aggregator.mergeMultiTimeframeData(symbol, convertedData, this.config.timeframes, signal);
+    await this.aggregator.mergeMultiTimeframeData(symbol, convertedData, this.config.timeframes, signal);
     
     const prices = consolidatedData.map(k => k.close);
     const totalVolume = consolidatedData.reduce((sum, k) => sum + (k.volume || 0), 0);
