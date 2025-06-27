@@ -298,3 +298,30 @@ export interface CrossTimeframeValidation {
     tolerancePercent: number;
   };
 }
+
+// ============================================================================
+// Analysis Engine Result Types (for Orchestrator)
+// ============================================================================
+
+export interface AnalysisResult {
+  swingPoints: SwingPointDetectionResult;
+  priceAnalysis: PriceLevelAnalysis;
+  technicalIndicators: TechnicalIndicators;
+  statisticalAnalysis: StatisticalAnalysis;
+  outlierDetection: OutlierDetection;
+  processingTimeMs: number;
+}
+
+export interface AggregatedData {
+  symbol: string;
+  timeframes: Record<string, TimeframeData>;
+  consolidatedData: ProcessedKline[];
+  aggregationMetrics: {
+    totalVolume: number;
+    avgPrice: number;
+    priceRange: { min: number; max: number };
+    volatility: number;
+    crossTimeframeStrength: number;
+  };
+  processingTimeMs: number;
+}
