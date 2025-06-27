@@ -91,7 +91,10 @@ export const createMessageSlice = (set: any, get: any): MessageSlice => ({
         }
       } catch (error) {
         logger.error('[ChatStore] Failed to save message to DB', { error, sessionId });
-        set({ error: 'Failed to save message. Working offline.' } as any);
+        set((state: any) => ({
+          ...state,
+          error: 'Failed to save message. Working offline.'
+        }));
       }
     }
 

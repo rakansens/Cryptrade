@@ -350,5 +350,8 @@ export const useDrawingStore = create<DrawingStoreState>()(
 
 // Initialize drawings on store creation
 if (typeof window !== 'undefined') {
-  (useDrawingStore.getState() as any).initializeDrawings();
+  const state = useDrawingStore.getState();
+  if ('initializeDrawings' in state && typeof state.initializeDrawings === 'function') {
+    state.initializeDrawings();
+  }
 }

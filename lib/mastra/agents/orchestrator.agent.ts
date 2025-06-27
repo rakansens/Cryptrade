@@ -119,11 +119,11 @@ export const orchestratorAgent = new Agent({
   },
   // 動的ツール選択: 状況に応じて利用可能なツールを変更
   tools: {
-    agentSelectionTool: agentSelectionTool as any,
-    memoryRecallTool: memoryRecallTool as any,
-    marketSnapshot: marketSnapshotTool as any,
-    trendingTopics: trendingTopicsTool as any,
-    quickPrice: marketDataResilientTool as any, // 価格確認が必要な場合
+    agentSelectionTool,
+    memoryRecallTool,
+    marketSnapshot: marketSnapshotTool,
+    trendingTopics: trendingTopicsTool,
+    quickPrice: marketDataResilientTool, // 価格確認が必要な場合
   },
 });
 

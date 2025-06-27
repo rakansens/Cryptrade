@@ -453,8 +453,20 @@ export const useMarketActions = () => {
 
 // ---------------------------------------------------------------------------
 // Legacy alias for tests expecting marketStore.reset()
+// Type-safe property addition using Object.assign to avoid 'as any'
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(useMarketStoreBase as any).reset = () => {
-  useMarketStoreBase.getState().reset();
+interface ResetFunction {
+  (): void;
+}
+
+// Create a type-safe reset function
+const createResetFunction = (): ResetFunction => {
+  return () => {
+    useMarketStoreBase.getState().reset();
+  };
 };
+
+// Type-safe property assignment using Object.assign to avoid 'as any'
+Object.assign(useMarketStoreBase, {
+  reset: createResetFunction()
+} satisfies { reset: ResetFunction });

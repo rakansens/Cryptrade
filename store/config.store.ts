@@ -483,19 +483,27 @@ export const useConfig = () => {
 
 // ---------------------------------------------------------------------------
 // Legacy aliases for unit tests (to be removed in future)
-// 旧API互換のため、ストアフック自体に actions を直接ぶら下げる
-// 例: useConfigStore.setThemeMode('dark') が動作するようにする
+// Type-safe legacy API compatibility using Object.assign to avoid 'as any'
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(useConfigStoreBase as any).setThemeMode = (mode: any) => {
-  useConfigActions().setThemeMode(mode);
+interface LegacyConfigStoreMethods {
+  setThemeMode: (mode: ThemeMode) => void;
+  updateChart: (config: Partial<ChartConfig>) => void;
+}
+
+// Create type-safe legacy methods
+const createLegacyMethods = (): LegacyConfigStoreMethods => {
+  return {
+    setThemeMode: (mode: ThemeMode) => {
+      useConfigActions().setThemeMode(mode);
+    },
+    updateChart: (config: Partial<ChartConfig>) => {
+      useConfigActions().updateChart(config);
+    }
+  };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(useConfigStoreBase as any).updateChart = (config: any) => {
-  useConfigActions().updateChart(config);
-};
+// Type-safe property assignment using Object.assign to avoid 'as any'
+Object.assign(useConfigStoreBase, createLegacyMethods());
 
-// 互換エクスポート
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const useConfigStoreLegacy: any = useConfigStoreBase;
+// Type-safe legacy export
+export const useConfigStoreLegacy = useConfigStoreBase as typeof useConfigStoreBase & LegacyConfigStoreMethods;
