@@ -2,13 +2,13 @@ import { ChatAPI } from '@/lib/api/chat-api';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
 import type { ChatMessage, ChatSession } from './types';
+import type { AsyncState, ErrorState } from '@/store/types/common';
 
-export interface SessionSlice {
+export interface SessionSlice extends AsyncState {
   sessions: Record<string, ChatSession>;
   currentSessionId: string | null;
   isDbEnabled: boolean;
-  isSyncing: boolean;
-  lastSyncTime: number | null;
+  messagesBySession?: Record<string, ChatMessage[]>;
   createSession: () => Promise<string>;
   switchSession: (sessionId: string) => Promise<void>;
   selectSession: (sessionId: string) => Promise<void>;
@@ -252,7 +252,7 @@ export const createSessionSlice = (
         logger.info('[ChatStore] DB sync enabled and data migrated');
       } catch (error) {
         logger.error('[ChatStore] Failed to migrate data to DB', { error });
-        set({ error: 'Failed to enable database sync' } as any);
+        set({ error: 'Failed to enable database sync' } satisfies Partial<SessionSlice>);
       }
     }
   },
@@ -281,7 +281,7 @@ export const createSessionSlice = (
       logger.info('[ChatStore] Data synced with database');
     } catch (error) {
       logger.error('[ChatStore] Failed to sync with database', { error });
-      set({ isSyncing: false, error: 'Failed to sync with database' } as any);
+      set({ isSyncing: false, error: 'Failed to sync with database' } satisfies Partial<SessionSlice>);
     }
   },
 
@@ -291,7 +291,7 @@ export const createSessionSlice = (
 
     if (!state.isDbEnabled) return;
 
-    set({ isLoading: true } as any);
+    set({ isLoading: true } satisfies Partial<SessionSlice>);
 
     try {
       const dbSessions = await ChatAPI.getUserSessions();
@@ -312,14 +312,14 @@ export const createSessionSlice = (
         currentSessionId: dbSessions.length > 0 ? dbSessions[0]?.id || null : null,
         isLoading: false,
         lastSyncTime: Date.now(),
-      } as any);
+      } satisfies Partial<SessionSlice & { messagesBySession: Record<string, ChatMessage[]> }>);
 
       logger.info('[ChatStore] Data loaded from database', {
         sessionCount: dbSessions.length
       });
     } catch (error) {
       logger.error('[ChatStore] Failed to load from database', { error });
-      set({ isLoading: false, error: 'Failed to load from database' } as any);
+      set({ isLoading: false, error: 'Failed to load from database' } satisfies Partial<SessionSlice>);
     }
   },
 

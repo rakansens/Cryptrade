@@ -1,6 +1,6 @@
 /**
  * Pattern Store
- * 
+ *
  * チャートパターンの状態管理
  */
 
@@ -10,11 +10,12 @@ import { logger } from '@/lib/utils/logger';
 import { showToast } from '@/components/ui/toast';
 import { chartPersistence } from '@/lib/storage/chart-persistence-wrapper';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
-import type { 
-  PatternState, 
+import type {
+  PatternState,
   PatternActions
 } from '../types';
 import type { PatternData } from '@/store/chart/types';
+import { mapPatternDataArray, safePatternDataArray } from '@/store/types/pattern';
 
 // Edge Runtime compatible UUID generation
 function generateUUID(): string {
@@ -49,7 +50,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
       initializePatterns: async () => {
         try {
           const patternsArray = await chartPersistence.loadPatterns();
-          const patterns = new Map(patternsArray.map(p => [p.id || generateUUID(), p as any] as [string, PatternData]));
+          const patterns = new Map(patternsArray.map(p => [p.id || generateUUID(), p] as [string, PatternData]));
           set({ patterns });
           logger.info('[PatternStore] Patterns loaded', { count: patterns.size });
         } catch (error) {
@@ -63,7 +64,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
         set((state) => {
           const newPatterns = new Map(state.patterns);
           newPatterns.set(id, pattern);
-          chartPersistence.savePatterns(Array.from(newPatterns.values()) as any);
+          chartPersistence.savePatterns(Array.from(newPatterns.values()));
           return { patterns: newPatterns };
         });
         
@@ -82,7 +83,7 @@ export const usePatternStore = create<PatternState & PatternActions>()(
           const removed = newPatterns.delete(id);
           
           if (removed) {
-            chartPersistence.savePatterns(Array.from(newPatterns.values()) as any);
+            chartPersistence.savePatterns(Array.from(newPatterns.values()));
             showToast('Pattern removed', 'info');
             logger.info('[PatternStore] Pattern removed', { id });
           } else {
@@ -120,7 +121,4 @@ export const usePatternStore = create<PatternState & PatternActions>()(
   )
 );
 
-// Initialize patterns on store creation
-if (typeof window !== 'undefined') {
-  (usePatternStore.getState() as any).initializePatterns();
-}
+// Note: initializePatterns should be called explicitly by components when needed
