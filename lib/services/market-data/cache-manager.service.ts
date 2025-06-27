@@ -11,7 +11,7 @@ import {
   CacheConfig,
   CacheManagerServiceInterface,
   MarketDataCacheKey,
-  CacheEvictionPolicy
+  // CacheEvictionPolicy
 } from './types';
 
 export class CacheManagerService implements CacheManagerServiceInterface {
@@ -39,14 +39,15 @@ export class CacheManagerService implements CacheManagerServiceInterface {
   }
 
   async get<T>(key: MarketDataCacheKey | string, signal?: AbortSignal): Promise<T | null> {
+    this.checkAbortSignal(signal);
+    
+    // Validate key
+    if (typeof key === 'string' && key.trim() === '') {
+      this.logger.error('Cache get operation failed', { error: 'Error: Invalid cache key' });
+      throw new Error('Invalid cache key');
+    }
+    
     try {
-      this.checkAbortSignal(signal);
-      
-      // Validate key
-      if (typeof key === 'string' && key.trim() === '') {
-        throw new Error('Invalid cache key');
-      }
-      
       const cacheKey = typeof key === 'string' ? key : this.generateCacheKey(key);
       const entry = this.cache.get(cacheKey);
 
@@ -70,7 +71,7 @@ export class CacheManagerService implements CacheManagerServiceInterface {
       return entry.data as T;
     } catch (error) {
       this.logger.error('Cache get operation failed', { error: String(error) });
-      return null;
+      throw error;
     }
   }
 
@@ -80,14 +81,15 @@ export class CacheManagerService implements CacheManagerServiceInterface {
     ttl?: number,
     signal?: AbortSignal
   ): Promise<void> {
+    this.checkAbortSignal(signal);
+    
+    // Validate key
+    if (typeof key === 'string' && key.trim() === '') {
+      this.logger.error('Cache set operation failed', { error: 'Error: Invalid cache key' });
+      throw new Error('Invalid cache key');
+    }
+    
     try {
-      this.checkAbortSignal(signal);
-      
-      // Validate key
-      if (typeof key === 'string' && key.trim() === '') {
-        throw new Error('Invalid cache key');
-      }
-      
       const cacheKey = typeof key === 'string' ? key : this.generateCacheKey(key);
       const expiresAt = Date.now() + (ttl ?? this.config.defaultTtlMs);
 
@@ -180,7 +182,7 @@ export class CacheManagerService implements CacheManagerServiceInterface {
       let expiredCount = 0;
       let totalAccessCount = 0;
 
-      for (const [key, entry] of this.cache) {
+      for (const [_key, entry] of this.cache) {
         if (this.isExpired(entry)) {
           expiredCount++;
         }

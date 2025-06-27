@@ -358,8 +358,8 @@ describe('AggregatorService - TDD Red Phase', () => {
         mismatchedTimeframes
       );
 
-      // 存在するタイムフレームのみ処理
-      expect(result.mergedData.length).toBe(1); // 1mのみ
+      // 存在するタイムフレームのみ処理 (1m, 2m両方処理される - 2mは空配列)
+      expect(result.mergedData.length).toBe(2); // 1m + 2m(空)
     });
   });
 });

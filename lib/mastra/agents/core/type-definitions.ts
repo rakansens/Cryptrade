@@ -141,14 +141,19 @@ export class TypeDefinitions {
 
   createDefaultExecutionResult(executionTime: number = 1000): any {
     return {
+      success: true,
+      text: 'Default execution completed',
       analysis: {
         intent: 'conversational',
         confidence: 0.5,
-        reasoning: 'エラーフォールバック',
+        reasoning: 'デフォルト実行結果',
         analysisDepth: 'basic'
       },
-      executionTime,
-      success: false,
+      metadata: {
+        executionTime,
+        selectedAgent: 'default_agent',
+        modelUsed: 'gpt-4o-mini'
+      }
     };
   }
 

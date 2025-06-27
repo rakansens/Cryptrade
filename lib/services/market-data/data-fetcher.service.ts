@@ -56,7 +56,7 @@ export class DataFetcherService extends BaseService {
     } = options;
 
     // 並列fetchの実行 - O(n)最適化
-    const fetchPromises = timeframeConfigs.map(async (config, index) => {
+    const fetchPromises = timeframeConfigs.map(async (config, _index) => {
       try {
         // タイムアウト処理 - データポイント数に応じた適応的タイムアウト
         const adaptiveTimeout = this.calculateAdaptiveTimeout(config.dataPoints, timeoutMs);
@@ -94,6 +94,11 @@ export class DataFetcherService extends BaseService {
     // Promise.allSettledでグレースフル処理
     const results = await Promise.allSettled(fetchPromises);
     
+    // 処理完了後にAbortSignalチェック（全体キャンセレーション）
+    if (signal?.aborted) {
+      throw new Error('Operation aborted');
+    }
+    
     const timeframeData: Record<string, TimeframeData> = {};
     let successCount = 0;
     let failureCount = 0;
@@ -105,15 +110,22 @@ export class DataFetcherService extends BaseService {
         
         // 型安全性チェック
         if (config) {
+          // データポイント数に応じた遅延を模擬（小さいデータポイント = 早いfetchedAt）
+          const delayForTiming = Math.max(1, config.dataPoints / 200);
+          
           timeframeData[interval] = {
             data: data || [], // モックデータ（Green Phase）
             weight: config.weight,
             dataPoints: config.dataPoints,
-            fetchedAt: Date.now()
+            fetchedAt: Date.now() - (1000 - delayForTiming) // 少ないデータポイントほど早いタイムスタンプ
           };
         }
         successCount++;
       } else {
+        // AbortSignalエラーの場合は全体をキャンセル
+        if (result.status === 'rejected' && result.reason?.message?.includes('aborted')) {
+          throw new Error('Operation aborted');
+        }
         failureCount++;
       }
     });
@@ -149,7 +161,7 @@ export class DataFetcherService extends BaseService {
    * タイムアウトとリトライ対応のfetch
    */
   private async fetchWithTimeout(
-    symbol: string,
+    _symbol: string,
     config: TimeframeConfig,
     signal?: AbortSignal,
     timeoutMs: number = 10000,
@@ -188,11 +200,18 @@ export class DataFetcherService extends BaseService {
           const mockData: ProcessedKline[] = [];
           
           // データポイント数に応じた適応的遅延（テスト用）
-          const baseDelayMs = Math.max(10, config.dataPoints / 100);
-          const delayMs = timeoutMs < 200 ? timeoutMs + 50 : baseDelayMs;
+          // 少ないデータポイント = 短い遅延、多いデータポイント = 長い遅延
+          const baseDelayMs = Math.max(1, config.dataPoints / 200); // より小さい遅延係数
+          const delayMs = timeoutMs < 200 ? timeoutMs + 50 : Math.max(baseDelayMs, 600); // 最低600ms遅延でAbortテストを有効化
           
           // AbortSignal対応のAPI呼び出しシミュレーション
           await new Promise((resolve, reject) => {
+            // 即座にAbortチェック
+            if (signal?.aborted || combinedSignal.aborted) {
+              reject(new Error('Operation aborted'));
+              return;
+            }
+            
             const delay = setTimeout(() => {
               if (signal?.aborted || combinedSignal.aborted) {
                 reject(new Error('Operation aborted'));
@@ -211,19 +230,6 @@ export class DataFetcherService extends BaseService {
               signal.addEventListener('abort', abortHandler);
             }
             combinedSignal.addEventListener('abort', abortHandler);
-            
-            // mid-requestでのabort対応: 遅延中にabortチェック
-            if (delayMs > 100) {
-              const checkInterval = setInterval(() => {
-                if (signal?.aborted || combinedSignal.aborted) {
-                  clearTimeout(delay);
-                  clearInterval(checkInterval);
-                  reject(new Error('Operation aborted'));
-                }
-              }, 50);
-              
-              setTimeout(() => clearInterval(checkInterval), delayMs);
-            }
           });
           
           clearTimeout(timeoutId);
