@@ -1,6 +1,8 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { logger } from '../../utils/logger';
+import { SMAIndicator } from '@/lib/indicators/sma-indicator';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 // Type definitions for chart data analysis
 export interface Candle {
@@ -630,17 +632,19 @@ function calculateMACD(prices: number[]) {
 }
 
 function calculateSMA(prices: number[], period: number): number[] {
-  const sma: number[] = [];
+  if (prices.length === 0) return [];
   
-  for (let i = period - 1; i < prices.length; i++) {
-    const slice = prices.slice(i - period + 1, i + 1);
-    if (slice.length === period) {
-      const sum = slice.reduce((a, b) => a + b, 0);
-      sma.push(sum / period);
-    }
-  }
+  // Convert prices to PriceDataLightweight format for SMAIndicator
+  const chartData = prices.map((price, index) => ({
+    time: index as UTCTimestamp, // Use index as time for simplicity
+    close: price,
+  }));
   
-  return sma;
+  const smaIndicator = new SMAIndicator(period);
+  const smaData = smaIndicator.calculate(chartData);
+  
+  // Extract just the values to maintain compatibility
+  return smaData.map(item => item.value);
 }
 
 function calculateEMA(prices: number[], period: number): number[] {

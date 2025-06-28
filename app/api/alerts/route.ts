@@ -4,6 +4,17 @@ import { z } from 'zod';
 import { createApiSuccessResponse, createApiErrorResponse, handleApiError, parseRequestBody } from '@/app/api/utils/responses';
 import { getServerSession } from '@/lib/auth/server';
 
+// 価格検証の関数
+const isValidPrice = (value: unknown): boolean => {
+  if (typeof value !== 'number') return false;
+  if (!isFinite(value)) return false;
+  if (value <= 0) return false;
+  if (value > Number.MAX_SAFE_INTEGER) return false;
+  // '1e308'のような文字列が数値に変換された場合の検証
+  if (value > Number.MAX_VALUE / 2) return false; // MAX_VALUEの半分以下に制限
+  return true;
+};
+
 // Request validation schema
 const createAlertSchema = z.object({
   userId: z.string().optional(),
@@ -12,9 +23,13 @@ const createAlertSchema = z.object({
     .max(20, 'Symbol must be at most 20 characters')
     .regex(/^[A-Z0-9]+$/, 'Symbol must contain only uppercase letters and numbers'),
   conditions: z.object({
-    priceAbove: z.number().optional(),
-    priceBelow: z.number().optional(),
-    volumeAbove: z.number().optional(),
+    priceAbove: z.number().refine(isValidPrice, {
+      message: 'Price must be a positive finite number within safe range',
+    }).optional(),
+    priceBelow: z.number().refine(isValidPrice, {
+      message: 'Price must be a positive finite number within safe range',
+    }).optional(),
+    volumeAbove: z.number().positive().optional(),
     indicatorCrossover: z.object({
       indicator1: z.string(),
       indicator2: z.string(),
@@ -22,7 +37,7 @@ const createAlertSchema = z.object({
     }).optional(),
     patternDetected: z.string().optional(),
   }).refine(
-    (conditions) => 
+    (conditions) =>
       conditions.priceAbove !== undefined ||
       conditions.priceBelow !== undefined ||
       conditions.volumeAbove !== undefined ||
@@ -59,10 +74,34 @@ export async function POST(request: NextRequest) {
       return createApiErrorResponse('Unauthorized - Please login', 401);
     }
 
-    const { data, error } = await parseRequestBody(request, createAlertSchema);
-    if (error) return error;
+    // リクエストボディを取得
+    const body = await request.json();
     
-    const { symbol, conditions } = data;
+    // 価格値が文字列の場合の事前検証
+    if (body.conditions) {
+      if (body.conditions.priceAbove && typeof body.conditions.priceAbove === 'string') {
+        const parsed = Number(body.conditions.priceAbove);
+        if (!isValidPrice(parsed)) {
+          return createApiErrorResponse('Invalid price value', 400);
+        }
+        body.conditions.priceAbove = parsed;
+      }
+      if (body.conditions.priceBelow && typeof body.conditions.priceBelow === 'string') {
+        const parsed = Number(body.conditions.priceBelow);
+        if (!isValidPrice(parsed)) {
+          return createApiErrorResponse('Invalid price value', 400);
+        }
+        body.conditions.priceBelow = parsed;
+      }
+    }
+
+    // 検証済みのボディでスキーマ検証
+    const result = createAlertSchema.safeParse(body);
+    if (!result.success) {
+      return createApiErrorResponse('Invalid input', 400);
+    }
+    
+    const { symbol, conditions } = result.data;
     const userId = session.user?.id;
     if (!userId) {
       return createApiErrorResponse('Missing user id', 400);

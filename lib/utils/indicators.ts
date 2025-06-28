@@ -294,14 +294,14 @@ export function calculateBollingerBands(data: number[], period: number = 20, std
 
 /**
  * Calculate Simple Moving Average
- * @deprecated Use lib/indicators/moving-average.ts instead
- * This function now delegates to the proper implementation
+ * @deprecated Use lib/indicators/sma-indicator.ts instead
+ * This function now delegates to the proper implementation using SMAIndicator class
  */
 export function calculateSMA(data: number[], period: number = 20) {
-  console.warn('[Deprecated] calculateSMA in utils/indicators.ts is deprecated. Use lib/indicators/moving-average.ts instead');
+  console.warn('[Deprecated] calculateSMA in utils/indicators.ts is deprecated. Use lib/indicators/sma-indicator.ts instead');
   
   try {
-    // Import the proper implementation
+    // First try the original function (for backward compatibility with existing code)
     const { calculateSMA: properCalculateSMA } = require('../indicators/moving-average');
     
     // Convert simple array to required format
@@ -315,18 +315,35 @@ export function calculateSMA(data: number[], period: number = 20) {
     // Return only the SMA values for backward compatibility
     return result.map((item: any) => item.value);
   } catch (error) {
-    logger.error('[Indicators] Failed to calculate SMA', { error });
-    
-    // Fallback for development and test
-    if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
-      return data.slice(period - 1).map((_, index) => {
-        const start = index;
-        const end = index + period;
-        const slice = data.slice(start, end);
-        return slice.reduce((sum, val) => sum + val, 0) / slice.length;
-      });
+    // If that fails, try using the SMAIndicator class
+    try {
+      const { SMAIndicator } = require('../indicators/sma-indicator');
+      
+      // Convert simple array to required format with UTCTimestamp
+      const formattedData = data.map((close, index) => ({
+        time: (Date.now() - (data.length - index) * 60000) as any, // Cast to UTCTimestamp
+        close
+      }));
+      
+      const smaIndicator = new SMAIndicator(period);
+      const result = smaIndicator.calculate(formattedData);
+      
+      // Return only the SMA values for backward compatibility
+      return result.map((item: any) => item.value);
+    } catch (classError) {
+      logger.error('[Indicators] Failed to calculate SMA using both methods', { error, classError });
+      
+      // Fallback for development and test
+      if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
+        return data.slice(period - 1).map((_, index) => {
+          const start = index;
+          const end = index + period;
+          const slice = data.slice(start, end);
+          return slice.reduce((sum, val) => sum + val, 0) / slice.length;
+        });
+      }
+      
+      throw new Error(`Failed to calculate SMA: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    throw new Error(`Failed to calculate SMA: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 } 

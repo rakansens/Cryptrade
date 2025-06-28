@@ -5,6 +5,8 @@ import type { LineFeatures } from './line-validation-types';
 import { FEATURE_RANGES } from './line-validation-types';
 import type { DetectedLine } from '@/lib/analysis/types';
 import type { PriceData } from '@/types/market';
+import { SMAIndicator } from '@/lib/indicators/sma-indicator';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 export class FeatureExtractor {
   private priceData: PriceData[];
@@ -325,11 +327,17 @@ export class FeatureExtractor {
   private calculateSMA(period: number): number | null {
     if (this.priceData.length < period) return null;
     
-    const sum = this.priceData
-      .slice(-period)
-      .reduce((acc, candle) => acc + candle.close, 0);
+    // Convert PriceData to PriceDataLightweight format
+    const chartData = this.priceData.map(candle => ({
+      time: candle.time as UTCTimestamp,
+      close: candle.close,
+    }));
     
-    return sum / period;
+    const smaIndicator = new SMAIndicator(period);
+    const smaData = smaIndicator.calculate(chartData);
+    
+    // Return the last SMA value, or null if no data
+    return smaData.length > 0 ? smaData[smaData.length - 1].value : null;
   }
 
   private calculateVolatility(): number {

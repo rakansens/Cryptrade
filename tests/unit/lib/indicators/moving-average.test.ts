@@ -1,4 +1,5 @@
 import { calculateSMA } from '@/lib/indicators/moving-average';
+import { SMAIndicator } from '@/lib/indicators/sma-indicator';
 import type { UTCTimestamp } from 'lightweight-charts';
 
 // Test data - simple case for easy verification
@@ -11,9 +12,10 @@ const testData = [
   { time: 6 as UTCTimestamp, close: 60 },
 ];
 
-describe('calculateSMA', () => {
-  test('calculates SMA(3) correctly', () => {
-    const result = calculateSMA(testData, 3);
+describe('SMA calculations', () => {
+  describe('calculateSMA (deprecated function)', () => {
+    test('calculates SMA(3) correctly', () => {
+      const result = calculateSMA(testData, 3);
     
     expect(result).toHaveLength(4);
     
@@ -34,18 +36,18 @@ describe('calculateSMA', () => {
     expect(result[3]?.time).toBe(6);
   });
 
-  test('returns empty array when insufficient data', () => {
-    const result = calculateSMA(testData.slice(0, 2), 3);
+    test('returns empty array when insufficient data', () => {
+      const result = calculateSMA(testData.slice(0, 2), 3);
     expect(result).toHaveLength(0);
   });
 
-  test('handles single period correctly', () => {
-    const result = calculateSMA([{ time: 1 as UTCTimestamp, close: 42 }], 1);
+    test('handles single period correctly', () => {
+      const result = calculateSMA([{ time: 1 as UTCTimestamp, close: 42 }], 1);
     expect(result).toHaveLength(1);
     expect(result[0]?.value).toBe(42);
   });
 
-  test('verifies O(N) optimization consistency', () => {
+    test('verifies O(N) optimization consistency', () => {
     // Test with larger dataset to ensure optimization doesn't break correctness
     const largeData = Array.from({ length: 100 }, (_: unknown, i: number) => ({
       time: (i + 1) as UTCTimestamp,
@@ -60,6 +62,79 @@ describe('calculateSMA', () => {
     expect(result[2]?.value).toBe(5); // (3+4+5+6+7)/5
     
     // Verify last value
-    expect(result[result.length - 1]?.value).toBe(98); // (96+97+98+99+100)/5
+      expect(result[result.length - 1]?.value).toBe(98); // (96+97+98+99+100)/5
+    });
+  });
+
+  describe('SMAIndicator (new class-based implementation)', () => {
+    test('calculates SMA(3) correctly', () => {
+      const smaIndicator = new SMAIndicator(3);
+      const result = smaIndicator.calculate(testData);
+      
+      expect(result).toHaveLength(4);
+      
+      // First SMA: (10+20+30)/3 = 20
+      expect(result[0]?.value).toBe(20);
+      expect(result[0]?.time).toBe(3);
+      
+      // Second SMA: (20+30+40)/3 = 30
+      expect(result[1]?.value).toBe(30);
+      expect(result[1]?.time).toBe(4);
+      
+      // Third SMA: (30+40+50)/3 = 40
+      expect(result[2]?.value).toBe(40);
+      expect(result[2]?.time).toBe(5);
+      
+      // Fourth SMA: (40+50+60)/3 = 50
+      expect(result[3]?.value).toBe(50);
+      expect(result[3]?.time).toBe(6);
+    });
+
+    test('returns empty array when insufficient data', () => {
+      const smaIndicator = new SMAIndicator(3);
+      const result = smaIndicator.calculate(testData.slice(0, 2));
+      expect(result).toHaveLength(0);
+    });
+
+    test('handles single period correctly', () => {
+      const smaIndicator = new SMAIndicator(1);
+      const result = smaIndicator.calculate([{ time: 1 as UTCTimestamp, close: 42 }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]?.value).toBe(42);
+    });
+
+    test('verifies O(N) optimization consistency', () => {
+      // Test with larger dataset to ensure optimization doesn't break correctness
+      const largeData = Array.from({ length: 100 }, (_: unknown, i: number) => ({
+        time: (i + 1) as UTCTimestamp,
+        close: i + 1
+      }));
+      
+      const smaIndicator = new SMAIndicator(5);
+      const result = smaIndicator.calculate(largeData);
+      
+      // Verify first few values manually
+      expect(result[0]?.value).toBe(3); // (1+2+3+4+5)/5
+      expect(result[1]?.value).toBe(4); // (2+3+4+5+6)/5
+      expect(result[2]?.value).toBe(5); // (3+4+5+6+7)/5
+      
+      // Verify last value
+      expect(result[result.length - 1]?.value).toBe(98); // (96+97+98+99+100)/5
+    });
+
+    test('exposes period correctly', () => {
+      const smaIndicator = new SMAIndicator(10);
+      expect(smaIndicator.getPeriod()).toBe(10);
+    });
+
+    test('exposes indicator name correctly', () => {
+      const smaIndicator = new SMAIndicator(10);
+      expect(smaIndicator.getIndicatorName()).toBe('SMA');
+    });
+
+    test('throws error for non-positive period', () => {
+      expect(() => new SMAIndicator(0)).toThrow('Period must be positive');
+      expect(() => new SMAIndicator(-1)).toThrow('Period must be positive');
+    });
   });
 });

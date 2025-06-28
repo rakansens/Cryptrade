@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCandlestickData } from './use-candlestick-data';
-import { calculateSMA } from '@/lib/indicators/moving-average';
+import { SMAIndicator } from '@/lib/indicators/sma-indicator';
 import { calculateRSI } from '@/lib/indicators/rsi';
 import { calculateMACD } from '@/lib/indicators/macd';
 import type { UTCTimestamp } from 'lightweight-charts';
@@ -37,10 +37,14 @@ export function useIndicatorValues(symbol: string, timeframe: string): Indicator
       close: candle.close,
     }));
 
-    // Calculate Moving Averages - get the last value
-    const ma7Data = calculateSMA(chartData, 7);
-    const ma25Data = calculateSMA(chartData, 25);
-    const ma99Data = calculateSMA(chartData, 99);
+    // Calculate Moving Averages using SMAIndicator - get the last value
+    const sma7 = new SMAIndicator(7);
+    const sma25 = new SMAIndicator(25);
+    const sma99 = new SMAIndicator(99);
+    
+    const ma7Data = sma7.calculate(chartData);
+    const ma25Data = sma25.calculate(chartData);
+    const ma99Data = sma99.calculate(chartData);
 
     // Calculate RSI - get the last value
     const rsiData = calculateRSI(priceData, 14);

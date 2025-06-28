@@ -1,1 +1,6 @@
-\n/**\n * Mock implementation for alerts API route\n * Simulates the POST endpoint for creating alerts\n */\n\nexport const POST = jest.fn();\n
+/**
+ * Mock implementation for alerts API route
+ * Simulates the POST endpoint for creating alerts
+ */
+
+export const POST = jest.fn();

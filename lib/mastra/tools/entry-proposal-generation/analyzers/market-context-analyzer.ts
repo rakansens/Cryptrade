@@ -6,9 +6,11 @@
 
 import type { PriceData } from '@/types/market';
 import type { MarketContext } from '@/types/trading';
+import type { UTCTimestamp } from 'lightweight-charts';
 import { logger } from '@/lib/utils/logger';
 import { analyzeMarketCondition } from '@/lib/mastra/tools/proposal-generation/analyzers/market-analyzer';
 import { TIME_CONSTANTS } from '@/lib/mastra/tools/proposal-generation/utils/constants';
+import { SMAIndicator } from '@/lib/indicators/sma-indicator';
 
 interface MultiTimeframeOptions {
   currentInterval: string;
@@ -108,8 +110,21 @@ function analyzeTrend(marketData: PriceData[]): 'bullish' | 'bearish' | 'neutral
   }
 
   // 複数の時間枠でトレンドを確認
-  const ma20 = calculateSMA(marketData.slice(-20).map(d => d.close));
-  const ma50 = calculateSMA(marketData.slice(-50).map(d => d.close));
+  const sma20 = new SMAIndicator(20);
+  const sma50 = new SMAIndicator(50);
+  
+  // Convert market data to format expected by SMAIndicator
+  const priceData = marketData.map((d, index) => ({
+    time: (marketData.length - index) as UTCTimestamp, // Use index as timestamp for simplicity
+    close: d.close
+  }));
+  
+  const ma20Result = sma20.calculate(priceData.slice(-20));
+  const ma50Result = sma50.calculate(priceData.slice(-50));
+  
+  // Get the last SMA values
+  const ma20 = ma20Result.length > 0 ? ma20Result[ma20Result.length - 1].value : 0;
+  const ma50 = ma50Result.length > 0 ? ma50Result[ma50Result.length - 1].value : 0;
   const lastCandle = marketData[marketData.length - 1];
   if (!lastCandle) return 'neutral';
   const currentPrice = lastCandle.close;
@@ -234,6 +249,7 @@ function identifyKeyLevels(marketData: PriceData[]): MarketContext['keyLevels'] 
 
 /**
  * 単純移動平均の計算
+ * @deprecated Use SMAIndicator class instead
  */
 function calculateSMA(prices: number[]): number {
   return prices.reduce((sum, price) => sum + price, 0) / prices.length;

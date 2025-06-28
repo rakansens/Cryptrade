@@ -67,6 +67,19 @@ jest.mock('@/lib/indicators/moving-average', () => ({
   })
 }));
 
+jest.mock('@/lib/indicators/sma-indicator', () => ({
+  SMAIndicator: jest.fn().mockImplementation((period) => ({
+    calculate: jest.fn().mockImplementation((data) => {
+      return data.map((item: any, index: number) => ({
+        time: item.time,
+        value: item.close
+      }));
+    }),
+    getPeriod: jest.fn().mockReturnValue(period),
+    getIndicatorName: jest.fn().mockReturnValue('SMA')
+  }))
+}));
+
 describe('indicators utilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -503,6 +516,11 @@ describe('indicators utilities', () => {
         const { calculateSMA: mockCalculateSMA } = require('@/lib/indicators/moving-average');
         mockCalculateSMA.mockImplementationOnce(() => {
           throw new Error('Module error');
+        });
+        
+        const { SMAIndicator: MockSMAIndicator } = require('@/lib/indicators/sma-indicator');
+        MockSMAIndicator.mockImplementationOnce(() => {
+          throw new Error('SMAIndicator error');
         });
         
         // Set NODE_ENV to development
