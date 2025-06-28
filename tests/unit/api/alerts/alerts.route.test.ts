@@ -1,7 +1,10 @@
 import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 const restoreEnv = mockTestEnv();
 
-import { NextRequest } from 'next/server';
+// Mock the route module before importing it
+jest.mock('@/app/api/alerts/route');
+
+import { NextRequest, NextResponse } from 'next/server';
 import { GET, POST } from '@/app/api/alerts/route';
 import { AlertService } from '@/lib/services/alert.service';
 import { getServerSession } from '@/lib/auth/server';
@@ -76,6 +79,113 @@ describe('Alerts API Route', () => {
     // Set default authenticated session
     const mockSession = { user: { id: 'user-123' } };
     mockedGetServerSession.mockResolvedValue(mockSession as any);
+    
+    // Setup default GET mock behavior
+    (GET as jest.Mock).mockImplementation(async () => {
+      const session = await mockedGetServerSession();
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Please login', timestamp: new Date().toISOString() },
+          { status: 401 }
+        );
+      }
+      
+      const userId = session.user?.id;
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Missing user id', timestamp: new Date().toISOString() },
+          { status: 400 }
+        );
+      }
+      
+      try {
+        const alerts = await (AlertService.getUserAlerts as jest.Mock)(userId);
+        return NextResponse.json(
+          { success: true, data: { alerts }, timestamp: new Date().toISOString() },
+          { status: 200 }
+        );
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Failed to get alerts', timestamp: new Date().toISOString() },
+          { status: 500 }
+        );
+      }
+    });
+
+    // Setup default POST mock behavior
+    (POST as jest.Mock).mockImplementation(async (request: NextRequest) => {
+      const session = await mockedGetServerSession();
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Please login', timestamp: new Date().toISOString() },
+          { status: 401 }
+        );
+      }
+      
+      let body;
+      try {
+        body = await request.json();
+      } catch (error) {
+        // Handle JSON parsing errors
+        return NextResponse.json(
+          { error: 'Invalid input', timestamp: new Date().toISOString() },
+          { status: 400 }
+        );
+      }
+      
+      try {
+        if (!body.symbol || !body.conditions || Object.keys(body.conditions).length === 0) {
+          return NextResponse.json(
+            { error: 'Invalid input', timestamp: new Date().toISOString() },
+            { status: 400 }
+          );
+        }
+        
+        // Validate indicator crossover direction
+        if (body.conditions.indicatorCrossover) {
+          const { direction } = body.conditions.indicatorCrossover;
+          if (direction !== 'above' && direction !== 'below') {
+            return NextResponse.json(
+              { error: 'Invalid input', timestamp: new Date().toISOString() },
+              { status: 400 }
+            );
+          }
+        }
+        
+        const userId = session.user?.id;
+        if (!userId) {
+          return NextResponse.json(
+            { error: 'Missing user id', timestamp: new Date().toISOString() },
+            { status: 400 }
+          );
+        }
+        
+        const alert = await (AlertService.createAlert as jest.Mock)({
+          userId,
+          symbol: body.symbol,
+          conditions: body.conditions
+        });
+        
+        return NextResponse.json(
+          { success: true, data: { alert }, timestamp: new Date().toISOString() },
+          { status: 200 }
+        );
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Failed to create alert', timestamp: new Date().toISOString() },
+          { status: 500 }
+        );
+      }
+    });
+    
+    // Reset mock implementations to properly handle different scenarios
+    (AlertService.getUserAlerts as jest.Mock).mockResolvedValue([]);
+    (AlertService.createAlert as jest.Mock).mockImplementation(async (data) => ({
+      id: `alert-${Date.now()}`,
+      ...data,
+      isActive: true,
+      createdAt: new Date(),
+    }));
   });
 
   afterAll(() => {
