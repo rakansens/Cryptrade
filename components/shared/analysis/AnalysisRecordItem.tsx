@@ -15,6 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import type { AnalysisRecord } from '@/types/analysis-history'
+import { formatAnalysisDate } from '@/utils/date-format'
 
 interface AnalysisRecordItemProps {
   record: AnalysisRecord
@@ -257,21 +258,8 @@ function getStatusLabel(status: string) {
   }
 }
 
-function defaultFormatDate(timestamp: number) {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-  
-  if (diffInHours < 1) {
-    return `${Math.round(diffInHours * 60)}分前`
-  } else if (diffInHours < 24) {
-    return `${Math.round(diffInHours)}時間前`
-  } else if (diffInHours < 48) {
-    return '昨日'
-  } else {
-    return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
-  }
-}
+// Use unified date formatting utility - removed duplicate implementation
+const defaultFormatDate = formatAnalysisDate;
 
 function formatDuration(milliseconds: number) {
   const hours = Math.floor(milliseconds / (1000 * 60 * 60))

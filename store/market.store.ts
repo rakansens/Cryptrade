@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { MarketTicker, BinanceTradeMessage, ProcessedKline, PriceUpdate } from '@/types/market';
 import { createBaseStore, BaseState, BaseActions, createStoreHooks } from '@/lib/store/base.store';
 import { logger } from '@/lib/utils/logger';
+import { createActionHook } from './utils';
 
 export interface MarketConfig {
   maxCandles: number;
@@ -403,7 +404,7 @@ export const useMarketBatching = () => {
   }), [isBatching, pendingUpdatesCount]);
 };
 
-// Selective action hooks for better performance
+// Selective action hooks for better performance (temporarily reverted for compatibility)
 export const useMarketDataActions = () => {
   const setPriceData = useMarketStoreBase(state => state.setPriceData);
   const addKline = useMarketStoreBase(state => state.addKline);

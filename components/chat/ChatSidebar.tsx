@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Edit2, Trash2, MessageSquare, Clock, Archive, Sparkles, BarChart3, AlertTriangle, Trash, LogIn, UserPlus, LogOut, User } from 'lucide-react'
 import { useChat } from '@/store/chat.store'
+import { formatChatDate } from '@/utils/date-format'
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import './ChatSidebar.css'
@@ -89,20 +90,9 @@ export default function ChatSidebar({ className, onSessionSelect }: ChatSidebarP
     (a, b) => b.updatedAt - a.updatedAt
   )
 
+  // Use unified date formatting utility
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    
-    if (diffInHours < 24) {
-      return '今日'
-    } else if (diffInHours < 48) {
-      return '昨日'
-    } else if (diffInHours < 168) {
-      return '今週'
-    } else {
-      return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
-    }
+    return formatChatDate(timestamp)
   }
 
   const groupedSessions = sortedSessions.reduce((acc, session) => {

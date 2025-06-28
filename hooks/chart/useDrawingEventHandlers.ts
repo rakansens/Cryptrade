@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useDrawingActions, useChartStore, useDrawingStore } from '@/store/chart';
 import { 
   validateDrawingEvent,
@@ -14,17 +13,19 @@ import {
 } from '@/types/events/drawing-events';
 import { validateChartDrawing, type DrawingStyle, type ChartDrawing } from '@/types/drawing';
 import { 
-  handleAgentError, 
-  showAgentSuccess, 
-  handleValidationError,
   executeDrawingOperation,
   prepareDrawingData 
 } from '@/lib/chart/agent-utils';
 import { useCursor } from './useCursor';
 import type { Time } from 'lightweight-charts';
-import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
 import type { DrawingMode, ChartDrawing as ChartDrawingLW } from '@/types/chart.types';
+import { 
+  useEventHandlerBase, 
+  createEventHandlerConfig, 
+  createEventListeners,
+  type EventProcessor 
+} from '../shared';
 
 // Helper function to convert between ChartDrawing types
 function toChartDrawingLW(drawing: ChartDrawing): ChartDrawingLW {
@@ -45,7 +46,20 @@ function toChartDrawingLW(drawing: ChartDrawing): ChartDrawingLW {
  * Drawing Event Handlers Hook
  * 
  * 描画関連のカスタムイベント（追加、削除、スタイル更新、undo/redo等）を処理
+ * 基盤フック useEventHandlerBase を使用してコードの重複を削減
  */
+
+// Event type union for better type safety
+type DrawingEventData = 
+  | StartDrawingEvent
+  | AddDrawingEvent
+  | DeleteDrawingEvent
+  | UpdateDrawingStyleEvent
+  | UpdateAllStylesEvent
+  | UpdateDrawingColorEvent
+  | UpdateDrawingLineWidthEvent
+  | UndoEvent
+  | RedoEvent;
 
 export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
   const {
@@ -53,7 +67,6 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
     addDrawing,
     updateDrawing,
     deleteDrawing,
-    selectDrawing,
     clearAllDrawings,
     setIsDrawing,
   } = useDrawingActions();
@@ -64,652 +77,344 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
 
   const { setDrawingCursor, resetCursor } = useCursor();
 
-  useEffect(() => {
-    // Start Drawing Handler
-    const handleStartDrawing = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:startDrawing', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:startDrawing',
-          operation: 'Start drawing',
-          payload: event.detail,
-        });
-        return;
-      }
+  // Event operation mappings
+  const operations = {
+    'chart:startDrawing': 'Start drawing',
+    'chart:addDrawing': 'Add drawing',
+    'chart:addDrawingWithMetadata': 'Add drawing with metadata',
+    'chart:deleteDrawing': 'Delete drawing',
+    'chart:clearAllDrawings': 'Clear all drawings',
+    'chart:undo': 'Undo',
+    'chart:redo': 'Redo',
+    'chart:undoLastDrawing': 'Undo last drawing',
+    'chart:redoLastDrawing': 'Redo last drawing',
+    'chart:updateDrawingStyle': 'Update drawing style',
+    'chart:updateAllStyles': 'Update all styles',
+    'chart:updateDrawingColor': 'Update drawing color',
+    'chart:updateDrawingLineWidth': 'Update drawing line width',
+  };
 
-      const { type, style } = validation.data.data as StartDrawingEvent;
-      logger.info('[Drawing Event] Handling start drawing', { type, style });
+  // Success message generators (generic to avoid type conflicts)
+  const successMessages = {
+    'chart:startDrawing': (data: any) => 
+      `Started ${data.type} drawing`,
+    'chart:addDrawing': (data: any) => 
+      `Drawing ${data.type} added`,
+    'chart:addDrawingWithMetadata': () => 
+      'Proposal drawing added to chart',
+    'chart:deleteDrawing': () => 
+      'Drawing removed successfully',
+    'chart:clearAllDrawings': () => 
+      'All drawings cleared',
+    'chart:undo': (data: any) => 
+      `Undid ${data.steps} step(s)`,
+    'chart:redo': (data: any) => 
+      `Redid ${data.steps} step(s)`,
+    'chart:undoLastDrawing': () => 
+      'Last drawing removed',
+    'chart:redoLastDrawing': () => 
+      'Last drawing restored',
+    'chart:updateDrawingStyle': () => 
+      'スタイルを更新しました',
+    'chart:updateAllStyles': (data: any) => 
+      `Updated ${getState().drawings.filter(d => d.type === data.type).length} ${data.type} drawings`,
+    'chart:updateDrawingColor': () => 
+      'Drawing color updated',
+    'chart:updateDrawingLineWidth': () => 
+      'Line width updated',
+  };
+
+  // Event handler configuration
+  const config = createEventHandlerConfig<any>(
+    operations,
+    successMessages,
+    validateDrawingEvent
+  );
+
+  // Event processors (using any type to avoid type conflicts)
+  const startDrawingProcessor: EventProcessor<any> = (data) => {
+    setDrawingMode(data.type as DrawingMode);
+    setIsDrawing(true);
+    setDrawingCursor();
+  };
+
+  const addDrawingProcessor: EventProcessor<any> = async (data) => {
+    // Convert event data points to DrawingPoint format with Time type
+    const points = data.points?.map(p => ({
+      time: p.time as Time,
+      value: p.value
+    }));
+    
+    // Create drawing data with required fields
+    const drawingData: Parameters<typeof prepareDrawingData>[0] = {
+      id: data.id,
+      type: data.type,
+      points: points || [],
+      style: {
+        color: data.style?.color ?? '#3498db',
+        lineWidth: data.style?.lineWidth ?? 2,
+        lineStyle: data.style?.lineStyle ?? 'solid',
+        showLabels: data.style?.showLabels ?? false
+      }
+    };
+    
+    // Add optional properties only if they have values
+    if (data.price !== undefined) {
+      drawingData.price = data.price;
+    }
+    if (data.time !== undefined) {
+      drawingData.time = data.time;
+    }
+    if (data.levels !== undefined) {
+      drawingData.levels = data.levels;
+    }
+    
+    const drawing = prepareDrawingData(drawingData);
+    const validatedDrawing = validateChartDrawing(drawing);
+    
+    await executeDrawingOperation(async () => {
+      // Use async version if available
+      if ('addDrawingAsync' in addDrawing) {
+        await (addDrawing as { addDrawingAsync: (drawing: ChartDrawing) => Promise<ChartDrawing> }).addDrawingAsync(validatedDrawing);
+      } else {
+        addDrawing(validatedDrawing);
+      }
       
-      try {
-        setDrawingMode(type as DrawingMode);
-        setIsDrawing(true);
-        setDrawingCursor();
-        
-        showAgentSuccess({
-          eventType: 'chart:startDrawing',
-          operation: 'Start drawing',
-        }, `Started ${type} drawing`);
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:startDrawing',
-          operation: 'Start drawing',
-          payload: { type, style },
-        });
+      // Add to chart if drawing manager is available
+      if (handlers.drawingManager) {
+        handlers.drawingManager.addDrawing(toChartDrawingLW(validatedDrawing));
       }
-    };
-
-    // Add Drawing Handler
-    const handleAddDrawing = async (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:addDrawing', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:addDrawing',
-          operation: 'Add drawing',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const eventData = validation.data.data as AddDrawingEvent;
-      logger.info('[Drawing Event] Handling add drawing', { 
-        id: eventData.id, 
-        type: eventData.type 
-      });
-      
-      try {
-        // Convert event data points to DrawingPoint format with Time type
-        const points = eventData.points?.map(p => ({
-          time: p.time as Time,
-          value: p.value
-        }));
-        
-        // Create drawing data with required fields
-        const drawingData: Parameters<typeof prepareDrawingData>[0] = {
-          id: eventData.id,
-          type: eventData.type,
-          points: points || [],
-          style: {
-            color: eventData.style?.color ?? '#3498db',
-            lineWidth: eventData.style?.lineWidth ?? 2,
-            lineStyle: eventData.style?.lineStyle ?? 'solid',
-            showLabels: eventData.style?.showLabels ?? false
-          }
-        };
-        
-        // Add optional properties only if they have values
-        if (eventData.price !== undefined) {
-          drawingData.price = eventData.price;
-        }
-        if (eventData.time !== undefined) {
-          drawingData.time = eventData.time;
-        }
-        if (eventData.levels !== undefined) {
-          drawingData.levels = eventData.levels;
-        }
-        const drawing = prepareDrawingData(drawingData);
-        const validatedDrawing = validateChartDrawing(drawing);
-        
-        await executeDrawingOperation(async () => {
-          // Use async version if available
-          if ('addDrawingAsync' in addDrawing) {
-            await (addDrawing as { addDrawingAsync: (drawing: ChartDrawing) => Promise<ChartDrawing> }).addDrawingAsync(validatedDrawing);
-          } else {
-            addDrawing(validatedDrawing);
-          }
-          
-          // Add to chart if drawing manager is available
-          if (handlers.drawingManager) {
-            handlers.drawingManager.addDrawing(toChartDrawingLW(validatedDrawing));
-          }
-        }, {
-          eventType: 'chart:addDrawing',
-          operation: 'Add drawing',
-          id: eventData.id,
-        });
-        
-        setIsDrawing(false);
-        setDrawingMode('none');
-        resetCursor();
-        
-        showAgentSuccess({
-          eventType: 'chart:addDrawing',
-          operation: 'Add drawing',
-          id: eventData.id,
-        }, `Drawing ${eventData.type} added`);
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:addDrawing',
-          operation: 'Add drawing',
-          id: eventData.id,
-          payload: eventData,
-        });
-      }
-    };
-
-    // Add Drawing With Metadata Handler - for proposals
-    const handleAddDrawingWithMetadata = async (event: CustomEvent) => {
-      logger.info('[Drawing Event] Handling add drawing with metadata', event.detail);
-      
-      try {
-        const eventData = event.detail;
-        
-        // Validate drawing data structure
-        const drawingData: any = {
-          id: eventData.id,
-          type: eventData.type,
-          points: eventData.points,
-          style: {
-            color: eventData.style?.color || '#ff0000',
-            lineWidth: eventData.style?.lineWidth || 2,
-            lineStyle: eventData.style?.lineStyle || 'solid',
-            showLabels: eventData.style?.showLabels !== undefined ? eventData.style.showLabels : true
-          },
-          visible: eventData.visible !== undefined ? eventData.visible : true,
-          interactive: eventData.interactive !== undefined ? eventData.interactive : true
-        };
-        
-        // Add optional properties only if they have values
-        if (eventData.price !== undefined) {
-          drawingData.price = eventData.price;
-        }
-        if (eventData.time !== undefined) {
-          drawingData.time = eventData.time;
-        }
-        if (eventData.levels !== undefined) {
-          drawingData.levels = eventData.levels;
-        }
-        if (eventData.metadata !== undefined) {
-          drawingData.metadata = eventData.metadata;
-        }
-        
-        logger.info('[Drawing Event] Processing drawing with metadata', { drawingData });
-        
-        const validDrawing = validateChartDrawing(drawingData);
-        
-        // Add to store
-        addDrawing(validDrawing);
-        
-        // Add to chart if drawing manager is available
-        if (handlers.drawingManager) {
-          handlers.drawingManager.addDrawing(toChartDrawingLW(validDrawing));
-          logger.info('[Drawing Event] Added drawing to chart manager', { drawingId: validDrawing.id });
-        } else {
-          logger.warn('[Drawing Event] No drawing manager available');
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:addDrawingWithMetadata',
-          operation: 'Add drawing with metadata',
-          id: eventData.id,
-        }, `Proposal drawing ${eventData.type} added to chart`);
-        
-      } catch (error) {
-        logger.error('[Drawing Event] Failed to add drawing with metadata', { error });
-        handleAgentError(error, {
-          eventType: 'chart:addDrawingWithMetadata',
-          operation: 'Add drawing with metadata',
-          payload: typeof event.detail === 'object' && event.detail !== null ? event.detail as Record<string, unknown> : undefined,
-        });
-      }
-    };
-
-    // Delete Drawing Handler
-    const handleDeleteDrawing = async (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:deleteDrawing', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:deleteDrawing',
-          operation: 'Delete drawing',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { id } = validation.data.data as DeleteDrawingEvent;
-      logger.info('[Drawing Event] Handling delete drawing', { id });
-      
-      try {
-        await executeDrawingOperation(async () => {
-          // Use async version if available
-          if ('deleteDrawingAsync' in deleteDrawing) {
-            await (deleteDrawing as { deleteDrawingAsync: (id: string) => Promise<void> }).deleteDrawingAsync(id);
-          } else {
-            deleteDrawing(id);
-          }
-          
-          // Remove from chart if drawing manager is available
-          if (handlers.drawingManager) {
-            handlers.drawingManager.removeDrawing(id);
-          }
-        }, {
-          eventType: 'chart:deleteDrawing',
-          operation: 'Delete drawing',
-          id,
-        });
-        
-        showAgentSuccess({
-          eventType: 'chart:deleteDrawing',
-          operation: 'Delete drawing',
-          id,
-        }, 'Drawing removed successfully');
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:deleteDrawing',
-          operation: 'Delete drawing',
-          id,
-          payload: event.detail,
-        });
-      }
-    };
-
-    // Clear All Drawings Handler
-    const handleClearAllDrawings = () => {
-      logger.info('[Drawing Event] Handling clear all drawings');
-      
-      try {
-        clearAllDrawings();
-        
-        // Clear from chart if drawing manager is available
-        if (handlers.drawingManager) {
-          handlers.drawingManager.clearAll();
-        }
-        
-        setDrawingMode('none');
-        setIsDrawing(false);
-        resetCursor();
-        
-        showAgentSuccess({
-          eventType: 'chart:clearAllDrawings',
-          operation: 'Clear all drawings',
-        }, 'All drawings cleared');
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:clearAllDrawings',
-          operation: 'Clear all drawings',
-        });
-      }
-    };
-
-    // Undo Handler
-    const handleUndo = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:undo', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:undo',
-          operation: 'Undo',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { steps } = validation.data.data as UndoEvent;
-      logger.info('[Drawing Event] Handling undo', { steps });
-      
-      try {
-        for (let i = 0; i < steps; i++) {
-          undo();
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:undo',
-          operation: 'Undo',
-        }, `Undid ${steps} step(s)`);
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:undo',
-          operation: 'Undo',
-          payload: { steps },
-        });
-      }
-    };
-
-    // Redo Handler
-    const handleRedo = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:redo', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:redo',
-          operation: 'Redo',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { steps } = validation.data.data as RedoEvent;
-      logger.info('[Drawing Event] Handling redo', { steps });
-      
-      try {
-        for (let i = 0; i < steps; i++) {
-          redo();
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:redo',
-          operation: 'Redo',
-        }, `Redid ${steps} step(s)`);
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:redo',
-          operation: 'Redo',
-          payload: { steps },
-        });
-      }
-    };
-
-    // Undo Last Drawing Handler
-    const handleUndoLastDrawing = () => {
-      logger.info('[Drawing Event] Handling undo last drawing');
-
-      try {
-        undo();
-        showAgentSuccess(
-          {
-            eventType: 'chart:undoLastDrawing',
-            operation: 'Undo last drawing',
-          },
-          'Last drawing removed'
-        );
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:undoLastDrawing',
-          operation: 'Undo last drawing',
-        });
-      }
-    };
-
-    // Redo Last Drawing Handler - restore the last removed drawing using undo stack
-    const handleRedoLastDrawing = () => {
-      logger.info('[Drawing Event] Handling redo last drawing');
-
-      try {
-        redo();
-        showAgentSuccess(
-          {
-            eventType: 'chart:redoLastDrawing',
-            operation: 'Redo last drawing',
-          },
-          'Last drawing restored'
-        );
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:redoLastDrawing',
-          operation: 'Redo last drawing',
-        });
-      }
-    };
-
-    // Update Drawing Style Handler
-    const handleUpdateDrawingStyle = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:updateDrawingStyle', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:updateDrawingStyle',
-          operation: 'Update drawing style',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { drawingId, style, immediate } = validation.data.data as UpdateDrawingStyleEvent;
-      logger.info('[Drawing Event] Handling update drawing style', { drawingId, style, immediate });
-      
-      try {
-        const drawings = getState().drawings;
-        const drawing = drawings.find((d) => d.id === drawingId);
-        
-        if (!drawing) {
-          logger.warn('[Drawing Event] Drawing not found for style update', { 
-            drawingId, 
-            availableIds: drawings.map((d) => d.id) 
-          });
-          handleAgentError(new Error('Drawing not found'), {
-            eventType: 'chart:updateDrawingStyle',
-            operation: 'Update drawing style',
-            id: drawingId,
-          }, '描画が見つかりません');
-          return;
-        }
-        
-        // Merge with existing style - ensure all required properties
-        const currentStyle = drawing.style || {
-          color: '#3498db',
-          lineWidth: 2,
-          lineStyle: 'solid' as const,
-          showLabels: false
-        };
-        
-        const validStyle: DrawingStyle = {
-          color: style.color !== undefined ? style.color : currentStyle.color,
-          lineWidth: style.lineWidth !== undefined ? style.lineWidth : currentStyle.lineWidth,
-          lineStyle: style.lineStyle !== undefined ? style.lineStyle : currentStyle.lineStyle,
-          showLabels: style.showLabels !== undefined ? style.showLabels : currentStyle.showLabels ?? false,
-        };
-
-        updateDrawing(drawingId, { style: validStyle });
-
-        if (handlers.drawingManager) {
-          handlers.drawingManager.updateDrawing(drawingId, { style: validStyle });
-          
-          // If immediate flag is set, force redraw
-          if (immediate && (handlers.drawingManager as { redrawDrawing?: (id: string) => void })?.redrawDrawing) {
-            (handlers.drawingManager as unknown as { redrawDrawing: (id: string) => void }).redrawDrawing(drawingId);
-          }
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:updateDrawingStyle',
-          operation: 'Update drawing style',
-          id: drawingId,
-        }, 'スタイルを更新しました');
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:updateDrawingStyle',
-          operation: 'Update drawing style',
-          id: drawingId,
-          payload: { drawingId, style, immediate },
-        });
-      }
-    };
-
-    // Update All Styles Handler
-    const handleUpdateAllStyles = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:updateAllStyles', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:updateAllStyles',
-          operation: 'Update all styles',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { type, style } = validation.data.data as UpdateAllStylesEvent;
-      logger.info('[Drawing Event] Handling update all styles', { type, style });
-      
-      try {
-        const drawings = getState().drawings.filter((d) => d.type === type);
-        
-        drawings.forEach((drawing) => {
-          const mergedStyle: DrawingStyle = {
-            color: style.color ?? drawing.style.color,
-            lineWidth: style.lineWidth ?? drawing.style.lineWidth,
-            lineStyle: style.lineStyle ?? drawing.style.lineStyle,
-            showLabels: style.showLabels ?? drawing.style.showLabels ?? false,
-          };
-          updateDrawing(drawing.id, { style: mergedStyle });
-          
-          if (handlers.drawingManager) {
-            handlers.drawingManager.updateDrawing(drawing.id, { style: mergedStyle });
-          }
-        });
-        
-        showAgentSuccess({
-          eventType: 'chart:updateAllStyles',
-          operation: 'Update all styles',
-        }, `Updated ${drawings.length} ${type} drawings`);
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:updateAllStyles',
-          operation: 'Update all styles',
-          payload: { type, style },
-        });
-      }
-    };
-
-    // Update Drawing Color Handler
-    const handleUpdateDrawingColor = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:updateDrawingColor', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:updateDrawingColor',
-          operation: 'Update drawing color',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { id, color } = validation.data.data as UpdateDrawingColorEvent;
-      logger.info('[Drawing Event] Handling update drawing color', { id, color });
-      
-      try {
-        const drawing = getState().drawings.find((d) => d.id === id);
-        if (!drawing) {
-          handleAgentError(new Error('Drawing not found'), {
-            eventType: 'chart:updateDrawingColor',
-            operation: 'Update drawing color',
-            id,
-          }, '描画が見つかりません');
-          return;
-        }
-        
-        const validStyle: DrawingStyle = {
-          color,
-          lineWidth: drawing.style?.lineWidth ?? 2,
-          lineStyle: drawing.style?.lineStyle ?? 'solid',
-          showLabels: drawing.style?.showLabels ?? false,
-        };
-        
-        updateDrawing(id, { style: validStyle });
-        
-        if (handlers.drawingManager) {
-          handlers.drawingManager.updateDrawing(id, { style: validStyle });
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:updateDrawingColor',
-          operation: 'Update drawing color',
-          id,
-        }, 'Drawing color updated');
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:updateDrawingColor',
-          operation: 'Update drawing color',
-          id,
-          payload: { id, color },
-        });
-      }
-    };
-
-    // Update Drawing Line Width Handler
-    const handleUpdateDrawingLineWidth = (event: CustomEvent) => {
-      const validation = validateDrawingEvent('chart:updateDrawingLineWidth', event.detail);
-      if (!validation.success) {
-        handleValidationError(validation, {
-          eventType: 'chart:updateDrawingLineWidth',
-          operation: 'Update drawing line width',
-          payload: event.detail,
-        });
-        return;
-      }
-
-      const { id, lineWidth } = validation.data.data as UpdateDrawingLineWidthEvent;
-      logger.info('[Drawing Event] Handling update drawing line width', { id, lineWidth });
-      
-      try {
-        const drawing = getState().drawings.find((d) => d.id === id);
-        if (!drawing) {
-          handleAgentError(new Error('Drawing not found'), {
-            eventType: 'chart:updateDrawingLineWidth',
-            operation: 'Update drawing line width',
-            id,
-          }, '描画が見つかりません');
-          return;
-        }
-        
-        const validStyle: DrawingStyle = {
-          color: drawing.style?.color ?? '#00e676',
-          lineWidth,
-          lineStyle: drawing.style?.lineStyle ?? 'solid',
-          showLabels: drawing.style?.showLabels ?? false,
-        };
-        
-        updateDrawing(id, { style: validStyle });
-        
-        if (handlers.drawingManager) {
-          handlers.drawingManager.updateDrawing(id, { style: validStyle });
-        }
-        
-        showAgentSuccess({
-          eventType: 'chart:updateDrawingLineWidth',
-          operation: 'Update drawing line width',
-          id,
-        }, 'Line width updated');
-      } catch (error) {
-        handleAgentError(error, {
-          eventType: 'chart:updateDrawingLineWidth',
-          operation: 'Update drawing line width',
-          id,
-          payload: { id, lineWidth },
-        });
-      }
-    };
-
-    // Event listeners array
-    const eventListeners = [
-      ['chart:startDrawing', handleStartDrawing],
-      ['chart:addDrawing', handleAddDrawing],
-      ['chart:addDrawingWithMetadata', handleAddDrawingWithMetadata],
-      ['chart:deleteDrawing', handleDeleteDrawing],
-      ['chart:clearAllDrawings', handleClearAllDrawings],
-      ['chart:undo', handleUndo],
-      ['chart:redo', handleRedo],
-      ['chart:undoLastDrawing', handleUndoLastDrawing],
-      ['chart:redoLastDrawing', handleRedoLastDrawing],
-      ['chart:updateDrawingStyle', handleUpdateDrawingStyle],
-      ['chart:updateAllStyles', handleUpdateAllStyles],
-      ['chart:updateDrawingColor', handleUpdateDrawingColor],
-      ['chart:updateDrawingLineWidth', handleUpdateDrawingLineWidth],
-    ] as const;
-
-    // Register event listeners
-    eventListeners.forEach(([eventType, handler]) => {
-      window.addEventListener(eventType, handler as EventListener);
+    }, {
+      eventType: 'chart:addDrawing',
+      operation: 'Add drawing',
+      id: data.id,
     });
+    
+    setIsDrawing(false);
+    setDrawingMode('none');
+    resetCursor();
+  };
 
-    logger.info('[Drawing Event Handlers] Registered drawing event listeners', {
-      eventCount: eventListeners.length,
-      events: eventListeners.map(([type]) => type),
-    });
-
-    // Cleanup function
-    return () => {
-      eventListeners.forEach(([eventType, handler]) => {
-        window.removeEventListener(eventType, handler as EventListener);
-      });
-      logger.info('[Drawing Event Handlers] Cleaned up drawing event listeners');
+  const addDrawingWithMetadataProcessor: EventProcessor<any> = async (data) => {
+    // Validate drawing data structure
+    const drawingData: any = {
+      id: data.id,
+      type: data.type,
+      points: data.points,
+      style: {
+        color: data.style?.color || '#ff0000',
+        lineWidth: data.style?.lineWidth || 2,
+        lineStyle: data.style?.lineStyle || 'solid',
+        showLabels: data.style?.showLabels !== undefined ? data.style.showLabels : true
+      },
+      visible: data.visible !== undefined ? data.visible : true,
+      interactive: data.interactive !== undefined ? data.interactive : true
     };
-  }, [
-    setDrawingMode,
-    addDrawing,
-    updateDrawing,
-    deleteDrawing,
-    selectDrawing,
-    clearAllDrawings,
-    setIsDrawing,
-    undo,
-    redo,
-    setDrawingCursor,
-    resetCursor,
-    handlers.drawingManager,
+    
+    // Add optional properties only if they have values
+    if (data.price !== undefined) {
+      drawingData.price = data.price;
+    }
+    if (data.time !== undefined) {
+      drawingData.time = data.time;
+    }
+    if (data.levels !== undefined) {
+      drawingData.levels = data.levels;
+    }
+    if (data.metadata !== undefined) {
+      drawingData.metadata = data.metadata;
+    }
+    
+    const validDrawing = validateChartDrawing(drawingData);
+    
+    // Add to store
+    addDrawing(validDrawing);
+    
+    // Add to chart if drawing manager is available
+    if (handlers.drawingManager) {
+      handlers.drawingManager.addDrawing(toChartDrawingLW(validDrawing));
+    }
+  };
+
+  const deleteDrawingProcessor: EventProcessor<any> = async (data) => {
+    await executeDrawingOperation(async () => {
+      // Use async version if available
+      if ('deleteDrawingAsync' in deleteDrawing) {
+        await (deleteDrawing as { deleteDrawingAsync: (id: string) => Promise<void> }).deleteDrawingAsync(data.id);
+      } else {
+        deleteDrawing(data.id);
+      }
+      
+      // Remove from chart if drawing manager is available
+      if (handlers.drawingManager) {
+        handlers.drawingManager.removeDrawing(data.id);
+      }
+    }, {
+      eventType: 'chart:deleteDrawing',
+      operation: 'Delete drawing',
+      id: data.id,
+    });
+  };
+
+  const clearAllDrawingsProcessor: EventProcessor<any> = () => {
+    clearAllDrawings();
+    
+    // Clear from chart if drawing manager is available
+    if (handlers.drawingManager) {
+      handlers.drawingManager.clearAll();
+    }
+    
+    setDrawingMode('none');
+    setIsDrawing(false);
+    resetCursor();
+  };
+
+  const undoProcessor: EventProcessor<any> = (data) => {
+    for (let i = 0; i < data.steps; i++) {
+      undo();
+    }
+  };
+
+  const redoProcessor: EventProcessor<any> = (data) => {
+    for (let i = 0; i < data.steps; i++) {
+      redo();
+    }
+  };
+
+  const undoLastDrawingProcessor: EventProcessor<any> = () => {
+    undo();
+  };
+
+  const redoLastDrawingProcessor: EventProcessor<any> = () => {
+    redo();
+  };
+
+  const updateDrawingStyleProcessor: EventProcessor<any> = (data) => {
+    const drawings = getState().drawings;
+    const drawing = drawings.find((d) => d.id === data.drawingId);
+    
+    if (!drawing) {
+      throw new Error('Drawing not found');
+    }
+    
+    // Merge with existing style - ensure all required properties
+    const currentStyle = drawing.style || {
+      color: '#3498db',
+      lineWidth: 2,
+      lineStyle: 'solid' as const,
+      showLabels: false
+    };
+    
+    const validStyle: DrawingStyle = {
+      color: data.style.color !== undefined ? data.style.color : currentStyle.color,
+      lineWidth: data.style.lineWidth !== undefined ? data.style.lineWidth : currentStyle.lineWidth,
+      lineStyle: data.style.lineStyle !== undefined ? data.style.lineStyle : currentStyle.lineStyle,
+      showLabels: data.style.showLabels !== undefined ? data.style.showLabels : currentStyle.showLabels ?? false,
+    };
+
+    updateDrawing(data.drawingId, { style: validStyle });
+
+    if (handlers.drawingManager) {
+      handlers.drawingManager.updateDrawing(data.drawingId, { style: validStyle });
+      
+      // If immediate flag is set, force redraw
+      if (data.immediate && (handlers.drawingManager as { redrawDrawing?: (id: string) => void })?.redrawDrawing) {
+        (handlers.drawingManager as unknown as { redrawDrawing: (id: string) => void }).redrawDrawing(data.drawingId);
+      }
+    }
+  };
+
+  const updateAllStylesProcessor: EventProcessor<any> = (data) => {
+    const drawings = getState().drawings.filter((d) => d.type === data.type);
+    
+    drawings.forEach((drawing) => {
+      const mergedStyle: DrawingStyle = {
+        color: data.style.color ?? drawing.style.color,
+        lineWidth: data.style.lineWidth ?? drawing.style.lineWidth,
+        lineStyle: data.style.lineStyle ?? drawing.style.lineStyle,
+        showLabels: data.style.showLabels ?? drawing.style.showLabels ?? false,
+      };
+      updateDrawing(drawing.id, { style: mergedStyle });
+      
+      if (handlers.drawingManager) {
+        handlers.drawingManager.updateDrawing(drawing.id, { style: mergedStyle });
+      }
+    });
+  };
+
+  const updateDrawingColorProcessor: EventProcessor<any> = (data) => {
+    const drawing = getState().drawings.find((d) => d.id === data.id);
+    if (!drawing) {
+      throw new Error('Drawing not found');
+    }
+    
+    const validStyle: DrawingStyle = {
+      color: data.color,
+      lineWidth: drawing.style?.lineWidth ?? 2,
+      lineStyle: drawing.style?.lineStyle ?? 'solid',
+      showLabels: drawing.style?.showLabels ?? false,
+    };
+    
+    updateDrawing(data.id, { style: validStyle });
+    
+    if (handlers.drawingManager) {
+      handlers.drawingManager.updateDrawing(data.id, { style: validStyle });
+    }
+  };
+
+  const updateDrawingLineWidthProcessor: EventProcessor<any> = (data) => {
+    const drawing = getState().drawings.find((d) => d.id === data.id);
+    if (!drawing) {
+      throw new Error('Drawing not found');
+    }
+    
+    const validStyle: DrawingStyle = {
+      color: drawing.style?.color ?? '#00e676',
+      lineWidth: data.lineWidth,
+      lineStyle: drawing.style?.lineStyle ?? 'solid',
+      showLabels: drawing.style?.showLabels ?? false,
+    };
+    
+    updateDrawing(data.id, { style: validStyle });
+    
+    if (handlers.drawingManager) {
+      handlers.drawingManager.updateDrawing(data.id, { style: validStyle });
+    }
+  };
+
+  // Event listener configurations
+  const eventListeners = createEventListeners([
+    { eventType: 'chart:startDrawing', processor: startDrawingProcessor },
+    { eventType: 'chart:addDrawing', processor: addDrawingProcessor },
+    { eventType: 'chart:addDrawingWithMetadata', processor: addDrawingWithMetadataProcessor },
+    { eventType: 'chart:deleteDrawing', processor: deleteDrawingProcessor },
+    { eventType: 'chart:clearAllDrawings', processor: clearAllDrawingsProcessor },
+    { eventType: 'chart:undo', processor: undoProcessor },
+    { eventType: 'chart:redo', processor: redoProcessor },
+    { eventType: 'chart:undoLastDrawing', processor: undoLastDrawingProcessor },
+    { eventType: 'chart:redoLastDrawing', processor: redoLastDrawingProcessor },
+    { eventType: 'chart:updateDrawingStyle', processor: updateDrawingStyleProcessor },
+    { eventType: 'chart:updateAllStyles', processor: updateAllStylesProcessor },
+    { eventType: 'chart:updateDrawingColor', processor: updateDrawingColorProcessor },
+    { eventType: 'chart:updateDrawingLineWidth', processor: updateDrawingLineWidthProcessor },
   ]);
+
+  // Use the base event handler hook
+  useEventHandlerBase(
+    config,
+    eventListeners,
+    [
+      setDrawingMode,
+      addDrawing,
+      updateDrawing,
+      deleteDrawing,
+      clearAllDrawings,
+      setIsDrawing,
+      undo,
+      redo,
+      setDrawingCursor,
+      resetCursor,
+      handlers.drawingManager,
+    ]
+  );
 }

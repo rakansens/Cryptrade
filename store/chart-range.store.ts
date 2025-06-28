@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { LogicalRange } from 'lightweight-charts';
 import { createStoreDebugger } from '@/lib/utils/zustand-helpers';
 import { logger } from '@/lib/utils/logger';
+import { createActionHook } from './utils';
 
 export interface ChartRangeState {
   // Main chart visible range for synchronization
@@ -120,22 +121,11 @@ export const useChartRangeSync = () =>
 export const useRegisteredChartsCount = () => 
   useChartRangeStore(state => state.registeredCharts.size);
 
-// Actions hook
-export const useChartRangeActions = () => {
-  const setVisibleLogicalRange = useChartRangeStoreBase(state => state.setVisibleLogicalRange);
-  const registerChart = useChartRangeStoreBase(state => state.registerChart);
-  const unregisterChart = useChartRangeStoreBase(state => state.unregisterChart);
-  const setSyncing = useChartRangeStoreBase(state => state.setSyncing);
-  const reset = useChartRangeStoreBase(state => state.reset);
-  
-  return {
-    setVisibleLogicalRange,
-    registerChart,
-    unregisterChart,
-    setSyncing,
-    reset,
-  };
-};
+// Actions hook using unified store action utility
+export const useChartRangeActions = createActionHook(
+  useChartRangeStoreBase,
+  ['setVisibleLogicalRange', 'registerChart', 'unregisterChart', 'setSyncing', 'reset']
+);
 
 // Combined hook
 export const useChartRange = () => {
