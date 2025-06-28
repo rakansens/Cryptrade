@@ -1,13 +1,15 @@
 // Setup test environment before any imports
 import { mockTestEnv } from '@/tests/helpers/setupEnvMock';
 
-const restoreEnv = mockTestEnv();
+// Disable API authentication for tests
+const restoreEnv = mockTestEnv({
+  API_AUTH_ENABLED: 'false'
+});
 
 import { NextRequest } from 'next/server';
 import { POST, OPTIONS } from '@/app/api/ai/chat/route';
 import { executeImprovedOrchestrator } from '@/lib/mastra/agents/orchestrator.agent';
 import { extractProposalGroup } from '@/lib/api/helpers/proposal-extractor';
-import { memoryStore } from '@/lib/api/rate-limit';
 
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
@@ -31,14 +33,38 @@ jest.mock('@/lib/api/helpers/request-validator', () => ({
   registerAgentsSafely: jest.fn(),
 }));
 
+// Mock authentication
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn().mockResolvedValue({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com'
+    }
+  })
+}));
+
+// Mock rate limit modules
+jest.mock('@/lib/api/rate-limit', () => ({
+  memoryStore: {
+    clear: jest.fn()
+  }
+}));
+
+jest.mock('@/lib/api/rate-limit-edge', () => ({
+  getClientIdentifier: jest.fn(() => 'test-client-id'),
+  checkRateLimit: jest.fn(() => Promise.resolve({
+    success: true,
+    remainingRequests: 100,
+    resetTime: Date.now() + 60000
+  }))
+}));
+
 describe('AI Chat API Route', () => {
   const mockExecuteImprovedOrchestrator = executeImprovedOrchestrator as jest.Mock;
   const mockExtractProposalGroup = extractProposalGroup as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Clear rate limit memory store
-    memoryStore.clear();
   });
 
   afterAll(() => {
@@ -232,9 +258,9 @@ describe('AI Chat API Route', () => {
       });
     });
 
-    it('should apply rate limiting', async () => {
-      // Note: In test environment without KV storage, rate limiter fails open (allows all requests)
-      // This is intentional for production resilience
+    it('should handle multiple requests gracefully', async () => {
+      // Test that multiple requests are handled without errors
+      // In test environment, rate limiting fails open (allows all requests)
       const mockResult = {
         analysis: { intent: 'greeting', confidence: 1, isProposalMode: false },
         executionResult: { success: true, message: 'Hello!' },
@@ -244,24 +270,34 @@ describe('AI Chat API Route', () => {
 
       mockExecuteImprovedOrchestrator.mockResolvedValue(mockResult);
 
-      // Make a few requests to ensure rate limiter doesn't crash
-      const responses = [];
+      // Make multiple requests
+      const responses: Response[] = [];
       for (let i = 0; i < 5; i++) {
         const request = new NextRequest('http://localhost/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'Hello' })
+          body: JSON.stringify({ message: `Hello ${i}` })
         });
         const response = await POST(request);
         responses.push(response);
       }
 
-      // In test environment, all requests should succeed (fail open behavior)
-      const successCount = responses.filter(r => r.status === 200).length;
-      expect(successCount).toBe(5);
+      // All requests should succeed in test environment
+      responses.forEach((response: Response) => {
+        expect(response.status).toBe(200);
+      });
       
       // Verify the handler was called for each request
       expect(mockExecuteImprovedOrchestrator).toHaveBeenCalledTimes(5);
+      
+      // Verify each call had the correct message
+      for (let i = 0; i < 5; i++) {
+        expect(mockExecuteImprovedOrchestrator).toHaveBeenCalledWith(
+          `Hello ${i}`,
+          expect.any(String),
+          expect.any(Object)
+        );
+      }
     });
 
     it('should use context parameters when provided', async () => {

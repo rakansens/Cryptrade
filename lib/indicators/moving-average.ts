@@ -2,6 +2,7 @@ import type { UTCTimestamp } from 'lightweight-charts';
 import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
 import { EMAIndicator } from './ema-indicator';
+import { SMAIndicator } from './sma-indicator';
 
 // Lightweight Charts compatibility types
 export interface PriceDataLightweight {
@@ -16,6 +17,7 @@ export interface MovingAverageDataLightweight {
 
 /**
  * Calculate Simple Moving Average (SMA) - Optimized O(N) version
+ * @deprecated Use SMAIndicator class instead for better performance and consistency
  * @param {PriceDataLightweight[]} data - Array of price data with time and close values
  * @param {number} period - Moving average period
  * @returns {MovingAverageDataLightweight[]} Array of moving average data points
@@ -24,63 +26,9 @@ export function calculateSMA(
   data: PriceDataLightweight[], 
   period: number
 ): MovingAverageDataLightweight[] {
-  // 入力データの検証
-  const validation = validatePriceData(data as any, {
-    minLength: period,
-    checkMonotonic: true,
-    allowNaN: false,
-    allowInfinity: false
-  });
-
-  if (!validation.valid) {
-    return handleIndicatorError('SMA', new Error(validation.error!), []);
-  }
-
-  if (validation.warnings) {
-    validation.warnings.forEach(warning => {
-      logger.warn(`[SMA] ${warning}`);
-    });
-  }
-
-  try {
-    const result: MovingAverageDataLightweight[] = [];
-    
-    // Calculate initial sum for first window
-    let sum = 0;
-    for (let i = 0; i < period; i++) {
-      const candle = data[i];
-      if (candle) {
-        sum += candle.close;
-      }
-    }
-    
-    // Add first SMA value
-    const firstCandle = data[period - 1];
-    if (firstCandle) {
-      result.push({
-        time: firstCandle.time,
-        value: sum / period
-      });
-    }
-    
-    // Use sliding window for remaining values (O(N) complexity)
-    for (let i = period; i < data.length; i++) {
-      const oldCandle = data[i - period];
-      const newCandle = data[i];
-      if (oldCandle && newCandle) {
-        // Remove oldest value and add newest value
-        sum = sum - oldCandle.close + newCandle.close;
-        result.push({
-          time: newCandle.time,
-          value: sum / period
-        });
-      }
-    }
-    
-    return result;
-  } catch (error) {
-    return handleIndicatorError('SMA', error, []);
-  }
+  // Use the new SMAIndicator class
+  const smaIndicator = new SMAIndicator(period);
+  return smaIndicator.calculate(data);
 }
 
 /**

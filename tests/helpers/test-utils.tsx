@@ -8,6 +8,15 @@ import { render, RenderOptions } from '@testing-library/react';
 import * as React from 'react';
 import { ReactElement } from 'react';
 import { config } from 'dotenv';
+import { 
+  AsyncTestUtility, 
+  MockResponseBuilder, 
+  WaitUtility,
+  MockObserverUtility,
+  TestSessionManager,
+  MockTimerManager,
+  ValidationUtility 
+} from '../utils/common-test-utilities';
 
 // Load test environment variables
 config({ path: '.env.test' });
@@ -29,70 +38,30 @@ export function renderWithProviders(
 
 /**
  * Waits for async operations to complete
+ * @deprecated Use AsyncTestUtility.flushPromises instead
  */
 export async function flushPromises(): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(resolve, 0);
-  });
+  return AsyncTestUtility.flushPromises();
 }
 
 /**
  * Creates a deferred promise for testing async flows
+ * @deprecated Use AsyncTestUtility.createDeferredPromise instead
  */
 export function createDeferredPromise<T>(): {
   promise: Promise<T>;
   resolve: (value: T) => void;
   reject: (error: any) => void;
 } {
-  let resolve: (value: T) => void;
-  let reject: (error: any) => void;
-  
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  
-  return {
-    promise,
-    resolve: resolve!,
-    reject: reject!,
-  };
+  return AsyncTestUtility.createDeferredPromise<T>();
 }
 
 /**
  * Mocks the global fetch function
+ * @deprecated Use MockResponseBuilder.createFetchMock instead
  */
 export function mockFetch(responses: Array<{ url: string | RegExp; response: any }>): jest.Mock {
-  const fetchMock = jest.fn();
-  
-  fetchMock.mockImplementation(async (url: string, _options?: RequestInit) => {
-    const match = responses.find(r => {
-      if (typeof r.url === 'string') {
-        return url.includes(r.url);
-      }
-      return r.url.test(url);
-    });
-    
-    if (!match) {
-      return Promise.reject(new Error(`No mock found for ${url}`));
-    }
-    
-    if (match.response instanceof Error) {
-      return Promise.reject(match.response);
-    }
-    
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => match.response,
-      text: async () => JSON.stringify(match.response),
-      headers: new Headers({ 'content-type': 'application/json' }),
-    } as Response);
-  });
-  
-  global.fetch = fetchMock;
-  
-  return fetchMock;
+  return MockResponseBuilder.createFetchMock(responses);
 }
 
 /**
@@ -128,52 +97,19 @@ export function suppressConsole() {
 
 /**
  * Creates a mock timer for testing time-based functionality
+ * @deprecated Use MockTimerManager instead
  */
-export class MockTimer {
-  private currentTime: number;
-  
-  constructor(initialTime: number = Date.now()) {
-    this.currentTime = initialTime;
-  }
-  
-  advance(milliseconds: number) {
-    this.currentTime += milliseconds;
-    jest.advanceTimersByTime(milliseconds);
-  }
-  
-  getCurrentTime() {
-    return this.currentTime;
-  }
-  
-  install() {
-    jest.useFakeTimers();
-    jest.setSystemTime(this.currentTime);
-  }
-  
-  uninstall() {
-    jest.useRealTimers();
-  }
-}
+export class MockTimer extends MockTimerManager {}
 
 /**
  * Asserts that a promise rejects with a specific error
+ * @deprecated Use ValidationUtility.expectToReject instead
  */
 export async function expectToReject(
   promise: Promise<any>,
   errorMessage?: string | RegExp
 ) {
-  try {
-    await promise;
-    throw new Error('Expected promise to reject but it resolved');
-  } catch (error) {
-    if (errorMessage) {
-      if (typeof errorMessage === 'string') {
-        expect((error as Error).message).toContain(errorMessage);
-      } else {
-        expect((error as Error).message).toMatch(errorMessage);
-      }
-    }
-  }
+  return ValidationUtility.expectToReject(promise, errorMessage);
 }
 
 /**
@@ -195,127 +131,72 @@ export function spyOnModule<T extends Record<string, any>>(
 
 /**
  * Waits for an element to appear in the DOM
+ * @deprecated Use WaitUtility.forElement instead
  */
 export async function waitForElement(
   selector: string,
   timeout: number = 5000
 ): Promise<Element> {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < timeout) {
-    const element = document.querySelector(selector);
-    if (element) return element;
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  throw new Error(`Element ${selector} not found after ${timeout}ms`);
+  return WaitUtility.forElement(selector, { timeout });
 }
 
 /**
  * Creates a mock intersection observer
+ * @deprecated Use MockObserverUtility.createIntersectionObserver instead
  */
 export function mockIntersectionObserver() {
-  const mockIntersectionObserver = jest.fn();
-  mockIntersectionObserver.mockReturnValue({
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
-  });
-  
-  window.IntersectionObserver = mockIntersectionObserver as any;
-  
-  return mockIntersectionObserver;
+  return MockObserverUtility.createIntersectionObserver();
 }
 
 /**
  * Creates a mock resize observer
+ * @deprecated Use MockObserverUtility.createResizeObserver instead
  */
 export function mockResizeObserver() {
-  const mockResizeObserver = jest.fn();
-  mockResizeObserver.mockReturnValue({
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
-  });
-  
-  window.ResizeObserver = mockResizeObserver as any;
-  
-  return mockResizeObserver;
+  return MockObserverUtility.createResizeObserver();
 }
 
 /**
  * Test data cleanup utility
+ * @deprecated Use TestSessionManager instead
  */
-export class TestDataCleaner {
-  private cleanupFns: Array<() => Promise<void> | void> = [];
-  
+export class TestDataCleaner extends TestSessionManager {
   add(cleanupFn: () => Promise<void> | void) {
-    this.cleanupFns.push(cleanupFn);
-  }
-  
-  async cleanup() {
-    for (const fn of this.cleanupFns.reverse()) {
-      await fn();
-    }
-    this.cleanupFns = [];
+    this.addCleanup(cleanupFn);
   }
 }
 
 /**
  * Creates a test session ID
+ * @deprecated Use TestSessionManager.createSessionId instead
  */
 export function createTestSessionId(prefix: string = 'test'): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const manager = new TestSessionManager();
+  return manager.createSessionId(prefix);
 }
 
 /**
  * Validates that an object matches a schema
+ * @deprecated Use ValidationUtility.validateSchema instead
  */
 export function validateSchema(object: any, schema: Record<string, any>): string[] {
-  const errors: string[] = [];
-  
-  for (const [key, validator] of Object.entries(schema)) {
-    if (typeof validator === 'function') {
-      if (!validator(object[key])) {
-        errors.push(`Property ${key} failed validation`);
-      }
-    } else if (typeof validator === 'object' && validator !== null) {
-      if (typeof object[key] !== 'object') {
-        errors.push(`Property ${key} should be an object`);
-      } else {
-        const nestedErrors = validateSchema(object[key], validator);
-        if (nestedErrors.length > 0) {
-          errors.push(`Property ${key}: ${nestedErrors.join(', ')}`);
-        }
-      }
-    } else if (object[key] !== validator) {
-      errors.push(`Property ${key} should be ${validator} but was ${object[key]}`);
-    }
-  }
-  
-  return errors;
+  return ValidationUtility.validateSchema(object, schema);
 }
 
 /**
  * Measures execution time of a function
+ * @deprecated Use AsyncTestUtility.measureExecutionTime instead
  */
 export async function measureExecutionTime<T>(
   fn: () => Promise<T> | T,
   label?: string
 ): Promise<{ result: T; duration: number }> {
-  const start = performance.now();
-  const result = await fn();
-  const duration = performance.now() - start;
-  
-  if (label) {
-    console.log(`${label}: ${duration.toFixed(2)}ms`);
-  }
-  
-  return { result, duration };
+  return AsyncTestUtility.measureExecutionTime(fn, label);
 }
 
 /**
  * Retries a test assertion until it passes or times out
+ * @deprecated Use AsyncTestUtility.retryAssertion instead
  */
 export async function retryAssertion(
   assertion: () => void | Promise<void>,
@@ -325,24 +206,5 @@ export async function retryAssertion(
     onRetry?: (attempt: number) => void;
   } = {}
 ): Promise<void> {
-  const { timeout = 5000, interval = 100, onRetry } = options;
-  const startTime = Date.now();
-  let attempt = 0;
-  let lastError: Error | undefined;
-  
-  while (Date.now() - startTime < timeout) {
-    try {
-      await assertion();
-      return;
-    } catch (error) {
-      lastError = error as Error;
-      attempt++;
-      if (onRetry) onRetry(attempt);
-      await new Promise(resolve => setTimeout(resolve, interval));
-    }
-  }
-  
-  throw new Error(
-    `Assertion failed after ${attempt} attempts: ${lastError?.message}`
-  );
+  return AsyncTestUtility.retryAssertion(assertion, options);
 }

@@ -29,6 +29,8 @@ module.exports = {
         ...preset.moduleNameMapper,
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
+        // Add auth server mock
+        '^@/lib/auth/server$': '<rootDir>/__mocks__/@/lib/auth/server.ts',
         // Add API response functions mock
         '^@/lib/api/responses$': '<rootDir>/__mocks__/@/lib/api/responses.ts',
         '^@/app/api/utils/responses$': '<rootDir>/__mocks__/@/app/api/utils/responses.ts',
@@ -77,6 +79,8 @@ module.exports = {
         ...preset.moduleNameMapper,
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
+        // Add auth server mock
+        '^@/lib/auth/server$': '<rootDir>/__mocks__/@/lib/auth/server.ts',
         // Add API response functions mock
         '^@/lib/api/responses$': '<rootDir>/__mocks__/@/lib/api/responses.ts',
         '^@/app/api/utils/responses$': '<rootDir>/__mocks__/@/app/api/utils/responses.ts',

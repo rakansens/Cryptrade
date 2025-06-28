@@ -6,6 +6,7 @@
 
 import type { EventPayload } from '../../types/events/all-event-types';
 import type { ProcessedKline } from '../../types/market';
+import { TestDataFactory, WaitUtility, MockResponseBuilder } from '../utils/common-test-utilities';
 
 // Define custom types for test data
 interface ProposalData {
@@ -60,29 +61,10 @@ export function createMockProposal(overrides?: Partial<ProposalData>): ProposalD
 
 /**
  * Creates mock candlestick data for testing
+ * @deprecated Use TestDataFactory.createCandlestickData instead
  */
 export function createMockCandlestickData(count: number = 100): ProcessedKline[] {
-  const baseTime = Date.now() - count * 60 * 60 * 1000; // Start from count hours ago
-  const basePrice = 45000;
-  
-  return Array.from({ length: count }, (_, i) => {
-    const time = baseTime + i * 60 * 60 * 1000; // 1 hour intervals
-    const randomWalk = (Math.random() - 0.5) * 1000;
-    const open = basePrice + randomWalk;
-    const close = open + (Math.random() - 0.5) * 500;
-    const high = Math.max(open, close) + Math.random() * 200;
-    const low = Math.min(open, close) - Math.random() * 200;
-    const volume = 1000 + Math.random() * 5000;
-    
-    return {
-      time: time / 1000, // Convert to seconds
-      open,
-      high,
-      low,
-      close,
-      volume,
-    };
-  });
+  return TestDataFactory.createCandlestickData({ count });
 }
 
 /**
@@ -202,31 +184,25 @@ export function createMockUserContext(overrides?: Record<string, any>) {
 
 /**
  * Creates a mock WebSocket message
+ * @deprecated Use TestDataFactory.createWebSocketMessage instead
  */
 export function createMockWebSocketMessage(
   type: string,
   data: any
 ): string {
-  return JSON.stringify({
-    type,
-    data,
-    timestamp: Date.now(),
-  });
+  return TestDataFactory.createWebSocketMessage(type, data);
 }
 
 /**
  * Creates a mock SSE event
+ * @deprecated Use TestDataFactory.createSSEEvent instead
  */
 export function createMockSSEEvent(
   event: string,
   data: any,
   id?: string
 ): string {
-  let message = '';
-  if (id) message += `id: ${id}\n`;
-  message += `event: ${event}\n`;
-  message += `data: ${JSON.stringify(data)}\n\n`;
-  return message;
+  return TestDataFactory.createSSEEvent(event, data, id);
 }
 
 /**
@@ -344,26 +320,19 @@ export function createMockAIResponse(type: 'analysis' | 'chat' | 'proposal'): an
 
 /**
  * Utility to wait for a condition to be true
+ * @deprecated Use WaitUtility.forCondition instead
  */
 export async function waitFor(
   condition: () => boolean | Promise<boolean>,
   timeout: number = 5000,
   interval: number = 100
 ): Promise<void> {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < timeout) {
-    if (await condition()) {
-      return;
-    }
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-  
-  throw new Error(`Timeout waiting for condition after ${timeout}ms`);
+  return WaitUtility.forCondition(condition, { timeout, interval });
 }
 
 /**
  * Creates a mock fetch response
+ * @deprecated Use MockResponseBuilder.createResponse instead
  */
 export function createMockFetchResponse(
   data: any,
@@ -373,25 +342,5 @@ export function createMockFetchResponse(
     ok?: boolean;
   }
 ): Promise<Response> {
-  const response = {
-    ok: options?.ok ?? true,
-    status: options?.status ?? 200,
-    statusText: options?.status === 200 ? 'OK' : 'Error',
-    headers: new Headers(options?.headers ?? { 'content-type': 'application/json' }),
-    json: async () => data,
-    text: async () => JSON.stringify(data),
-    blob: async () => new Blob([JSON.stringify(data)], { type: 'application/json' }),
-    arrayBuffer: async () => new ArrayBuffer(0),
-    formData: async () => new FormData(),
-    clone: function(): Response {
-      return { ...response } as Response;
-    },
-    body: null,
-    bodyUsed: false,
-    redirected: false,
-    type: 'basic' as ResponseType,
-    url: '',
-  } as Response;
-  
-  return Promise.resolve(response);
+  return Promise.resolve(MockResponseBuilder.createResponse(data, options));
 }

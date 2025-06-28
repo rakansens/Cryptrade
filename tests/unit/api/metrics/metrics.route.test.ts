@@ -23,6 +23,16 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
+// Mock authentication
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn().mockResolvedValue({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com'
+    }
+  })
+}));
+
 describe('Metrics API Route', () => {
   const mockExport = metricsCollector.export as jest.Mock;
   const mockToJSON = metricsCollector.toJSON as jest.Mock;

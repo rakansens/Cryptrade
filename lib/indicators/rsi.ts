@@ -10,11 +10,13 @@
 import type { RSIData } from '@/types/market';
 import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
+import { RSIIndicator } from './rsi-indicator';
 
 /**
  * RSI（相対力指数）を計算します
  * Wilder's smoothing methodを使用してO(N)の効率的な実装です
  * 
+ * @deprecated Use RSIIndicator class instead for better performance and consistency
  * @param {Array<{time: number, close: number}>} data - 時系列価格データ配列
  * @param {number} period - RSI計算期間（デフォルト: 14）
  * @returns RSIデータ配列（時刻とRSI値）
@@ -30,101 +32,15 @@ export function calculateRSI(
   data: { time: number; close: number }[],
   period: number = 14
 ): RSIData[] {
-  // 入力データの検証
-  const validation = validatePriceData(data, {
-    minLength: period + 1,
-    checkMonotonic: true,
-    allowNaN: false,
-    allowInfinity: false
-  });
-
-  if (!validation.valid) {
-    return handleIndicatorError('RSI', new Error(validation.error!), []);
-  }
-
-  if (validation.warnings) {
-    validation.warnings.forEach(warning => {
-      logger.warn(`[RSI] ${warning}`);
-    });
-  }
-
-  try {
-
-  const gains: number[] = [];
-  const losses: number[] = [];
-  const rsiData: RSIData[] = [];
-
-  // Calculate price changes
-  for (let i = 1; i < data.length; i++) {
-    const current = data[i];
-    const previous = data[i - 1];
-    if (!current || !previous) continue;
-    const change = current.close - previous.close;
-    gains.push(change > 0 ? change : 0);
-    losses.push(change < 0 ? Math.abs(change) : 0);
-  }
-
-  // Calculate initial average gain and loss
-  let avgGain = gains.slice(0, period).reduce((sum, gain) => sum + gain, 0) / period;
-  let avgLoss = losses.slice(0, period).reduce((sum, loss) => sum + loss, 0) / period;
-
-  // Calculate first RSI value
-  let firstRSI: number;
-  if (avgLoss === 0) {
-    // No losses means RS approaches infinity, RSI = 100
-    firstRSI = 100;
-  } else if (avgGain === 0) {
-    // No gains means RS = 0, RSI = 0
-    firstRSI = 0;
-  } else {
-    const firstRS = avgGain / avgLoss;
-    firstRSI = 100 - (100 / (1 + firstRS));
-  }
+  // Convert data to PriceDataLightweight format
+  const convertedData = data.map(d => ({
+    time: d.time as any, // Type assertion for compatibility
+    close: d.close
+  }));
   
-  const firstCandle = data[period];
-  if (firstCandle) {
-    rsiData.push({
-      time: firstCandle.time,
-      rsi: firstRSI
-    });
-  }
-
-  // Calculate subsequent RSI values using Wilder's smoothing
-  for (let i = period + 1; i < data.length; i++) {
-    const currentGain = gains[i - 1];
-    const currentLoss = losses[i - 1];
-
-    if (currentGain === undefined || currentLoss === undefined) continue;
-
-    // Wilder's smoothing
-    avgGain = ((avgGain * (period - 1)) + currentGain) / period;
-    avgLoss = ((avgLoss * (period - 1)) + currentLoss) / period;
-
-    let rsi: number;
-    if (avgLoss === 0) {
-      // No losses means RS approaches infinity, RSI = 100
-      rsi = 100;
-    } else if (avgGain === 0) {
-      // No gains means RS = 0, RSI = 0
-      rsi = 0;
-    } else {
-      const rs = avgGain / avgLoss;
-      rsi = 100 - (100 / (1 + rs));
-    }
-
-    const candle = data[i];
-    if (candle) {
-      rsiData.push({
-        time: candle.time,
-        rsi: rsi
-      });
-    }
-  }
-
-  return rsiData;
-  } catch (error) {
-    return handleIndicatorError('RSI', error, []);
-  }
+  // Use the new RSIIndicator class
+  const rsiIndicator = new RSIIndicator(period);
+  return rsiIndicator.calculate(convertedData);
 }
 
 /**

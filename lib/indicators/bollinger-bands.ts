@@ -2,6 +2,7 @@ import type { UTCTimestamp } from 'lightweight-charts';
 import type { BollingerBandsConfig } from '@/types/market';
 import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
+import { BollingerBandsIndicator, getBollingerBandsConfig as _getBollingerBandsConfig } from './bollinger-bands-indicator';
 
 // Lightweight Charts compatibility types
 export interface PriceDataLightweight {
@@ -20,6 +21,7 @@ export interface BollingerBandsDataLightweight {
  * Calculate Bollinger Bands - Optimized O(N) version
  * ボリンジャーバンド = 移動平均 ± (標準偏差 × 係数)
  * 
+ * @deprecated Use BollingerBandsIndicator class instead for better performance and consistency
  * @param {PriceDataLightweight[]} data - Array of price data with time and close values
  * @param {number} period - SMA period (typically 20)
  * @param {number} stdDev - Standard deviation multiplier (typically 2)
@@ -30,84 +32,9 @@ export function calculateBollingerBands(
   period: number = 20,
   stdDev: number = 2
 ): BollingerBandsDataLightweight[] {
-  // 入力データの検証
-  const validation = validatePriceData(data as any, {
-    minLength: period,
-    checkMonotonic: true,
-    allowNaN: false,
-    allowInfinity: false
-  });
-
-  if (!validation.valid) {
-    return handleIndicatorError('BollingerBands', new Error(validation.error!), []);
-  }
-
-  if (validation.warnings) {
-    validation.warnings.forEach(warning => {
-      logger.warn(`[BollingerBands] ${warning}`);
-    });
-  }
-
-  try {
-
-  const result: BollingerBandsDataLightweight[] = [];
-
-  // Initialize first window sums
-  let sum = 0;
-  let sumSquares = 0;
-  
-  for (let i = 0; i < period; i++) {
-    const candle = data[i];
-    if (!candle) continue;
-    sum += candle.close;
-    sumSquares += candle.close * candle.close;
-  }
-
-  // Calculate first point
-  const firstSma = sum / period;
-  const firstVariance = (sumSquares / period) - (firstSma * firstSma);
-  const firstStdDev = Math.sqrt(firstVariance);
-  
-  const firstCandle = data[period - 1];
-  if (firstCandle) {
-    result.push({
-      time: firstCandle.time,
-      upper: firstSma + (firstStdDev * stdDev),
-      middle: firstSma,
-      lower: firstSma - (firstStdDev * stdDev),
-    });
-  }
-
-  // Use sliding window for remaining values (O(N) complexity)
-  for (let i = period; i < data.length; i++) {
-    // Update sliding window sums
-    const oldCandle = data[i - period];
-    const newCandle = data[i];
-    if (!oldCandle || !newCandle) continue;
-    
-    const oldValue = oldCandle.close;
-    const newValue = newCandle.close;
-    
-    sum = sum - oldValue + newValue;
-    sumSquares = sumSquares - (oldValue * oldValue) + (newValue * newValue);
-    
-    // Calculate SMA and standard deviation
-    const sma = sum / period;
-    const variance = (sumSquares / period) - (sma * sma);
-    const standardDeviation = Math.sqrt(variance);
-
-    result.push({
-      time: newCandle.time,
-      upper: sma + (standardDeviation * stdDev),
-      middle: sma,
-      lower: sma - (standardDeviation * stdDev),
-    });
-  }
-
-  return result;
-  } catch (error) {
-    return handleIndicatorError('BollingerBands', error, []);
-  }
+  // Use the new BollingerBandsIndicator class
+  const indicator = new BollingerBandsIndicator(period, stdDev);
+  return indicator.calculate(data);
 }
 
 /**

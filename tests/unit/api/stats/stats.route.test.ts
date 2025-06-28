@@ -22,6 +22,16 @@ jest.mock('@/lib/utils/logger', () => ({
   }
 }));
 
+// Mock authentication
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn().mockResolvedValue({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com'
+    }
+  })
+}));
+
 describe('Logs Stats API Route', () => {
   const mockGetStats = enhancedLogger.getStats as jest.Mock;
 
