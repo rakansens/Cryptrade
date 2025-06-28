@@ -1,6 +1,7 @@
 import type { UTCTimestamp } from 'lightweight-charts';
 import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
+import { EMAIndicator } from './ema-indicator';
 
 // Lightweight Charts compatibility types
 export interface PriceDataLightweight {
@@ -84,6 +85,7 @@ export function calculateSMA(
 
 /**
  * Calculate Exponential Moving Average (EMA)
+ * @deprecated Use EMAIndicator class instead for better performance and consistency
  * @param {PriceDataLightweight[]} data - Array of price data with time and close values
  * @param {number} period - EMA period
  * @returns {MovingAverageDataLightweight[]} Array of EMA data points
@@ -165,9 +167,13 @@ export function calculateMultipleMovingAverages(
   const result: Record<number, MovingAverageDataLightweight[]> = {};
   
   for (const period of periods) {
-    result[period] = type === 'SMA' 
-      ? calculateSMA(data, period)
-      : calculateEMA(data, period);
+    if (type === 'SMA') {
+      result[period] = calculateSMA(data, period);
+    } else {
+      // Use EMAIndicator class for better performance and consistency
+      const emaIndicator = new EMAIndicator(period);
+      result[period] = emaIndicator.calculate(data);
+    }
   }
   
   return result;

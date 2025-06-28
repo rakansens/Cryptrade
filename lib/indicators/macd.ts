@@ -9,26 +9,21 @@
 import type { MACDData } from '@/types/market';
 import { validatePriceData, handleIndicatorError } from './validation';
 import { logger } from '@/lib/utils/logger';
+import { EMAIndicator } from './ema-indicator';
+import type { UTCTimestamp } from 'lightweight-charts';
 
-function calculateEMA(data: number[], period: number): number[] {
-  const ema: number[] = [];
-  const multiplier = 2 / (period + 1);
-
-  // First EMA value is SMA
-  const sma = data.slice(0, period).reduce((sum, val) => sum + val, 0) / period;
-  ema.push(sma);
-
-  // Calculate subsequent EMA values
-  for (let i = period; i < data.length; i++) {
-    const currentValue = data[i];
-    const lastEma = ema[ema.length - 1];
-    if (currentValue !== undefined && lastEma !== undefined) {
-      const emaValue = (currentValue - lastEma) * multiplier + lastEma;
-      ema.push(emaValue);
-    }
-  }
-
-  return ema;
+function calculateEMAFromNumbers(data: number[], period: number): number[] {
+  // Convert number array to PriceDataLightweight format for EMAIndicator
+  const chartData = data.map((price, index) => ({
+    time: index as UTCTimestamp, // Use index as time for calculation
+    close: price,
+  }));
+  
+  const emaIndicator = new EMAIndicator(period);
+  const emaData = emaIndicator.calculate(chartData);
+  
+  // Extract just the values to maintain compatibility
+  return emaData.map(item => item.value);
 }
 
 export function calculateMACD(
@@ -59,9 +54,9 @@ export function calculateMACD(
 
   const closePrices = data.map(d => d.close);
   
-  // Calculate EMAs
-  const ema12 = calculateEMA(closePrices, fastPeriod);
-  const ema26 = calculateEMA(closePrices, slowPeriod);
+  // Calculate EMAs using EMAIndicator class
+  const ema12 = calculateEMAFromNumbers(closePrices, fastPeriod);
+  const ema26 = calculateEMAFromNumbers(closePrices, slowPeriod);
   
   // Calculate MACD line (EMA12 - EMA26)
   const macdLine: number[] = [];
@@ -76,7 +71,7 @@ export function calculateMACD(
   }
   
   // Calculate Signal line (EMA of MACD line)
-  const signalLine = calculateEMA(macdLine, signalPeriod);
+  const signalLine = calculateEMAFromNumbers(macdLine, signalPeriod);
   
   // Calculate Histogram (MACD - Signal)
   const result: MACDData[] = [];

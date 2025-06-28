@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { logger } from '../../utils/logger';
 import { SMAIndicator } from '@/lib/indicators/sma-indicator';
+import { EMAIndicator } from '@/lib/indicators/ema-indicator';
 import type { UTCTimestamp } from 'lightweight-charts';
 
 // Type definitions for chart data analysis
@@ -389,8 +390,21 @@ async function calculateTechnicalAnalysis(candles: Candle[], lookbackPeriod: num
   // Calculate moving averages
   const ma20 = calculateSMA(closes, 20);
   const ma50 = calculateSMA(closes, 50);
-  const ema12 = calculateEMA(closes, 12);
-  const ema26 = calculateEMA(closes, 26);
+  // Convert closes to PriceDataLightweight format for EMAIndicator
+  const chartData = closes.map((price, index) => ({
+    time: index as UTCTimestamp, // Use index as time for simplicity
+    close: price,
+  }));
+  
+  const ema12Indicator = new EMAIndicator(12);
+  const ema26Indicator = new EMAIndicator(26);
+  
+  const ema12Data = ema12Indicator.calculate(chartData);
+  const ema26Data = ema26Indicator.calculate(chartData);
+  
+  // Extract just the values to maintain compatibility
+  const ema12 = ema12Data.map(item => item.value);
+  const ema26 = ema26Data.map(item => item.value);
   
   // Determine trend
   const trend = analyzeTrend(closes, ma20, ma50);
@@ -605,8 +619,21 @@ function calculateRSI(prices: number[], period: number = 14): number[] {
 }
 
 function calculateMACD(prices: number[]) {
-  const ema12 = calculateEMA(prices, 12);
-  const ema26 = calculateEMA(prices, 26);
+  // Convert prices to PriceDataLightweight format for EMAIndicator
+  const chartData = prices.map((price, index) => ({
+    time: index as UTCTimestamp, // Use index as time for simplicity
+    close: price,
+  }));
+  
+  const ema12Indicator = new EMAIndicator(12);
+  const ema26Indicator = new EMAIndicator(26);
+  
+  const ema12Data = ema12Indicator.calculate(chartData);
+  const ema26Data = ema26Indicator.calculate(chartData);
+  
+  // Extract values to maintain compatibility
+  const ema12 = ema12Data.map(item => item.value);
+  const ema26 = ema26Data.map(item => item.value);
   
   const macd: number[] = [];
   for (let i = 0; i < Math.min(ema12.length, ema26.length); i++) {
@@ -617,7 +644,16 @@ function calculateMACD(prices: number[]) {
     }
   }
   
-  const signal = calculateEMA(macd, 9);
+  // For signal line calculation, convert macd values to chartData format
+  const macdChartData = macd.map((value, index) => ({
+    time: index as UTCTimestamp,
+    close: value,
+  }));
+  
+  const signalIndicator = new EMAIndicator(9);
+  const signalData = signalIndicator.calculate(macdChartData);
+  const signal = signalData.map(item => item.value);
+  
   const histogram: number[] = [];
   
   for (let i = 0; i < Math.min(macd.length, signal.length); i++) {
@@ -647,32 +683,6 @@ function calculateSMA(prices: number[], period: number): number[] {
   return smaData.map(item => item.value);
 }
 
-function calculateEMA(prices: number[], period: number): number[] {
-  const ema: number[] = [];
-  const multiplier = 2 / (period + 1);
-  
-  if (prices.length < period) return ema;
-  
-  // Start with SMA for first value
-  let sum = 0;
-  for (let i = 0; i < period; i++) {
-    const price = prices[i];
-    if (price === undefined) return ema;
-    sum += price;
-  }
-  ema.push(sum / period);
-  
-  // Calculate EMA for remaining values
-  for (let i = period; i < prices.length; i++) {
-    const currentPrice = prices[i];
-    const prevEMA = ema[ema.length - 1];
-    if (currentPrice !== undefined && prevEMA !== undefined) {
-      ema.push((currentPrice - prevEMA) * multiplier + prevEMA);
-    }
-  }
-  
-  return ema;
-}
 
 function calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
   const trueRanges: number[] = [];
