@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { handleAgentError, showAgentSuccess, handleValidationError } from '@/lib/chart/agent-utils';
+import { handleAgentError } from '@/lib/mastra/agents/utils/agent-utils';
+import { showAgentSuccess, handleValidationError } from '@/lib/chart/agent-utils';
 import { logger } from '@/lib/utils/logger';
 
 /**

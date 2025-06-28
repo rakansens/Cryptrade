@@ -9,17 +9,19 @@ export interface PriceDataLightweight {
 }
 
 /**
- * バリデーションオプション
+ * バリデーションオプション（既存のvalidation.tsとの互換性のため）
  */
 export interface ValidationOptions {
   minLength: number;
+  maxLength?: number;
   checkMonotonic?: boolean;
   allowNaN?: boolean;
   allowInfinity?: boolean;
+  customValidator?: (data: any[]) => ValidationResult;
 }
 
 /**
- * バリデーション結果
+ * バリデーション結果（既存のvalidation.tsと互換性）
  */
 export interface ValidationResult {
   valid: boolean;

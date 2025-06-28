@@ -51,7 +51,6 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       // Use optimized orchestrator pipeline
       const result = await orchestrator.orchestrateMarketDataPipeline(
         symbol,
-        ['1m'], // Single timeframe for max speed
         undefined
       );
 
@@ -89,9 +88,7 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
         
         try {
           const result = await orchestrator.orchestrateMarketDataPipeline(
-            testSymbol,
-            ['1m'],
-            undefined
+            testSymbol
           );
           
           return {
@@ -133,9 +130,7 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       // Process multiple iterations
       for (let iteration = 0; iteration < 3; iteration++) {
         await orchestrator.orchestrateMarketDataPipeline(
-          `${symbol}_${iteration}`,
-          ['1m'],
-          undefined
+          `${symbol}_${iteration}`
         );
         
         // Force garbage collection
@@ -161,7 +156,6 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       // Start orchestrator operation
       const operationPromise = orchestrator.orchestrateMarketDataPipeline(
         symbol,
-        ['1m'],
         controller.signal
       );
 
@@ -177,13 +171,12 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       
       // Should throw error for DOGEUSDT (circuit breaker simulation)
       await expect(
-        orchestrator.orchestrateMarketDataPipeline(symbol, ['1m'], undefined)
+        orchestrator.orchestrateMarketDataPipeline(symbol, undefined)
       ).rejects.toThrow(/Service failure simulated/);
 
       // Other symbols should still work
       const validResult = await orchestrator.orchestrateMarketDataPipeline(
         'BTCUSDT',
-        ['1m'],
         undefined
       );
       expect(validResult.symbol).toBe('BTCUSDT');
@@ -199,7 +192,6 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       // Execute optimized pipeline
       const result = await orchestrator.orchestrateMarketDataPipeline(
         symbol,
-        ['1m'],
         undefined
       );
 
@@ -246,7 +238,6 @@ describe('🔵 Market Data Microservices Integration Tests - Phase 3 Optimized',
       
       const result = await orchestrator.orchestrateMarketDataPipeline(
         symbol,
-        ['1m'],
         undefined
       );
       

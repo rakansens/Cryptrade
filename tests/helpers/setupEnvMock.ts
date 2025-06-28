@@ -24,6 +24,35 @@
 export { mockEnv, createEnvMockSetup } from './shared/env-mock';
 export type { EnvMockValues, RestoreFunction } from './shared/env-mock';
 
+// Import mockEnv for the alias
+import { mockEnv as mockEnvFunction } from './shared/env-mock';
+
+/**
+ * Test environment mock function alias
+ * テスト環境用の環境変数モック関数（mockEnvのエイリアス）
+ *
+ * @param mockValues - モックする環境変数の値
+ * @returns 元の環境変数を復元する関数
+ */
+export const mockTestEnv = mockEnvFunction;
+
+/**
+ * Create test environment configuration
+ *
+ * テスト用の環境変数設定を作成する
+ *
+ * @param overrides - デフォルト値を上書きする環境変数
+ * @returns 環境変数の設定オブジェクト
+ */
+export function createTestEnv(overrides: Record<string, string> = {}): Record<string, string> {
+  return {
+    NODE_ENV: 'test',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
+    ...overrides
+  };
+}
+
 /**
  * Get default test environment values for integration tests
  * 

@@ -14,7 +14,10 @@ export const env = {
   CI: false,
   DEMO_MODE: false,
   ENABLE_SENTRY: false,
-  DISABLE_CONSOLE_LOGS: false
+  DISABLE_CONSOLE_LOGS: false,
+  // Supabase environment variables (read from process.env to allow test overrides)
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test.supabase.co',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key'
 };
 
 export const isDevelopment = () => env.NODE_ENV === 'development';

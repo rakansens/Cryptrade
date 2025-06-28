@@ -31,7 +31,13 @@ export type RestoreFunction = () => void;
  * restore(); // 元の環境変数を復元
  * ```
  */
-export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
+export function mockEnv(mockValues: EnvMockValues = {}): RestoreFunction {
+  // Ensure process.env exists
+  if (!process.env) {
+    // @ts-ignore
+    process.env = {};
+  }
+  
   // Store original environment values
   const originalValues: EnvMockValues = {};
   const keysToRestore = new Set<string>();
