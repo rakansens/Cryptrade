@@ -1,0 +1,90 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  duplication-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Install similarity-ts
+      run: |
+        cargo install --git https://github.com/mizchi/similarity --bin similarity-ts
+        
+    - name: Check code duplication
+      run: |
+        echo "Running code duplication check..."
+        similarity-ts . -e ts,tsx,js,jsx -m 8 -t 0.85 > duplication-report.txt
+        
+        # Check for high score duplicates (200+)
+        if grep -E "Score: [2-9][0-9][0-9]" duplication-report.txt; then
+          echo "❌ High score duplicates found (Score 200+)"
+          echo "Please consider using existing base components:"
+          echo "- useEventHandlerBase (for event handling patterns)"
+          echo "- useChartDataBase (for chart data processing)"
+          echo "- useChatProposalBase (for chat proposal handling)"
+          echo "- useStreamBase (for streaming/SSE/WebSocket)"
+          echo ""
+          echo "Top 10 duplicates:"
+          grep "^Similarity:" duplication-report.txt | head -10
+          exit 1
+        fi
+        
+        # Warning for moderately high duplicates (150-199)
+        if grep -E "Score: 1[5-9][0-9]" duplication-report.txt; then
+          echo "⚠️  Moderate duplicates found (Score 150-199)"
+          echo "Consider refactoring if these are in the same domain."
+          echo ""
+          echo "Top 5 moderate duplicates:"
+          grep "^Similarity:" duplication-report.txt | grep -E "Score: 1[5-9][0-9]" | head -5
+        fi
+        
+        echo "✅ Code duplication check passed"
+        
+    - name: Upload duplication report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: duplication-report
+        path: duplication-report.txt
+        retention-days: 7
+        
+    - name: Comment PR with duplication summary
+      if: github.event_name == 'pull_request' && failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('duplication-report.txt', 'utf8');
+          const highScores = report.match(/Score: [2-9][0-9][0-9].*/g) || [];
+          
+          const comment = `## ❌ Code Duplication Check Failed
+          
+          Found ${highScores.length} high-score duplicates (Score 200+).
+          
+          ### Top duplicates:
+          \`\`\`
+          ${highScores.slice(0, 5).join('\n')}
+          \`\`\`
+          
+          ### Recommendations:
+          - Consider using existing base components from \`hooks/shared/\`
+          - Review the [duplication report artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details
+          
+          See \`_docs/2025-06-28_code-deduplication.md\` for more information about our base components.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

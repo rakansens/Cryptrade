@@ -1,0 +1,566 @@
+import { renderHook, act } from '@testing-library/react';
+import { useCleanupBase } from '@/hooks/shared/useCleanupBase';
+import type { CleanupTask } from '@/hooks/shared/useCleanupBase';
+
+// Mock logger
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
+describe('useCleanupBase', () => {
+  const defaultConfig = {
+    hookName: 'useCleanupBase-test',
+    autoCleanupOnUnmount: true,
+    logLevel: 'info' as const
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('initialization', () => {
+    it('should initialize with default values', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      expect(result.current.isMounted()).toBe(true);
+      expect(result.current.getTaskCount()).toBe(0);
+      expect(result.current.isCleaningUp()).toBe(false);
+    });
+
+    it('should handle custom configuration', () => {
+      const customConfig = {
+        hookName: 'custom-cleanup',
+        autoCleanupOnUnmount: false,
+        logLevel: 'debug' as const
+      };
+      
+      const { result } = renderHook(() => useCleanupBase(customConfig));
+      
+      expect(result.current.isMounted()).toBe(true);
+    });
+
+    it('should handle default configuration', () => {
+      const { result } = renderHook(() => useCleanupBase());
+      
+      expect(result.current.isMounted()).toBe(true);
+    });
+  });
+
+  describe('task management', () => {
+    it('should add cleanup tasks', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const mockCleanup = jest.fn();
+      const task: CleanupTask = {
+        id: 'test-task',
+        cleanup: mockCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(result.current.getTaskCount()).toBe(1);
+      expect(result.current.hasTask('test-task')).toBe(true);
+    });
+
+    it('should add multiple cleanup tasks', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const tasks: CleanupTask[] = [
+        { id: 'task-1', cleanup: jest.fn(), priority: 'high' },
+        { id: 'task-2', cleanup: jest.fn(), priority: 'medium' },
+        { id: 'task-3', cleanup: jest.fn(), priority: 'low' }
+      ];
+      
+      act(() => {
+        tasks.forEach(task => result.current.addCleanupTask(task));
+      });
+      
+      expect(result.current.getTaskCount()).toBe(3);
+      expect(result.current.hasTask('task-1')).toBe(true);
+      expect(result.current.hasTask('task-2')).toBe(true);
+      expect(result.current.hasTask('task-3')).toBe(true);
+    });
+
+    it('should replace existing tasks with same ID', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const mockCleanup1 = jest.fn();
+      const mockCleanup2 = jest.fn();
+      
+      const task1: CleanupTask = {
+        id: 'same-id',
+        cleanup: mockCleanup1,
+        priority: 'high'
+      };
+      
+      const task2: CleanupTask = {
+        id: 'same-id',
+        cleanup: mockCleanup2,
+        priority: 'low'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task1);
+        result.current.addCleanupTask(task2);
+      });
+      
+      expect(result.current.getTaskCount()).toBe(1);
+      expect(result.current.hasTask('same-id')).toBe(true);
+    });
+
+    it('should remove cleanup tasks', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const task: CleanupTask = {
+        id: 'removable-task',
+        cleanup: jest.fn(),
+        priority: 'medium'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(result.current.hasTask('removable-task')).toBe(true);
+      
+      act(() => {
+        result.current.removeCleanupTask('removable-task');
+      });
+      
+      expect(result.current.hasTask('removable-task')).toBe(false);
+      expect(result.current.getTaskCount()).toBe(0);
+    });
+
+    it('should handle removing non-existent tasks', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      act(() => {
+        result.current.removeCleanupTask('non-existent');
+      });
+      
+      expect(result.current.getTaskCount()).toBe(0);
+    });
+  });
+
+  describe('task execution', () => {
+    it('should execute cleanup tasks', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const mockCleanup = jest.fn();
+      const task: CleanupTask = {
+        id: 'executable-task',
+        cleanup: mockCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('executable-task');
+      });
+      
+      expect(mockCleanup).toHaveBeenCalled();
+      expect(result.current.hasTask('executable-task')).toBe(false);
+    });
+
+    it('should execute async cleanup tasks', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const mockAsyncCleanup = jest.fn().mockResolvedValue(undefined);
+      const task: CleanupTask = {
+        id: 'async-task',
+        cleanup: mockAsyncCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('async-task');
+      });
+      
+      expect(mockAsyncCleanup).toHaveBeenCalled();
+      expect(result.current.hasTask('async-task')).toBe(false);
+    });
+
+    it('should handle errors in cleanup tasks', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const mockFailingCleanup = jest.fn().mockImplementation(() => {
+        throw new Error('Cleanup failed');
+      });
+      
+      const task: CleanupTask = {
+        id: 'failing-task',
+        cleanup: mockFailingCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('failing-task');
+      });
+      
+      expect(logger.error).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Error executing cleanup task failing-task',
+        expect.objectContaining({
+          error: 'Cleanup failed'
+        })
+      );
+      
+      // Task should still be removed even if it failed
+      expect(result.current.hasTask('failing-task')).toBe(false);
+    });
+
+    it('should handle async cleanup errors', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const mockFailingAsyncCleanup = jest.fn().mockRejectedValue(new Error('Async cleanup failed'));
+      
+      const task: CleanupTask = {
+        id: 'failing-async-task',
+        cleanup: mockFailingAsyncCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('failing-async-task');
+      });
+      
+      expect(logger.error).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Error executing cleanup task failing-async-task',
+        expect.objectContaining({
+          error: 'Async cleanup failed'
+        })
+      );
+    });
+
+    it('should not execute tasks when cleaning up', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const mockCleanup = jest.fn();
+      const task: CleanupTask = {
+        id: 'blocked-task',
+        cleanup: mockCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      // Start cleanup process
+      await act(async () => {
+        await result.current.cleanupAll();
+      });
+      
+      // Try to execute task during cleanup
+      await act(async () => {
+        await result.current.executeCleanupTask('blocked-task');
+      });
+      
+      expect(mockCleanup).toHaveBeenCalledTimes(1); // Only called during cleanupAll
+    });
+  });
+
+  describe('cleanup all', () => {
+    it('should execute all cleanup tasks in priority order', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const executionOrder: string[] = [];
+      
+      const tasks: CleanupTask[] = [
+        {
+          id: 'low-priority',
+          cleanup: () => executionOrder.push('low'),
+          priority: 'low'
+        },
+        {
+          id: 'high-priority',
+          cleanup: () => executionOrder.push('high'),
+          priority: 'high'
+        },
+        {
+          id: 'medium-priority',
+          cleanup: () => executionOrder.push('medium'),
+          priority: 'medium'
+        }
+      ];
+      
+      act(() => {
+        tasks.forEach(task => result.current.addCleanupTask(task));
+      });
+      
+      await act(async () => {
+        await result.current.cleanupAll();
+      });
+      
+      expect(executionOrder).toEqual(['high', 'medium', 'low']);
+      expect(result.current.getTaskCount()).toBe(0);
+    });
+
+    it('should handle mixed sync and async cleanup tasks', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const syncCleanup = jest.fn();
+      const asyncCleanup = jest.fn().mockResolvedValue(undefined);
+      
+      const tasks: CleanupTask[] = [
+        {
+          id: 'sync-task',
+          cleanup: syncCleanup,
+          priority: 'high'
+        },
+        {
+          id: 'async-task',
+          cleanup: asyncCleanup,
+          priority: 'high'
+        }
+      ];
+      
+      act(() => {
+        tasks.forEach(task => result.current.addCleanupTask(task));
+      });
+      
+      await act(async () => {
+        await result.current.cleanupAll();
+      });
+      
+      expect(syncCleanup).toHaveBeenCalled();
+      expect(asyncCleanup).toHaveBeenCalled();
+      expect(result.current.getTaskCount()).toBe(0);
+    });
+
+    it('should continue cleanup even if some tasks fail', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const successfulCleanup = jest.fn();
+      const failingCleanup = jest.fn().mockImplementation(() => {
+        throw new Error('Task failed');
+      });
+      
+      const tasks: CleanupTask[] = [
+        {
+          id: 'successful-task',
+          cleanup: successfulCleanup,
+          priority: 'high'
+        },
+        {
+          id: 'failing-task',
+          cleanup: failingCleanup,
+          priority: 'high'
+        }
+      ];
+      
+      act(() => {
+        tasks.forEach(task => result.current.addCleanupTask(task));
+      });
+      
+      await act(async () => {
+        await result.current.cleanupAll();
+      });
+      
+      expect(successfulCleanup).toHaveBeenCalled();
+      expect(failingCleanup).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalled();
+      expect(result.current.getTaskCount()).toBe(0);
+    });
+  });
+
+  describe('automatic cleanup on unmount', () => {
+    it('should automatically cleanup on unmount when enabled', async () => {
+      const { result, unmount } = renderHook(() => useCleanupBase({
+        ...defaultConfig,
+        autoCleanupOnUnmount: true
+      }));
+      
+      const mockCleanup = jest.fn();
+      const task: CleanupTask = {
+        id: 'auto-cleanup-task',
+        cleanup: mockCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(result.current.getTaskCount()).toBe(1);
+      
+      unmount();
+      
+      expect(mockCleanup).toHaveBeenCalled();
+      expect(result.current.isMounted()).toBe(false);
+    });
+
+    it('should not automatically cleanup on unmount when disabled', async () => {
+      const { result, unmount } = renderHook(() => useCleanupBase({
+        ...defaultConfig,
+        autoCleanupOnUnmount: false
+      }));
+      
+      const mockCleanup = jest.fn();
+      const task: CleanupTask = {
+        id: 'no-auto-cleanup-task',
+        cleanup: mockCleanup,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(result.current.getTaskCount()).toBe(1);
+      
+      unmount();
+      
+      expect(mockCleanup).not.toHaveBeenCalled();
+      expect(result.current.isMounted()).toBe(false);
+    });
+  });
+
+  describe('logging', () => {
+    it('should log task addition', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const task: CleanupTask = {
+        id: 'logged-task',
+        cleanup: jest.fn(),
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(logger.info).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Added cleanup task: logged-task (priority: high)'
+      );
+    });
+
+    it('should log task execution', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const task: CleanupTask = {
+        id: 'logged-execution',
+        cleanup: jest.fn(),
+        priority: 'medium'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('logged-execution');
+      });
+      
+      expect(logger.info).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Executing cleanup task: logged-execution'
+      );
+    });
+
+    it('should use custom log level', () => {
+      const { result } = renderHook(() => useCleanupBase({
+        ...defaultConfig,
+        logLevel: 'debug'
+      }));
+      
+      result.current.safeLog('debug', 'Debug message');
+      
+      const { logger } = require('@/lib/utils/logger');
+      expect(logger.debug).toHaveBeenCalledWith('[useCleanupBase-test] Debug message');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle cleanup tasks without priority', () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      const task: CleanupTask = {
+        id: 'no-priority-task',
+        cleanup: jest.fn()
+        // No priority specified
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      expect(result.current.getTaskCount()).toBe(1);
+      expect(result.current.hasTask('no-priority-task')).toBe(true);
+    });
+
+    it('should handle executing non-existent tasks', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('non-existent-task');
+      });
+      
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Cleanup task not found: non-existent-task'
+      );
+    });
+
+    it('should handle cleanup when no tasks exist', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      
+      await act(async () => {
+        await result.current.cleanupAll();
+      });
+      
+      expect(result.current.getTaskCount()).toBe(0);
+      expect(result.current.isCleaningUp()).toBe(false);
+    });
+
+    it('should handle null cleanup functions gracefully', async () => {
+      const { result } = renderHook(() => useCleanupBase(defaultConfig));
+      const { logger } = require('@/lib/utils/logger');
+      
+      const task: CleanupTask = {
+        id: 'null-cleanup-task',
+        cleanup: null as any,
+        priority: 'high'
+      };
+      
+      act(() => {
+        result.current.addCleanupTask(task);
+      });
+      
+      await act(async () => {
+        await result.current.executeCleanupTask('null-cleanup-task');
+      });
+      
+      expect(logger.error).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Error executing cleanup task null-cleanup-task',
+        expect.any(Object)
+      );
+    });
+  });
+});

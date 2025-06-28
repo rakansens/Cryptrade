@@ -1,0 +1,7 @@
+error: unexpected argument '--skip-test' found
+
+  tip: to pass '--skip-test' as a value, use '-- --skip-test'
+
+Usage: similarity-ts --extensions <EXTENSIONS> <PATHS>...
+
+For more information, try '--help'.

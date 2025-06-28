@@ -16,6 +16,23 @@ import {
 } from '@/lib/chart/agent-utils';
 import { validatePatternEvent } from '@/types/events/pattern-events';
 
+// Mock the base component
+jest.mock('@/hooks/shared/useEventHandlerBase', () => ({
+  useEventHandlerBase: jest.fn(() => ({
+    isMounted: jest.fn(() => true),
+    registerEventListener: jest.fn(),
+    getRegisteredEventsCount: jest.fn(() => 3),
+    validateEvent: jest.fn((eventType, detail, validator) => {
+      if (validator) {
+        return validator(eventType, detail);
+      }
+      return { success: true, data: detail };
+    }),
+    executeSafely: jest.fn((name, fn) => fn()),
+    safeLog: jest.fn()
+  }))
+}));
+
 // Mock dependencies
 const mockAddPattern = jest.fn();
 const mockRemovePattern = jest.fn();

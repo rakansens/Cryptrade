@@ -1,167 +1,46 @@
 /**
- * Environment Mocking Utility for Jest Tests
+ * Environment mocking utilities for testing
  * 
- * Provides a clean API for mocking environment variables in tests
- * without directly manipulating process.env or requiring manual cleanup.
+ * This module provides functions to temporarily mock environment variables
+ * during tests and restore them afterward.
  * 
  * @example
  * ```typescript
- * import { mockEnv } from '@/config/testing/setupEnvMock';
- * 
- * describe('My Test', () => {
- *   let restoreEnv: () => void;
- * 
- *   beforeEach(() => {
- *     restoreEnv = mockEnv({
- *       NODE_ENV: 'test',
- *       OPENAI_API_KEY: 'sk-test-key-12345',
- *       LOG_TRANSPORT: 'noop'
- *     });
- *   });
- * 
- *   afterEach(() => {
- *     restoreEnv();
- *   });
- * 
- *   it('should work with mocked environment', () => {
- *     // Test code here - env.OPENAI_API_KEY will be 'sk-test-key-12345'
- *   });
+ * // Mock specific environment variables
+ * const restore = mockEnv({
+ *   NODE_ENV: 'test',
+ *   DATABASE_URL: 'sqlite::memory:',
+ *   OPENAI_API_KEY: 'test-key'
  * });
+ * 
+ * // Run your tests...
+ * 
+ * // Restore original environment
+ * restore();
  * ```
  */
 
-type EnvMockValues = Record<string, string | undefined>;
-type RestoreFunction = () => void;
+// Re-export shared implementation
+export { mockEnv, createEnvMockSetup } from './shared/env-mock';
+export type { EnvMockValues, RestoreFunction } from './shared/env-mock';
 
 /**
- * Mock environment variables for the duration of a test
+ * Get default test environment values for integration tests
  * 
- * @param {EnvMockValues} mockValues - Object containing environment variables to mock
- * @returns {RestoreFunction} Restore function to reset environment back to original state
+ * @returns Default environment values for integration testing
  */
-export function mockEnv(mockValues: EnvMockValues): RestoreFunction {
-  // Store original environment values
-  const originalValues: EnvMockValues = {};
-  const keysToRestore = new Set<string>();
-  
-  // Backup original values
-  Object.keys(mockValues).forEach(key => {
-    originalValues[key] = process.env[key];
-    keysToRestore.add(key);
-  });
-  
-  // Also backup any existing keys that might be undefined in mockValues
-  Object.keys(process.env).forEach(key => {
-    if (!keysToRestore.has(key)) {
-      originalValues[key] = process.env[key];
-      keysToRestore.add(key);
-    }
-  });
-  
-  // Apply mock values
-  Object.entries(mockValues).forEach(([key, value]) => {
-    if (value === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = value;
-    }
-  });
-  
-  // Reset module cache to force env.ts to reload with new values
-  jest.resetModules();
-  
-  // Reset env cache if the module is already loaded
-  try {
-    // Use require to avoid TypeScript import issues during testing
-    const envModule = require('@/config/env');
-    if (envModule._resetEnvCache) {
-      envModule._resetEnvCache();
-    }
-  } catch (error) {
-    // Module not loaded yet or _resetEnvCache not available - this is expected
-    // during initial test setup when env module hasn't been imported yet.
-    // No action needed as the module will be loaded when first accessed.
-  }
-  
-  // Return restore function
-  return (): void => {
-    // Restore original values
-    keysToRestore.forEach(key => {
-      const originalValue = originalValues[key];
-      if (originalValue === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = originalValue;
-      }
-    });
-    
-    // Reset module cache again to ensure clean state
-    jest.resetModules();
-    
-    // Reset env cache after restoration
-    try {
-      const envModule = require('@/config/env');
-      if (envModule._resetEnvCache) {
-        envModule._resetEnvCache();
-      }
-    } catch (error) {
-      // Module not loaded yet or _resetEnvCache not available after restoration.
-      // This is expected behavior and doesn't affect test execution.
-      // The env module will reload with correct values when next imported.
-    }
-  };
-}
-
-/**
- * Create a minimal valid environment for testing
- * Includes all required variables with sensible test defaults
- */
-export function createTestEnv(overrides: Partial<EnvMockValues> = {}): EnvMockValues {
-  const defaults: EnvMockValues = {
+export function getDefaultIntegrationTestEnv(): Record<string, string> {
+  return {
     NODE_ENV: 'test',
-    OPENAI_API_KEY: 'sk-test-key-12345-mock-for-testing',
-    PORT: '3000',
-    LOG_LEVEL: 'error', // Reduce noise in tests
-    LOG_TRANSPORT: 'noop', // No logging in tests by default
-    DISABLE_CONSOLE_LOGS: 'true',
-    ENABLE_SENTRY: 'false',
-    USE_NEW_WS_MANAGER: 'false',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test-key-for-testing',
+    DATABASE_URL: process.env.TEST_DATABASE_URL || 'sqlite::memory:',
+    NEXTAUTH_URL: 'http://localhost:3000',
+    NEXTAUTH_SECRET: 'test-secret',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'test-openai-key',
+    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || 'test-claude-key',
+    LOG_LEVEL: 'warn',
+    FEATURE_FLAGS: JSON.stringify({
+      USE_MOCK_TRADES: !process.env.USE_REAL_TRADES,
+      ENABLE_AI_ANALYSIS: !!process.env.ENABLE_AI_IN_TESTS
+    })
   };
-  
-  return { ...defaults, ...overrides };
-}
-
-/**
- * Convenience function for creating a complete test environment
- * 
- * @example
- * ```typescript
- * beforeEach(() => {
- *   restoreEnv = mockTestEnv({ LOG_TRANSPORT: 'console' });
- * });
- * ```
- */
-export function mockTestEnv(overrides: Partial<EnvMockValues> = {}): RestoreFunction {
-  return mockEnv(createTestEnv(overrides));
-}
-
-/**
- * Reset environment cache without changing process.env values
- * Useful when you need to force env.ts to reload but keep current environment
- */
-export function resetEnvCache(): void {
-  jest.resetModules();
-  
-  try {
-    const envModule = require('@/config/env');
-    if (envModule._resetEnvCache) {
-      envModule._resetEnvCache();
-    }
-  } catch (error) {
-    // Module not loaded yet or _resetEnvCache not available.
-    // This is normal in test environments where the env module
-    // may not have been imported yet. Safe to ignore.
-  }
 }

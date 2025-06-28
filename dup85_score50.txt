@@ -1,0 +1,200 @@
+Found 454 duplicate pairs:
+------------------------------------------------------------
+
+Similarity: 86.80%, Score: 246.5 points (lines 272~296, avg: 284.0)
+  ./components/chart/hooks/useChartInstance.ts:40-335 useChartInstance
+--
+  };
+}
+
+Similarity: 90.48%, Score: 199.0 points (lines 208~232, avg: 220.0)
+  ./components/chart/hooks/useChartData.ts:19-226 useChartData
+--
+  };
+}
+
+Similarity: 85.85%, Score: 192.7 points (lines 217~232, avg: 224.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 86.79%, Score: 183.1 points (lines 190~232, avg: 211.0)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 85.05%, Score: 181.1 points (lines 199~227, avg: 213.0)
+  ./scripts/benchmark-performance.js:310-508 runBenchmarks
+--
+  wsManager.destroy();
+}
+
+Similarity: 86.96%, Score: 161.8 points (lines 140~232, avg: 186.0)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 90.30%, Score: 159.4 points (lines 121~232, avg: 176.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  );
+}
+
+Similarity: 90.12%, Score: 159.1 points (lines 121~232, avg: 176.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  }
+}
+
+Similarity: 89.29%, Score: 153.6 points (lines 112~232, avg: 172.0)
+  ./hooks/base/use-streaming.ts:262-373 useSSE
+--
+  };
+}
+
+Similarity: 87.02%, Score: 151.4 points (lines 140~208, avg: 174.0)
+  ./components/chart/hooks/useChartData.ts:19-226 useChartData
+--
+  };
+}
+
+Similarity: 89.02%, Score: 150.4 points (lines 121~217, avg: 169.0)
+  ./hooks/shared/useChatProposalBase.ts:37-253 useChatProposalBase
+--
+  );
+}
+
+Similarity: 86.16%, Score: 145.6 points (lines 121~217, avg: 169.0)
+  ./hooks/chat/use-message-handling.ts:9-129 useMessageHandling
+--
+  };
+}
+
+Similarity: 85.77%, Score: 144.1 points (lines 104~232, avg: 168.0)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 86.85%, Score: 142.4 points (lines 96~232, avg: 164.0)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  return issues;
+}
+
+Similarity: 88.75%, Score: 140.7 points (lines 85~232, avg: 158.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 86.30%, Score: 135.1 points (lines 95~218, avg: 156.5)
+  ./components/chart/hooks/usePatternDebug.ts:8-102 usePatternDebug
+--
+  };
+}
+
+Similarity: 85.95%, Score: 134.9 points (lines 82~232, avg: 157.0)
+  ./hooks/base/use-async.ts:24-105 useAsyncFn
+--
+  };
+}
+
+Similarity: 88.04%, Score: 133.4 points (lines 71~232, avg: 151.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  }, 1000);
+}
+
+Similarity: 88.03%, Score: 132.9 points (lines 122~180, avg: 151.0)
+  ./lib/mastra/network/message-utils.ts:15-136 formatMessageForAgent
+--
+  }, CONFIG.PROCESS_CHECK_INTERVAL_MS);
+}
+
+Similarity: 86.85%, Score: 132.0 points (lines 72~232, avg: 152.0)
+  ./hooks/base/use-async-state.ts:32-103 useAsyncState
+--
+  };
+}
+
+Similarity: 90.19%, Score: 129.9 points (lines 80~208, avg: 144.0)
+  ./components/chart/hooks/useChartData.ts:19-226 useChartData
+--
+  };
+}
+
+Similarity: 87.98%, Score: 129.8 points (lines 63~232, avg: 147.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 88.69%, Score: 128.2 points (lines 121~168, avg: 144.5)
+  ./hooks/use-analysis-stream.ts:34-201 useAnalysisStream
+--
+  );
+}
+
+Similarity: 86.58%, Score: 125.1 points (lines 121~168, avg: 144.5)
+  ./hooks/chat/use-message-handling.ts:9-129 useMessageHandling
+--
+  };
+}
+
+Similarity: 85.00%, Score: 122.4 points (lines 70~218, avg: 144.0)
+  ./hooks/use-ai-chat.ts:61-278 useAIChat
+--
+  });
+}
+
+Similarity: 90.53%, Score: 121.3 points (lines 50~218, avg: 134.0)
+  ./hooks/chat/use-cancel-drawing.ts:13-62 useCancelDrawing
+--
+  };
+}
+
+Similarity: 86.07%, Score: 115.8 points (lines 37~232, avg: 134.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  }
+}
+
+Similarity: 85.53%, Score: 115.5 points (lines 52~218, avg: 135.0)
+  ./hooks/use-ai-chat.ts:61-278 useAIChat
+--
+  };
+}
+
+Similarity: 86.13%, Score: 115.4 points (lines 36~232, avg: 134.0)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}
+
+Similarity: 86.75%, Score: 114.5 points (lines 84~180, avg: 132.0)
+  ./hooks/shared/useEventHandlerBase.ts:47-130 useEventHandlerBase
+--
+  }, CONFIG.PROCESS_CHECK_INTERVAL_MS);
+}
+
+Similarity: 87.70%, Score: 114.5 points (lines 121~140, avg: 130.5)
+  ./hooks/chat/use-message-handling.ts:9-129 useMessageHandling
+--
+  };
+}
+
+Similarity: 88.67%, Score: 113.5 points (lines 38~218, avg: 128.0)
+  ./hooks/chat/use-reject-proposal.ts:11-48 useRejectProposal
+--
+  };
+}
+
+Similarity: 86.25%, Score: 113.4 points (lines 31~232, avg: 131.5)
+  ./hooks/chat/use-approve-proposal.ts:26-257 useApproveProposal
+--
+  };
+}

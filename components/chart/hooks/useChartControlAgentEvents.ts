@@ -1,8 +1,11 @@
 // 新規ファイル: Chartコントロール系エージェントイベント専用Hook
 // 目的: useAgentEventHandlers 内の肥大化した chart 操作イベントを分離し SRP を維持
 
-import { useEffect } from 'react';
-import { logger } from '@/lib/utils/logger';
+import { 
+  useEventHandlerBase, 
+  createEventHandlerConfig, 
+  createEventListeners 
+} from '@/hooks/shared/useEventHandlerBase';
 
 export interface ChartControlHandlers {
   fitContent?: () => void;
@@ -20,45 +23,56 @@ export interface ChartControlHandlers {
 export function useChartControlAgentEvents(handlers: ChartControlHandlers) {
   const { fitContent, zoomIn, zoomOut, resetView } = handlers;
 
-  useEffect(() => {
-    // --- ハンドラ定義 --- //
-    const handleFitContent = () => {
-      logger.info('[Agent Event] Handling chart:fitContent');
+  // Event handler configuration
+  const config = createEventHandlerConfig<any>(
+    {
+      'chart:fitContent': 'Fit content',
+      'chart:requestFitContent': 'Fit content', // 互換エイリアス
+      'chart:zoomIn': 'Zoom in',
+      'chart:zoomOut': 'Zoom out',
+      'chart:resetView': 'Reset view',
+    },
+    {
+      'chart:fitContent': () => 'Chart content fitted',
+      'chart:requestFitContent': () => 'Chart content fitted',
+      'chart:zoomIn': (data) => `Zoomed in by factor ${data?.factor || 1.2}`,
+      'chart:zoomOut': (data) => `Zoomed out by factor ${data?.factor || 0.8}`,
+      'chart:resetView': () => 'Chart view reset',
+    },
+    // Simple validator - chart control events don't need complex validation
+    (_eventType, detail) => ({ success: true, data: { data: detail } })
+  );
+
+  // Event processors
+  const processors = {
+    fitContent: async () => {
       fitContent?.();
-    };
-
-    const handleZoomIn = (e: CustomEvent) => {
-      const factor = e.detail?.factor || 1.2;
-      logger.info('[Agent Event] Handling chart:zoomIn', { factor });
+    },
+    
+    zoomIn: async (data: any) => {
+      const factor = data?.factor || 1.2;
       zoomIn?.(factor);
-    };
-
-    const handleZoomOut = (e: CustomEvent) => {
-      const factor = e.detail?.factor || 0.8;
-      logger.info('[Agent Event] Handling chart:zoomOut', { factor });
+    },
+    
+    zoomOut: async (data: any) => {
+      const factor = data?.factor || 0.8;
       zoomOut?.(factor);
-    };
-
-    const handleResetView = () => {
-      logger.info('[Agent Event] Handling chart:resetView');
+    },
+    
+    resetView: async () => {
       resetView?.();
-    };
+    }
+  };
 
-    // --- イベント登録 --- //
-    const bindings: [string, EventListener][] = [
-      ['chart:fitContent', handleFitContent as EventListener],
-      ['chart:requestFitContent', handleFitContent as EventListener], // 互換エイリアス
-      ['chart:zoomIn', handleZoomIn as EventListener],
-      ['chart:zoomOut', handleZoomOut as EventListener],
-      ['chart:resetView', handleResetView as EventListener],
-    ];
+  // Create event listeners
+  const eventListeners = createEventListeners([
+    { eventType: 'chart:fitContent', processor: processors.fitContent },
+    { eventType: 'chart:requestFitContent', processor: processors.fitContent }, // 互換エイリアス
+    { eventType: 'chart:zoomIn', processor: processors.zoomIn },
+    { eventType: 'chart:zoomOut', processor: processors.zoomOut },
+    { eventType: 'chart:resetView', processor: processors.resetView },
+  ]);
 
-    bindings.forEach(([type, listener]) => window.addEventListener(type, listener));
-    logger.info('[ChartControlAgentEvents] Registered', { eventCount: bindings.length });
-
-    return () => {
-      bindings.forEach(([type, listener]) => window.removeEventListener(type, listener));
-      logger.info('[ChartControlAgentEvents] Cleaned up');
-    };
-  }, [fitContent, zoomIn, zoomOut, resetView]);
-} 
+  // Use the base hook
+  useEventHandlerBase(config, eventListeners, [fitContent, zoomIn, zoomOut, resetView]);
+}

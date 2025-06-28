@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import type { UTCTimestamp } from 'lightweight-charts';
 import type { ProcessedKline, IndicatorOptions } from '@/types/market';
 import { prepareLightweightChartsData } from '@/lib/utils/chart-data';
 import { calculateMultipleMovingAverages, getMovingAverageConfigs } from '@/lib/indicators/moving-average';
 import { calculateBollingerBands, getBollingerBandsConfig } from '@/lib/indicators/bollinger-bands';
 import type { ChartSeriesRefs } from './useChartInstance';
+import { useChartDataBase } from '@/hooks/shared/useChartDataBase';
 
 export interface UseChartDataProps {
   priceData: ProcessedKline[];
@@ -23,6 +24,13 @@ export function useChartData({
   autoFit = true
 }: UseChartDataProps) {
   
+  // 共通基盤初期化
+  const chartDataBase = useChartDataBase<ProcessedKline[]>({
+    hookName: 'useChartData',
+    enableAutoCleanup: true,
+    logLevel: 'info'
+  });
+  
   // Prepare candlestick data
   const formattedData = useMemo(() => {
     if (priceData.length === 0) return [];
@@ -35,11 +43,12 @@ export function useChartData({
       close: candle.close,
     }));
 
-    return prepareLightweightChartsData(rawFormattedData).map(d => ({
+    const prepared = prepareLightweightChartsData(rawFormattedData);
+    return chartDataBase.formatChartData(prepared).map(d => ({
       ...d,
       time: d.time as UTCTimestamp
     }));
-  }, [priceData]);
+  }, [priceData, chartDataBase.formatChartData]);
 
   // Calculate moving averages
   const movingAverageData = useMemo(() => {
@@ -67,106 +76,99 @@ export function useChartData({
     };
   }, [formattedData, bollingerSettings]);
 
-  // Track previous data length to detect major updates vs incremental updates
-  const prevDataLength = useRef(0);
-  const isInitialUpdate = useRef(true);
-  const hasAutoFitted = useRef(false);
-  const lastSymbol = useRef('');
-
   // Update only candlestick data - indicators are managed separately
   useEffect(() => {
-    if (formattedData.length === 0) return;
+    if (formattedData.length === 0 || !chartDataBase.isMounted()) return;
 
-    const series = getSeries();
-    const currentSymbol = '';
-    const isSymbolChange = false;
-    
-    // Only auto-fit on symbol change or initial load, not on timeframe changes
-    const shouldAutoFit = autoFit && (isSymbolChange || (!hasAutoFitted.current && isInitialUpdate.current));
-    
-    try {
-      // Update only candlestick data
-      if (series.candlestick) {
-        series.candlestick.setData(formattedData);
+    const hasDataChanged = chartDataBase.detectDataChange(formattedData, (data) => data.length);
+    if (!hasDataChanged) return;
+
+    chartDataBase.executeSafely(
+      'Update candlestick data',
+      async () => {
+        const series = getSeries();
+        
+        // Update only candlestick data
+        if (series.candlestick) {
+          series.candlestick.setData(formattedData);
+        }
+
+        // Auto-fit on initial load only
+        const shouldAutoFit = autoFit && !chartDataBase.hasAutoProcessed();
+        if (shouldAutoFit) {
+          setTimeout(() => fitContent(), 100);
+          chartDataBase.setAutoProcessed();
+        }
+      },
+      {
+        data: { 
+          dataLength: formattedData.length,
+          hasCandelstickSeries: !!getSeries().candlestick,
+          dataSample: formattedData.slice(-5)
+        }
       }
-
-      // Auto-fit only on initial load or symbol changes, not on timeframe changes
-      if (shouldAutoFit) {
-        setTimeout(() => fitContent(), 100);
-        hasAutoFitted.current = true;
-      }
-
-      prevDataLength.current = formattedData.length;
-      lastSymbol.current = currentSymbol;
-      isInitialUpdate.current = false;
-
-    } catch (error) {
-      console.error('[ChartData] Error setting chart data:', error, {
-        dataLength: formattedData.length,
-        hasCandelstickSeries: !!series.candlestick,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      console.log('[ChartData] Data sample (last 5 candles):', formattedData.slice(-5));
-    }
-  }, [formattedData, getSeries, fitContent, autoFit]);
+    );
+  }, [formattedData, getSeries, fitContent, autoFit, chartDataBase]);
 
   // Separate effect for updating existing indicator series with new data
   useEffect(() => {
-    if (formattedData.length === 0) return;
+    if (formattedData.length === 0 || !chartDataBase.isMounted()) return;
     
-    const series = getSeries();
-    
-    try {
-      // Update existing MA series (only if they exist)
-      Object.entries(movingAverageData).forEach(([period, data]) => {
-        const periodNum = parseInt(period);
-        const maSeries = series.movingAverages[periodNum];
-        if (maSeries && data.length > 0) {
-          maSeries.setData(data);
+    chartDataBase.executeSafely(
+      'Update indicator data',
+      async () => {
+        const series = getSeries();
+        
+        // Update existing MA series (only if they exist)
+        Object.entries(movingAverageData).forEach(([period, data]) => {
+          const periodNum = parseInt(period);
+          const maSeries = series.movingAverages[periodNum];
+          if (maSeries && data.length > 0) {
+            maSeries.setData(data);
+          }
+        });
+
+        // Update existing Bollinger Bands series (only if they exist)
+        if (bollingerBandsData && series.bollingerBands.upper) {
+          const { data } = bollingerBandsData;
+
+          if (data.length > 0) {
+            const upperBandData = data.map(point => ({
+              time: point.time,
+              value: point.upper,
+            }));
+
+            const middleBandData = data.map(point => ({
+              time: point.time,
+              value: point.middle,
+            }));
+
+            const lowerBandData = data.map(point => ({
+              time: point.time,
+              value: point.lower,
+            }));
+
+            if (series.bollingerBands.upper) {
+              series.bollingerBands.upper.setData(upperBandData);
+            }
+            if (series.bollingerBands.middle) {
+              series.bollingerBands.middle.setData(middleBandData);
+            }
+            if (series.bollingerBands.lower) {
+              series.bollingerBands.lower.setData(lowerBandData);
+            }
+          }
         }
-      });
-
-      // Update existing Bollinger Bands series (only if they exist)
-      if (bollingerBandsData && series.bollingerBands.upper) {
-        const { data } = bollingerBandsData;
-
-        if (data.length > 0) {
-          const upperBandData = data.map(point => ({
-            time: point.time,
-            value: point.upper,
-          }));
-
-          const middleBandData = data.map(point => ({
-            time: point.time,
-            value: point.middle,
-          }));
-
-          const lowerBandData = data.map(point => ({
-            time: point.time,
-            value: point.lower,
-          }));
-
-          if (series.bollingerBands.upper) {
-            series.bollingerBands.upper.setData(upperBandData);
-          }
-          if (series.bollingerBands.middle) {
-            series.bollingerBands.middle.setData(middleBandData);
-          }
-          if (series.bollingerBands.lower) {
-            series.bollingerBands.lower.setData(lowerBandData);
-          }
+      },
+      {
+        data: {
+          hasMAData: Object.keys(movingAverageData).length > 0,
+          hasBBData: !!bollingerBandsData,
+          dataLength: formattedData.length
         }
       }
-    } catch (error) {
-      console.error('[ChartData] Error setting indicator data:', error, {
-        hasMAData: Object.keys(movingAverageData).length > 0,
-        hasBBData: !!bollingerBandsData,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-    }
-  }, [movingAverageData, bollingerBandsData, getSeries, formattedData.length]);
+    );
+  }, [movingAverageData, bollingerBandsData, getSeries, formattedData.length, chartDataBase]);
 
   // Function to update specific indicator data when newly enabled
   const updateIndicatorData = useCallback((indicatorType: keyof IndicatorOptions) => {

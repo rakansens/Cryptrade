@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { logger } from '@/lib/utils/logger';
+import { useCleanupBase } from '@/hooks/shared/useCleanupBase';
+import { useDependencyBase, createCommonDependencyGroups } from '@/hooks/shared/useDependencyBase';
 
 /**
  * Base hook for WebSocket connections
@@ -99,6 +101,35 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const urlRef = useRef(url);
+
+  // 共通クリーンアップ管理
+  const cleanupBase = useCleanupBase({
+    hookName: 'useWebSocket',
+    logLevel: 'info',
+    autoCleanupOnUnmount: true
+  });
+
+  // 依存配列管理
+  const dependencyBase = useDependencyBase({
+    hookName: 'useWebSocket',
+    groups: [
+      createCommonDependencyGroups.options([
+        protocols, reconnect, reconnectInterval, reconnectDecay,
+        maxReconnectInterval, maxReconnectAttempts, shouldReconnect, filter
+      ]),
+      createCommonDependencyGroups.eventHandlers([
+        onOpen, onClose, onMessage, onError,
+        onReconnectAttempt, onReconnectFailed, onReconnectSuccess
+      ]),
+      createCommonDependencyGroups.stateManagement([
+        isConnecting, readyState
+      ]),
+      createCommonDependencyGroups.externalResources([
+        startHeartbeat, stopHeartbeat
+      ])
+    ],
+    logLevel: 'info'
+  });
 
   // Update URL ref when it changes
   useEffect(() => {
@@ -288,27 +319,7 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
       setIsConnecting(false);
       setError(new Event('WebSocket creation failed'));
     }
-  }, [
-    protocols,
-    isConnecting,
-    reconnect,
-    reconnectInterval,
-    reconnectDecay,
-    maxReconnectInterval,
-    maxReconnectAttempts,
-    shouldReconnect,
-    filter,
-    startHeartbeat,
-    stopHeartbeat,
-    onOpen,
-    onClose,
-    onMessage,
-    onError,
-    onReconnectAttempt,
-    onReconnectFailed,
-    onReconnectSuccess,
-    readyState,
-  ]);
+  }, dependencyBase.mergedDependencies);
 
   // Send message function
   const sendMessage = useCallback((message: string | ArrayBufferLike | Blob | ArrayBufferView) => {
@@ -328,9 +339,27 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
       connect();
     }
 
+    // 共通クリーンアップベースを使用してクリーンアップタスクを登録
+    cleanupBase.registerCleanupTask({
+      id: 'websocket-mount-state',
+      cleanup: () => {
+        isMountedRef.current = false;
+      },
+      priority: 'high'
+    });
+
+    cleanupBase.registerCleanupTask({
+      id: 'websocket-disconnect',
+      cleanup: () => disconnect(),
+      priority: 'high'
+    });
+
+    cleanupBase.cleanupTimeout(reconnectTimeoutRef, 'reconnect-timeout');
+    cleanupBase.cleanupTimeout(heartbeatIntervalRef, 'heartbeat-interval');
+    cleanupBase.cleanupRef(webSocketRef, (ws) => ws.close(), 'websocket-ref');
+
     return () => {
-      isMountedRef.current = false;
-      disconnect();
+      cleanupBase.executeAllCleanupTasks();
     };
   }, []); // Only run on mount/unmount
 

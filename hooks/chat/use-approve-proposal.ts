@@ -4,18 +4,17 @@ import { useCallback } from 'react';
 import { useAnalysisActions } from '@/store/analysis-history.store';
 import { useChat } from '@/store/chat.store';
 import { useAddApprovedDrawing } from '@/store/proposal-approval.store';
-import { useUIEventPublisher } from '@/store/ui-event.store';
 import { useAsyncState } from '@/hooks/base/use-async-state';
 import { validateDrawingData } from '@/schema/drawing';
 import { type ProposalMessage } from '@/types/proposals';
 import type { ExtendedProposal } from '@/types/proposals';
 import { createChartEvent } from '@/types/events/chart-events';
 import { showProposalApprovalSuccess, showProposalApprovalError } from '@/lib/notifications/toast';
-import { logger } from '@/lib/utils/logger';
 import type { AnalysisRecord } from '@/types/analysis-history';
+import { useChatProposalBase } from '@/hooks/shared/useChatProposalBase';
 
 export interface UseApproveProposalReturn {
-  approveProposal: (message: ProposalMessage, proposalId: string) => Promise<void | null>;
+  approveProposal: (message: ProposalMessage, proposalId: string) => Promise<void>;
   approveAllProposals: (message: ProposalMessage) => Promise<void>;
   approveLoading: boolean;
   approveError: string | null;
@@ -28,54 +27,46 @@ export function useApproveProposal(): UseApproveProposalReturn {
   const { addRecord: addAnalysisRecord } = useAnalysisActions();
   const { currentSessionId } = useChat();
   const addApprovedDrawing = useAddApprovedDrawing();
-  const { publish } = useUIEventPublisher();
+  
+  const proposalBase = useChatProposalBase({
+    hookName: 'useApproveProposal',
+    defaultSymbol: 'BTCUSDT',
+    logLevel: 'info'
+  });
 
-  const approveAsync = useCallback(async (message: ProposalMessage, proposalId: string) => {
-    if (!message.proposalGroup || !publish || !currentSessionId) {
-      logger.error('[ApproveProposal] Missing required data for proposal approval', {
-        hasMessage: !!message,
-        hasProposalGroup: !!message?.proposalGroup,
-        hasPublish: !!publish,
-        hasSessionId: !!currentSessionId,
-        messageId: message?.id,
-        proposalId
-      });
-      throw new Error('Missing required data for proposal approval');
+  const approveAsync = useCallback(async (message: ProposalMessage, proposalId: string): Promise<void> => {
+    // 基本バリデーション（基盤使用）
+    const validation = proposalBase.validateProposalRequest(message, proposalId, true);
+    if (!validation.success) {
+      throw new Error(validation.error || 'Validation failed');
     }
 
-    if (!proposalId) {
-      logger.error('[ApproveProposal] proposalId is required but was not provided', {
-        messageId: message.id,
-        proposalGroupId: message.proposalGroup.id
-      });
-      throw new Error('Proposal ID is required');
+    // セッションIDチェック
+    if (!currentSessionId) {
+      proposalBase.handleProposalError(
+        new Error('Session ID is required'),
+        validation.context!,
+        'Proposal approval'
+      );
+      throw new Error('Session ID is required');
     }
 
-    const proposalData = message.proposalGroup.proposals.find(p => p.id === proposalId);
-    if (!proposalData) {
-      logger.error('[ApproveProposal] Proposal not found', { proposalId });
-      throw new Error('Proposal not found');
-    }
+    const { context } = validation;
+    const proposalData = proposalBase.getProposalData(message, proposalId)!;
 
-    // Extract symbol and interval from proposal group title/description or use defaults
-    const extractSymbolFromTitle = (title: string): string => {
-      const symbolMatch = title.match(/([A-Z]{3,}USDT?|[A-Z]{3,}USD)/);
-      return symbolMatch?.[1] || 'BTCUSDT';
-    };
-
-    const extractIntervalFromDescription = (description: string): string => {
-      const intervalMatch = description.match(/(\d+[mhd])/);
-      return intervalMatch?.[1] || '1h';
-    };
-
-    // Construct proposal with context from message
+    // 拡張提案オブジェクト構築
     const proposal: ExtendedProposal = {
       ...proposalData,
-      symbol: extractSymbolFromTitle(message.proposalGroup.title),
-      interval: extractIntervalFromDescription(message.proposalGroup.description),
+      symbol: context!.symbol,
+      interval: context!.interval!,
       reasoning: proposalData.reason, // Map reason to reasoning for ExtendedProposal
     } as ExtendedProposal;
-    logger.info('[ApproveProposal] Approving proposal', { proposalId, type: proposal.type });
+    
+    proposalBase.safeLog('info', 'Approving proposal', { 
+      proposalId, 
+      type: proposal.type,
+      context 
+    });
 
     // Validate the drawing data
     const drawingData = 'drawingData' in proposalData ? proposalData.drawingData : undefined;
@@ -125,7 +116,7 @@ export function useApproveProposal(): UseApproveProposalReturn {
           symbol: proposal.symbol,
           interval: proposal.interval,
           proposalId: proposalId,
-          proposalGroup: message.proposalGroup.id,
+          proposalGroup: context!.proposalGroupId,
           approvedAt: new Date().toISOString()
         }
       });
@@ -134,10 +125,26 @@ export function useApproveProposal(): UseApproveProposalReturn {
     // Dispatch the drawing creation event directly to the window
     if (typeof window !== 'undefined') {
       window.dispatchEvent(chartEvent);
-      logger.info('[ApproveProposal] Drawing added to chart', { eventType: chartEvent.type, drawingId });
+      proposalBase.safeLog('info', 'Drawing added to chart', { 
+        eventType: chartEvent.type, 
+        drawingId,
+        context 
+      });
     } else {
-      // If on server, publish through SSE
-      publish(chartEvent);
+      // If on server, publish through SSE (基盤のPublisher使用チェック)
+      if (proposalBase.hasPublisher) {
+        // 基盤内部でpublishしてもらう（一時的にカスタムイベントとして）
+        const customEvent = new CustomEvent('chart:event', { detail: chartEvent });
+        proposalBase.publishProposalEvent('approve', context!, { 
+          chartEvent: customEvent,
+          drawingId 
+        });
+      } else {
+        proposalBase.safeLog('warn', 'Cannot publish chart event - no publisher available', {
+          eventType: chartEvent.type,
+          drawingId
+        });
+      }
     }
 
     // Update approved drawing IDs in store
@@ -198,28 +205,20 @@ export function useApproveProposal(): UseApproveProposalReturn {
       };
       
       addAnalysisRecord(analysisRecord);
-      logger.info('[ApproveProposal] Analysis record created', { proposalId });
+      proposalBase.safeLog('info', 'Analysis record created', { 
+        proposalId,
+        context,
+        recordType: analysisRecord.type 
+      });
     }
 
-    // Publish approval event  
-    const approvalEvent = new CustomEvent('ui:proposal-action', {
-      detail: {
-        action: 'approve',
-        proposalId: proposalId,
-        proposalGroupId: message.proposalGroup.id,
-        drawingId: drawingId,
-        symbol: proposal.symbol,
-        interval: proposal.interval,
-        timestamp: Date.now()
-      }
-    });
-    
-    publish(approvalEvent);
+    // イベント発行（基盤使用）
+    proposalBase.publishProposalEvent('approve', context!, { drawingId });
 
-    // Show success notification
+    // 成功通知
     showProposalApprovalSuccess(proposal.symbol, proposal.type || validatedData.type);
 
-  }, [publish, currentSessionId, addAnalysisRecord, addApprovedDrawing]);
+  }, [proposalBase, currentSessionId, addAnalysisRecord, addApprovedDrawing]);
 
   const {
     execute: approveProposal,
@@ -227,38 +226,27 @@ export function useApproveProposal(): UseApproveProposalReturn {
     error: approveError,
   } = useAsyncState(async (message: ProposalMessage, proposalId: string) => {
     try {
-      return await approveAsync(message, proposalId);
+      await approveAsync(message, proposalId);
     } catch (error) {
-      logger.error('[ApproveProposal] Failed to approve proposal', { error });
+      // 基盤のエラーハンドリング使用
+      const validation = proposalBase.validateProposalRequest(message, proposalId, false);
+      if (validation.success && validation.context) {
+        proposalBase.handleProposalError(error, validation.context, 'Proposal approval');
+      } else {
+        proposalBase.safeLog('error', 'Failed to approve proposal', { 
+          error: error instanceof Error ? error.message : String(error),
+          proposalId 
+        });
+      }
       showProposalApprovalError(error as Error);
       throw error;
     }
   });
 
   const approveAllProposals = useCallback(async (message: ProposalMessage) => {
-    if (!message.proposalGroup) {
-      logger.warn('[ApproveProposal] No proposal group found for approve all');
-      return;
-    }
-    
-    logger.info('[ApproveProposal] Approving all proposals', { 
-      groupId: message.proposalGroup.id,
-      count: message.proposalGroup.proposals.length 
-    });
-    
-    // Approve all proposals sequentially to avoid race conditions
-    for (const proposal of message.proposalGroup.proposals) {
-      try {
-        await approveProposal(message, proposal.id);
-      } catch (error) {
-        logger.error('[ApproveProposal] Failed to approve proposal in batch', { 
-          proposalId: proposal.id, 
-          error 
-        });
-        // Continue with other proposals even if one fails
-      }
-    }
-  }, [approveProposal]);
+    // 一括処理（基盤使用）
+    await proposalBase.processBatchProposals(message, approveProposal, 'approve');
+  }, [proposalBase, approveProposal]);
 
   return {
     approveProposal,

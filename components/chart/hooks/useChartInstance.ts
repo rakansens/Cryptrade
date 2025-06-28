@@ -5,6 +5,8 @@ import { useChartSync } from './useChartSync';
 import { ChartDrawingManager } from '@/lib/chart/drawing-primitives';
 import { DrawingRenderer, isDrawingRendererEnabled } from '@/lib/chart/drawing-renderer';
 import { PatternRendererAdapter, createPatternRendererWithAutoSelection } from '@/lib/chart/PatternRendererAdapter';
+import { useCleanupBase } from '@/hooks/shared/useCleanupBase';
+import { useDependencyBase, createCommonDependencyGroups } from '@/hooks/shared/useDependencyBase';
 
 export interface ChartTheme {
   background: string;
@@ -47,6 +49,15 @@ export function useChartInstance({
   const [drawingManager, setDrawingManager] = useState<ChartDrawingManager | null>(null);
   const drawingRendererRef = useRef<DrawingRenderer | null>(null);
   const patternRendererRef = useRef<PatternRendererAdapter | null>(null);
+
+  // 共通クリーンアップ管理
+  const cleanupBase = useCleanupBase({
+    hookName: 'useChartInstance',
+    logLevel: 'info',
+    autoCleanupOnUnmount: true
+  });
+
+  // 依存配列管理（関数定義後に初期化）
   
   const seriesRefs = useRef<ChartSeriesRefs>({
     candlestick: null,
@@ -271,43 +282,46 @@ export function useChartInstance({
 
     window.addEventListener('resize', handleResize);
 
+    // 共通クリーンアップベースを使用してクリーンアップタスクを登録
+    cleanupBase.cleanupEventListener(window, 'resize', handleResize, 'window-resize');
+    cleanupBase.cleanupObserver(resizeObserver as any, 'resize-observer');
+    
+    cleanupBase.registerCleanupTask({
+      id: 'chart-sync-unregister',
+      cleanup: unregisterChart,
+      priority: 'high'
+    });
+    
+    cleanupBase.cleanupRef(drawingManagerRef, (manager) => {
+      manager.clearAll();
+      setDrawingManager(null);
+    }, 'drawing-manager');
+    
+    cleanupBase.cleanupRef(drawingRendererRef, (renderer) => renderer.cleanup(), 'drawing-renderer');
+    cleanupBase.cleanupRef(patternRendererRef, (adapter) => adapter.dispose(), 'pattern-renderer');
+    
+    cleanupBase.registerCleanupTask({
+      id: 'chart-instance-cleanup',
+      cleanup: () => {
+        chart.remove();
+        chartInstanceRef.current = null;
+        seriesRefs.current = {
+          candlestick: null,
+          movingAverages: {},
+          bollingerBands: {
+            upper: null,
+            middle: null,
+            lower: null,
+          },
+        };
+      },
+      priority: 'high'
+    });
+
     return () => {
-      window.removeEventListener('resize', handleResize);
-      resizeObserver.disconnect();
-      unregisterChart(); // Unregister from sync manager
-      
-      // Clean up drawing manager
-      if (drawingManagerRef.current) {
-        drawingManagerRef.current.clearAll();
-        drawingManagerRef.current = null;
-        setDrawingManager(null);
-      }
-      
-      // Clean up drawing renderer
-      if (drawingRendererRef.current) {
-        drawingRendererRef.current.cleanup();
-        drawingRendererRef.current = null;
-      }
-      
-      // Clean up pattern renderer adapter
-      if (patternRendererRef.current) {
-        patternRendererRef.current.dispose();
-        patternRendererRef.current = null;
-      }
-      
-      chart.remove();
-      chartInstanceRef.current = null;
-      seriesRefs.current = {
-        candlestick: null,
-        movingAverages: {},
-        bollingerBands: {
-          upper: null,
-          middle: null,
-          lower: null,
-        },
-      };
+      cleanupBase.executeAllCleanupTasks();
     };
-  }, [createChartInstance, createCandlestickSeries, handleResize, unregisterChart]); // unregisterChart is stable from useChartSync
+  }, [createChartInstance, createCandlestickSeries, handleResize, unregisterChart]);
 
   const fitContent = useCallback(() => {
     const chart = chartInstanceRef.current;

@@ -60,7 +60,7 @@ export function useEventHandlerBase<T = any>(
       // Validation phase
       const validation = config.validator(eventType, event.detail);
       if (!validation.success) {
-        handleValidationError(validation, {
+        handleValidationError(validation as { success: false; error: unknown }, {
           eventType,
           operation: config.getOperation(eventType),
           payload: event.detail,

@@ -27,6 +27,29 @@ jest.mock('@/lib/indicators/bollinger-bands', () => ({
   })),
 }));
 
+// Mock the base component
+jest.mock('@/hooks/shared/useChartDataBase', () => ({
+  useChartDataBase: jest.fn(() => ({
+    isMounted: jest.fn(() => true),
+    formatChartData: jest.fn((data) => data),
+    detectDataChange: jest.fn(() => true),
+    executeSafely: jest.fn((name, fn) => fn()),
+    hasAutoProcessed: jest.fn(() => false),
+    setAutoProcessed: jest.fn(),
+    safeLog: jest.fn()
+  }))
+}));
+
+// Mock logger
+jest.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
 describe('useChartData', () => {
   const mockPriceData: ProcessedKline[] = [
     { time: 1735830000, open: 100000, high: 101000, low: 99000, close: 100500, volume: 1000 },
@@ -211,23 +234,44 @@ describe('useChartData', () => {
   });
 
   it('should handle errors gracefully', () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const { useChartDataBase } = require('@/hooks/shared/useChartDataBase');
+    const mockBase = {
+      isMounted: jest.fn(() => true),
+      formatChartData: jest.fn((data) => data),
+      detectDataChange: jest.fn(() => true),
+      executeSafely: jest.fn((name, fn, context) => {
+        try {
+          return fn();
+        } catch (error) {
+          // Simulate the base component's error handling
+          const { logger } = require('@/lib/utils/logger');
+          logger.error(`[useChartData] Error in ${name}`, { error: error.message, ...context });
+        }
+      }),
+      hasAutoProcessed: jest.fn(() => false),
+      setAutoProcessed: jest.fn(),
+      safeLog: jest.fn()
+    };
+    
+    useChartDataBase.mockReturnValue(mockBase);
+    
     mockSetData.mockImplementationOnce(() => {
       throw new Error('Failed to set data');
     });
     
     renderHook(() => useChartData(defaultProps));
     
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[ChartData] Error setting chart data:',
-      expect.any(Error),
+    const { logger } = require('@/lib/utils/logger');
+    expect(logger.error).toHaveBeenCalledWith(
+      '[useChartData] Error in Update candlestick data',
       expect.objectContaining({
-        dataLength: 3,
-        hasCandelstickSeries: true,
+        error: 'Failed to set data',
+        data: expect.objectContaining({
+          dataLength: 3,
+          hasCandelstickSeries: true
+        })
       })
     );
-    
-    consoleErrorSpy.mockRestore();
   });
 
   it('should not update indicators when series do not exist', () => {

@@ -1,11 +1,12 @@
 // hooks/base/use-sse-stream.ts
 // EventSource ベースの共通 SSE フック
 // [2025-06-11] 初版
+// [2025-06-28] 基盤使用にリファクタリング
 
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { logger } from '@/lib/utils/logger';
+import { useCallback, useEffect } from 'react';
+import { useStreamBase } from '@/hooks/shared/useStreamBase';
 
 export interface UseSSEStreamOptions {
   /** 接続先 URL */
@@ -37,93 +38,85 @@ export function useSSEStream({
   onError,
   autoConnect = true,
 }: UseSSEStreamOptions): UseSSEStreamReturn {
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [lastError, setLastError] = useState<Error | null>(null);
-  const isMountedRef = useRef(true);
-  const eventListenersRef = useRef<Array<{ type: string; handler: (ev: Event) => void }>>([]);
+  // 共通基盤初期化
+  const streamBase = useStreamBase<EventSource, MessageEvent>({
+    hookName: 'useSSEStream',
+    connectionType: 'sse',
+    autoConnect,
+    logLevel: 'info'
+  });
 
   const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      // Remove all event listeners
-      eventListenersRef.current.forEach(({ type, handler }) => {
-        eventSourceRef.current?.removeEventListener(type, handler);
-      });
-      eventListenersRef.current = [];
-      
-      // Clear built-in event handlers
-      eventSourceRef.current.onopen = null;
-      eventSourceRef.current.onerror = null;
-      eventSourceRef.current.onmessage = null;
-      
-      // Close the connection
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsStreaming(false);
-  }, []);
+    streamBase.disconnect();
+  }, [streamBase]);
 
   const connect = useCallback(() => {
-    // Cleanup existing connection
-    if (eventSourceRef.current) {
-      disconnect();
-    }
+    // 既存接続をクリーンアップ
+    disconnect();
 
-    if (!isMountedRef.current) return;
+    if (!streamBase.isMounted()) return;
 
-    logger.info('[useSSEStream] connecting', { url });
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
+    try {
+      streamBase.safeLog('info', 'Connecting to SSE', { url });
+      const es = new EventSource(url);
+      
+      // 接続インスタンスを保存
+      streamBase.connectionRef.instance = es;
 
-    es.onopen = () => {
-      if (!isMountedRef.current) return;
-      setIsStreaming(true);
-      onOpen?.();
-    };
-
-    es.onerror = (e) => {
-      if (!isMountedRef.current) return;
-      logger.error('[useSSEStream] error', { url, e });
-      setIsStreaming(false);
-      setLastError(new Error('SSE error'));
-      onError?.(e);
-    };
-
-    es.onmessage = (ev) => {
-      if (!isMountedRef.current) return;
-      onEvent?.('message', ev);
-    };
-
-    // Store event listeners for cleanup
-    eventListenersRef.current = [];
-    
-    eventTypes.forEach((t) => {
-      const handler = (ev: Event) => {
-        if (!isMountedRef.current) return;
-        onEvent?.(t, ev as MessageEvent);
+      // open イベント
+      es.onopen = () => {
+        streamBase.updateConnectionStatus('connected');
+        onOpen?.();
       };
-      es.addEventListener(t, handler);
-      eventListenersRef.current.push({ type: t, handler });
-    });
-  }, [url, JSON.stringify(eventTypes), disconnect]);
 
+      // error イベント
+      es.onerror = (e) => {
+        const error = new Error('SSE connection error');
+        streamBase.updateConnectionStatus('error', error);
+        onError?.(e);
+        
+        // 自動再接続（必要な場合）
+        if (streamBase.shouldReconnect.current) {
+          streamBase.scheduleReconnect(connect);
+        }
+      };
+
+      // デフォルトメッセージハンドラ
+      es.onmessage = streamBase.createMessageHandler(
+        (data) => onEvent?.('message', data as any),
+        (raw) => ({ data: raw } as any)
+      );
+
+      // カスタムイベントタイプ
+      eventTypes.forEach((eventType) => {
+        streamBase.addEventListener(
+          es,
+          eventType,
+          (ev: MessageEvent) => onEvent?.(eventType, ev)
+        );
+      });
+
+      streamBase.updateConnectionStatus('connecting');
+    } catch (error) {
+      streamBase.safeLog('error', 'Failed to create EventSource', { 
+        error: error instanceof Error ? error.message : String(error),
+        url 
+      });
+      streamBase.updateConnectionStatus('error', error as Error);
+    }
+  }, [url, JSON.stringify(eventTypes), disconnect, onOpen, onEvent, onError, streamBase]);
+
+  // 自動接続処理
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    if (autoConnect) {
+    if (autoConnect && streamBase.isMounted()) {
       connect();
     }
-
-    return () => {
-      isMountedRef.current = false;
-      disconnect();
-    };
-  }, [connect, autoConnect]);
+  }, [autoConnect, connect, streamBase]);
 
   return {
     connect,
     disconnect,
-    isStreaming,
-    error: lastError,
+    isStreaming: streamBase.isStreaming,
+    error: streamBase.connectionError,
   };
 } 

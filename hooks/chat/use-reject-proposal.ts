@@ -1,78 +1,45 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useUIEventPublisher } from '@/store/ui-event.store';
 import { type ProposalMessage } from '@/types/proposals';
 import { showProposalRejectionSuccess } from '@/lib/notifications/toast';
-import { logger } from '@/lib/utils/logger';
+import { useChatProposalBase } from '@/hooks/shared/useChatProposalBase';
 
 /**
  * Hook for handling proposal rejection logic
  */
 export function useRejectProposal() {
-  const { publish } = useUIEventPublisher();
+  const proposalBase = useChatProposalBase({
+    hookName: 'useRejectProposal',
+    defaultSymbol: 'UNKNOWN',
+    logLevel: 'info'
+  });
 
   const rejectProposal = useCallback((message: ProposalMessage, proposalId: string) => {
-    logger.info('[RejectProposal] Rejecting proposal', { proposalId });
-    
-    if (!publish || !message.proposalGroup) {
-      logger.warn('[RejectProposal] Missing required data for rejection', {
-        hasPublish: !!publish,
-        hasProposalGroup: !!message.proposalGroup,
+    // バリデーション（基盤使用）
+    const validation = proposalBase.validateProposalRequest(message, proposalId, true);
+    if (!validation.success) {
+      proposalBase.safeLog('warn', 'Rejection validation failed', { 
+        error: validation.error,
+        proposalId 
       });
       return;
     }
 
-    // Find the proposal for better error messaging
-    const proposalData = message.proposalGroup.proposals.find(p => p.id === proposalId);
-    let symbol: string | undefined;
-    let type: string | undefined;
-    
-    if (proposalData) {
-      // Extract symbol and interval like in approve proposal
-      const extractSymbolFromTitle = (title: string): string => {
-        const symbolMatch = title.match(/([A-Z]{3,}USDT?|[A-Z]{3,}USD)/);
-        return symbolMatch?.[1] || 'UNKNOWN';
-      };
+    const { context } = validation;
+    proposalBase.safeLog('info', 'Rejecting proposal', { proposalId, context });
 
-      symbol = extractSymbolFromTitle(message.proposalGroup.title);
-      type = (proposalData as { type?: string }).type || 'unknown';
-    }
+    // イベント発行（基盤使用）
+    proposalBase.publishProposalEvent('reject', context!);
     
-    // Publish rejection event
-    const rejectionEvent = new CustomEvent('ui:proposal-action', {
-      detail: {
-        action: 'reject',
-        proposalId: proposalId,
-        proposalGroupId: message.proposalGroup.id,
-        ...(symbol && { symbol }),
-        ...(proposalData && 'interval' in proposalData && { interval: (proposalData as { interval?: string }).interval }),
-        timestamp: Date.now()
-      }
-    });
-    
-    publish(rejectionEvent);
-    
-    // Show success notification
-    showProposalRejectionSuccess(symbol, type);
-  }, [publish]);
+    // 成功通知
+    showProposalRejectionSuccess(context!.symbol, context!.type);
+  }, [proposalBase]);
 
-  const rejectAllProposals = useCallback((message: ProposalMessage) => {
-    if (!message.proposalGroup) {
-      logger.warn('[RejectProposal] No proposal group found for reject all');
-      return;
-    }
-    
-    logger.info('[RejectProposal] Rejecting all proposals', { 
-      groupId: message.proposalGroup.id,
-      count: message.proposalGroup.proposals.length 
-    });
-    
-    // Reject all proposals
-    message.proposalGroup.proposals.forEach(proposal => {
-      rejectProposal(message, proposal.id);
-    });
-  }, [rejectProposal]);
+  const rejectAllProposals = useCallback(async (message: ProposalMessage) => {
+    // 一括処理（基盤使用）
+    await proposalBase.processBatchProposals(message, rejectProposal, 'reject');
+  }, [proposalBase, rejectProposal]);
 
   return {
     rejectProposal,
