@@ -1,0 +1,1 @@
+\n/**\n * Mock implementation for alerts API route\n * Simulates the POST endpoint for creating alerts\n */\n\nexport const POST = jest.fn();\n

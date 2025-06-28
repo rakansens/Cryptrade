@@ -23,7 +23,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 // Mock API response helpers
-jest.mock('@/app/api/utils/responses', () => require('../../__mocks__/@/app/api/utils/responses.ts'));
+// This is handled by the __mocks__ directory automatically
 
 // Mock nanoid
 jest.mock('nanoid', () => ({
