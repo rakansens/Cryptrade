@@ -4,7 +4,7 @@ import { getBinanceConnection } from '@/lib/ws';
 import { useMarketActions, usePriceData, useSymbolLoading } from '@/store/market.store';
 import { useIsClient } from '@/hooks/use-is-client';
 import type { BinanceKlineMessage, ProcessedKline } from '@/types/market';
-import { logger } from '@/lib/utils/logger';
+import { useChartDataBase } from '@/hooks/shared/useChartDataBase';
 
 export interface UseCandlestickDataOptions {
   symbol: string;
@@ -25,6 +25,14 @@ export function useCandlestickData({
   limit = 1000 
 }: UseCandlestickDataOptions): UseCandlestickDataReturn {
   const isClient = useIsClient();
+  
+  // 共通基盤初期化
+  const chartDataBase = useChartDataBase<ProcessedKline[]>({
+    hookName: 'useCandlestickData',
+    enableAutoCleanup: true,
+    logLevel: 'info'
+  });
+  
   const { setPriceData, addKline, updateLastKline, setSymbolLoading, setConnectionError } = useMarketActions();
   const priceData = usePriceData(symbol);
   const isLoading = useSymbolLoading(symbol);
@@ -33,32 +41,31 @@ export function useCandlestickData({
 
   // Load initial historical data
   const loadInitialData = useCallback(async () => {
-    if (isInitialLoadRef.current || !isClient) return;
+    if (isInitialLoadRef.current || !isClient || !chartDataBase.isMounted()) return;
     
-    try {
-      setSymbolLoading(symbol, true);
-      logger.info('[CandlestickData] Loading initial data', { symbol, interval, limit });
-      
-      const klines = await binanceAPI.fetchKlines(symbol, interval, limit);
-      setPriceData(symbol, klines);
-      isInitialLoadRef.current = true;
-      
-      logger.info('[CandlestickData] Initial data loaded', { 
-        symbol, 
-        interval, 
-        count: klines.length 
-      });
-      
-    } catch (error) {
-      logger.error('[CandlestickData] Failed to load initial data', { 
-        symbol, 
-        interval 
-      }, error);
-      setConnectionError(`Failed to load chart data for ${symbol}`);
-    } finally {
-      setSymbolLoading(symbol, false);
-    }
-  }, [symbol, interval, limit, isClient, setPriceData, setSymbolLoading, setConnectionError]);
+    return await chartDataBase.executeSafely(
+      'Load initial historical data',
+      async () => {
+        setSymbolLoading(symbol, true);
+        
+        const klines = await binanceAPI.fetchKlines(symbol, interval, limit);
+        setPriceData(symbol, klines);
+        isInitialLoadRef.current = true;
+        
+        return klines;
+      },
+      {
+        symbol,
+        interval,
+        limit,
+        operation: 'historical_data_fetch'
+      }
+    ).finally(() => {
+      if (chartDataBase.isMounted()) {
+        setSymbolLoading(symbol, false);
+      }
+    });
+  }, [symbol, interval, limit, isClient, chartDataBase, setPriceData, setSymbolLoading]);
 
   // Subscribe to real-time kline updates
   useEffect(() => {

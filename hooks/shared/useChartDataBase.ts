@@ -186,6 +186,20 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
     };
   }, [hookName, enableAutoCleanup, safeLog, updateMountState]);
 
+  /**
+   * データ数取得
+   */
+  const getDataCount = useCallback(() => {
+    return dataLength.current;
+  }, []);
+
+  /**
+   * オートプロセス状態リセット
+   */
+  const resetAutoProcessed = useCallback(() => {
+    updateMountState({ hasAutoProcessed: false });
+  }, [updateMountState]);
+
   return {
     // State
     mountState: mountState.current,
@@ -206,5 +220,7 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
     isInitialized: () => mountState.current.isInitialized,
     hasAutoProcessed: () => mountState.current.hasAutoProcessed,
     setAutoProcessed: () => updateMountState({ hasAutoProcessed: true }),
+    getDataCount,
+    resetAutoProcessed,
   };
 }

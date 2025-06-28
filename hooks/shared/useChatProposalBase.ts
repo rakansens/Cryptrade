@@ -5,7 +5,7 @@
  * useApproveProposal/useRejectProposal間の重複パターンを統合
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useUIEventPublisher } from '@/store/ui-event.store';
 import { logger } from '@/lib/utils/logger';
 import type { ProposalMessage } from '@/types/proposals';
@@ -37,6 +37,17 @@ export interface ProposalValidation {
 export function useChatProposalBase(config: ProposalBaseConfig) {
   const { hookName, defaultSymbol = 'BTCUSDT', logLevel = 'info' } = config;
   const { publish } = useUIEventPublisher();
+
+  // マウント状態管理
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
    * タイトルからシンボル抽出（統一版）
@@ -249,6 +260,7 @@ export function useChatProposalBase(config: ProposalBaseConfig) {
     
     // State
     hasPublisher: !!publish,
+    isMounted: () => isMountedRef.current,
   };
 }
 

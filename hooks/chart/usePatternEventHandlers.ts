@@ -11,7 +11,7 @@ import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEv
 import type { PatternData } from '@/store/chart/types';
 import type { PatternVisualization } from '@/types/store.types';
 import type { PatternMetrics } from '@/types/pattern.types';
-import { useEventHandlerBase, createEventHandlerConfig, createEventListeners } from '@/hooks/shared/useEventHandlerBase';
+import { useEventHandlerBase, createEventHandlerConfig, createEventListeners } from '../shared/useEventHandlerBase';
 
 /**
  * Pattern Event Handlers Hook

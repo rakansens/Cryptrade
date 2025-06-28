@@ -16,12 +16,13 @@ describe('useCleanupBase', () => {
   const defaultConfig = {
     hookName: 'useCleanupBase-test',
     autoCleanupOnUnmount: true,
-    logLevel: 'info' as const
+    logLevel: 'debug' as const
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
 
   describe('initialization', () => {
     it('should initialize with default values', () => {
@@ -63,7 +64,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       expect(result.current.getTaskCount()).toBe(1);
@@ -80,7 +81,7 @@ describe('useCleanupBase', () => {
       ];
       
       act(() => {
-        tasks.forEach(task => result.current.addCleanupTask(task));
+        tasks.forEach(task => result.current.registerCleanupTask(task));
       });
       
       expect(result.current.getTaskCount()).toBe(3);
@@ -108,8 +109,8 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task1);
-        result.current.addCleanupTask(task2);
+        result.current.registerCleanupTask(task1);
+        result.current.registerCleanupTask(task2);
       });
       
       expect(result.current.getTaskCount()).toBe(1);
@@ -126,13 +127,13 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       expect(result.current.hasTask('removable-task')).toBe(true);
       
       act(() => {
-        result.current.removeCleanupTask('removable-task');
+        result.current.unregisterCleanupTask('removable-task');
       });
       
       expect(result.current.hasTask('removable-task')).toBe(false);
@@ -143,7 +144,7 @@ describe('useCleanupBase', () => {
       const { result } = renderHook(() => useCleanupBase(defaultConfig));
       
       act(() => {
-        result.current.removeCleanupTask('non-existent');
+        result.current.unregisterCleanupTask('non-existent');
       });
       
       expect(result.current.getTaskCount()).toBe(0);
@@ -162,7 +163,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
@@ -184,7 +185,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
@@ -210,7 +211,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
@@ -218,7 +219,7 @@ describe('useCleanupBase', () => {
       });
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useCleanupBase-test] Error executing cleanup task failing-task',
+        '[useCleanupBase-test] Error in cleanup task failing-task',
         expect.objectContaining({
           error: 'Cleanup failed'
         })
@@ -241,7 +242,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
@@ -249,7 +250,7 @@ describe('useCleanupBase', () => {
       });
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useCleanupBase-test] Error executing cleanup task failing-async-task',
+        '[useCleanupBase-test] Error in cleanup task failing-async-task',
         expect.objectContaining({
           error: 'Async cleanup failed'
         })
@@ -267,7 +268,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       // Start cleanup process
@@ -309,7 +310,7 @@ describe('useCleanupBase', () => {
       ];
       
       act(() => {
-        tasks.forEach(task => result.current.addCleanupTask(task));
+        tasks.forEach(task => result.current.registerCleanupTask(task));
       });
       
       await act(async () => {
@@ -340,7 +341,7 @@ describe('useCleanupBase', () => {
       ];
       
       act(() => {
-        tasks.forEach(task => result.current.addCleanupTask(task));
+        tasks.forEach(task => result.current.registerCleanupTask(task));
       });
       
       await act(async () => {
@@ -375,7 +376,7 @@ describe('useCleanupBase', () => {
       ];
       
       act(() => {
-        tasks.forEach(task => result.current.addCleanupTask(task));
+        tasks.forEach(task => result.current.registerCleanupTask(task));
       });
       
       await act(async () => {
@@ -404,7 +405,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       expect(result.current.getTaskCount()).toBe(1);
@@ -429,7 +430,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       expect(result.current.getTaskCount()).toBe(1);
@@ -453,11 +454,12 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
-      expect(logger.info).toHaveBeenCalledWith(
-        '[useCleanupBase-test] Added cleanup task: logged-task (priority: high)'
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Registered cleanup task: logged-task',
+        { priority: 'high' }
       );
     });
 
@@ -472,15 +474,15 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
         await result.current.executeCleanupTask('logged-execution');
       });
       
-      expect(logger.info).toHaveBeenCalledWith(
-        '[useCleanupBase-test] Executing cleanup task: logged-execution'
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[useCleanupBase-test] Executed cleanup task: logged-execution'
       );
     });
 
@@ -508,7 +510,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       expect(result.current.getTaskCount()).toBe(1);
@@ -550,7 +552,7 @@ describe('useCleanupBase', () => {
       };
       
       act(() => {
-        result.current.addCleanupTask(task);
+        result.current.registerCleanupTask(task);
       });
       
       await act(async () => {
@@ -558,7 +560,7 @@ describe('useCleanupBase', () => {
       });
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useCleanupBase-test] Error executing cleanup task null-cleanup-task',
+        '[useCleanupBase-test] Error in cleanup task null-cleanup-task',
         expect.any(Object)
       );
     });

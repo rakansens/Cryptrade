@@ -166,7 +166,7 @@ describe('useChartDataBase', () => {
       });
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useChartDataBase-test] Error in test operation',
+        '[useChartDataBase-test] test operation failed',
         expect.objectContaining({
           error: 'Test error',
           data: { test: 'context' }

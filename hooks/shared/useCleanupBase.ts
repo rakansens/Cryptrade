@@ -4,6 +4,7 @@
  */
 
 import { useRef, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/utils/logger';
 
 export interface CleanupTask {
   id: string;
@@ -42,18 +43,21 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
       (level === 'debug' && logLevel === 'debug');
 
     if (shouldLog) {
+      const formattedMessage = `[${hookName}] ${message}`;
+      const logData = data ? { ...data } : undefined;
+      
       switch (level) {
         case 'error':
-          console.error(`[${hookName}] ${message}`, data || '');
+          logger.error(formattedMessage, logData);
           break;
         case 'warn':
-          console.warn(`[${hookName}] ${message}`, data || '');
+          logger.warn(formattedMessage, logData);
           break;
         case 'info':
-          console.info(`[${hookName}] ${message}`, data || '');
+          logger.info(formattedMessage, logData);
           break;
         case 'debug':
-          console.log(`[${hookName}] ${message}`, data || '');
+          logger.debug(formattedMessage, logData);
           break;
       }
     }
@@ -100,7 +104,9 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
           ref.current = null;
           safeLog('debug', `Cleaned up ref: ${taskId || 'unnamed'}`);
         } catch (error) {
-          safeLog('error', `Error cleaning up ref ${taskId || 'unnamed'}:`, error);
+          safeLog('error', `Error cleaning up ref ${taskId || 'unnamed'}`, { 
+            error: error instanceof Error ? error.message : String(error) 
+          });
         }
       }
     };
@@ -133,7 +139,9 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
           target.removeEventListener(eventType, listener);
           safeLog('debug', `Removed event listener: ${eventType} from ${taskId}`);
         } catch (error) {
-          safeLog('error', `Error removing event listener ${eventType}:`, error);
+          safeLog('error', `Error removing event listener ${eventType}`, { 
+            error: error instanceof Error ? error.message : String(error) 
+          });
         }
       },
       priority: 'high'
@@ -202,7 +210,9 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
         safeLog('debug', `Completed cleanup task: ${task.id}`);
       } catch (error) {
         errors++;
-        safeLog('error', `Failed to cleanup task ${task.id}:`, error);
+        safeLog('error', `Failed to cleanup task ${task.id}`, { 
+          error: error instanceof Error ? error.message : String(error) 
+        });
       }
     }
 
@@ -219,6 +229,40 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
     };
   }, [executeAllCleanupTasks, autoCleanupOnUnmount]);
 
+  /**
+   * 特定タスクの存在確認
+   */
+  const hasTask = useCallback((taskId: string): boolean => {
+    return tasksRef.current.has(taskId);
+  }, []);
+
+  /**
+   * 特定タスクの実行と削除
+   */
+  const executeCleanupTask = useCallback(async (taskId: string): Promise<boolean> => {
+    const task = tasksRef.current.get(taskId);
+    if (!task || !isMountedRef.current) {
+      return false;
+    }
+
+    try {
+      await task.cleanup();
+      tasksRef.current.delete(taskId);
+      safeLog('debug', `Executed cleanup task: ${taskId}`);
+      return true;
+    } catch (error) {
+      safeLog('error', `Error in cleanup task ${taskId}`, { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      return false;
+    }
+  }, [safeLog]);
+
+  /**
+   * 全クリーンアップタスクの実行（エイリアス）
+   */
+  const cleanupAll = executeAllCleanupTasks;
+
   return {
     // Registration
     registerCleanupTask,
@@ -232,11 +276,14 @@ export function useCleanupBase(config: UseCleanupBaseConfig = { hookName: 'unkno
     
     // Execution
     executeAllCleanupTasks,
+    executeCleanupTask,
+    cleanupAll,
     
     // State
     isMounted: () => isMountedRef.current,
     isCleaningUp: () => isCleaningUpRef.current,
     getTaskCount: () => tasksRef.current.size,
+    hasTask,
     
     // Utilities
     safeLog
