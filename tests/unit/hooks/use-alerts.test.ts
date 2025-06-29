@@ -70,7 +70,8 @@ describe('useAlerts', () => {
     
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ alert: newAlert }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ alert: newAlert }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [newAlert] }) });
 
     const { result } = renderHook(() => useAlerts('user123'));
     

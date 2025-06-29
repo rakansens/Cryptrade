@@ -274,19 +274,29 @@ describe('🔴 Market Data Microservices Integration Tests - Phase 3', () => {
     it('should handle service failures gracefully with circuit breaker pattern', async () => {
       const symbol = 'DOGEUSDT';
       
-      // Simulate service failure
+      // Simulate service failure with proper circuit breaker pattern
       const invalidTimeframeConfig: TimeframeConfig = {
         interval: 'invalid' as any,
         weight: 1.0,
         dataPoints: 100
       };
 
-      // Should handle failure without crashing
-      await expect(
-        dataFetcher.fetchParallelTimeframes(symbol, [invalidTimeframeConfig])
-      ).rejects.toThrow();
+      // Circuit breaker pattern: should properly reject with error
+      const fetchPromise = dataFetcher.fetchParallelTimeframes(symbol, [invalidTimeframeConfig]);
+      
+      // Verify promise rejection (not resolution)
+      await expect(fetchPromise).rejects.toThrow('Invalid interval');
 
-      // Other services should continue working
+      // Circuit breaker should not allow fallback - verify error propagation
+      try {
+        await fetchPromise;
+        fail('Promise should have rejected');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message).toContain('Invalid interval');
+      }
+
+      // Other services should continue working (circuit isolation)
       const validationResult = await validator.validateKlineData([]);
       expect(validationResult).toBeDefined();
       

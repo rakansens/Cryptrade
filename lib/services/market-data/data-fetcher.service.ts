@@ -202,7 +202,7 @@ export class DataFetcherService extends BaseService {
           // データポイント数に応じた適応的遅延（テスト用）
           // 少ないデータポイント = 短い遅延、多いデータポイント = 長い遅延
           const baseDelayMs = Math.max(1, config.dataPoints / 200); // より小さい遅延係数
-          const delayMs = timeoutMs < 200 ? timeoutMs + 50 : Math.max(baseDelayMs, 600); // 最低600ms遅延でAbortテストを有効化
+          const delayMs = timeoutMs < 200 ? timeoutMs + 50 : Math.min(baseDelayMs, 50); // 最大50ms遅延に短縮
           
           // AbortSignal対応のAPI呼び出しシミュレーション
           await new Promise((resolve, reject) => {

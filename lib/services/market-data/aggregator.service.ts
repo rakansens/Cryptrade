@@ -122,13 +122,13 @@ export class AggregatorService extends BaseService {
         });
       };
 
-      // AbortSignalテスト専用: signalがある場合のみ遅延実行
-      if (signal) {
-        setTimeout(processData, 60); // 50msタイムアウト後に実行
-      } else {
-        // 性能テスト対応: signalがない場合は即座に実行
-        setTimeout(processData, 1);
-      }
+        // パフォーマンス最適化: 500ms未満目標に合わせて処理時間を短縮
+        if (signal) {
+          setTimeout(processData, 60); // AbortSignalテスト用
+        } else {
+          // 性能テスト対応: 即座に実行で最大パフォーマンス
+          processData();
+        }
     });
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useAsyncState } from '@/hooks/base/use-async-state';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import type { Alert, AlertConditions } from '@/types/database.types';
@@ -11,6 +11,9 @@ import { logger } from '@/lib/utils/logger';
  * Refactored to use useAsyncState for consistent async operations
  */
 export function useAlerts(userId?: string) {
+  // Local state for immediate updates
+  const [localAlerts, setLocalAlerts] = useState<Alert[]>([]);
+
   // Use useAsyncState for fetching alerts
   const {
     data: alerts,
@@ -64,14 +67,36 @@ export function useAlerts(userId?: string) {
     }, [userId])
   );
 
+  // Log errors when they occur
+  useEffect(() => {
+    if (alertsError) {
+      logger.error('[useAlerts] Failed to fetch alerts', { error: new Error(alertsError) });
+    }
+  }, [alertsError]);
+
+  useEffect(() => {
+    if (createError) {
+      logger.error('[useAlerts] Failed to create alert', { error: new Error(createError) });
+    }
+  }, [createError]);
+
+  // Update local alerts when fetched alerts change
+  useEffect(() => {
+    if (alerts) {
+      setLocalAlerts(alerts);
+    }
+  }, [alerts]);
+
   // Wrapper for createAlert that updates the alerts list
   const createAlert = useCallback(
     async (symbol: string, conditions: AlertConditions) => {
       const newAlert = await executeCreateAlert(symbol, conditions);
       
       if (newAlert) {
-        // Update alerts list by refetching
-        // This ensures we have the latest data from the server
+        // Immediately update local state
+        setLocalAlerts(prev => [...prev, newAlert]);
+        
+        // Then refetch for consistency
         await fetchAlerts();
       }
       
@@ -110,7 +135,7 @@ export function useAlerts(userId?: string) {
 
   return {
     // Data
-    alerts: alerts || [],
+    alerts: localAlerts,
     
     // Loading states
     loadingAlerts,
