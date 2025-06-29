@@ -3,6 +3,19 @@ jest.mock('@/lib/utils/api-cache');
 jest.mock('@/lib/utils/retry');
 jest.mock('@/lib/utils/logger');
 
+// Mock environment configuration
+jest.mock('@/config/env', () => ({
+  env: {
+    NODE_ENV: 'test',
+    OPENAI_API_KEY: 'test-key',
+    PORT: 3000,
+    LOG_TRANSPORT: 'console',
+  },
+  isDevelopment: jest.fn(() => false),
+  isProduction: jest.fn(() => false),
+  isTest: jest.fn(() => true),
+}));
+
 // Mock global fetch
 global.fetch = jest.fn();
 
@@ -382,10 +395,19 @@ describe('ChatAPI', () => {
       // Mock env.NODE_ENV
       const envModule = require('@/config/env');
       const originalEnv = envModule.env.NODE_ENV;
-      envModule.env.NODE_ENV = 'development';
+      
+      // Create a spy on the env object to properly mock NODE_ENV
+      const envSpy = jest.spyOn(envModule, 'env', 'get').mockReturnValue({
+        ...envModule.env,
+        NODE_ENV: 'development'
+      });
 
       mockApiCache.get.mockReturnValue(null);
-      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
+      
+      // Mock withRetry to simulate API failure
+      jest.mocked(withRetry).mockImplementation(async (fn) => {
+        throw new Error('API Error');
+      });
 
       const result = await ChatAPI.getUserSessions();
 
@@ -393,22 +415,36 @@ describe('ChatAPI', () => {
       expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning empty array in development mode');
 
       // Restore
-      envModule.env.NODE_ENV = originalEnv;
+      envSpy.mockRestore();
     });
 
     it('should throw error in production when no cache available', async () => {
-      // Mock env.NODE_ENV
+      // Mock env.NODE_ENV by modifying the env object directly
       const envModule = require('@/config/env');
       const originalEnv = envModule.env.NODE_ENV;
-      envModule.env.NODE_ENV = 'production';
+      
+      // Directly modify the env object
+      Object.defineProperty(envModule.env, 'NODE_ENV', {
+        value: 'production',
+        writable: true,
+        configurable: true
+      });
 
       mockApiCache.get.mockReturnValue(null);
-      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
+      
+      // Mock withRetry to simulate API failure
+      jest.mocked(withRetry).mockImplementation(async (fn) => {
+        throw new Error('API Error');
+      });
 
       await expect(ChatAPI.getUserSessions()).rejects.toThrow('Failed to get sessions: API Error');
 
       // Restore
-      envModule.env.NODE_ENV = originalEnv;
+      Object.defineProperty(envModule.env, 'NODE_ENV', {
+        value: originalEnv,
+        writable: true,
+        configurable: true
+      });
     });
   });
 
@@ -676,13 +712,23 @@ describe('ChatAPI', () => {
     });
 
     it('should return null in development mode when API fails', async () => {
-      // Mock env.NODE_ENV
+      // Mock env.NODE_ENV by modifying the env object directly
       const envModule = require('@/config/env');
       const originalEnv = envModule.env.NODE_ENV;
-      envModule.env.NODE_ENV = 'development';
+      
+      // Directly modify the env object
+      Object.defineProperty(envModule.env, 'NODE_ENV', {
+        value: 'development',
+        writable: true,
+        configurable: true
+      });
 
       mockApiCache.get.mockReturnValue(null);
-      jest.mocked(withRetry).mockRejectedValueOnce(new Error('API Error'));
+      
+      // Mock withRetry to simulate API failure
+      jest.mocked(withRetry).mockImplementation(async (fn) => {
+        throw new Error('API Error');
+      });
 
       const result = await ChatAPI.getSessionWithMessages('session-1');
 
@@ -690,7 +736,11 @@ describe('ChatAPI', () => {
       expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning null in development mode');
 
       // Restore
-      envModule.env.NODE_ENV = originalEnv;
+      Object.defineProperty(envModule.env, 'NODE_ENV', {
+        value: originalEnv,
+        writable: true,
+        configurable: true
+      });
     });
   });
 
