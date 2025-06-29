@@ -242,6 +242,16 @@ export async function executeImprovedOrchestrator(
     const analysis = analyzeIntent(userQuery);
     const { symbols, topics } = extractMetadataFromQuery(userQuery);
     
+    // ログ出力: Intent analysis completed
+    logger.info('Intent analysis completed', {
+      intent: analysis.intent,
+      confidence: analysis.confidence,
+      proposalType: analysis.proposalType,
+      isProposalMode: analysis.isProposalMode,
+      extractedSymbol: analysis.extractedSymbol,
+      reasoning: analysis.reasoning
+    });
+    
     // TDD Phase 2 Refactor: Context-enhanced analysis
     // const recentMessages = memoryStore.getRecentMessages(activeSessionId, 3);
     const contextualAnalysis = {
