@@ -2,12 +2,15 @@ import { logger } from '@/lib/utils/logger';
 import { BaseService } from '@/lib/api/base-service';
 import { APP_CONSTANTS } from '@/config/app-constants';
 import { env } from '@/config/env';
+import { apiKeyManager } from '@/lib/security/api-key-manager';
 
 /**
  * Semantic Embedding Service
  * 
  * テキストの意味的埋め込みベクトルを生成し、
  * セマンティック検索を可能にする
+ * 
+ * Supports both environment variable and secure API key storage
  */
 
 export interface EmbeddingResult {
@@ -22,21 +25,38 @@ export interface SimilaritySearchOptions {
   filter?: <T extends object>(item: T) => boolean;
 }
 
+export interface SemanticEmbeddingConfig {
+  useSecureApiKey?: boolean;
+  model?: string;
+  maxCacheSize?: number;
+}
+
 export class SemanticEmbeddingService extends BaseService {
   private static instance: SemanticEmbeddingService;
   private embeddingCache: Map<string, number[]> = new Map();
-  private readonly model = 'text-embedding-3-small';
+  private readonly model: string;
+  private readonly useSecureApiKey: boolean;
+  private readonly maxCacheSize: number;
+  private readonly logPrefix: string;
   
-  private constructor() {
+  private constructor(config: SemanticEmbeddingConfig = {}) {
     super('https://api.openai.com/v1'); // OpenAI API base URL
+    
+    this.useSecureApiKey = config.useSecureApiKey ?? false;
+    this.model = config.model ?? 'text-embedding-3-small';
+    this.maxCacheSize = config.maxCacheSize ?? Math.floor(APP_CONSTANTS.ui.bufferSize * 10); // 1000 items
+    this.logPrefix = this.useSecureApiKey ? '[SecureEmbeddingService]' : '[EmbeddingService]';
   }
 
   // Override the execute method to add OpenAI specific headers
   protected async execute<T>(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<{ data: T; status: number; statusText: string; headers: Headers }> {
-    // Add OpenAI Authorization header
-    const apiKey = env.OPENAI_API_KEY;
+    // Get API key based on configuration
+    const apiKey = await this.getApiKey();
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
+      throw new Error(this.useSecureApiKey 
+        ? 'OpenAI API key is not configured' 
+        : 'OPENAI_API_KEY environment variable is not set'
+      );
     }
 
     const enhancedInit: RequestInit = {
@@ -51,9 +71,20 @@ export class SemanticEmbeddingService extends BaseService {
     return this.client.execute<T>(url, enhancedInit, signal);
   }
   
-  static getInstance(): SemanticEmbeddingService {
-    if (!SemanticEmbeddingService.instance) {
-      SemanticEmbeddingService.instance = new SemanticEmbeddingService();
+  /**
+   * Get API key based on configuration
+   */
+  private async getApiKey(): Promise<string | null> {
+    if (this.useSecureApiKey) {
+      return await apiKeyManager.getApiKey('openai');
+    }
+    return env.OPENAI_API_KEY || null;
+  }
+  
+  static getInstance(config?: SemanticEmbeddingConfig): SemanticEmbeddingService {
+    if (!SemanticEmbeddingService.instance || 
+        (config && config.useSecureApiKey !== SemanticEmbeddingService.instance.useSecureApiKey)) {
+      SemanticEmbeddingService.instance = new SemanticEmbeddingService(config);
     }
     return SemanticEmbeddingService.instance;
   }
@@ -66,7 +97,7 @@ export class SemanticEmbeddingService extends BaseService {
     const cacheKey = this.getCacheKey(text);
     const cached = this.embeddingCache.get(cacheKey);
     if (cached) {
-      logger.debug('[EmbeddingService] Cache hit', { textLength: text.length });
+      logger.debug(`${this.logPrefix} Cache hit`, { textLength: text.length });
       return {
         embedding: cached,
         model: this.model,
@@ -94,14 +125,13 @@ export class SemanticEmbeddingService extends BaseService {
       // Cache the result
       this.embeddingCache.set(cacheKey, embedding);
       
-      // Limit cache size to use APP_CONSTANTS configuration
-      const maxCacheSize = Math.floor(APP_CONSTANTS.ui.bufferSize * 10); // 1000 items
-      if (this.embeddingCache.size > maxCacheSize) {
+      // Limit cache size
+      if (this.embeddingCache.size > this.maxCacheSize) {
         const firstKey = this.embeddingCache.keys().next().value;
         this.embeddingCache.delete(firstKey);
       }
       
-      logger.info('[EmbeddingService] Embedding generated', {
+      logger.info(`${this.logPrefix} Embedding generated`, {
         textLength: text.length,
         dimensions: embedding.length,
         tokensUsed: response.data.usage?.total_tokens || 0,
@@ -113,7 +143,7 @@ export class SemanticEmbeddingService extends BaseService {
         tokensUsed: response.data.usage?.total_tokens || 0,
       };
     } catch (error) {
-      logger.error('[EmbeddingService] Failed to generate embedding', {
+      logger.error(`${this.logPrefix} Failed to generate embedding`, {
         error: String(error),
         textLength: text.length,
       });
@@ -205,7 +235,7 @@ export class SemanticEmbeddingService extends BaseService {
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
       } catch (error) {
-        logger.error('[EmbeddingService] Batch generation failed', {
+        logger.error(`${this.logPrefix} Batch generation failed`, {
           batchIndex: i / batchSize,
           error: String(error),
         });
@@ -226,7 +256,7 @@ export class SemanticEmbeddingService extends BaseService {
    */
   clearCache(): void {
     this.embeddingCache.clear();
-    logger.info('[EmbeddingService] Cache cleared');
+    logger.info(`${this.logPrefix} Cache cleared`);
   }
   
   /**
@@ -244,5 +274,14 @@ export class SemanticEmbeddingService extends BaseService {
   }
 }
 
-// Export singleton instance
+// Export singleton instances
 export const embeddingService = SemanticEmbeddingService.getInstance();
+export const secureEmbeddingService = SemanticEmbeddingService.getInstance({ useSecureApiKey: true });
+
+// For backward compatibility with SecureSemanticEmbeddingService
+export class SecureSemanticEmbeddingService extends SemanticEmbeddingService {
+  /** @deprecated Use SemanticEmbeddingService with useSecureApiKey option */
+  static getInstance(): SemanticEmbeddingService {
+    return SemanticEmbeddingService.getInstance({ useSecureApiKey: true });
+  }
+}
