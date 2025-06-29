@@ -1,7 +1,11 @@
 // Setup test environment before any imports
-import { mockTestEnv } from '@/config/testing/setupEnvMock';
+import { mockTestEnv } from '../../../helpers/setupEnvMock';
 
-const restoreEnv = mockTestEnv();
+const restoreEnv = mockTestEnv({
+  NODE_ENV: 'test',
+  OPENAI_API_KEY: 'test-key',
+  CLAUDE_API_KEY: 'test-key'
+});
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

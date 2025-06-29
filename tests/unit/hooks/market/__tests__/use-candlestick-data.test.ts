@@ -11,6 +11,7 @@ import { getBinanceConnection } from '@/lib/ws';
 import { useMarketActions, usePriceData, useSymbolLoading } from '@/store/market.store';
 import { useIsClient } from '@/hooks/use-is-client';
 import { logger } from '@/lib/utils/logger';
+import { OHLCVConverter } from '@/lib/chart/data-converters';
 import type { ProcessedKline, BinanceKlineMessage } from '@/types/market';
 
 // Mock dependencies
@@ -27,6 +28,11 @@ jest.mock('@/lib/utils/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
+  },
+}));
+jest.mock('@/lib/chart/data-converters', () => ({
+  OHLCVConverter: {
+    fromBinanceWebSocket: jest.fn(),
   },
 }));
 
@@ -87,6 +93,16 @@ describe('useCandlestickData', () => {
     
     // Default subscribe mock that returns unsubscribe function
     mockBinanceConnection.subscribe.mockReturnValue(jest.fn());
+    
+    // Mock OHLCVConverter.fromBinanceWebSocket to return converted data
+    jest.mocked(OHLCVConverter.fromBinanceWebSocket).mockImplementation((data: BinanceKlineMessage) => ({
+      time: Math.floor(data.k.t / 1000), // Convert ms to seconds
+      open: parseFloat(data.k.o),
+      high: parseFloat(data.k.h),
+      low: parseFloat(data.k.l),
+      close: parseFloat(data.k.c),
+      volume: parseFloat(data.k.v),
+    }));
   });
   
   afterEach(() => {
@@ -126,7 +142,7 @@ describe('useCandlestickData', () => {
       expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', true);
       expect(mockMarketActions.setSymbolLoading).toHaveBeenCalledWith('BTCUSDT', false);
       expect(logger.info).toHaveBeenCalledWith(
-        '[CandlestickData] Loading initial data',
+        '[useCandlestickData] Starting Load initial historical data',
         expect.objectContaining({ symbol: 'BTCUSDT', interval: '1h', limit: 1000 })
       );
     });
@@ -213,13 +229,15 @@ describe('useCandlestickData', () => {
 
       await waitFor(() => {
         expect(logger.error).toHaveBeenCalledWith(
-          '[CandlestickData] Failed to load initial data',
-          { symbol: 'BTCUSDT', interval: '1h' },
-          error
+          '[useCandlestickData] historical_data_fetch failed',
+          expect.objectContaining({ 
+            symbol: 'BTCUSDT', 
+            interval: '1h',
+            error: 'Failed to fetch'
+          })
         );
-        expect(mockMarketActions.setConnectionError).toHaveBeenCalledWith(
-          'Failed to load chart data for BTCUSDT'
-        );
+        // useChartDataBase doesn't call setConnectionError for historical data failures
+        // The error is handled internally by the base hook
       });
       
       jest.useFakeTimers();
@@ -244,7 +262,12 @@ describe('useCandlestickData', () => {
       // Rerender without changing props
       rerender();
 
-      // Should not fetch again
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
+      // Should only have been called once total (not additional calls after rerender)
+      // The hook uses isInitialLoadRef to prevent duplicate fetches
       expect(binanceAPI.fetchKlines).toHaveBeenCalledTimes(1);
       
       jest.useFakeTimers();
@@ -325,6 +348,7 @@ describe('useCandlestickData', () => {
         messageHandler!(closedKlineMessage);
       });
 
+      expect(OHLCVConverter.fromBinanceWebSocket).toHaveBeenCalledWith(closedKlineMessage);
       expect(mockMarketActions.addKline).toHaveBeenCalledWith('BTCUSDT', {
         time: 1735840800,
         open: 102500,
@@ -388,6 +412,7 @@ describe('useCandlestickData', () => {
         messageHandler!(updatingKlineMessage);
       });
 
+      expect(OHLCVConverter.fromBinanceWebSocket).toHaveBeenCalledWith(updatingKlineMessage);
       expect(mockMarketActions.updateLastKline).toHaveBeenCalledWith('BTCUSDT', {
         time: 1735840800,
         open: 102500,
@@ -770,12 +795,12 @@ describe('useCandlestickData', () => {
 
       await waitFor(() => {
         expect(logger.info).toHaveBeenCalledWith(
-          '[CandlestickData] Loading initial data',
-          { symbol: 'BTCUSDT', interval: '1h', limit: 500 }
+          '[useCandlestickData] Starting Load initial historical data',
+          expect.objectContaining({ symbol: 'BTCUSDT', interval: '1h', limit: 500 })
         );
         expect(logger.info).toHaveBeenCalledWith(
-          '[CandlestickData] Initial data loaded',
-          { symbol: 'BTCUSDT', interval: '1h', count: 3 }
+          '[useCandlestickData] Load initial historical data completed',
+          expect.objectContaining({ symbol: 'BTCUSDT', interval: '1h' })
         );
         expect(logger.info).toHaveBeenCalledWith(
           '[CandlestickData] Starting kline stream',

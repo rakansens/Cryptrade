@@ -13,17 +13,17 @@ describe('useWebSocketUnified', () => {
     
     // Default mock implementation
     mockUseConnectionBase.mockReturnValue({
+      status: 'disconnected',
       isConnected: false,
       isConnecting: false,
       error: null,
+      lastMessage: null,
+      reconnectAttempts: 0,
       connect: jest.fn(),
       disconnect: jest.fn(),
       send: jest.fn(),
-      lastMessage: null,
-      reconnect: jest.fn(),
-      status: 'disconnected',
-      connectionAttempts: 0,
-      lastError: null
+      reset: jest.fn(),
+      instance: null
     });
   });
 
@@ -49,16 +49,30 @@ describe('useWebSocketUnified', () => {
         url: 'ws://localhost:8080',
         protocols: ['chat', 'superchat'],
         autoConnect: true,
-        reconnectOptions: {
+        reconnect: {
           enabled: true,
+          maxAttempts: 10,
           interval: 5000,
-          maxAttempts: 10
+          backoffMultiplier: 1.5,
+          maxInterval: 30000,
+          shouldReconnect: expect.any(Function)
         },
-        eventHandlers: {
-          onConnect: options.onOpen,
-          onDisconnect: options.onClose,
+        heartbeat: {
+          enabled: false,
+          interval: 30000,
+          message: 'ping'
+        },
+        callbacks: {
+          onOpen: options.onOpen,
+          onClose: options.onClose,
           onMessage: options.onMessage,
-          onError: options.onError
+          onError: options.onError,
+          onReconnectAttempt: options.onReconnectAttempt,
+          onReconnectFailed: options.onReconnectFailed,
+          onReconnectSuccess: options.onReconnectSuccess
+        },
+        messageHandler: {
+          filter: options.filter
         }
       });
     });
@@ -74,17 +88,31 @@ describe('useWebSocketUnified', () => {
         type: 'websocket',
         url: 'ws://localhost:8080',
         protocols: undefined,
-        autoConnect: undefined,
-        reconnectOptions: {
-          enabled: undefined,
-          interval: undefined,
-          maxAttempts: undefined
+        autoConnect: true,
+        reconnect: {
+          enabled: true,
+          maxAttempts: 10,
+          interval: 1000,
+          backoffMultiplier: 1.5,
+          maxInterval: 30000,
+          shouldReconnect: expect.any(Function)
         },
-        eventHandlers: {
-          onConnect: undefined,
-          onDisconnect: undefined,
+        heartbeat: {
+          enabled: false,
+          interval: 30000,
+          message: 'ping'
+        },
+        callbacks: {
+          onOpen: undefined,
+          onClose: undefined,
           onMessage: undefined,
-          onError: undefined
+          onError: undefined,
+          onReconnectAttempt: undefined,
+          onReconnectFailed: undefined,
+          onReconnectSuccess: undefined
+        },
+        messageHandler: {
+          filter: undefined
         }
       });
     });
@@ -92,8 +120,8 @@ describe('useWebSocketUnified', () => {
     it('should map deprecated options correctly', () => {
       const options = {
         url: 'ws://localhost:8080',
-        shouldReconnect: true, // deprecated
-        reconnectAttempts: 5,  // deprecated
+        shouldReconnect: () => true, // deprecated but should be a function
+        maxReconnectAttempts: 5,  // correct property name
         reconnectInterval: 3000
       };
 
@@ -103,17 +131,31 @@ describe('useWebSocketUnified', () => {
         type: 'websocket',
         url: 'ws://localhost:8080',
         protocols: undefined,
-        autoConnect: undefined,
-        reconnectOptions: {
+        autoConnect: true,
+        reconnect: {
           enabled: true,
+          maxAttempts: 5,
           interval: 3000,
-          maxAttempts: 5
+          backoffMultiplier: 1.5,
+          maxInterval: 30000,
+          shouldReconnect: expect.any(Function)
         },
-        eventHandlers: {
-          onConnect: undefined,
-          onDisconnect: undefined,
+        heartbeat: {
+          enabled: false,
+          interval: 30000,
+          message: 'ping'
+        },
+        callbacks: {
+          onOpen: undefined,
+          onClose: undefined,
           onMessage: undefined,
-          onError: undefined
+          onError: undefined,
+          onReconnectAttempt: undefined,
+          onReconnectFailed: undefined,
+          onReconnectSuccess: undefined
+        },
+        messageHandler: {
+          filter: undefined
         }
       });
     });
@@ -122,17 +164,17 @@ describe('useWebSocketUnified', () => {
   describe('backward compatibility interface', () => {
     it('should provide the same interface as original useWebSocket', () => {
       const mockConnection = {
+        status: 'connected' as const,
         isConnected: true,
         isConnecting: false,
         error: null,
+        lastMessage: { data: 'test' },
+        reconnectAttempts: 1,
         connect: jest.fn(),
         disconnect: jest.fn(),
         send: jest.fn(),
-        lastMessage: { data: 'test' },
-        reconnect: jest.fn(),
-        status: 'connected' as const,
-        connectionAttempts: 1,
-        lastError: null
+        reset: jest.fn(),
+        instance: { readyState: WebSocket.OPEN } as WebSocket
       };
 
       mockUseConnectionBase.mockReturnValue(mockConnection);
@@ -149,27 +191,27 @@ describe('useWebSocketUnified', () => {
       expect(typeof result.current.connect).toBe('function');
       expect(typeof result.current.disconnect).toBe('function');
       expect(typeof result.current.send).toBe('function');
-      expect(typeof result.current.reconnect).toBe('function');
+      expect(typeof result.current.reset).toBe('function');
     });
 
     it('should forward method calls to underlying connection', () => {
       const mockConnect = jest.fn();
       const mockDisconnect = jest.fn();
       const mockSend = jest.fn();
-      const mockReconnect = jest.fn();
+      const mockReset = jest.fn();
 
       mockUseConnectionBase.mockReturnValue({
+        status: 'disconnected',
         isConnected: false,
         isConnecting: false,
         error: null,
+        lastMessage: null,
+        reconnectAttempts: 0,
         connect: mockConnect,
         disconnect: mockDisconnect,
         send: mockSend,
-        lastMessage: null,
-        reconnect: mockReconnect,
-        status: 'disconnected',
-        connectionAttempts: 0,
-        lastError: null
+        reset: mockReset,
+        instance: null
       });
 
       const { result } = renderHook(() => useWebSocketUnified({
@@ -193,34 +235,58 @@ describe('useWebSocketUnified', () => {
       expect(mockSend).toHaveBeenCalledWith('test message');
 
       act(() => {
-        result.current.reconnect();
+        result.current.reset();
       });
-      expect(mockReconnect).toHaveBeenCalled();
+      expect(mockReset).toHaveBeenCalled();
     });
   });
 
   describe('WebSocket-specific features', () => {
     it('should handle readyState mapping from connection status', () => {
       const testCases = [
-        { status: 'disconnected' as const, expectedReadyState: 3 }, // CLOSED
-        { status: 'connecting' as const, expectedReadyState: 0 },   // CONNECTING
-        { status: 'connected' as const, expectedReadyState: 1 },    // OPEN
-        { status: 'error' as const, expectedReadyState: 3 }         // CLOSED
+        { 
+          status: 'disconnected' as const, 
+          isConnected: false,
+          instance: null,
+          expectedReadyState: WebSocket.CLOSED 
+        },
+        { 
+          status: 'connecting' as const, 
+          isConnected: false,
+          instance: Object.create(WebSocket.prototype, {
+            readyState: { value: WebSocket.CONNECTING }
+          }),
+          expectedReadyState: WebSocket.CONNECTING 
+        },
+        { 
+          status: 'connected' as const, 
+          isConnected: true,
+          instance: Object.create(WebSocket.prototype, {
+            readyState: { value: WebSocket.OPEN }
+          }),
+          expectedReadyState: WebSocket.OPEN 
+        },
+        { 
+          status: 'error' as const, 
+          isConnected: false,
+          instance: null,
+          expectedReadyState: WebSocket.CLOSED 
+        }
       ];
 
-      testCases.forEach(({ status, expectedReadyState }) => {
+      testCases.forEach(({ status, isConnected, instance, expectedReadyState }) => {
         mockUseConnectionBase.mockReturnValue({
-          isConnected: status === 'connected',
+          status,
+          isConnected,
           isConnecting: status === 'connecting',
           error: status === 'error' ? new Error('Test error') : null,
+          lastMessage: null,
+          reconnectAttempts: 0,
           connect: jest.fn(),
           disconnect: jest.fn(),
           send: jest.fn(),
-          lastMessage: null,
-          reconnect: jest.fn(),
-          status,
-          connectionAttempts: 0,
-          lastError: null
+          reset: jest.fn(),
+          instance
         });
 
         const { result } = renderHook(() => useWebSocketUnified({
@@ -231,13 +297,28 @@ describe('useWebSocketUnified', () => {
       });
     });
 
-    it('should provide webSocket property as null (unified implementation)', () => {
+    it('should provide webSocket property from instance', () => {
+      const mockWebSocket = { readyState: WebSocket.OPEN } as WebSocket;
+      
+      mockUseConnectionBase.mockReturnValue({
+        status: 'connected',
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+        lastMessage: null,
+        reconnectAttempts: 0,
+        connect: jest.fn(),
+        disconnect: jest.fn(),
+        send: jest.fn(),
+        reset: jest.fn(),
+        instance: mockWebSocket
+      });
+
       const { result } = renderHook(() => useWebSocketUnified({
         url: 'ws://localhost:8080'
       }));
 
-      // In unified implementation, webSocket is always null since we use abstract connection
-      expect(result.current.webSocket).toBeNull();
+      expect(result.current.webSocket).toBe(mockWebSocket);
     });
   });
 

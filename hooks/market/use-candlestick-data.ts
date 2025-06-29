@@ -6,6 +6,7 @@ import { useIsClient } from '@/hooks/use-is-client';
 import type { BinanceKlineMessage, ProcessedKline } from '@/types/market';
 import { useChartDataBase } from '@/hooks/shared/useChartDataBase';
 import { OHLCVConverter } from '@/lib/chart/data-converters';
+import { logger } from '@/lib/utils/logger';
 
 export interface UseCandlestickDataOptions {
   symbol: string;
