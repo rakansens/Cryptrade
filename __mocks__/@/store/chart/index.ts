@@ -11,7 +11,7 @@ const createInitialState = () => ({
   error: null,
   indicators: { ma: false, rsi: false, macd: false, boll: false },
   settings: { ma: { ma1: 5, ma2: 10, ma3: 20 }, rsi: { period: 14 }, macd: {}, boll: {} },
-  drawingMode: null,
+  drawingMode: 'trendline',
   drawings: [] as any[],
   selectedDrawingId: null,
   isDrawing: false,

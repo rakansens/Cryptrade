@@ -1,16 +1,20 @@
 import { renderHook, act } from '@testing-library/react';
+
+// Mock logger before importing the hook
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn()
+};
+
+jest.mock('@/lib/utils/logger', () => ({
+  logger: mockLogger
+}));
+
+// Import hook after mocking
 import { useChartDataBase } from '@/hooks/shared/useChartDataBase';
 import type { ProcessedKline } from '@/types/market';
-
-// Mock logger
-jest.mock('@/lib/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
-  }
-}));
 
 describe('useChartDataBase', () => {
   const mockData: ProcessedKline[] = [
@@ -27,6 +31,10 @@ describe('useChartDataBase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLogger.info.mockClear();
+    mockLogger.error.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.debug.mockClear();
   });
 
   describe('initialization', () => {
@@ -157,7 +165,6 @@ describe('useChartDataBase', () => {
       const { result } = renderHook(() => useChartDataBase<ProcessedKline[]>(defaultConfig));
       
       const mockOperation = jest.fn().mockRejectedValue(new Error('Test error'));
-      const { logger } = require('@/lib/utils/logger');
       
       await act(async () => {
         await result.current.executeSafely('test operation', mockOperation, {
@@ -165,7 +172,7 @@ describe('useChartDataBase', () => {
         });
       });
       
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
         '[useChartDataBase-test] test operation failed',
         expect.objectContaining({
           error: 'Test error',
@@ -178,29 +185,31 @@ describe('useChartDataBase', () => {
   describe('logging', () => {
     it('should log info messages when log level allows', () => {
       const { result } = renderHook(() => useChartDataBase<ProcessedKline[]>(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
       
       result.current.safeLog('info', 'Test info message', { test: 'data' });
       
-      expect(logger.info).toHaveBeenCalledWith('[useChartDataBase-test] Test info message', { test: 'data' });
+      expect(mockLogger.info).toHaveBeenCalledWith('[useChartDataBase-test] Test info message', { test: 'data' });
     });
 
-    it('should not log debug messages when log level is info', () => {
-      const { result } = renderHook(() => useChartDataBase<ProcessedKline[]>(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
+    it('should filter messages based on log level', () => {
+      const warnConfig = { ...defaultConfig, logLevel: 'warn' as const };
+      const { result } = renderHook(() => useChartDataBase<ProcessedKline[]>(warnConfig));
       
-      result.current.safeLog('debug', 'Test debug message');
+      // info should be filtered out when logLevel is warn
+      result.current.safeLog('info', 'Test info message');
+      expect(mockLogger.info).not.toHaveBeenCalled();
       
-      expect(logger.debug).not.toHaveBeenCalled();
+      // warn should pass through
+      result.current.safeLog('warn', 'Test warn message');
+      expect(mockLogger.warn).toHaveBeenCalledWith('[useChartDataBase-test] Test warn message', undefined);
     });
 
     it('should always log error messages', () => {
       const { result } = renderHook(() => useChartDataBase<ProcessedKline[]>(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
       
       result.current.safeLog('error', 'Test error message', { error: 'test error' });
       
-      expect(logger.error).toHaveBeenCalledWith('[useChartDataBase-test] Test error message', { error: 'test error' });
+      expect(mockLogger.error).toHaveBeenCalledWith('[useChartDataBase-test] Test error message', { error: 'test error' });
     });
   });
 

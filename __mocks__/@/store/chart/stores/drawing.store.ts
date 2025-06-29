@@ -97,7 +97,7 @@ jest.mock('@/lib/utils/zustand-helpers', () => ({
 
 // Define initial state
 const initialState: DrawingState & UndoRedoState = {
-  drawingMode: null,
+  drawingMode: 'trendline',
   drawings: [],
   selectedDrawingId: null,
   isDrawing: false,

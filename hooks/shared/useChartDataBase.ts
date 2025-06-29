@@ -54,15 +54,21 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
   const safeLog = useCallback((level: 'info' | 'warn' | 'error', message: string, context?: any) => {
     if (!mountState.current.isMounted) return;
     
-    const logContext = {
-      hook: hookName,
-      mounted: mountState.current.isMounted,
-      initialized: mountState.current.isInitialized,
-      ...context
-    };
+    // logLevel設定に基づくフィルタリング
+    const levelPriorities = { error: 0, warn: 1, info: 2 };
+    const currentLevelPriority = levelPriorities[logLevel];
+    const messageLevelPriority = levelPriorities[level];
     
-    logger[level](message, logContext);
-  }, [hookName]);
+    // logLevelより低い優先度のメッセージは除外
+    if (messageLevelPriority > currentLevelPriority) {
+      return;
+    }
+    
+    const prefix = `[${hookName}]`;
+    const formattedMessage = message.startsWith('[') ? message : `${prefix} ${message}`;
+    
+    logger[level](formattedMessage, context);
+  }, [hookName, logLevel]);
 
   /**
    * 統一エラーハンドリング
@@ -113,11 +119,11 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
     if (!mountState.current.isMounted) return null;
     
     try {
-      safeLog(logLevel, `[${hookName}] Starting ${operation}`, context);
+      safeLog('info', `[${hookName}] Starting ${operation}`, context);
       const result = await fn();
       
       if (mountState.current.isMounted) {
-        safeLog(logLevel, `[${hookName}] ${operation} completed`, { ...context, hasResult: !!result });
+        safeLog('info', `[${hookName}] ${operation} completed`, { ...context, hasResult: !!result });
       }
       
       return result;
@@ -147,10 +153,14 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
   const formatChartData = useCallback((data: any[], timeField = 'time') => {
     if (!Array.isArray(data) || data.length === 0) return [];
     
-    return data.map(item => ({
-      ...item,
-      [timeField]: typeof item[timeField] === 'number' ? item[timeField] : Math.floor(Date.now() / 1000)
-    }));
+    return data.map(item => {
+      // volumeフィールドを除去してチャートに適したフォーマットに変換
+      const { volume, ...chartData } = item;
+      return {
+        ...chartData,
+        [timeField]: typeof item[timeField] === 'number' ? item[timeField] : Math.floor(Date.now() / 1000)
+      };
+    });
   }, []);
 
   /**
@@ -164,22 +174,34 @@ export function useChartDataBase<T = any>(config: DataHookConfig) {
       updateMountState({ isMounted: false });
       
       // 自動クリーンアップ実行
-      if (enableAutoCleanup && cleanupFunctions.current.length > 0) {
-        safeLog('info', `[${hookName}] Executing cleanup functions`, { 
-          cleanupCount: cleanupFunctions.current.length 
-        });
+      if (enableAutoCleanup) {
+        if (cleanupFunctions.current.length > 0) {
+          safeLog('info', `[${hookName}] Executing cleanup functions`, {
+            cleanupCount: cleanupFunctions.current.length
+          });
+          
+          cleanupFunctions.current.forEach((cleanup, index) => {
+            try {
+              cleanup();
+            } catch (error) {
+              logger.error(`[${hookName}] Cleanup function ${index} failed`, {
+                error: error instanceof Error ? error.message : String(error),
+                index
+              });
+            }
+          });
+          cleanupFunctions.current = [];
+        }
         
-        cleanupFunctions.current.forEach((cleanup, index) => {
-          try {
-            cleanup();
-          } catch (error) {
-            logger.error(`[${hookName}] Cleanup function ${index} failed`, { 
-              error: error instanceof Error ? error.message : String(error),
-              index 
-            });
-          }
-        });
-        cleanupFunctions.current = [];
+        // 自動クリーンアップが有効な場合はstate自体もリセット
+        safeLog('info', `[${hookName}] Resetting state for auto cleanup`);
+        mountState.current = {
+          isMounted: false,
+          isInitialized: false,
+          hasAutoProcessed: false
+        };
+        previousData.current = null;
+        dataLength.current = 0;
       }
       
       safeLog('info', `[${hookName}] Hook cleanup completed`);

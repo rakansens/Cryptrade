@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { useDrawingActions, useChartStore, useDrawingStore } from '@/store/chart';
-import { 
+import {
   validateDrawingEvent,
   type StartDrawingEvent,
   type AddDrawingEvent,
@@ -20,12 +21,13 @@ import { useCursor } from './useCursor';
 import type { Time } from 'lightweight-charts';
 import type { ChartEventHandlers } from '../../components/chart/hooks/useAgentEventHandlers';
 import type { DrawingMode, ChartDrawing as ChartDrawingLW } from '@/types/chart.types';
-import { 
-  useEventHandlerBase, 
-  createEventHandlerConfig, 
+import {
+  useEventHandlerBase,
+  createEventHandlerConfig,
   createEventListeners,
-  type EventProcessor 
+  type EventProcessor
 } from '../shared';
+import { logger } from '@/lib/utils/logger';
 
 // Helper function to convert between ChartDrawing types
 function toChartDrawingLW(drawing: ChartDrawing): ChartDrawingLW {
@@ -140,7 +142,7 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
 
   const addDrawingProcessor: EventProcessor<any> = async (data) => {
     // Convert event data points to DrawingPoint format with Time type
-    const points = data.points?.map(p => ({
+    const points = data.points?.map((p: any) => ({
       time: p.time as Time,
       value: p.value
     }));
@@ -233,6 +235,8 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
     // Add to chart if drawing manager is available
     if (handlers.drawingManager) {
       handlers.drawingManager.addDrawing(toChartDrawingLW(validDrawing));
+    } else {
+      logger.warn('[Drawing Event] No drawing manager available');
     }
   };
 
@@ -417,4 +421,17 @@ export function useDrawingEventHandlers(handlers: ChartEventHandlers) {
       handlers.drawingManager,
     ]
   );
+
+  // Add custom logging for Drawing Event Handlers
+  useEffect(() => {
+    logger.info('[Drawing Event Handlers] Registered drawing event listeners', {
+      eventCount: eventListeners.length,
+      events: eventListeners.map(({ eventType }) => eventType),
+    });
+    
+    // Return cleanup function for custom unmount logging
+    return () => {
+      logger.info('[Drawing Event Handlers] Cleaned up drawing event listeners');
+    };
+  }, []);
 }

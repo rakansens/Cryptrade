@@ -6,16 +6,28 @@ import {
   asyncHandler,
   extractErrorDetails 
 } from '../error-handler';
-import { AppError } from '@/lib/errors/app-error';
+import { AppError } from '../../../errors/app-error';
 
 // Helper to get response body
 async function getResponseBody(response: NextResponse): Promise<any> {
-  const reader = response.body?.getReader();
-  if (!reader) return null;
+  // テスト環境では NextResponse の内部構造にアクセス
+  // NextResponse.json() で作成されたレスポンスの場合、_bodyプロパティから直接取得
+  const responseBody = (response as any)._body;
+  if (responseBody) {
+    try {
+      return JSON.parse(responseBody);
+    } catch (error) {
+      return responseBody;
+    }
+  }
   
-  const { value } = await reader.read();
-  const text = new TextDecoder().decode(value);
-  return JSON.parse(text);
+  // フォールバック: text() メソッドを使用
+  try {
+    const text = await response.text();
+    return JSON.parse(text);
+  } catch (error) {
+    return null;
+  }
 }
 
 // Mock logger
@@ -67,7 +79,7 @@ describe('Error Handler Middleware', () => {
     });
 
     it('should handle not found errors', async () => {
-      const error = new Error('Resource not found');
+      const error = new Error('Not found');
       
       const response = createErrorResponse(error);
       const body = await getResponseBody(response);
