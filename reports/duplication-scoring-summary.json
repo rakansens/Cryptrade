@@ -1,0 +1,201 @@
+{
+  "timestamp": "2025-06-29T00:30:00.000Z",
+  "analysis": {
+    "method": "Manual pattern analysis with file comparison",
+    "threshold": 0.7,
+    "formula": "Score = Lines × Similarity × Impact Factor"
+  },
+  "topDuplications": [
+    {
+      "rank": 1,
+      "name": "API Route Error Handling",
+      "score": 982.75,
+      "details": {
+        "pattern": "try-catch with NextResponse.json",
+        "filesAffected": 23,
+        "linesPerFile": 15,
+        "totalLines": 345,
+        "similarity": 0.95,
+        "impactFactor": 3.0,
+        "complexity": 3
+      }
+    },
+    {
+      "rank": 2,
+      "name": "Semantic Embedding Services",
+      "score": 629.85,
+      "details": {
+        "files": ["semantic-embedding.service.ts", "semantic-embedding.service.secure.ts"],
+        "filesAffected": 2,
+        "linesPerFile": 247,
+        "totalLines": 247,
+        "similarity": 0.85,
+        "impactFactor": 3.0,
+        "complexity": 2
+      }
+    },
+    {
+      "rank": 3,
+      "name": "Session Validation Pattern",
+      "score": 432.00,
+      "details": {
+        "pattern": "getServerSession() checks",
+        "filesAffected": 20,
+        "linesPerFile": 8,
+        "totalLines": 160,
+        "similarity": 0.90,
+        "impactFactor": 3.0,
+        "complexity": 3
+      }
+    },
+    {
+      "rank": 4,
+      "name": "Database Conversion Utilities",
+      "score": 367.50,
+      "details": {
+        "files": ["db-conversions.ts", "db-conversions.server.ts"],
+        "filesAffected": 2,
+        "linesPerFile": 98,
+        "totalLines": 196,
+        "similarity": 0.75,
+        "impactFactor": 2.5,
+        "complexity": 3
+      }
+    },
+    {
+      "rank": 5,
+      "name": "WebSocket Connection Handling",
+      "score": 318.75,
+      "details": {
+        "pattern": "Connection setup and teardown",
+        "filesAffected": 5,
+        "linesPerFile": 30,
+        "totalLines": 150,
+        "similarity": 0.85,
+        "impactFactor": 2.5,
+        "complexity": 4
+      }
+    }
+  ],
+  "categoryBreakdown": {
+    "apiRoutes": {
+      "totalScore": 2067,
+      "patterns": 6,
+      "filesAffected": 78,
+      "estimatedReduction": "30-40%"
+    },
+    "services": {
+      "totalScore": 1299,
+      "patterns": 6,
+      "filesAffected": 21,
+      "estimatedReduction": "25-35%"
+    },
+    "utilities": {
+      "totalScore": 585,
+      "patterns": 4,
+      "filesAffected": 25,
+      "estimatedReduction": "20-30%"
+    },
+    "hooks": {
+      "totalScore": 388,
+      "patterns": 2,
+      "filesAffected": 15,
+      "estimatedReduction": "15-20%"
+    },
+    "components": {
+      "totalScore": 218,
+      "patterns": 4,
+      "filesAffected": 40,
+      "estimatedReduction": "10-15%"
+    },
+    "stores": {
+      "totalScore": 98,
+      "patterns": 1,
+      "filesAffected": 13,
+      "estimatedReduction": "20-25%"
+    }
+  },
+  "effortImpactMatrix": {
+    "quickWins": [
+      {
+        "item": "Semantic Embedding Merge",
+        "score": 629.85,
+        "effort": "3 hours",
+        "roi": 210
+      },
+      {
+        "item": "Drawing Handler Cleanup",
+        "score": 100.00,
+        "effort": "1 hour",
+        "roi": 100
+      },
+      {
+        "item": "Store Reset Base Class",
+        "score": 97.50,
+        "effort": "2 hours",
+        "roi": 49
+      }
+    ],
+    "strategicInitiatives": [
+      {
+        "item": "API Route Middleware",
+        "score": 982.75,
+        "effort": "3 days",
+        "roi": 327
+      },
+      {
+        "item": "Session Validation",
+        "score": 432.00,
+        "effort": "1 day",
+        "roi": 432
+      },
+      {
+        "item": "Database Conversions",
+        "score": 367.50,
+        "effort": "1.5 days",
+        "roi": 245
+      }
+    ]
+  },
+  "metrics": {
+    "totalDuplicationScore": 4655.40,
+    "estimatedLinesSaved": 2800,
+    "codeReductionPercentage": 18,
+    "filesAffected": 192,
+    "implementationDays": 15,
+    "monthlyTimeSaved": 14,
+    "paybackPeriod": "6 weeks"
+  },
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Implement API route middleware system",
+      "reason": "Highest score and affects critical path",
+      "timeline": "Week 1"
+    },
+    {
+      "priority": 2,
+      "action": "Merge semantic embedding services",
+      "reason": "Quick win with high impact",
+      "timeline": "Day 1"
+    },
+    {
+      "priority": 3,
+      "action": "Create session validation middleware",
+      "reason": "Security critical with high duplication",
+      "timeline": "Week 1"
+    },
+    {
+      "priority": 4,
+      "action": "Unify database conversion utilities",
+      "reason": "High score in data layer",
+      "timeline": "Week 2"
+    },
+    {
+      "priority": 5,
+      "action": "Abstract WebSocket handling",
+      "reason": "Complex but high value",
+      "timeline": "Week 2"
+    }
+  ]
+}

@@ -1,0 +1,490 @@
+{
+  "timestamp": "2025-06-29T00:19:27.853Z",
+  "summary": {
+    "totalFunctions": 569,
+    "similarPairs": 30,
+    "averageSimilarity": 89
+  },
+  "topSimilarFunctions": [
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "split",
+        "file": "app/api/logs/route.ts",
+        "lines": 10,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "split",
+        "file": "app/api/logs/stats/route.ts",
+        "lines": 10,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "calculateSimilarity",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 22,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "calculateSimilarity",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 22,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 20,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 20,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "getCacheKey",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 10,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "getCacheKey",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 10,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers-refactored.ts",
+        "lines": 13,
+        "area": "Hooks"
+      },
+      "func2": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers.ts",
+        "lines": 13,
+        "area": "Hooks"
+      }
+    },
+    {
+      "similarity": 100,
+      "func1": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers-refactored.ts",
+        "lines": 13,
+        "area": "Hooks"
+      },
+      "func2": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers.ts",
+        "lines": 13,
+        "area": "Hooks"
+      }
+    },
+    {
+      "similarity": 96,
+      "func1": {
+        "name": "batchGenerateEmbeddings",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 28,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "batchGenerateEmbeddings",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 28,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 96,
+      "func1": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 20,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 20,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 96,
+      "func1": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers-refactored.ts",
+        "lines": 13,
+        "area": "Hooks"
+      },
+      "func2": {
+        "name": "toChartDrawingLW",
+        "file": "hooks/chart/useDrawingEventHandlers.ts",
+        "lines": 13,
+        "area": "Hooks"
+      }
+    },
+    {
+      "similarity": 96,
+      "func1": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 17,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 17,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 96,
+      "func1": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 17,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 17,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 95,
+      "func1": {
+        "name": "if",
+        "file": "app/api/binance/klines/route.ts",
+        "lines": 13,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "if",
+        "file": "app/api/binance/ticker/route.ts",
+        "lines": 12,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 93,
+      "func1": {
+        "name": "generateEmbedding",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 59,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "generateEmbedding",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 59,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 92,
+      "func1": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 17,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 17,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 92,
+      "func1": {
+        "name": "preparePatternAnalysisData",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 31,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "preparePatternAnalysisData",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 31,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 92,
+      "func1": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 17,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "prepareChartDrawingData",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 17,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 89,
+      "func1": {
+        "name": "Decimal",
+        "file": "lib/utils/db-conversions.server.ts",
+        "lines": 43,
+        "area": "Utils"
+      },
+      "func2": {
+        "name": "BigInt",
+        "file": "lib/utils/db-conversions.ts",
+        "lines": 42,
+        "area": "Utils"
+      }
+    },
+    {
+      "similarity": 88,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/drawings/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/patterns/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 82,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/drawings/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/timeframe/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 82,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/patterns/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/timeframe/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 81,
+      "func1": {
+        "name": "if",
+        "file": "app/api/binance/klines/route.ts",
+        "lines": 10,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "if",
+        "file": "app/api/binance/ticker/route.ts",
+        "lines": 10,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 79,
+      "func1": {
+        "name": "batchGenerateEmbeddings",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 28,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 20,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 79,
+      "func1": {
+        "name": "for",
+        "file": "lib/services/semantic-embedding.service.secure.ts",
+        "lines": 20,
+        "area": "Services"
+      },
+      "func2": {
+        "name": "batchGenerateEmbeddings",
+        "file": "lib/services/semantic-embedding.service.ts",
+        "lines": 28,
+        "area": "Services"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/drawings/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/messages/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/drawings/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/sessions/[sessionId]/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/patterns/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/messages/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/patterns/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/sessions/[sessionId]/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/timeframe/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/messages/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/chart/sessions/[sessionId]/timeframe/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/sessions/[sessionId]/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    },
+    {
+      "similarity": 77,
+      "func1": {
+        "name": "catch",
+        "file": "app/api/memory/messages/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      },
+      "func2": {
+        "name": "catch",
+        "file": "app/api/memory/sessions/[sessionId]/route.ts",
+        "lines": 15,
+        "area": "API Routes"
+      }
+    }
+  ],
+  "areaStatistics": {
+    "API Routes-API Routes": {
+      "count": 13,
+      "totalLines": 365
+    },
+    "Services-Services": {
+      "count": 8,
+      "totalLines": 414
+    },
+    "Hooks-Hooks": {
+      "count": 3,
+      "totalLines": 78
+    },
+    "Utils-Utils": {
+      "count": 6,
+      "totalLines": 283
+    }
+  },
+  "recommendations": [
+    {
+      "area": "Cross-area duplication",
+      "description": "Functions duplicated across different modules",
+      "priority": "High"
+    },
+    {
+      "area": "Same-area duplication",
+      "description": "Similar functions within the same module",
+      "priority": "Medium"
+    }
+  ]
+}

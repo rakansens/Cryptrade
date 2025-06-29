@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-06-29T00:18:32.525Z",
+  "areas": [
+    {
+      "area": "API Routes",
+      "totalLines": 3999,
+      "reducibleLines": 172,
+      "estimatedReduction": 51,
+      "percentageReduction": 1.3
+    },
+    {
+      "area": "Stores",
+      "totalLines": 4518,
+      "reducibleLines": 80,
+      "estimatedReduction": 20,
+      "percentageReduction": 0.4
+    },
+    {
+      "area": "Hooks",
+      "totalLines": 8107,
+      "reducibleLines": 93,
+      "estimatedReduction": 18,
+      "percentageReduction": 0.2
+    },
+    {
+      "area": "Components",
+      "totalLines": 10635,
+      "reducibleLines": 36,
+      "estimatedReduction": 5,
+      "percentageReduction": 0
+    }
+  ],
+  "impact": {
+    "totalLinesAnalyzed": 27259,
+    "estimatedLinesSaved": 94,
+    "percentageReduction": 0.3
+  },
+  "timeEstimation": {
+    "hours": 2,
+    "days": 1
+  },
+  "recommendations": [
+    "Start with API Routes for highest impact",
+    "Implement base classes for stores",
+    "Create shared hook utilities",
+    "Standardize component patterns"
+  ]
+}

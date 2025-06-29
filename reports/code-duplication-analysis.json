@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-06-29T00:13:54.859Z",
+  "configuration": {
+    "threshold": 0.7,
+    "minLines": 10
+  },
+  "results": [
+    {
+      "area": "API Routes",
+      "filesAnalyzed": 41,
+      "blocksFound": 1,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Stores",
+      "filesAnalyzed": 24,
+      "blocksFound": 13,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Chart Components",
+      "filesAnalyzed": 18,
+      "blocksFound": 0,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Auth",
+      "filesAnalyzed": 5,
+      "blocksFound": 1,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Utils",
+      "filesAnalyzed": 25,
+      "blocksFound": 4,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Services",
+      "filesAnalyzed": 21,
+      "blocksFound": 0,
+      "duplicatesFound": 0,
+      "duplicates": []
+    },
+    {
+      "area": "Hooks",
+      "filesAnalyzed": 47,
+      "blocksFound": 2,
+      "duplicatesFound": 0,
+      "duplicates": []
+    }
+  ],
+  "summary": {
+    "totalAreas": 7,
+    "totalFiles": 181,
+    "totalBlocks": 21,
+    "totalDuplicates": 0
+  }
+}

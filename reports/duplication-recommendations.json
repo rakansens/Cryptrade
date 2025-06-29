@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-06-29T00:15:58.700Z",
+  "recommendations": [
+    {
+      "area": "API Routes",
+      "pattern": "Error Response Handling",
+      "description": "Multiple API routes implement similar error response patterns",
+      "recommendation": "Create a unified error response utility function",
+      "priority": "High",
+      "estimatedFiles": 15
+    },
+    {
+      "area": "Hooks",
+      "pattern": "WebSocket Connection",
+      "description": "Duplicate WebSocket connection and reconnection logic",
+      "recommendation": "Extract to a shared useWebSocketBase hook",
+      "priority": "High",
+      "estimatedFiles": 5
+    },
+    {
+      "area": "Stores",
+      "pattern": "State Reset",
+      "description": "Similar state reset logic across multiple stores",
+      "recommendation": "Create a base store class with reset functionality",
+      "priority": "Medium",
+      "estimatedFiles": 8
+    },
+    {
+      "area": "Utils",
+      "pattern": "Data Transformation",
+      "description": "Repeated data transformation patterns for API responses",
+      "recommendation": "Create data transformer utilities",
+      "priority": "Medium",
+      "estimatedFiles": 10
+    },
+    {
+      "area": "Components",
+      "pattern": "Loading States",
+      "description": "Similar loading state rendering patterns",
+      "recommendation": "Create a unified LoadingState component",
+      "priority": "Low",
+      "estimatedFiles": 12
+    }
+  ],
+  "summary": {
+    "totalRecommendations": 5,
+    "highPriority": 2,
+    "estimatedTotalFiles": 50
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-06-29T00:16:48Z",
+  "analyzedAreas": [
+    {
+      "name": "API Routes",
+      "path": "app/api",
+      "patterns": [
+        "NextResponse usage",
+        "Error handling",
+        "Try-catch blocks"
+      ]
+    },
+    {
+      "name": "Stores",
+      "path": "store",
+      "patterns": [
+        "State updates",
+        "State reset logic"
+      ]
+    },
+    {
+      "name": "Hooks",
+      "path": "hooks",
+      "patterns": [
+        "Effect hooks",
+        "State hooks",
+        "Error handling"
+      ]
+    },
+    {
+      "name": "Components",
+      "path": "components",
+      "patterns": [
+        "Loading states",
+        "Error states"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "area": "API Routes",
+      "issue": "Repeated error response patterns",
+      "solution": "Create unified response handlers",
+      "priority": "High"
+    },
+    {
+      "area": "Stores",
+      "issue": "Similar state update logic",
+      "solution": "Extract common store utilities",
+      "priority": "Medium"
+    },
+    {
+      "area": "Hooks",
+      "issue": "Duplicate async operation handling",
+      "solution": "Create base async hooks",
+      "priority": "High"
+    },
+    {
+      "area": "Components",
+      "issue": "Repeated loading/error UI patterns",
+      "solution": "Create shared UI state components",
+      "priority": "Low"
+    }
+  ]
+}
