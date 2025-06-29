@@ -66,7 +66,11 @@ const DEFAULT_MAX_RECONNECT_INTERVAL = 30000;
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_HEARTBEAT_INTERVAL = 30000;
 
-export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn {
+/**
+ * @deprecated This is the legacy implementation. Use the unified version instead.
+ * This function is kept for reference only during migration.
+ */
+function useWebSocketLegacy(options: WebSocketHookOptions): WebSocketHookReturn {
   const {
     url,
     protocols,
@@ -384,6 +388,20 @@ export function useWebSocket(options: WebSocketHookOptions): WebSocketHookReturn
     webSocket: webSocketRef.current,
   };
 }
+
+// Import and re-export the unified implementation
+import { useWebSocketUnified } from './use-websocket-unified';
+
+/**
+ * WebSocket hook with automatic reconnection and heartbeat support
+ * 
+ * @deprecated The internal implementation has been replaced with useConnectionBase.
+ * For new code, consider using useConnectionBase directly.
+ */
+export const useWebSocket = useWebSocketUnified;
+
+// Export the legacy implementation for reference during migration
+export { useWebSocketLegacy };
 
 /**
  * Hook for managing multiple WebSocket connections

@@ -5,6 +5,7 @@ import { useMarketActions, usePriceData, useSymbolLoading } from '@/store/market
 import { useIsClient } from '@/hooks/use-is-client';
 import type { BinanceKlineMessage, ProcessedKline } from '@/types/market';
 import { useChartDataBase } from '@/hooks/shared/useChartDataBase';
+import { OHLCVConverter } from '@/lib/chart/data-converters';
 
 export interface UseCandlestickDataOptions {
   symbol: string;
@@ -81,14 +82,8 @@ export function useCandlestickData({
       ((data: BinanceKlineMessage) => {
         try {
           if (data.e === "kline" && data.s === symbol.toUpperCase()) {
-            const kline: ProcessedKline = {
-              time: Math.floor(data.k.t / 1000), // Convert ms to seconds
-              open: parseFloat(data.k.o),
-              high: parseFloat(data.k.h),
-              low: parseFloat(data.k.l),
-              close: parseFloat(data.k.c),
-              volume: parseFloat(data.k.v),
-            };
+            // Use unified converter for consistent data transformation
+            const kline = OHLCVConverter.fromBinanceWebSocket(data);
 
             if (data.k.x) {
               // Kline is closed, add new candle

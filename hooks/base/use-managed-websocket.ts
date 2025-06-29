@@ -32,7 +32,11 @@ export interface UseManagedWebSocketReturn {
 /**
  * Managed WebSocket hook with automatic cleanup and memory leak prevention
  */
-export function useManagedWebSocket(options: UseManagedWebSocketOptions): UseManagedWebSocketReturn {
+/**
+ * @deprecated This is the legacy implementation. Use the unified version instead.
+ * This function is kept for reference only during migration.
+ */
+function useManagedWebSocketLegacy(options: UseManagedWebSocketOptions): UseManagedWebSocketReturn {
   const {
     url,
     id = url,
@@ -235,3 +239,17 @@ export function useManagedWebSocket(options: UseManagedWebSocketOptions): UseMan
     send,
   };
 }
+
+// Import and re-export the unified implementation
+import { useManagedWebSocketUnified } from './use-managed-websocket-unified';
+
+/**
+ * Managed WebSocket hook with automatic cleanup and memory leak prevention
+ * 
+ * @deprecated The internal implementation has been replaced with useConnectionBase.
+ * For new code, consider using useConnectionBase directly.
+ */
+export const useManagedWebSocket = useManagedWebSocketUnified;
+
+// Export the legacy implementation for reference during migration
+export { useManagedWebSocketLegacy };

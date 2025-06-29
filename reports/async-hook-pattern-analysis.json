@@ -1,0 +1,166 @@
+{
+  "analysis": {
+    "title": "非同期フックパターンの重複分析レポート",
+    "date": "2025-06-29",
+    "scope": "useState + useEffect による非同期データ取得パターンの統一化"
+  },
+  "patterns_found": {
+    "total_files": 24,
+    "key_patterns": [
+      {
+        "pattern": "loading/error/data の3状態管理",
+        "count": 18,
+        "description": "useState でloading, error, dataを個別管理し、useEffect内で非同期処理を実行"
+      },
+      {
+        "pattern": "fetch APIの直接利用",
+        "count": 12,
+        "description": "try-catch内でfetch APIを呼び出し、結果をsetStateで更新"
+      },
+      {
+        "pattern": "マウント状態の追跡",
+        "count": 8,
+        "description": "isMountedRef や mountedRef でコンポーネントのマウント状態を管理"
+      },
+      {
+        "pattern": "エラーハンドリングの重複",
+        "count": 15,
+        "description": "各フックで独自のエラーログ処理とtoast表示"
+      }
+    ]
+  },
+  "duplicated_code_examples": [
+    {
+      "file": "hooks/use-alerts.ts",
+      "lines": "9-26",
+      "pattern": "基本的なフェッチパターン",
+      "code": "const [alerts, setAlerts] = useState<Alert[]>([]);\n\nconst fetchAlerts = useCallback(async () => {\n  if (!userId) return;\n  try {\n    const res = await fetch('/api/alerts', { headers: { 'x-user-id': userId } });\n    if (res.ok) {\n      const data = await res.json();\n      setAlerts(data.alerts);\n    }\n  } catch (_error) {\n    logger.error('[useAlerts] Failed to fetch alerts', { error: _error });\n  }\n}, [userId]);\n\nuseEffect(() => {\n  fetchAlerts();\n}, [fetchAlerts]);"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "lines": "13-37",
+      "pattern": "コンポーネント内の非同期データ取得",
+      "code": "const [userData, setUserData] = useState<any>(null);\n\nuseEffect(() => {\n  async function fetchUserData() {\n    try {\n      const response = await fetch('/api/auth/me');\n      if (response.ok) {\n        const data = await response.json();\n        setUserData(data.user);\n      }\n    } catch (error) {\n      console.error('Failed to fetch user data:', error);\n    }\n  }\n\n  if (user) {\n    fetchUserData();\n  }\n}, [user]);"
+    },
+    {
+      "file": "hooks/market/use-market-stats.ts",
+      "lines": "27-67",
+      "pattern": "複雑な状態管理とエラーハンドリング",
+      "code": "const fetchTicker = useCallback(async () => {\n  if (!symbol || !isMountedRef.current) return;\n\n  try {\n    setSymbolLoading(symbol, true);\n    logger.info('[MarketStats] Fetching 24hr ticker', { symbol });\n    \n    const tickerData = await binanceAPI.fetchTicker24hr(symbol) as BinanceTicker24hr;\n    \n    if (!isMountedRef.current) return;\n    \n    // データ変換処理\n    setTicker(symbol, ticker);\n    \n  } catch (error) {\n    logger.error('[MarketStats] Failed to fetch 24hr ticker', { symbol }, error);\n    if (isMountedRef.current) {\n      setConnectionError(`Failed to fetch market stats for ${symbol}`);\n    }\n  } finally {\n    if (isMountedRef.current) {\n      setSymbolLoading(symbol, false);\n    }\n  }\n}, [symbol, setTicker, setConnectionError, setSymbolLoading]);"
+    }
+  ],
+  "existing_solutions": {
+    "custom_hooks": [
+      {
+        "name": "useAsyncState",
+        "file": "hooks/base/use-async-state.ts",
+        "features": [
+          "loading/error/data の統一管理",
+          "AbortController によるキャンセル処理",
+          "マウント状態の自動追跡",
+          "execute/reset メソッドの提供"
+        ],
+        "usage_example": "const { loading, error, data, execute, reset } = useAsyncState(asyncFn);"
+      },
+      {
+        "name": "useAsyncOperation",
+        "file": "hooks/base/use-async-operation.ts",
+        "features": [
+          "リトライ機能の組み込み",
+          "バリデーション機能",
+          "詳細なロギング",
+          "エラー/成功時のコールバック"
+        ],
+        "usage_example": "const { execute, loading, error, reset } = useAsyncOperation(operation, options);"
+      }
+    ]
+  },
+  "unified_patterns": {
+    "proposed_refactoring": [
+      {
+        "before": "個別のuseState + useEffect + try-catch",
+        "after": "useAsyncState または useAsyncOperation の利用",
+        "benefits": [
+          "ボイラープレートコードの削減",
+          "一貫したエラーハンドリング",
+          "自動的なクリーンアップ処理",
+          "TypeScript型の統一"
+        ]
+      }
+    ],
+    "migration_examples": [
+      {
+        "file": "hooks/use-alerts.ts",
+        "current_lines": 26,
+        "proposed": "export function useAlerts(userId?: string) {\n  const { data: alerts, execute: fetchAlerts } = useAsyncState(\n    useCallback(async () => {\n      if (!userId) return [];\n      const res = await fetch('/api/alerts', { headers: { 'x-user-id': userId } });\n      if (!res.ok) throw new Error('Failed to fetch alerts');\n      const data = await res.json();\n      return data.alerts;\n    }, [userId])\n  );\n\n  useEffect(() => {\n    fetchAlerts();\n  }, [fetchAlerts]);\n\n  // createAlert などその他のメソッド...\n  return { alerts: alerts || [], fetchAlerts, createAlert };\n}",
+        "reduced_lines": 10
+      },
+      {
+        "file": "app/dashboard/page.tsx",
+        "current_lines": 17,
+        "proposed": "const { data: userData, execute: fetchUserData } = useAsyncState(\n  useCallback(async () => {\n    const response = await fetch('/api/auth/me');\n    if (!response.ok) throw new Error('Failed to fetch user data');\n    const data = await response.json();\n    return data.user;\n  }, [])\n);\n\nuseEffect(() => {\n  if (user) {\n    fetchUserData();\n  }\n}, [user, fetchUserData]);",
+        "reduced_lines": 8
+      }
+    ]
+  },
+  "impact_analysis": {
+    "estimated_reduction": {
+      "total_lines": 320,
+      "percentage": "約40%",
+      "files_affected": 15
+    },
+    "benefits": [
+      "コードの一貫性向上",
+      "メンテナンス性の向上",
+      "バグの削減（特にメモリリーク関連）",
+      "新規開発者の学習コスト削減",
+      "テストの簡素化"
+    ],
+    "risks": [
+      "既存コードの大規模なリファクタリング",
+      "一時的な不安定性の可能性",
+      "チーム全体への教育が必要"
+    ]
+  },
+  "recommendations": {
+    "priority": "高",
+    "implementation_steps": [
+      {
+        "step": 1,
+        "action": "useAsyncState と useAsyncOperation の使い分けガイドライン作成",
+        "details": "シンプルなデータ取得は useAsyncState、複雑な操作は useAsyncOperation"
+      },
+      {
+        "step": 2,
+        "action": "最も使用頻度の高いフックから段階的に移行",
+        "details": "use-alerts.ts, use-market-stats.ts から開始"
+      },
+      {
+        "step": 3,
+        "action": "共通のfetch wrapperの作成",
+        "details": "エラーハンドリング、ヘッダー設定、レスポンス処理の統一"
+      },
+      {
+        "step": 4,
+        "action": "ESLintルールの追加",
+        "details": "新規コードでは必ずカスタムフックを使用するよう強制"
+      }
+    ],
+    "code_snippets": {
+      "fetch_wrapper": "// lib/utils/api-client.ts\nexport async function apiClient<T>(url: string, options?: RequestInit): Promise<T> {\n  const response = await fetch(url, {\n    ...options,\n    headers: {\n      'Content-Type': 'application/json',\n      ...options?.headers,\n    },\n  });\n\n  if (!response.ok) {\n    const error = await response.text();\n    throw new Error(error || `HTTP ${response.status}`);\n  }\n\n  return response.json();\n}",
+      "usage_example": "const { data, loading, error, execute } = useAsyncState(\n  useCallback(() => apiClient<Alert[]>('/api/alerts'), [])\n);"
+    }
+  },
+  "additional_findings": {
+    "related_patterns": [
+      "WebSocket接続管理の重複（use-websocket系）",
+      "ストリーミングデータ処理の重複（use-streaming系）",
+      "認証状態管理の分散（AuthProvider内外）"
+    ],
+    "future_considerations": [
+      "React Query / SWR の導入検討",
+      "Suspense対応への移行準備",
+      "Server Componentsとの統合戦略"
+    ]
+  }
+}

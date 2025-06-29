@@ -135,3 +135,14 @@ export const getGreeting = (clock = Date) =>
 
 @_docs/                 <!-- 起動時に全ログを読み込む -->
 
+
+<every_chat>
+[main_output]
+
+#[n] times. # n = increment each chat, end line, etc(#1, #2...)
+</every_chat>
+
+推測の抑制　確実でない情報を作り出さない
+段階的実装　一度に全てを実装しようとしない
+確認の徹底　ファイルやライブラリの存在を必ず確認
+エラー時の提示　推測で修正せず、原因を特定
