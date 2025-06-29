@@ -1,5 +1,18 @@
+/**
+ * Client-side database conversion utilities
+ * 
+ * This file provides client-safe exports without Prisma dependencies
+ */
+
 import type { AnalysisRecord } from '@/types/analysis-history';
-import { convertDbAnalysisRecordCore } from './db-conversions-shared';
+import {
+  convertDbAnalysisRecord as convertDbAnalysisRecordUnified,
+  serializeBigInt as serializeBigIntUnified,
+  serializeDecimal as serializeDecimalUnified,
+  prepareChartDrawingDataClient,
+  preparePatternAnalysisDataClient,
+  clientConverters,
+} from './db-conversions-unified';
 
 // Client-safe type definitions (without Prisma dependencies)
 export type DbAnalysisRecord = {
@@ -30,80 +43,47 @@ export type DbTouchEvent = {
 
 /**
  * Convert database analysis record to client format (Client version without Prisma)
+ * @deprecated Use the unified version directly
  */
 export function convertDbAnalysisRecord(
   dbRecord: DbAnalysisRecord
 ): AnalysisRecord {
-  // 共通のコア関数を使用
-  return convertDbAnalysisRecordCore(dbRecord);
+  return convertDbAnalysisRecordUnified(dbRecord, clientConverters);
 }
 
 /**
  * Convert BigInt to string for JSON serialization
+ * @deprecated Use the unified version directly
  */
-export function serializeBigInt(value: bigint): string {
-  return value.toString();
-}
+export const serializeBigInt = serializeBigIntUnified;
 
 /**
  * Convert Decimal to number for JSON serialization
+ * @deprecated Use the unified version directly
  */
-export function serializeDecimal(value: { toString(): string }): number {
-  return Number(value.toString());
-}
+export const serializeDecimal = serializeDecimalUnified;
 
 /**
  * Prepare data for chart drawing creation
+ * @deprecated Use the unified version directly
  */
-export function prepareChartDrawingData(drawing: any): any {
-  const { id, sessionId, type, points, style, price, time, levels, metadata, visible, interactive } = drawing;
-  
-  return {
-    id,
-    sessionId,
-    type,
-    points: points || [],
-    style: style || {},
-    price: price !== undefined ? price : undefined,
-    time: time !== undefined ? BigInt(time) : undefined,
-    levels: levels || undefined,
-    metadata: metadata || undefined,
-    visible: visible !== undefined ? visible : true,
-    interactive: interactive !== undefined ? interactive : true,
-  };
-}
+export const prepareChartDrawingData = prepareChartDrawingDataClient;
 
 /**
  * Prepare data for pattern analysis creation
+ * @deprecated Use the unified version directly
  */
-export function preparePatternAnalysisData(pattern: any) {
-  const { 
-    id, 
-    sessionId, 
-    type, 
-    symbol, 
-    interval, 
-    startTime, 
-    endTime, 
-    confidence,
-    visualization,
-    metrics,
-    description,
-    tradingImplication 
-  } = pattern;
-  
-  return {
-    id,
-    sessionId,
-    type,
-    symbol,
-    interval,
-    startTime: BigInt(startTime),
-    endTime: BigInt(endTime),
-    confidence,
-    visualization: visualization || {},
-    metrics: metrics || {},
-    description,
-    tradingImplication,
-  };
-}
+export const preparePatternAnalysisData = preparePatternAnalysisDataClient;
+
+// Re-export unified utilities for new code
+export {
+  convertDbAnalysisRecord as convertDbAnalysisRecordUnified,
+  serializeBigInt as serializeBigIntUnified,
+  serializeDecimal as serializeDecimalUnified,
+  prepareChartDrawingDataClient as prepareChartDrawingDataUnified,
+  preparePatternAnalysisDataClient as preparePatternAnalysisDataUnified,
+  safeToNumber,
+  safeToBigInt,
+  prepareForJson,
+  type DecimalLike,
+} from './db-conversions-unified';
