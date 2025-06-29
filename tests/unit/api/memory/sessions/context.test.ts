@@ -2,6 +2,7 @@ import { GET } from '@/app/api/memory/sessions/[sessionId]/context/route';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/utils/logger';
+import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
 jest.mock('@/lib/db/prisma', () => ({
@@ -19,6 +20,10 @@ jest.mock('@/lib/utils/logger', () => ({
   },
 }));
 
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn(),
+}));
+
 describe('GET /api/memory/sessions/[sessionId]/context', () => {
   const mockRequest = new NextRequest('http://localhost:3000/api/memory/sessions/123/context');
   const mockRouteContext = {
@@ -27,6 +32,8 @@ describe('GET /api/memory/sessions/[sessionId]/context', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Mock successful authentication by default
+    (getServerSession as jest.Mock).mockResolvedValue({ user: { id: 'test-user' } });
   });
 
   it('should return context for existing messages', async () => {
@@ -195,5 +202,16 @@ describe('GET /api/memory/sessions/[sessionId]/context', () => {
     expect(response.status).toBe(200);
     expect(data.context).toContain('What\'s the price of BTC/USD?');
     expect(data.context).toContain('$42,000\n\nThis represents a 5% increase.');
+  });
+
+  it('should return 401 when user is not authenticated', async () => {
+    // Mock authentication failure
+    (getServerSession as jest.Mock).mockResolvedValue(null);
+
+    const response = await GET(mockRequest, mockRouteContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized - Please login');
   });
 });

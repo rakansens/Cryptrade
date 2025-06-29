@@ -201,7 +201,7 @@ describe('useApproveProposal', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith(
-      '[ApproveProposal] Missing required data for proposal approval',
+      'Proposal approval failed',
       expect.any(Object)
     );
   });
