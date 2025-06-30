@@ -42,16 +42,6 @@ export async function generateFallbackResponse(
     };
   }
   
-  // Handle analysis requests
-  if (intent === 'trading_analysis' || /分析|analysis|解析|予測/i.test(userQuery)) {
-    return {
-      response: `BTCとETHの比較分析を行いました。BTCは$50,000、ETHは$3,000で取引中。両方とも強気相場です。`,
-      metadata: {
-        ...metadata,
-        processedBy: 'trading-agent'
-      }
-    };
-  }
   
   // Handle proposal requests
   if (intent === 'proposal_request' || /提案|proposal|エントリーポイント/i.test(userQuery)) {
@@ -66,6 +56,24 @@ export async function generateFallbackResponse(
         proposals: [
           { type: 'buy', price: 49000, confidence: 0.8 },
           { type: 'sell', price: 51000, confidence: 0.7 }
+        ]
+      }
+    };
+  }
+  
+  // Handle trading analysis requests that might include proposals
+  if (intent === 'trading_analysis' || /分析|analysis|解析|予測/i.test(userQuery)) {
+    return {
+      response: `BTCとETHの比較分析を行いました。BTCは$50,000、ETHは$3,000で取引中。両方とも強気相場です。`,
+      metadata: {
+        ...metadata,
+        processedBy: 'trading-agent'
+      },
+      proposalGroup: {
+        id: `analysis-${Date.now()}`,
+        proposals: [
+          { type: 'analysis', price: 50000, confidence: 0.85 },
+          { type: 'recommendation', price: 48000, confidence: 0.75 }
         ]
       }
     };

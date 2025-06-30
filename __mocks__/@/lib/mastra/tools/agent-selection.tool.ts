@@ -227,6 +227,29 @@ mockExecute.mockImplementation(async ({ context }) => {
       },
       message: 'A2A communication successful: tradingAnalysisAgent',
     },
+    proposal_request: {
+      success: true,
+      selectedAgent: 'tradingAnalysisAgent',
+      executionResult: {
+        response: 'Generated 2 trading proposals',
+        data: { analysis: 'bullish' },
+        metadata: {
+          model: 'a2a-communication',
+          executionTime: 100,
+          toolsUsed: [],
+          processedBy: 'trading-agent',
+        },
+        proposalGroup: {
+          id: 'pg_456',
+          title: 'Entry Point Proposals',
+          proposals: [
+            { id: 'p3', type: 'entry', confidence: 0.88 },
+            { id: 'p4', type: 'exit', confidence: 0.82 },
+          ],
+        },
+      },
+      message: 'A2A communication successful: tradingAnalysisAgent',
+    },
     custom_agent: {
       success: true,
       selectedAgent: 'custom_agent',
