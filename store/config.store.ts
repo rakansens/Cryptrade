@@ -494,10 +494,10 @@ interface LegacyConfigStoreMethods {
 const createLegacyMethods = (): LegacyConfigStoreMethods => {
   return {
     setThemeMode: (mode: ThemeMode) => {
-      useConfigActions().setThemeMode(mode);
+      useConfigStoreBase.getState().setThemeMode(mode);
     },
     updateChart: (config: Partial<ChartConfig>) => {
-      useConfigActions().updateChart(config);
+      useConfigStoreBase.getState().updateChart(config);
     }
   };
 };

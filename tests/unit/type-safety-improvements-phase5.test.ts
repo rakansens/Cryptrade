@@ -146,7 +146,7 @@ describe('TDD Phase 5: Store型安全性改善', () => {
       expect(typeof slice.updateLastMessage).toBe('function');
     });
 
-    it('should handle message operations with type safety', () => {
+    it('should handle message operations with type safety', async () => {
       const messageStoreModule = require('@/store/chat/message.store');
       const { createMessageSlice } = messageStoreModule;
       
@@ -160,7 +160,7 @@ describe('TDD Phase 5: Store型安全性改善', () => {
       const slice = createMessageSlice(mockSet, mockGet);
       
       // メッセージ追加時のエラーハンドリングが型安全であることを確認
-      expect(async () => {
+      await expect(async () => {
         await slice.addMessage('test-session', {
           role: 'user',
           content: 'Test message'
