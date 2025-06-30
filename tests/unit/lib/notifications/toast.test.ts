@@ -1,3 +1,10 @@
+// Mock the UI toast component first
+const mockShowToast = jest.fn();
+
+jest.mock('@/components/ui/toast', () => ({
+  showToast: mockShowToast
+}));
+
 import {
   showSuccess,
   showError,
@@ -8,13 +15,10 @@ import {
   showDrawingCancellationSuccess,
   showProposalApprovalError,
   showValidationError
-} from '@/lib/notifications/toast';
-import { showToast } from '@/components/ui/toast';
+} from '../../../lib/notifications/toast';
 
-// Mock the UI toast component
-jest.mock('@/components/ui/toast', () => ({
-  showToast: jest.fn()
-}));
+// Alias for easier reference in tests
+const showToast = mockShowToast;
 
 describe('Toast Notifications', () => {
   beforeEach(() => {

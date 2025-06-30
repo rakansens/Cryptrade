@@ -10,14 +10,14 @@ require('./tests/setup/test-env');
 // 3. JSDOM environment setup
 require('./tests/setup/jsdom-environment');
 
-// 4. Browser API mocks
-require('./tests/setup/browser-mocks');
-
-// 5. Extend Jest matchers
+// 4. Extend Jest matchers
 require('@testing-library/jest-dom');
 
-// 6. MSW setup - AFTER polyfills but BEFORE other mocks
+// 5. MSW setup - AFTER polyfills and JSDOM but BEFORE other mocks
 require('./tests/setup/msw-setup');
+
+// 6. Browser API mocks
+require('./tests/setup/browser-mocks');
 
 // 7. Library and framework mocks
 require('./tests/setup/library-mocks');

@@ -55,7 +55,7 @@ const EnvSchema = z.object({
   VERCEL_URL: z.string().optional(),
   
   // Feature flags
-  USE_NEW_WS_MANAGER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
+  USE_NEW_WS_MANAGER: z.enum(['true', 'false']).optional().default('false').transform(val => val === 'true'),
   ENABLE_ORCHESTRATOR_AGENT: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
   NEXT_PUBLIC_FEATURE_DRAWING_RENDERER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),
   NEXT_PUBLIC_USE_NEW_PATTERN_RENDERER: z.enum(['true', 'false']).optional().transform(val => val === 'true'),

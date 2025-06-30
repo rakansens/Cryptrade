@@ -335,7 +335,7 @@ describe('MSW Mock Service Worker Tests', () => {
   });
 
   describe('Dynamic Handler Management', () => {
-    it('should allow adding runtime handlers', () => {
+    it('should allow adding runtime handlers', async () => {
       const dynamicHandler = http.get('https://api.example.com/dynamic', () => {
         return HttpResponse.json({ dynamic: true });
       });
@@ -343,11 +343,9 @@ describe('MSW Mock Service Worker Tests', () => {
       server.use(dynamicHandler);
       
       // Verify the handler was added by making a request
-      expect(async () => {
-        const response = await fetch('https://api.example.com/dynamic');
-        const data = await response.json();
-        expect(data).toHaveProperty('dynamic', true);
-      }).not.toThrow();
+      const response = await fetch('https://api.example.com/dynamic');
+      const data = await response.json();
+      expect(data).toHaveProperty('dynamic', true);
     });
 
     it('should handle handler reset properly', async () => {
