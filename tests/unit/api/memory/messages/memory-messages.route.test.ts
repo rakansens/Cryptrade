@@ -4,6 +4,11 @@ const restoreEnv = mockTestEnv();
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/memory/messages/route';
 
+// Mock authentication
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn(),
+}));
+
 // Mock Prisma
 jest.mock('@/lib/db/prisma', () => ({
   prisma: {
@@ -24,12 +29,22 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/utils/logger';
+import { getServerSession } from '@/lib/auth/server';
 
 describe('POST /api/memory/messages', () => {
   const mockCreate = prisma.conversationMessage.create as jest.MockedFunction<any>;
+  const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
   
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock successful authentication by default
+    mockGetServerSession.mockResolvedValue({
+      user: {
+        id: 'test-user-id',
+        email: 'test@example.com'
+      }
+    } as any);
   });
 
   afterAll(() => {
@@ -71,14 +86,12 @@ describe('POST /api/memory/messages', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toMatchObject({
-      message: {
-        id: messageId,
-        sessionId: sessionId,
-        role: 'user',
-        content: 'Hello, world!',
-        timestamp: expect.any(String),
-      },
+    expect(data.message).toMatchObject({
+      id: messageId,
+      sessionId: sessionId,
+      role: 'user',
+      content: 'Hello, world!',
+      timestamp: expect.any(String),
     });
 
     expect(mockCreate).toHaveBeenCalledWith({
@@ -139,15 +152,13 @@ describe('POST /api/memory/messages', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toMatchObject({
-      message: {
-        id: messageId,
-        sessionId: sessionId,
-        role: 'assistant',
-        content: 'Here is my response',
-        agentId: agentId,
-        metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
-      },
+    expect(data.message).toMatchObject({
+      id: messageId,
+      sessionId: sessionId,
+      role: 'assistant',
+      content: 'Here is my response',
+      agentId: agentId,
+      metadata: { context: 'trading', confidence: parseFloat(confidence.toFixed(2)) },
     });
 
     expect(mockCreate).toHaveBeenCalledWith({

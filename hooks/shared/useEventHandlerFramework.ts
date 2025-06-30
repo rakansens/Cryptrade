@@ -204,37 +204,39 @@ export function useEventHandlerFramework<T = any>(
     }));
   }, [events]);
 
-  // Create operations and success messages for base hook
-  const operations = useCallback(() => {
-    const ops: Record<string, string> = {};
-    events.forEach(event => {
-      ops[event.type] = event.operation;
-    });
-    return ops;
-  }, [events]);
-
-  const successMessages = useCallback(() => {
-    const messages: Record<string, (data: any) => string> = {};
-    events.forEach(event => {
-      if (event.successMessage) {
-        messages[event.type] = typeof event.successMessage === 'function'
-          ? event.successMessage
-          : () => event.successMessage as string;
-      }
-    });
-    return messages;
-  }, [events]);
-
   // Use base event handler
   useEventHandlerBase(
     {
-      operations: operations(),
-      successMessages: successMessages(),
+      getOperation: (eventType: string) => {
+        const eventDef = eventMapRef.current.get(eventType);
+        return eventDef?.operation || 'Unknown operation';
+      },
+      getSuccessMessage: (eventType: string, data: any) => {
+        const eventDef = eventMapRef.current.get(eventType);
+        if (!eventDef?.successMessage) return `${eventType} completed`;
+        
+        return typeof eventDef.successMessage === 'function'
+          ? eventDef.successMessage(data)
+          : eventDef.successMessage;
+      },
       validator: (eventType: string, data: any) => {
         const eventDef = eventMapRef.current.get(eventType);
-        if (!eventDef) return false;
-        if (!eventDef.validate) return true;
-        return eventDef.validate(data);
+        if (!eventDef) return { success: false, error: `Unsupported event type: ${eventType}` };
+        if (!eventDef.validate) return { success: true, data };
+        
+        try {
+          const result = eventDef.validate(data);
+          // For now, only handle synchronous validation
+          // Async validation will be handled in processEvent
+          if (typeof result === 'boolean') {
+            return { success: result, data };
+          }
+          // If Promise returned, assume validation passes for now
+          // Real validation happens in processEvent
+          return { success: true, data };
+        } catch (error) {
+          return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
       },
     },
     eventListeners(),
@@ -256,10 +258,10 @@ export function useEventHandlerFramework<T = any>(
   }, []);
 
   return {
-    // State
-    isProcessing: isProcessingRef.current,
-    lastProcessedEvent: lastProcessedEventRef.current,
-    processingErrors: processingErrorsRef.current,
+    // State (using getters for reactive behavior)
+    get isProcessing() { return isProcessingRef.current; },
+    get lastProcessedEvent() { return lastProcessedEventRef.current; },
+    get processingErrors() { return processingErrorsRef.current; },
     
     // Actions
     processEvent,

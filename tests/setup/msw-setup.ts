@@ -14,14 +14,23 @@ try {
   // Import default handlers
   try {
     const { handlers: defaultHandlers } = require('../mocks/msw/handlers');
-    handlers = defaultHandlers;
+    handlers = defaultHandlers || [];
     console.log(`[MSW] Loaded ${handlers.length} default handlers`);
-    // Log handler count for debugging
-    const localHandlers = handlers.filter((h: any) => h.info?.path?.includes('localhost:3000')).length;
-    const externalHandlers = handlers.length - localHandlers;
-    console.log(`[MSW] Local API handlers: ${localHandlers}, External API handlers: ${externalHandlers}`);
+    
+    // Log handler details for debugging
+    if (handlers.length > 0) {
+      console.log('[MSW] Handler summary:');
+      handlers.forEach((handler: any, index: number) => {
+        if (handler && typeof handler === 'object') {
+          const method = handler.info?.method || 'UNKNOWN';
+          const path = handler.info?.path || 'UNKNOWN_PATH';
+          console.log(`  ${index + 1}. ${method} ${path}`);
+        }
+      });
+    }
   } catch (e) {
-    console.warn('Could not load MSW handlers:', e);
+    console.warn('[MSW] Could not load MSW handlers:', e);
+    handlers = [];
   }
 } catch (e) {
   // Fallback if MSW is not available
@@ -50,21 +59,33 @@ export const mswServer = setupServer(...handlers);
 
 // Start server before all tests
 beforeAll(() => {
-  mswServer.listen({ 
-    onUnhandledRequest: 'warn' // Use 'warn' to log unhandled requests without failing tests
-  });
-  // console.log('✅ MSW server started');
+  try {
+    mswServer.listen({
+      onUnhandledRequest: 'warn' // Use 'warn' to log unhandled requests without failing tests
+    });
+    console.log('[MSW] Server started successfully');
+  } catch (error) {
+    console.error('[MSW] Failed to start server:', error);
+  }
 });
 
 // Reset handlers after each test to ensure test isolation
 afterEach(() => {
-  mswServer.resetHandlers();
+  try {
+    mswServer.resetHandlers();
+  } catch (error) {
+    console.warn('[MSW] Failed to reset handlers:', error);
+  }
 });
 
 // Clean up after all tests with explicit closure
 afterAll(() => {
-  mswServer.close();
-  // console.log('✅ MSW server closed');
+  try {
+    mswServer.close();
+    console.log('[MSW] Server closed successfully');
+  } catch (error) {
+    console.warn('[MSW] Failed to close server:', error);
+  }
 });
 
 // Export for test files to add custom handlers

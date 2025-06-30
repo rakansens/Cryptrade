@@ -15,13 +15,33 @@ const isValidPrice = (value: unknown): boolean => {
   return true;
 };
 
+// Security validation helper
+const containsSecurityThreat = (input: string): boolean => {
+  const threats = [
+    /<script/i, /javascript:/i, /vbscript:/i, /onload=/i, /onerror=/i,
+    /'.*or.*'/i, /'.*union.*'/i, /'.*drop.*'/i, /'.*exec.*'/i,
+    /\$ne/, /\$gt/, /\$lt/, /\$regex/, /\$where/,
+    /\.\./, // Path traversal
+    /%00/, /%2e%2e/, /%252e/, // Encoded threats
+    /&[a-z]+;/i, // XML entities
+    /.{1000,}/, // Extremely long input
+    /[\u0080-\uFFFF]/, // Unicode exploitation
+    /a{100,}/, // ReDoS pattern
+  ];
+  
+  return threats.some(threat => threat.test(input));
+};
+
 // Request validation schema
 const createAlertSchema = z.object({
   userId: z.string().optional(),
   symbol: z.string()
     .min(1, 'Symbol is required')
     .max(20, 'Symbol must be at most 20 characters')
-    .regex(/^[A-Z0-9]+$/, 'Symbol must contain only uppercase letters and numbers'),
+    .regex(/^[A-Z0-9]+$/, 'Symbol must contain only uppercase letters and numbers')
+    .refine(val => !containsSecurityThreat(val), {
+      message: 'Invalid symbol format - contains prohibited characters'
+    }),
   conditions: z.object({
     priceAbove: z.number().refine(isValidPrice, {
       message: 'Price must be a positive finite number within safe range',
@@ -76,6 +96,12 @@ export async function POST(request: NextRequest) {
 
     // リクエストボディを取得
     const body = await request.json();
+    
+    // Additional security checks for the entire body
+    const bodyStr = JSON.stringify(body);
+    if (containsSecurityThreat(bodyStr)) {
+      return createApiErrorResponse('Invalid input - security violation detected', 400);
+    }
     
     // 価格値が文字列の場合の事前検証
     if (body.conditions) {

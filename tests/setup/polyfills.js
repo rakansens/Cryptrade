@@ -112,24 +112,26 @@ if (typeof global.clearImmediate === 'undefined') {
   global.clearImmediate = clearTimeout;
 }
 
-// Polyfill fetch for Node.js environments that don't have it
+// Enhanced fetch polyfill that works with MSW in jsdom environment
 if (typeof global.fetch === 'undefined') {
-  // Create a simple fetch implementation that MSW can intercept
-  const simpleFetch = async (url, options = {}) => {
-    // Create request object for MSW to intercept
+  // Create a fetch implementation that MSW can intercept
+  global.fetch = async function fetch(url, options = {}) {
     const request = new global.Request(url, options);
     
-    // Return a pending promise that MSW will resolve
-    return new Promise((resolve, reject) => {
-      // This will be intercepted by MSW if handlers are set up
-      // If not intercepted, reject with network error
-      setTimeout(() => {
-        reject(new Error(`No MSW handler found for ${url}`));
-      }, 100);
-    });
+    // Create a basic response structure
+    const mockResponse = new global.Response(
+      JSON.stringify({ error: 'Not Found', message: `No handler for ${options.method || 'GET'} ${url}` }),
+      {
+        status: 404,
+        statusText: 'Not Found',
+        headers: new global.Headers({ 'Content-Type': 'application/json' })
+      }
+    );
+    
+    return Promise.resolve(mockResponse);
   };
   
-  global.fetch = simpleFetch;
+  console.log('[Polyfills] Custom fetch polyfill configured for MSW compatibility');
 }
 
 // Polyfill Response/Request/Headers for MSW if not available

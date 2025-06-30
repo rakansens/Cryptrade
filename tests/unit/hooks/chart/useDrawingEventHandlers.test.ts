@@ -1,15 +1,14 @@
-import { renderHook } from '@testing-library/react';
-import { act } from 'react';
+import { renderHook, act } from '@testing-library/react';
 import { useDrawingActions, useDrawingStore, useChartStore } from '@/store/chart';
 import { useCursor } from '@/hooks/chart/useCursor';
 import { logger } from '@/lib/utils/logger';
 import type { ChartEventHandlers } from '@/components/chart/hooks/useAgentEventHandlers';
-import { 
-  handleAgentError, 
-  showAgentSuccess, 
+import {
+  handleAgentError,
+  showAgentSuccess,
   handleValidationError,
   executeDrawingOperation,
-  prepareDrawingData 
+  prepareDrawingData
 } from '@/lib/chart/agent-utils';
 import { validateDrawingEvent } from '@/types/events/drawing-events';
 
@@ -18,6 +17,11 @@ jest.unmock('@/hooks/chart/useDrawingEventHandlers');
 
 // Import after unmocking
 import { useDrawingEventHandlers } from '@/hooks/chart/useDrawingEventHandlers';
+
+// Mock Mastra agent utils to prevent import conflicts
+jest.mock('@/lib/mastra/agents/utils/agent-utils', () => ({
+  handleAgentError: jest.fn(),
+}));
 
 // Mock dependencies
 jest.mock('@/store/chart');
@@ -34,13 +38,23 @@ jest.mock('@/lib/chart/agent-utils', () => ({
   handleAgentError: jest.fn(),
   showAgentSuccess: jest.fn(),
   handleValidationError: jest.fn(),
-  executeDrawingOperation: jest.fn(async (fn) => await fn()),
+  executeDrawingOperation: jest.fn(async (fn) => {
+    // Simulate async execution
+    return await Promise.resolve(fn());
+  }),
   prepareDrawingData: jest.fn((data) => ({
     ...data,
     id: data.id || 'generated-id',
     visible: data.visible !== undefined ? data.visible : true,
     interactive: data.interactive !== undefined ? data.interactive : true,
-    timestamp: data.timestamp || Date.now()
+    timestamp: data.timestamp || Date.now(),
+    style: {
+      color: data.style?.color || '#3498db',
+      lineWidth: data.style?.lineWidth || 2,
+      lineStyle: data.style?.lineStyle || 'solid',
+      showLabels: data.style?.showLabels || false,
+      ...data.style
+    }
   }))
 }));
 jest.mock('@/types/events/drawing-events', () => ({
@@ -59,6 +73,13 @@ jest.mock('@/types/drawing', () => ({
   validateChartDrawing: jest.fn((drawing) => drawing),
   DrawingStyleSchema: {},
   DrawingPointSchema: {}
+}));
+
+// Mock drawing queue
+jest.mock('@/lib/utils/drawing-queue', () => ({
+  drawingQueue: {
+    enqueue: jest.fn(async (operation) => await operation())
+  }
 }));
 
 describe('useDrawingEventHandlers', () => {
@@ -89,8 +110,26 @@ describe('useDrawingEventHandlers', () => {
   const mockUndo = jest.fn();
   const mockRedo = jest.fn();
 
+  // Store original event listeners
+  let addEventListenerSpy: jest.SpyInstance;
+  let removeEventListenerSpy: jest.SpyInstance;
+  let eventHandlerMap: Map<string, (event: CustomEvent) => void>;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Reset event handler map
+    eventHandlerMap = new Map();
+    
+    // Create spies for event listeners
+    addEventListenerSpy = jest.spyOn(window, 'addEventListener').mockImplementation((eventType: string, handler: any) => {
+      eventHandlerMap.set(eventType, handler);
+    });
+    
+    removeEventListenerSpy = jest.spyOn(window, 'removeEventListener').mockImplementation((eventType: string, handler: any) => {
+      eventHandlerMap.delete(eventType);
+    });
+    
     jest.mocked(useDrawingActions).mockReturnValue(mockDrawingActions);
     jest.mocked(useCursor).mockReturnValue(mockCursor);
     jest.mocked(useChartStore).mockImplementation((selector) => {
@@ -106,70 +145,75 @@ describe('useDrawingEventHandlers', () => {
         { id: 'drawing1', type: 'line', style: { color: '#ff0000', lineWidth: 2, lineStyle: 'solid' } },
       ],
     });
-    
-    // Make sure window.addEventListener is available
-    if (!window.addEventListener) {
-      Object.defineProperty(window, 'addEventListener', {
-        value: jest.fn(),
-        writable: true
-      });
-    }
   });
 
   afterEach(() => {
-    // Clean up event listeners
-    const eventTypes = [
-      'chart:startDrawing',
-      'chart:addDrawing',
-      'chart:deleteDrawing',
-      'chart:clearAllDrawings',
-      'chart:undo',
-      'chart:redo',
-      'chart:updateDrawingStyle',
-      'chart:updateDrawingColor',
-      'chart:updateDrawingLineWidth',
-    ];
-    eventTypes.forEach(type => {
-      window.removeEventListener(type, () => {});
-    });
+    // Restore original event listener functions
+    addEventListenerSpy.mockRestore();
+    removeEventListenerSpy.mockRestore();
+    eventHandlerMap.clear();
   });
+
+  // Helper function to dispatch events through registered handlers
+  const dispatchEventThroughHandler = async (eventType: string, detail: any) => {
+    const handler = eventHandlerMap.get(eventType);
+    if (handler) {
+      const event = new CustomEvent(eventType, { detail });
+      await handler(event);
+    }
+  };
 
   describe('Initial state and mounting', () => {
     it('should register event listeners on mount', () => {
-      const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      expect(addEventListenerSpy).toHaveBeenCalledTimes(13);
+      // The hook registers 13 drawing event types
+      const expectedEventCount = 13;
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(expectedEventCount);
       expect(logger.info).toHaveBeenCalledWith(
         '[Drawing Event Handlers] Registered drawing event listeners',
-        expect.objectContaining({ eventCount: 13 })
+        expect.objectContaining({
+          eventCount: expectedEventCount,
+          events: expect.arrayContaining([
+            'chart:startDrawing',
+            'chart:addDrawing',
+            'chart:addDrawingWithMetadata',
+            'chart:deleteDrawing',
+            'chart:clearAllDrawings',
+            'chart:undo',
+            'chart:redo',
+            'chart:undoLastDrawing',
+            'chart:redoLastDrawing',
+            'chart:updateDrawingStyle',
+            'chart:updateAllStyles',
+            'chart:updateDrawingColor',
+            'chart:updateDrawingLineWidth'
+          ])
+        })
       );
     });
 
     it('should remove event listeners on unmount', () => {
-      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
       const { unmount } = renderHook(() => useDrawingEventHandlers(mockHandlers));
 
       unmount();
 
-      expect(removeEventListenerSpy).toHaveBeenCalledTimes(13);
+      // Should remove the same number of listeners that were added
+      const expectedEventCount = 13;
+      expect(removeEventListenerSpy).toHaveBeenCalledTimes(expectedEventCount);
       expect(logger.info).toHaveBeenCalledWith('[Drawing Event Handlers] Cleaned up drawing event listeners');
     });
   });
 
   describe('Start Drawing Event', () => {
-    it('should handle valid start drawing event', () => {
+    it('should handle valid start drawing event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:startDrawing', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:startDrawing', {
           type: 'line',
           style: { color: '#3498db', lineWidth: 2 },
-        },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+        });
       });
 
       expect(mockDrawingActions.setDrawingMode).toHaveBeenCalledWith('line');
@@ -188,17 +232,8 @@ describe('useDrawingEventHandlers', () => {
 
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      // Wait for useEffect to run
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
-
-      const event = new CustomEvent('chart:startDrawing', {
-        detail: { invalid: 'data' },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+        await dispatchEventThroughHandler('chart:startDrawing', { invalid: 'data' });
       });
 
       expect(handleValidationError).toHaveBeenCalled();
@@ -210,8 +245,8 @@ describe('useDrawingEventHandlers', () => {
     it('should handle valid add drawing event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:addDrawing', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:addDrawing', {
           id: 'drawing123',
           type: 'trendline',
           points: [
@@ -219,27 +254,22 @@ describe('useDrawingEventHandlers', () => {
             { time: 2000, value: 200 },
           ],
           style: { color: '#ff0000', lineWidth: 3, lineStyle: 'solid' },
-        },
+        });
       });
 
-      await act(async () => {
-        window.dispatchEvent(event);
-      });
-
-      expect(prepareDrawingData).toHaveBeenCalled();
-      // validateChartDrawing is called internally by the hook
-      expect(mockDrawingActions.addDrawing).toHaveBeenCalled();
-      expect(mockHandlers.drawingManager?.addDrawing).toHaveBeenCalled();
+      expect(prepareDrawingData).toHaveBeenCalledTimes(1);
+      expect(mockDrawingActions.addDrawing).toHaveBeenCalledTimes(1);
+      expect(mockHandlers.drawingManager?.addDrawing).toHaveBeenCalledTimes(1);
       expect(mockDrawingActions.setIsDrawing).toHaveBeenCalledWith(false);
       expect(mockDrawingActions.setDrawingMode).toHaveBeenCalledWith('none');
-      expect(mockCursor.resetCursor).toHaveBeenCalled();
+      expect(mockCursor.resetCursor).toHaveBeenCalledTimes(1);
     });
 
     it('should handle add drawing with metadata', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:addDrawingWithMetadata', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:addDrawingWithMetadata', {
           id: 'proposal123',
           type: 'trendline',
           points: [
@@ -250,15 +280,11 @@ describe('useDrawingEventHandlers', () => {
           metadata: { source: 'ai-proposal' },
           visible: true,
           interactive: true,
-        },
+        });
       });
 
-      await act(async () => {
-        window.dispatchEvent(event);
-      });
-
-      expect(mockDrawingActions.addDrawing).toHaveBeenCalled();
-      expect(mockHandlers.drawingManager?.addDrawing).toHaveBeenCalled();
+      expect(mockDrawingActions.addDrawing).toHaveBeenCalledTimes(1);
+      expect(mockHandlers.drawingManager?.addDrawing).toHaveBeenCalledTimes(1);
       expect(showAgentSuccess).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'chart:addDrawingWithMetadata' }),
         expect.stringContaining('Proposal drawing')
@@ -270,28 +296,22 @@ describe('useDrawingEventHandlers', () => {
     it('should handle valid delete drawing event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:deleteDrawing', {
-        detail: { id: 'drawing123' },
-      });
-
       await act(async () => {
-        window.dispatchEvent(event);
+        await dispatchEventThroughHandler('chart:deleteDrawing', { id: 'drawing123' });
       });
 
       expect(mockDrawingActions.deleteDrawing).toHaveBeenCalledWith('drawing123');
       expect(mockHandlers.drawingManager?.removeDrawing).toHaveBeenCalledWith('drawing123');
-      expect(showAgentSuccess).toHaveBeenCalled();
+      expect(showAgentSuccess).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Clear All Drawings Event', () => {
-    it('should handle clear all drawings event', () => {
+    it('should handle clear all drawings event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:clearAllDrawings');
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:clearAllDrawings', {});
       });
 
       expect(mockDrawingActions.clearAllDrawings).toHaveBeenCalled();
@@ -303,43 +323,33 @@ describe('useDrawingEventHandlers', () => {
   });
 
   describe('Undo/Redo Events', () => {
-    it('should handle undo event', () => {
+    it('should handle undo event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:undo', {
-        detail: { steps: 2 },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:undo', { steps: 2 });
       });
 
       expect(mockUndo).toHaveBeenCalledTimes(2);
       expect(showAgentSuccess).toHaveBeenCalled();
     });
 
-    it('should handle redo event', () => {
+    it('should handle redo event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:redo', {
-        detail: { steps: 1 },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:redo', { steps: 1 });
       });
 
       expect(mockRedo).toHaveBeenCalledTimes(1);
       expect(showAgentSuccess).toHaveBeenCalled();
     });
 
-    it('should handle undo last drawing event', () => {
+    it('should handle undo last drawing event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:undoLastDrawing');
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:undoLastDrawing', {});
       });
 
       expect(mockUndo).toHaveBeenCalledTimes(1);
@@ -348,19 +358,15 @@ describe('useDrawingEventHandlers', () => {
   });
 
   describe('Update Drawing Style Events', () => {
-    it('should handle update drawing style event', () => {
+    it('should handle update drawing style event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:updateDrawingStyle', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:updateDrawingStyle', {
           drawingId: 'drawing1',
           style: { color: '#0000ff', lineWidth: 4 },
           immediate: true,
-        },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+        });
       });
 
       expect(mockDrawingActions.updateDrawing).toHaveBeenCalledWith('drawing1', {
@@ -369,15 +375,14 @@ describe('useDrawingEventHandlers', () => {
       expect(mockHandlers.drawingManager?.updateDrawing).toHaveBeenCalled();
     });
 
-    it('should handle update drawing color event', () => {
+    it('should handle update drawing color event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:updateDrawingColor', {
-        detail: { id: 'drawing1', color: '#00ff00' },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:updateDrawingColor', {
+          id: 'drawing1',
+          color: '#00ff00'
+        });
       });
 
       expect(mockDrawingActions.updateDrawing).toHaveBeenCalledWith('drawing1', {
@@ -385,15 +390,14 @@ describe('useDrawingEventHandlers', () => {
       });
     });
 
-    it('should handle update drawing line width event', () => {
+    it('should handle update drawing line width event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:updateDrawingLineWidth', {
-        detail: { id: 'drawing1', lineWidth: 5 },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:updateDrawingLineWidth', {
+          id: 'drawing1',
+          lineWidth: 5
+        });
       });
 
       expect(mockDrawingActions.updateDrawing).toHaveBeenCalledWith('drawing1', {
@@ -401,18 +405,14 @@ describe('useDrawingEventHandlers', () => {
       });
     });
 
-    it('should handle update all styles event', () => {
+    it('should handle update all styles event', async () => {
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:updateAllStyles', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:updateAllStyles', {
           type: 'line',
           style: { color: '#ff00ff', lineWidth: 3 },
-        },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+        });
       });
 
       expect(mockDrawingActions.updateDrawing).toHaveBeenCalled();
@@ -422,41 +422,46 @@ describe('useDrawingEventHandlers', () => {
 
   describe('Error handling', () => {
     it('should handle errors during drawing operations', async () => {
-      mockDrawingActions.addDrawing.mockImplementationOnce(() => {
-        throw new Error('Failed to add drawing');
+      // Mock validation to fail - this will trigger handleValidationError
+      const validateDrawingEventMock = jest.mocked(validateDrawingEvent);
+      validateDrawingEventMock.mockReturnValueOnce({
+        success: false,
+        error: { issues: [{ message: 'Simulated validation error' }] }
       });
+
       renderHook(() => useDrawingEventHandlers(mockHandlers));
 
-      const event = new CustomEvent('chart:addDrawing', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:addDrawing', {
           id: 'drawing123',
           type: 'line',
           points: [],
-        },
+        });
       });
 
-      await act(async () => {
-        window.dispatchEvent(event);
-      });
-
-      expect(handleAgentError).toHaveBeenCalled();
+      // Validation error should be handled
+      expect(handleValidationError).toHaveBeenCalledTimes(1);
+      expect(handleValidationError).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false }),
+        expect.objectContaining({
+          eventType: 'chart:addDrawing',
+          operation: expect.any(String),
+          payload: expect.any(Object)
+        })
+      );
     });
 
-    it('should handle missing drawing manager gracefully', () => {
+    it('should handle missing drawing manager gracefully', async () => {
       const handlersWithoutManager = { ...mockHandlers, drawingManager: null };
       renderHook(() => useDrawingEventHandlers(handlersWithoutManager));
 
-      const event = new CustomEvent('chart:addDrawingWithMetadata', {
-        detail: {
+      await act(async () => {
+        await dispatchEventThroughHandler('chart:addDrawingWithMetadata', {
           id: 'drawing123',
           type: 'line',
           points: [],
           style: { color: '#ff0000', lineWidth: 2 },
-        },
-      });
-
-      act(() => {
-        window.dispatchEvent(event);
+        });
       });
 
       expect(logger.warn).toHaveBeenCalledWith('[Drawing Event] No drawing manager available');

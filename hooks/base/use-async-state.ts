@@ -60,14 +60,19 @@ export function useAsyncState<
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
-    setLoading(true);
-    setError(null);
+    // Set loading state immediately
+    if (mountedRef.current) {
+      setLoading(true);
+      setError(null);
+    }
+
     try {
       const result = await asyncFn(...args);
       
       // Check if component is still mounted and operation wasn't aborted
       if (mountedRef.current && !signal.aborted) {
         setData(result);
+        setLoading(false);
         return result;
       }
       return null;
@@ -79,12 +84,8 @@ export function useAsyncState<
       
       const msg = e instanceof Error ? e.message : 'Unknown Error';
       setError(msg);
+      setLoading(false);
       return null;
-    } finally {
-      // Only update loading state if still mounted
-      if (mountedRef.current && !signal.aborted) {
-        setLoading(false);
-      }
     }
   }, [asyncFn]);
 

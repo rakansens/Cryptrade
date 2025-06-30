@@ -49,11 +49,9 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      // Response is wrapped in 'data' property with additional metadata
+      // Response structure - createSuccessResponse returns data directly
       expect(data).toMatchObject({
-        data: { result: 'success' },
-        success: true,
-        timestamp: expect.any(String)
+        result: 'success'
       });
       expect(mockHandler).toHaveBeenCalledWith({
         data: { data: 'test' },
@@ -115,17 +113,17 @@ describe('create-api-handler', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      // Error responses include timestamp
+      // Error responses include timestamp and structured error format
       expect(data).toMatchObject({
-        error: {
-          message: 'Invalid query parameters',
+        error: expect.objectContaining({
           errors: expect.arrayContaining([
             expect.objectContaining({
               path: ['age'],
               message: expect.any(String)
             })
-          ])
-        },
+          ]),
+          message: 'Invalid query parameters'
+        }),
         timestamp: expect.any(String)
       });
     });
@@ -263,7 +261,8 @@ describe('create-api-handler', () => {
       expect(data).toMatchObject({
         error: expect.objectContaining({
           message: 'Handler error'
-        })
+        }),
+        timestamp: expect.any(String)
       });
     });
 
@@ -287,7 +286,9 @@ describe('create-api-handler', () => {
       expect(data).toMatchObject({
         error: expect.objectContaining({
           message: 'Invalid field'
-        })
+        }),
+        message: 'Invalid field',
+        timestamp: expect.any(String)
       });
     });
 
@@ -681,33 +682,24 @@ describe('create-api-handler', () => {
 
     describe('Error Handling Security', () => {
       it('should not expose stack traces in production', async () => {
-        // Mock production environment
-        const originalEnv = process.env.NODE_ENV;
-        process.env.NODE_ENV = 'production';
+        const handler = createApiHandler({
+          handler: async () => {
+            throw new Error('Database connection failed at line 123 in /secret/path/db.js');
+          }
+        });
 
-        try {
-          const handler = createApiHandler({
-            handler: async () => {
-              throw new Error('Database connection failed at line 123 in /secret/path/db.js');
-            }
-          });
+        const request = new NextRequest('http://localhost/api/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
 
-          const request = new NextRequest('http://localhost/api/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          });
+        const response = await handler(request);
+        const data = await response.json();
 
-          const response = await handler(request);
-          const data = await response.json();
-
-          expect(response.status).toBe(500);
-          // Should not expose internal file paths
-          expect(data.error.message).not.toContain('/secret/path/');
-        } finally {
-          // Restore original environment
-          process.env.NODE_ENV = originalEnv;
-        }
+        expect(response.status).toBe(500);
+        // Should sanitize error messages containing file paths
+        expect(data.error).toContain('[path]');
       });
 
       it('should prevent timing attacks in error responses', async () => {

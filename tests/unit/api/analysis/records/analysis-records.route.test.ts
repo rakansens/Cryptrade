@@ -2,6 +2,7 @@ import { POST } from '@/app/api/analysis/records/route';
 import { NextRequest } from 'next/server';
 import { AnalysisService } from '@/lib/services/database/analysis.service';
 import { createApiSuccessResponse, createApiErrorResponse } from '@/app/api/utils/responses';
+import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
 jest.mock('@/lib/services/database/analysis.service', () => ({
@@ -11,13 +12,28 @@ jest.mock('@/lib/services/database/analysis.service', () => ({
 }));
 
 jest.mock('@/app/api/utils/responses', () => ({
-  createApiSuccessResponse: jest.fn((data) => new Response(JSON.stringify(data), { status: 200 })),
-  createApiErrorResponse: jest.fn((message, status = 500) => new Response(JSON.stringify({ error: message }), { status })),
+  createApiSuccessResponse: jest.fn((data) => new Response(JSON.stringify({ success: true, data, timestamp: new Date().toISOString() }), { status: 200 })),
+  createApiErrorResponse: jest.fn((message, status = 500) => new Response(JSON.stringify({ error: message, timestamp: new Date().toISOString() }), { status })),
+}));
+
+// Mock authentication - this is the key missing piece
+jest.mock('@/lib/auth/server', () => ({
+  getServerSession: jest.fn(),
+  requireAuth: jest.fn(),
+  getUserFromSession: jest.fn(),
 }));
 
 describe('POST /api/analysis/records', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Set up authentication mock to return a valid session
+    // This simulates a logged-in user for all tests
+    (getServerSession as jest.Mock).mockResolvedValue({
+      user: { id: 'test-user-123', email: 'test@example.com' },
+      access_token: 'mock-token',
+      expires_at: Date.now() + 3600000,
+    });
   });
 
   it('should save analysis record and return recordId', async () => {
@@ -147,5 +163,26 @@ describe('POST /api/analysis/records', () => {
 
     expect(AnalysisService.saveAnalysis).toHaveBeenCalledWith(complexData);
     expect(createApiSuccessResponse).toHaveBeenCalledWith({ recordId: mockRecordId });
+  });
+
+  // Add a dedicated test for authentication failure
+  it('should return 401 when user is not authenticated', async () => {
+    // Override the mock to return null (no session)
+    (getServerSession as jest.Mock).mockResolvedValueOnce(null);
+
+    const analysisData = {
+      symbol: 'BTC/USD',
+      timeframe: '1h',
+    };
+
+    const request = new NextRequest('http://localhost:3000/api/analysis/records', {
+      method: 'POST',
+      body: JSON.stringify(analysisData),
+    });
+
+    const response = await POST(request);
+
+    expect(createApiErrorResponse).toHaveBeenCalledWith('Unauthorized - Please login', 401);
+    expect(AnalysisService.saveAnalysis).not.toHaveBeenCalled();
   });
 });

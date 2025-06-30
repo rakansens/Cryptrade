@@ -1,7 +1,16 @@
-import { renderHook, act } from '@testing-library/react';
-import { useEventHandlerBase } from '@/hooks/shared/useEventHandlerBase';
+import { renderHook } from '@testing-library/react';
+import { useEventHandlerBase, createEventHandlerConfig, createEventListeners } from '@/hooks/shared/useEventHandlerBase';
 
-// Mock logger
+// Mock dependencies
+jest.mock('@/lib/mastra/agents/utils/agent-utils', () => ({
+  handleAgentError: jest.fn()
+}));
+
+jest.mock('@/lib/chart/agent-utils', () => ({
+  showAgentSuccess: jest.fn(),
+  handleValidationError: jest.fn()
+}));
+
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -12,412 +21,272 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('useEventHandlerBase', () => {
-  const defaultConfig = {
-    hookName: 'useEventHandlerBase-test',
-    enableAutoCleanup: true,
-    logLevel: 'info' as const
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Clear any existing event listeners
-    const events = ['test:event', 'chart:addPattern', 'chart:removePattern'];
-    events.forEach(event => {
-      const listeners = (window as any).listeners?.(event) || [];
-      listeners.forEach((listener: any) => {
-        window.removeEventListener(event, listener);
-      });
-    });
   });
 
-  describe('initialization', () => {
-    it('should initialize with default values', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
+  describe('basic functionality', () => {
+    it('should register event listeners and create handlers', () => {
+      const mockProcessor = jest.fn();
+      const mockValidator = jest.fn().mockReturnValue({ success: true, data: { test: 'data' } });
       
-      expect(result.current.isMounted()).toBe(true);
-      expect(result.current.getRegisteredEventsCount()).toBe(0);
-    });
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${data}` },
+        mockValidator
+      );
 
-    it('should handle custom configuration', () => {
-      const customConfig = {
-        hookName: 'custom-event-handler',
-        enableAutoCleanup: false,
-        logLevel: 'debug' as const
-      };
-      
-      const { result } = renderHook(() => useEventHandlerBase(customConfig));
-      
-      expect(result.current.isMounted()).toBe(true);
-    });
-  });
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
 
-  describe('event registration', () => {
-    it('should register event listeners', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
+      const { logger } = require('@/lib/utils/logger');
+
+      renderHook(() => useEventHandlerBase(config, eventListeners));
+
       expect(addEventListenerSpy).toHaveBeenCalledWith('test:event', expect.any(Function));
-      expect(result.current.getRegisteredEventsCount()).toBe(1);
-      
+      expect(logger.info).toHaveBeenCalledWith(
+        '[Event Handler Base] Registered event listeners',
+        expect.objectContaining({
+          eventCount: 1,
+          events: ['test:event']
+        })
+      );
+
       addEventListenerSpy.mockRestore();
     });
 
-    it('should register multiple event listeners', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
+    it('should clean up event listeners on unmount', () => {
+      const mockProcessor = jest.fn();
+      const mockValidator = jest.fn().mockReturnValue({ success: true, data: { test: 'data' } });
       
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event1', mockHandler1);
-        result.current.registerEventListener('test:event2', mockHandler2);
-      });
-      
-      expect(result.current.getRegisteredEventsCount()).toBe(2);
-    });
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${data}` },
+        mockValidator
+      );
 
-    it('should handle duplicate event registration', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
-      // Should only register once
-      expect(result.current.getRegisteredEventsCount()).toBe(1);
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
+
+      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+      const { logger } = require('@/lib/utils/logger');
+
+      const { unmount } = renderHook(() => useEventHandlerBase(config, eventListeners));
+
+      unmount();
+
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('test:event', expect.any(Function));
+      expect(logger.info).toHaveBeenCalledWith('[Event Handler Base] Cleaned up event listeners');
+
+      removeEventListenerSpy.mockRestore();
     });
   });
 
   describe('event handling', () => {
-    it('should execute event handlers when events are dispatched', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
+    it('should handle valid events successfully', async () => {
+      const mockProcessor = jest.fn().mockResolvedValue(undefined);
+      const mockValidator = jest.fn().mockReturnValue({
+        success: true,
+        data: { data: { test: 'data' } }
       });
       
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(mockHandler).toHaveBeenCalledWith(testEvent);
-    });
-
-    it('should handle multiple handlers for the same event', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler1);
-        result.current.registerEventListener('test:event', mockHandler2);
-      });
-      
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(mockHandler1).toHaveBeenCalledWith(testEvent);
-      expect(mockHandler2).toHaveBeenCalledWith(testEvent);
-    });
-
-    it('should not execute handlers when unmounted', () => {
-      const { result, unmount } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
-      unmount();
-      
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      window.dispatchEvent(testEvent);
-      
-      expect(mockHandler).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('safe execution', () => {
-    it('should execute safely when mounted', async () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockOperation = jest.fn().mockResolvedValue('success');
-      
-      await act(async () => {
-        await result.current.executeSafely('test operation', mockOperation);
-      });
-      
-      expect(mockOperation).toHaveBeenCalled();
-    });
-
-    it('should not execute when unmounted', async () => {
-      const { result, unmount } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockOperation = jest.fn().mockResolvedValue('success');
-      
-      unmount();
-      
-      await act(async () => {
-        await result.current.executeSafely('test operation', mockOperation);
-      });
-      
-      expect(mockOperation).not.toHaveBeenCalled();
-    });
-
-    it('should handle errors in safe execution', async () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockOperation = jest.fn().mockRejectedValue(new Error('Test error'));
-      const { logger } = require('@/lib/utils/logger');
-      
-      await act(async () => {
-        await result.current.executeSafely('test operation', mockOperation, {
-          data: { test: 'context' }
-        });
-      });
-      
-      expect(logger.error).toHaveBeenCalledWith(
-        '[useEventHandlerBase-test] Error in test operation',
-        expect.objectContaining({
-          error: 'Test error',
-          data: { test: 'context' }
-        })
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${JSON.stringify(data)}` },
+        mockValidator
       );
-    });
-  });
 
-  describe('validation', () => {
-    it('should validate events with custom validator', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockValidator = jest.fn().mockReturnValue({ success: true, data: { valid: true } });
-      
-      const isValid = result.current.validateEvent('test:event', { test: 'data' }, mockValidator);
-      
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
+
+      const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
+      const { logger } = require('@/lib/utils/logger');
+      const { showAgentSuccess } = require('@/lib/chart/agent-utils');
+
+      // Create and dispatch a custom event
+      const testEvent = new CustomEvent('test:event', {
+        detail: { test: 'data' }
+      });
+
+      // Get the created handler and call it directly
+      const handler = result.current.createHandler('test:event', mockProcessor);
+      await handler(testEvent);
+
       expect(mockValidator).toHaveBeenCalledWith('test:event', { test: 'data' });
-      expect(isValid).toEqual({ success: true, data: { valid: true } });
-    });
-
-    it('should handle validation errors', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockValidator = jest.fn().mockReturnValue({ success: false, error: 'Invalid data' });
-      
-      const isValid = result.current.validateEvent('test:event', { test: 'data' }, mockValidator);
-      
-      expect(isValid).toEqual({ success: false, error: 'Invalid data' });
-    });
-
-    it('should return success for events without validator', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const isValid = result.current.validateEvent('test:event', { test: 'data' });
-      
-      expect(isValid).toEqual({ success: true, data: { test: 'data' } });
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle errors in event handlers gracefully', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
-      
-      const mockHandler = jest.fn().mockImplementation(() => {
-        throw new Error('Handler error');
-      });
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(logger.error).toHaveBeenCalledWith(
-        '[useEventHandlerBase-test] Error handling event test:event',
+      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });
+      expect(showAgentSuccess).toHaveBeenCalledWith(
+        { eventType: 'test:event', operation: 'Test Operation' },
+        'Test completed: {"test":"data"}'
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        '[Event] Handling test:event',
         expect.objectContaining({
-          error: 'Handler error'
+          eventType: 'test:event',
+          operation: 'Test Operation',
+          data: { test: 'data' }
         })
       );
     });
 
-    it('should continue processing other handlers when one fails', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler1 = jest.fn().mockImplementation(() => {
-        throw new Error('Handler 1 error');
-      });
-      const mockHandler2 = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler1);
-        result.current.registerEventListener('test:event', mockHandler2);
+    it('should handle validation failures', async () => {
+      const mockProcessor = jest.fn();
+      const mockValidator = jest.fn().mockReturnValue({
+        success: false,
+        error: 'Validation failed'
       });
       
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(mockHandler1).toHaveBeenCalled();
-      expect(mockHandler2).toHaveBeenCalled();
-    });
-  });
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${data}` },
+        mockValidator
+      );
 
-  describe('logging', () => {
-    it('should log event registration', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
+
+      const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
+      const { handleValidationError } = require('@/lib/chart/agent-utils');
+
+      const testEvent = new CustomEvent('test:event', {
+        detail: { test: 'invalid' }
       });
-      
-      expect(logger.info).toHaveBeenCalledWith(
-        '[useEventHandlerBase-test] Registered event listener for test:event'
+
+      const handler = result.current.createHandler('test:event', mockProcessor);
+      await handler(testEvent);
+
+      expect(mockValidator).toHaveBeenCalledWith('test:event', { test: 'invalid' });
+      expect(mockProcessor).not.toHaveBeenCalled();
+      expect(handleValidationError).toHaveBeenCalledWith(
+        { success: false, error: 'Validation failed' },
+        {
+          eventType: 'test:event',
+          operation: 'Test Operation',
+          payload: { test: 'invalid' }
+        }
       );
     });
 
-    it('should log event cleanup', () => {
-      const { result, unmount } = renderHook(() => useEventHandlerBase(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
+    it('should handle processing errors', async () => {
+      const processingError = new Error('Processing failed');
+      const mockProcessor = jest.fn().mockRejectedValue(processingError);
+      const mockValidator = jest.fn().mockReturnValue({
+        success: true,
+        data: { data: { test: 'data' } }
       });
       
-      unmount();
-      
-      expect(logger.info).toHaveBeenCalledWith(
-        '[useEventHandlerBase-test] Cleaned up 1 event listeners'
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${data}` },
+        mockValidator
+      );
+
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
+
+      const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
+      const { handleAgentError } = require('@/lib/mastra/agents/utils/agent-utils');
+
+      const testEvent = new CustomEvent('test:event', {
+        detail: { test: 'data' }
+      });
+
+      const handler = result.current.createHandler('test:event', mockProcessor);
+      await handler(testEvent);
+
+      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });
+      expect(handleAgentError).toHaveBeenCalledWith(
+        processingError,
+        {
+          eventType: 'test:event',
+          operation: 'Test Operation',
+          payload: { test: 'data' }
+        }
       );
     });
   });
 
-  describe('cleanup', () => {
-    it('should remove event listeners on unmount', () => {
-      const { result, unmount } = renderHook(() => useEventHandlerBase(defaultConfig));
-      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+  describe('configuration helpers', () => {
+    it('should create event handler config correctly', () => {
+      const operations = { 'test:event': 'Test Operation' };
+      const successMessages = { 'test:event': (data: any) => `Success: ${data.id}` };
+      const validator = jest.fn();
+
+      const config = createEventHandlerConfig(operations, successMessages, validator);
+
+      expect(config.getOperation('test:event')).toBe('Test Operation');
+      expect(config.getOperation('unknown:event')).toBe('Unknown operation');
       
-      const mockHandler = jest.fn();
+      expect(config.getSuccessMessage('test:event', { id: '123' })).toBe('Success: 123');
+      expect(config.getSuccessMessage('unknown:event', {})).toBe('unknown:event completed');
       
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
-      unmount();
-      
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('test:event', expect.any(Function));
-      expect(result.current.isMounted()).toBe(false);
-      expect(result.current.getRegisteredEventsCount()).toBe(0);
-      
-      removeEventListenerSpy.mockRestore();
+      expect(config.validator).toBe(validator);
     });
 
-    it('should handle cleanup when auto cleanup is disabled', () => {
-      const { result, unmount } = renderHook(() => useEventHandlerBase({
-        ...defaultConfig,
-        enableAutoCleanup: false
-      }));
-      
-      const mockHandler = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler);
-      });
-      
-      expect(result.current.getRegisteredEventsCount()).toBe(1);
-      
-      unmount();
-      
-      // Should still clean up to prevent memory leaks
-      expect(result.current.isMounted()).toBe(false);
-      expect(result.current.getRegisteredEventsCount()).toBe(0);
+    it('should create event listeners config correctly', () => {
+      const processor1 = jest.fn();
+      const processor2 = jest.fn();
+
+      const listeners = createEventListeners([
+        { eventType: 'test:event1', processor: processor1 },
+        { eventType: 'test:event2', processor: processor2 }
+      ]);
+
+      expect(listeners).toHaveLength(2);
+      expect(listeners[0]).toEqual({ eventType: 'test:event1', processor: processor1 });
+      expect(listeners[1]).toEqual({ eventType: 'test:event2', processor: processor2 });
     });
   });
 
-  describe('advanced features', () => {
-    it('should support conditional event handler execution', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler = jest.fn();
-      const mockCondition = jest.fn().mockReturnValue(false);
-      
-      act(() => {
-        result.current.registerEventListener('test:event', (event) => {
-          if (mockCondition()) {
-            mockHandler(event);
-          }
-        });
+  describe('error context handling', () => {
+    it('should include error context when provided', async () => {
+      const processingError = new Error('Processing failed');
+      const mockProcessor = jest.fn().mockRejectedValue(processingError);
+      const mockValidator = jest.fn().mockReturnValue({
+        success: true,
+        data: { data: { test: 'data' } }
       });
-      
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(mockCondition).toHaveBeenCalled();
-      expect(mockHandler).not.toHaveBeenCalled();
-      
-      // Change condition and test again
-      mockCondition.mockReturnValue(true);
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
-      });
-      
-      expect(mockHandler).toHaveBeenCalledWith(testEvent);
-    });
 
-    it('should handle event propagation control', () => {
-      const { result } = renderHook(() => useEventHandlerBase(defaultConfig));
-      
-      const mockHandler1 = jest.fn().mockImplementation((event) => {
-        event.stopPropagation();
-      });
-      const mockHandler2 = jest.fn();
-      
-      act(() => {
-        result.current.registerEventListener('test:event', mockHandler1);
-        result.current.registerEventListener('test:event', mockHandler2);
+      const errorContextProvider = jest.fn().mockReturnValue({
+        context: 'additional info'
       });
       
-      const testEvent = new CustomEvent('test:event', { detail: { test: 'data' } });
-      
-      act(() => {
-        window.dispatchEvent(testEvent);
+      const config = createEventHandlerConfig(
+        { 'test:event': 'Test Operation' },
+        { 'test:event': (data) => `Test completed: ${data}` },
+        mockValidator,
+        errorContextProvider
+      );
+
+      const eventListeners = createEventListeners([
+        { eventType: 'test:event', processor: mockProcessor }
+      ]);
+
+      const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
+      const { handleAgentError } = require('@/lib/mastra/agents/utils/agent-utils');
+
+      const testEvent = new CustomEvent('test:event', {
+        detail: { test: 'data' }
       });
-      
-      expect(mockHandler1).toHaveBeenCalled();
-      expect(mockHandler2).toHaveBeenCalled(); // Both should be called as they're on the same element
+
+      const handler = result.current.createHandler('test:event', mockProcessor);
+      await handler(testEvent);
+
+      expect(errorContextProvider).toHaveBeenCalledWith('test:event', { test: 'data' });
+      expect(handleAgentError).toHaveBeenCalledWith(
+        processingError,
+        {
+          eventType: 'test:event',
+          operation: 'Test Operation',
+          payload: { test: 'data' },
+          context: 'additional info'
+        }
+      );
     });
   });
 });

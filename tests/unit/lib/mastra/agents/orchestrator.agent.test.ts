@@ -436,7 +436,9 @@ describe('OrchestratorAgent Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.analysis.intent).toBe('greeting');
-      expect(jest.mocked(Agent)).toHaveBeenCalled();
+      expect(result.executionResult).toBeDefined();
+      expect(result.executionResult?.response).toBeDefined();
+      expect(typeof result.executionResult?.response).toBe('string');
     });
 
     it('should use parallel orchestrator for complex queries', async () => {

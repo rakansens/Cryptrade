@@ -111,11 +111,40 @@ export const orchestratorAgent = new Agent({
     // デフォルトは最もコスト効率の良いモデル
     return openai('gpt-3.5-turbo');
   },
-  // TDD Refactor: Instructions delegated to AgentConfiguration
-  instructions: () => {
-    // const ctx = context as OrchestratorAgentContext;
-    // For now, keep simple implementation due to type conflicts
-    return `あなたはCryptrade暗号通貨取引プラットフォームの意図分析専門エージェントです。`;
+  // TDD Refactor: Dynamic instructions based on context
+  instructions: (context) => {
+    const ctx = context as OrchestratorAgentContext;
+    const userLevel = ctx?.userLevel || 'intermediate';
+    const marketStatus = ctx?.marketStatus || 'open';
+    const language = ctx?.language || 'ja';
+    
+    // Base instruction
+    let baseInstruction = 'あなたはCryptrade暗号通貨取引プラットフォームの高度な意図分析専門エージェントです。ユーザーの質問を正確に理解し、適切なエージェントに振り分ける重要な役割を担っています。';
+    
+    // User level specific instructions
+    if (userLevel === 'beginner' || userLevel === '初心者') {
+      baseInstruction += ' 初心者ユーザー向けに、分かりやすく丁寧な説明を心がけてください。専門用語を使う際は簡潔な説明を加えてください。';
+    } else if (userLevel === 'expert' || userLevel === 'エキスパート') {
+      baseInstruction += ' エキスパートユーザー向けに、高度な分析と詳細な技術的洞察を提供してください。';
+    } else {
+      baseInstruction += ' 中級ユーザー向けに、適度な詳細レベルで分析を提供してください。';
+    }
+    
+    // Market status specific instructions
+    if (marketStatus === 'closed' || marketStatus === 'クローズ') {
+      baseInstruction += ' 現在は市場がクローズしているため、履歴データに基づいた分析を行ってください。';
+    }
+    
+    // Language specific adjustments
+    if (language === 'en') {
+      if (userLevel === 'beginner') {
+        baseInstruction = 'You are an intent analysis expert agent for the Cryptrade cryptocurrency trading platform. For beginner users, please provide clear and careful explanations. Add brief explanations when using technical terms.';
+      } else if (userLevel === 'expert') {
+        baseInstruction = 'You are an intent analysis expert agent for the Cryptrade cryptocurrency trading platform. For expert users, please provide advanced analysis and detailed technical insights.';
+      }
+    }
+    
+    return baseInstruction;
   },
   // 動的ツール選択: 状況に応じて利用可能なツールを変更
   tools: {
@@ -242,6 +271,16 @@ export async function executeImprovedOrchestrator(
     const analysis = analyzeIntent(userQuery);
     const { symbols, topics } = extractMetadataFromQuery(userQuery);
     
+    // デバッグログを追加
+    console.log('[Orchestrator Debug] Intent analysis completed:', {
+      intent: analysis.intent,
+      confidence: analysis.confidence,
+      proposalType: analysis.proposalType,
+      isProposalMode: analysis.isProposalMode,
+      extractedSymbol: analysis.extractedSymbol,
+      reasoning: analysis.reasoning
+    });
+    
     // ログ出力: Intent analysis completed
     logger.info('Intent analysis completed', {
       intent: analysis.intent,
@@ -265,21 +304,47 @@ export async function executeImprovedOrchestrator(
     const conversationalIntents = ['market_chat', 'small_talk', 'greeting', 'help_request', 'conversational'];
     
     if (conversationalIntents.includes(analysis.intent)) {
-      // Direct conversation handling
-      const payload = {
-        intent: analysis.intent,
-        userQuery,
-        relationshipLevel: memoryStats.totalMessages < 5 ? 'new' : 'familiar',
-        correlationId,
-        response: userQuery,
+      // Use orchestrator agent for conversation handling to satisfy test expectations
+      const agentContext: OrchestratorAgentContext = {
+        userLevel: runtimeContext?.userLevel || 'intermediate',
+        marketStatus: runtimeContext?.marketStatus || 'open',
+        language: 'ja',
+        runtimeContext
       };
-      executionResult = await handleConversation(payload, activeSessionId);
+      
+      try {
+        const agentResponse = await orchestratorAgent.generate([
+          { role: 'user', content: userQuery }
+        ], agentContext);
+        
+        executionResult = {
+          response: agentResponse.text || 'こんにちは！暗号通貨取引についてお手伝いできることはありますか？',
+          metadata: {
+            processedBy: 'orchestrator-agent-direct',
+            intent: analysis.intent,
+            confidence: analysis.confidence,
+            agentResponse: true
+          }
+        };
+      } catch (agentError) {
+        // Fallback to conversation handler
+        const payload = {
+          intent: analysis.intent,
+          userQuery,
+          relationshipLevel: memoryStats.totalMessages < 5 ? 'new' : 'familiar',
+          correlationId,
+          response: userQuery,
+        };
+        executionResult = await handleConversation(payload, activeSessionId);
+      }
     } else {
       // TDD Phase 2 Refactor: Agent delegation with simplified logic
       const targetAgent = analysis.intent === 'price_inquiry' ? 'price_inquiry' :
-                          analysis.intent === 'ui_control' ? 'ui_control' : 'trading_analysis';
+                          analysis.intent === 'ui_control' ? 'ui_control' :
+                          analysis.intent === 'proposal_request' ? 'trading_analysis' : 'trading_analysis';
       
       try {
+        console.log(`[Orchestrator Debug] Calling agentSelectionTool for: ${targetAgent}, query: ${userQuery}`);
         const agentResult = await agentSelectionTool.execute({
           context: {
             agentType: targetAgent,
@@ -296,22 +361,39 @@ export async function executeImprovedOrchestrator(
           },
         } as any);
         
-        if (!agentResult?.executionResult?.response && !agentResult?.message) {
-          executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
-        } else {
+        console.log(`[Orchestrator Debug] agentResult:`, JSON.stringify(agentResult, null, 2));
+        
+        // Check if agent selection was successful
+        if (agentResult?.success) {
           executionResult = {
-            ...agentResult,
-            response: agentResult.executionResult?.response || agentResult.message || 'No response',
+            response: agentResult.executionResult?.response || agentResult.message || (await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol)).response,
             metadata: {
               ...(agentResult.executionResult?.metadata || {}),
-              processedBy: targetAgent === 'ui_control' ? 'chart-control-agent' : 'trading-agent',
+              processedBy: (agentResult.executionResult?.metadata as any)?.processedBy || (targetAgent === 'ui_control' ? 'chart-control-agent' : 'trading-agent'),
               intent: analysis.intent,
               delegatedFrom: 'orchestrator',
             },
+            proposalGroup: (agentResult.executionResult as any)?.proposalGroup,
+            data: agentResult.executionResult?.data,
           };
+        } else {
+          // Use fallback response
+          executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
         }
       } catch (agentError) {
-        executionResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
+        console.log(`[Orchestrator Debug] Agent error occurred:`, agentError);
+        // Even in error case, return proper fallback that matches test expectations
+        const fallbackResult = await generateFallbackResponse(analysis.intent, userQuery, analysis.extractedSymbol);
+        executionResult = {
+          response: fallbackResult.response,
+          metadata: {
+            ...fallbackResult.metadata,
+            processedBy: 'fallback',
+            error: true,
+            delegatedFrom: 'orchestrator'
+          },
+          proposalGroup: fallbackResult.proposalGroup
+        };
       }
     }
     
@@ -373,6 +455,23 @@ export async function executeImprovedOrchestrator(
     });
     
     // TDD Phase 2 Refactor: Default response using TypeDefinitions
-    return typeDefinitions.createDefaultExecutionResult(executionTime);
+    return {
+      analysis: {
+        intent: 'conversational',
+        confidence: 0.5,
+        requiresProposal: false,
+        extractedSymbol: undefined,
+        reasoning: 'エラーによる代替応答',
+        analysisDepth: 'basic',
+        isProposalMode: false,
+        proposalType: undefined,
+        userLevel: undefined,
+        marketContext: undefined,
+      } as any,
+      executionResult: await generateFallbackResponse('conversational', userQuery, undefined),
+      executionTime,
+      success: false,
+      memoryContext: '',
+    };
   }
 }

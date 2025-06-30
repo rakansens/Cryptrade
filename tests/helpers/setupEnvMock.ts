@@ -64,7 +64,7 @@ export function getDefaultIntegrationTestEnv(): Record<string, string> {
     DATABASE_URL: process.env.TEST_DATABASE_URL || 'sqlite::memory:',
     NEXTAUTH_URL: 'http://localhost:3000',
     NEXTAUTH_SECRET: 'test-secret',
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'test-openai-key',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'sk-test-key-12345',
     CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || 'test-claude-key',
     LOG_LEVEL: 'warn',
     FEATURE_FLAGS: JSON.stringify({
