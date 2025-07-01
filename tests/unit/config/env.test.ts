@@ -85,7 +85,10 @@ describe('Environment Configuration', () => {
       
       // Mock window to be undefined for Node environment
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act
@@ -100,9 +103,11 @@ describe('Environment Configuration', () => {
         // In test environment, console.log is not called as per config/env.ts logic
         expect(mockConsole.log).not.toHaveBeenCalled();
       } finally {
-        // Restore window
-        if (originalWindow) {
+        // Restore window safely
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -118,7 +123,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act
@@ -130,8 +138,10 @@ describe('Environment Configuration', () => {
         expect(env.PORT).toBe(3000); // Default value
         expect(env.LOG_TRANSPORT).toBe('console'); // Default value
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -150,7 +160,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act
@@ -164,8 +177,10 @@ describe('Environment Configuration', () => {
         expect(env.DISABLE_CONSOLE_LOGS).toBe(false); // 'false' string transforms to boolean false
         expect(env.USE_NEW_WS_MANAGER).toBe(false); // undefined transforms to false (not set in this test)
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -189,7 +204,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act & Assert - The module will throw during import
@@ -199,8 +217,10 @@ describe('Environment Configuration', () => {
         
         expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -218,7 +238,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act & Assert - The module will throw during import
@@ -226,8 +249,10 @@ describe('Environment Configuration', () => {
           await import('@/config/env');
         }).rejects.toThrow('Environment validation failed in test environment');
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -244,7 +269,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act & Assert - The module will throw during import
@@ -252,8 +280,10 @@ describe('Environment Configuration', () => {
           await import('@/config/env');
         }).rejects.toThrow('Environment validation failed in test environment');
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -271,7 +301,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act & Assert - The module will throw during import
@@ -282,8 +315,10 @@ describe('Environment Configuration', () => {
         expect(mockExit).toHaveBeenCalledWith(1);
         expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -301,7 +336,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act
@@ -314,8 +352,10 @@ describe('Environment Configuration', () => {
         expect(env1).toBe(env2); // Same reference
         expect(mockConsole.log).toHaveBeenCalledTimes(0); // No duplicate logs in test
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -337,7 +377,10 @@ describe('Environment Configuration', () => {
 
     it('should detect development mode correctly', async () => {
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         const { isDevelopment, isProduction, isTest, _resetEnvCache } = await import('@/config/env');
@@ -347,8 +390,10 @@ describe('Environment Configuration', () => {
         expect(isProduction()).toBe(false);
         expect(isTest()).toBe(false);
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -366,7 +411,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         const { hasRedis, _resetEnvCache } = await import('@/config/env');
@@ -374,15 +422,20 @@ describe('Environment Configuration', () => {
         
         expect(hasRedis()).toBe(false); // hasRedis() validates both URL and TOKEN are present
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
 
     it('should return correct port', async () => {
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         const { getPort, _resetEnvCache } = await import('@/config/env');
@@ -390,8 +443,10 @@ describe('Environment Configuration', () => {
         
         expect(getPort()).toBe(3000); // Default value
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -416,7 +471,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act & Assert - The module will throw during import
@@ -427,8 +485,10 @@ describe('Environment Configuration', () => {
         // Assert - should call process.exit(1) in production
         expect(mockExit).toHaveBeenCalledWith(1);
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });
@@ -444,7 +504,10 @@ describe('Environment Configuration', () => {
       // Reset modules and mock window
       jest.resetModules();
       const originalWindow = global.window;
-      delete (global as any).window;
+      const hasWindow = 'window' in global;
+      if (hasWindow) {
+        delete (global as any).window;
+      }
 
       try {
         // Act
@@ -456,8 +519,10 @@ describe('Environment Configuration', () => {
         expect(env.NODE_ENV).toBe('production');
         expect(env.OPENAI_API_KEY).toBe('test-key');
       } finally {
-        if (originalWindow) {
+        if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
+        } else if (!hasWindow && 'window' in global) {
+          delete (global as any).window;
         }
       }
     });

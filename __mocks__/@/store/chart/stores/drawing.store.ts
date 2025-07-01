@@ -289,33 +289,30 @@ export const useDrawingStore = create<DrawingStoreState>()((set, get) => ({
   }),
 }));
 
-// Mock getState method to return current state
-(useDrawingStore as any).getState = jest.fn(() => {
-  const store = useDrawingStore();
-  return {
-    drawingMode: store.drawingMode,
-    drawings: store.drawings,
-    selectedDrawingId: store.selectedDrawingId,
-    isDrawing: store.isDrawing,
-    undoStack: store.undoStack,
-    redoStack: store.redoStack,
-    initializeDrawings: store.initializeDrawings,
-    setDrawingMode: store.setDrawingMode,
-    addDrawing: store.addDrawing,
-    addDrawingAsync: store.addDrawingAsync,
-    updateDrawing: store.updateDrawing,
-    deleteDrawing: store.deleteDrawing,
-    deleteDrawingAsync: store.deleteDrawingAsync,
-    selectDrawing: store.selectDrawing,
-    clearAllDrawings: store.clearAllDrawings,
-    setIsDrawing: store.setIsDrawing,
-    pushToUndoStack: store.pushToUndoStack,
-    clearRedoStack: store.clearRedoStack,
-    undo: store.undo,
-    redo: store.redo,
-    reset: store.reset,
-  };
-});
+// Create a simple state object that doesn't require React hooks
+const mockState: DrawingStoreState = {
+  ...initialState,
+  
+  // Actions as jest functions
+  initializeDrawings: jest.fn(async () => {}),
+  setDrawingMode: jest.fn(),
+  addDrawing: jest.fn(),
+  addDrawingAsync: jest.fn(async (drawing) => drawing),
+  updateDrawing: jest.fn(),
+  deleteDrawing: jest.fn(),
+  deleteDrawingAsync: jest.fn(async () => {}),
+  selectDrawing: jest.fn(),
+  clearAllDrawings: jest.fn(),
+  setIsDrawing: jest.fn(),
+  pushToUndoStack: jest.fn(),
+  clearRedoStack: jest.fn(),
+  undo: jest.fn(),
+  redo: jest.fn(),
+  reset: jest.fn(),
+};
+
+// Mock getState method to return mock state
+(useDrawingStore as any).getState = jest.fn(() => mockState);
 
 // Mock setState method
 (useDrawingStore as any).setState = jest.fn((partial) => {

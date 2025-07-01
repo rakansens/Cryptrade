@@ -68,9 +68,10 @@ beforeAll(() => {
       'Mock error',
       'Simulated error',
       'Expected error',
-      '[MSW] Warning:', // MSW warnings
-      '[MSW] Error:', // MSW errors
-      'intercepted a request without a matching request handler', // MSW unhandled request messages
+      // Temporarily disable MSW filtering for debugging
+      // '[MSW] Warning:', // MSW warnings
+      // '[MSW] Error:', // MSW errors
+      // 'intercepted a request without a matching request handler', // MSW unhandled request messages
       'Warning: An update to',
       'inside a test was not wrapped in act',
       'When testing, code that causes React state updates should be wrapped into act',
@@ -105,8 +106,9 @@ beforeAll(() => {
       'React Router Future Flag Warning',
       'Zustand devtools',
       'Test warning',
-      '[MSW] Warning:', // MSW warnings
-      'intercepted a request without a matching request handler', // MSW unhandled request warnings
+      // Temporarily disable MSW filtering for debugging
+      // '[MSW] Warning:', // MSW warnings
+      // 'intercepted a request without a matching request handler', // MSW unhandled request warnings
       '[RateLimit] Using memory fallback', // Rate limit warnings
       'RateLimit', // General rate limit warnings
       '[Deprecated]', // Deprecation warnings
@@ -134,8 +136,8 @@ afterAll(() => {
 // Additional console mocking for other methods
 global.console = {
   ...console,
-  // Silence other console methods
-  log: jest.fn(),
+  // Temporarily enable console.log for MSW debugging
+  log: console.log,
   info: jest.fn(),
   debug: jest.fn(),
 };

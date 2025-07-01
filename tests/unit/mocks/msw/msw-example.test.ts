@@ -463,9 +463,17 @@ describe('MSW Mock Service Worker Tests', () => {
       
       await fetch('https://debug.example.com/unhandled');
       
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unhandled GET request to https://debug.example.com/unhandled')
+      // Check if console.warn was called with unhandled request message
+      const warnCalls = consoleSpy.mock.calls;
+      const hasUnhandledMessage = warnCalls.some(call =>
+        call.some(arg =>
+          typeof arg === 'string' &&
+          arg.includes('Unhandled') &&
+          arg.includes('https://debug.example.com/unhandled')
+        )
       );
+      
+      expect(hasUnhandledMessage).toBe(true);
       
       consoleSpy.mockRestore();
     });

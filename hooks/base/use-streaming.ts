@@ -162,14 +162,14 @@ export function useStreaming<T = unknown>(options: StreamingHookOptions<T>): Str
               if (line.startsWith('data: ')) {
                 const dataStr = line.slice(6);
                 const parsedData = parseResponse(dataStr);
-                if (parsedData !== undefined && parsedData !== null) {
+                if (parsedData !== undefined) {
                   setData(parsedData);
                   onMessage?.(parsedData);
                 }
               } else {
                 // Handle plain JSON lines
                 const parsedData = parseResponse(line);
-                if (parsedData !== undefined && parsedData !== null) {
+                if (parsedData !== undefined) {
                   setData(parsedData);
                   onMessage?.(parsedData);
                 }

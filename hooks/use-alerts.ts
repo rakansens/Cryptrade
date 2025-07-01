@@ -25,9 +25,7 @@ export function useAlerts(userId?: string) {
     useCallback(async () => {
       if (!userId) return [];
       
-      const res = await fetch('/api/alerts', {
-        headers: { 'x-user-id': userId }
-      });
+      const res = await fetch('/api/alerts');
       
       if (!res.ok) {
         throw new Error(`Failed to fetch alerts: ${res.statusText}`);
@@ -53,7 +51,6 @@ export function useAlerts(userId?: string) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': userId,
         },
         body: JSON.stringify({ symbol, conditions }),
       });

@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useChatProposalBase } from '@/hooks/shared/useChatProposalBase';
-import type { ProposalMessage } from '@/types/chat';
+import type { ProposalMessage } from '@/types/proposals';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -213,10 +213,11 @@ describe('useChatProposalBase', () => {
       });
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useChatProposalBase-test] Error in batch approve',
+        'Failed to approve proposal in batch',
         expect.objectContaining({
-          error: 'Processing error',
-          proposalId: 'proposal-123'
+          hook: 'useChatProposalBase-test',
+          proposalId: 'proposal-123',
+          error: 'Processing error'
         })
       );
     });
@@ -253,18 +254,21 @@ describe('useChatProposalBase', () => {
       
       const testError = new Error('Test error');
       const testContext = {
+        messageId: 'msg-123',
+        proposalId: 'proposal-123',
+        proposalGroupId: 'msg-123',
         symbol: 'BTCUSDT',
-        interval: '1h',
-        proposalGroupId: 'msg-123'
+        interval: '1h'
       };
       
       result.current.handleProposalError(testError, testContext, 'Test operation');
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useChatProposalBase-test] Error in Test operation',
+        'Test operation failed',
         expect.objectContaining({
-          error: 'Test error',
-          context: testContext
+          hook: 'useChatProposalBase-test',
+          context: testContext,
+          error: 'Test error'
         })
       );
     });
@@ -278,10 +282,11 @@ describe('useChatProposalBase', () => {
       result.current.handleProposalError(testError, null as any, 'Test operation');
       
       expect(logger.error).toHaveBeenCalledWith(
-        '[useChatProposalBase-test] Error in Test operation',
+        'Test operation failed',
         expect.objectContaining({
-          error: 'Test error',
-          context: null
+          hook: 'useChatProposalBase-test',
+          context: null,
+          error: 'Test error'
         })
       );
     });
@@ -312,15 +317,22 @@ describe('useChatProposalBase', () => {
       const { logger } = require('@/lib/utils/logger');
       
       const testContext = {
+        messageId: 'msg-123',
+        proposalId: 'proposal-123',
+        proposalGroupId: 'msg-123',
         symbol: 'BTCUSDT',
-        interval: '1h',
-        proposalGroupId: 'msg-123'
+        interval: '1h'
       };
       
       result.current.publishProposalEvent('approve', testContext, { test: 'data' });
       
       expect(logger.warn).toHaveBeenCalledWith(
-        '[useChatProposalBase-test] Publisher not available for event approve'
+        'Cannot publish event - publisher not available',
+        expect.objectContaining({
+          hook: 'useChatProposalBase-test',
+          action: 'approve',
+          context: testContext
+        })
       );
     });
   });
@@ -332,7 +344,10 @@ describe('useChatProposalBase', () => {
       
       result.current.safeLog('info', 'Test info message', { test: 'data' });
       
-      expect(logger.info).toHaveBeenCalledWith('[useChatProposalBase-test] Test info message', { test: 'data' });
+      expect(logger.info).toHaveBeenCalledWith('Test info message', {
+        hook: 'useChatProposalBase-test',
+        test: 'data'
+      });
     });
 
     it('should always log error messages', () => {
@@ -341,7 +356,10 @@ describe('useChatProposalBase', () => {
       
       result.current.safeLog('error', 'Test error message', { error: 'test error' });
       
-      expect(logger.error).toHaveBeenCalledWith('[useChatProposalBase-test] Test error message', { error: 'test error' });
+      expect(logger.error).toHaveBeenCalledWith('Test error message', {
+        hook: 'useChatProposalBase-test',
+        error: 'test error'
+      });
     });
   });
 

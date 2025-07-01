@@ -1,12 +1,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';;
+import { act } from '@testing-library/react';
 import { useAlerts } from '@/hooks/use-alerts';
 import { useSSEStream } from '@/hooks/base/use-sse-stream';
 import { logger } from '@/lib/utils/logger';
+import { getServerSession } from '@/lib/auth/server';
 
 // Mock dependencies
 jest.mock('@/hooks/base/use-sse-stream');
 jest.mock('@/lib/utils/logger');
+jest.mock('@/lib/auth/server');
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -15,6 +17,12 @@ describe('useAlerts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockReset();
+    
+    // Mock authentication session
+    jest.mocked(getServerSession).mockResolvedValue({
+      user: { id: 'test-user-id' },
+      expires: '2024-12-31T23:59:59.999Z'
+    });
   });
 
   it('should initialize with empty alerts array', () => {
@@ -44,10 +52,13 @@ describe('useAlerts', () => {
 
     const { result } = renderHook(() => useAlerts('user123'));
     
+    // Manually trigger fetch
+    await act(async () => {
+      await result.current.fetchAlerts();
+    });
+    
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/alerts', {
-        headers: { 'x-user-id': 'user123' }
-      });
+      expect(mockFetch).toHaveBeenCalledWith('/api/alerts');
       expect(result.current.alerts).toEqual(mockAlerts);
     });
   });
@@ -55,7 +66,12 @@ describe('useAlerts', () => {
   it('should handle fetch alerts error gracefully', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-    renderHook(() => useAlerts('user123'));
+    const { result } = renderHook(() => useAlerts('user123'));
+    
+    // Manually trigger fetch that will fail
+    await act(async () => {
+      await result.current.fetchAlerts();
+    });
     
     await waitFor(() => {
       expect(logger.error).toHaveBeenCalledWith(
@@ -69,12 +85,11 @@ describe('useAlerts', () => {
     const newAlert = { id: '3', symbol: 'SOL', conditions: { price: 100, type: 'above' } };
     
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ alert: newAlert }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [newAlert] }) });
 
     const { result } = renderHook(() => useAlerts('user123'));
-    
+
     await act(async () => {
       await result.current.createAlert('SOL', { price: 100, type: 'above' });
     });
@@ -84,7 +99,6 @@ describe('useAlerts', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'user123',
         },
         body: JSON.stringify({ symbol: 'SOL', conditions: { price: 100, type: 'above' } })
       });
@@ -103,14 +117,16 @@ describe('useAlerts', () => {
   });
 
   it('should handle create alert error gracefully', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [] }) })
-      .mockRejectedValueOnce(new Error('Network error'));
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
     const { result } = renderHook(() => useAlerts('user123'));
-    
+
     await act(async () => {
-      await result.current.createAlert('BTC', { price: 50000, type: 'above' });
+      try {
+        await result.current.createAlert('BTC', { price: 50000, type: 'above' });
+      } catch (error) {
+        // Expected to throw
+      }
     });
 
     await waitFor(() => {
@@ -183,9 +199,9 @@ describe('useAlerts', () => {
   });
 
   it('should update userId and refetch alerts', async () => {
-    const { rerender } = renderHook(
-      ({ userId }) => useAlerts(userId),
-      { initialProps: { userId: undefined } }
+    const { result, rerender } = renderHook(
+      ({ userId }: { userId?: string }) => useAlerts(userId),
+      { initialProps: { userId: undefined as string | undefined } }
     );
 
     expect(mockFetch).not.toHaveBeenCalled();
@@ -197,10 +213,9 @@ describe('useAlerts', () => {
 
     rerender({ userId: 'user123' });
 
+    // Wait for automatic fetch triggered by userId change
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/alerts', {
-        headers: { 'x-user-id': 'user123' }
-      });
+      expect(mockFetch).toHaveBeenCalledWith('/api/alerts');
     });
   });
 });

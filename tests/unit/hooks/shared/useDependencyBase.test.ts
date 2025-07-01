@@ -131,7 +131,9 @@ describe('useDependencyBase', () => {
 
     it('should handle custom comparison errors gracefully', () => {
       const { result } = renderHook(() => useDependencyBase(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
+      
+      // Mock console.error for this test since the implementation uses console.error
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
       const faultyCompare = () => {
         throw new Error('Comparison failed');
@@ -143,12 +145,14 @@ describe('useDependencyBase', () => {
       const hasChanged = result.current.detectDependencyChange('faulty-deps', deps, faultyCompare);
       
       expect(hasChanged).toBe(true); // Should fallback to true on error
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith(
         '[useDependencyBase-test] Error in custom dependency comparison for faulty-deps',
         expect.objectContaining({
           error: 'Comparison failed'
         })
       );
+      
+      consoleSpy.mockRestore();
     });
   });
 
@@ -363,26 +367,32 @@ describe('useDependencyBase', () => {
         ...defaultConfig,
         logLevel: 'debug'
       }));
-      const { logger } = require('@/lib/utils/logger');
+      
+      // Mock console.log for this test since the implementation uses console.log for debug
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       
       result.current.detectDependencyChange('logged-deps', ['a']);
       result.current.detectDependencyChange('logged-deps', ['b']);
       
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith(
         '[useDependencyBase-test] Dependency change detected for logged-deps'
       );
+      
+      consoleSpy.mockRestore();
     });
 
     it('should log dependency statistics', () => {
       const { result } = renderHook(() => useDependencyBase(defaultConfig));
-      const { logger } = require('@/lib/utils/logger');
+      
+      // Mock console.info for this test since the implementation uses console.info
+      const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
       
       result.current.detectDependencyChange('stats-log1', ['a']);
       result.current.detectDependencyChange('stats-log2', ['b']);
       
       result.current.logDependencyStats();
       
-      expect(logger.info).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith(
         '[useDependencyBase-test] Dependency stats',
         expect.objectContaining({
           totalKeys: 2,
@@ -390,6 +400,8 @@ describe('useDependencyBase', () => {
           keysWithChanges: 2
         })
       );
+      
+      consoleSpy.mockRestore();
     });
   });
 

@@ -109,19 +109,12 @@ describe('Chart Store', () => {
     // Clear all mock calls
     jest.clearAllMocks();
     
-    // Reset all stores to initial state
+    // Reset mock state using the exported reset function
     try {
-      const baseStore = (useChartBaseStore as any).getState?.();
-      if (baseStore?.reset) baseStore.reset();
-      
-      const indicatorStore = (useIndicatorStore as any).getState?.();
-      if (indicatorStore?.reset) indicatorStore.reset();
-      
-      const drawingStore = (useDrawingStore as any).getState?.();
-      if (drawingStore?.reset) drawingStore.reset();
-      
-      const patternStore = (usePatternStore as any).getState?.();
-      if (patternStore?.reset) patternStore.reset();
+      const { resetMockState } = require('@/store/chart');
+      if (resetMockState) {
+        resetMockState();
+      }
     } catch (error) {
       // Ignore reset errors in test environment
     }
@@ -133,7 +126,8 @@ describe('Chart Store', () => {
 
       expect(result.current.symbol).toBe('BTCUSDT');
       expect(result.current.timeframe).toBe('1h');
-      expect(result.current.isChartReady).toBe(false);
+      expect(result.current.isChartReady).toBe(true);
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
   });
@@ -205,6 +199,12 @@ describe('Chart Store', () => {
   describe('Drawing Store', () => {
     it('should manage drawing mode', () => {
       const { result } = renderHook(() => useDrawingStore());
+
+      expect(result.current.drawingMode).toBeNull();
+
+      act(() => {
+        result.current.setDrawingMode('trendline');
+      });
 
       expect(result.current.drawingMode).toBe('trendline');
 

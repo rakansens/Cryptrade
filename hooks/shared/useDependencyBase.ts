@@ -3,27 +3,44 @@
  * useChartInstance ↔ useWebSocket ↔ useStreamBase の依存配列重複（Score 265.6+）を解消
  */
 
-import { useCallback, useMemo, DependencyList } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 
-export interface DependencyGroup {
-  id: string;
-  dependencies: DependencyList;
-  description?: string;
+export interface DependencyBaseConfig {
+  hookName?: string;
+  enableAutoCleanup?: boolean;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
 }
 
-export interface DependencyConfig {
-  hookName: string;
-  groups: DependencyGroup[];
-  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+interface DependencyEntry {
+  dependencies: any[];
+  accessCount: number;
+  lastChangeIndex: number;
+  hasChanged: boolean;
+}
+
+interface DependencyStats {
+  totalKeys: number;
+  totalAccess: number;
+  keysWithChanges: number;
 }
 
 /**
  * 複雑な依存配列を管理するフック
  * 長い依存配列パターンの重複を解消し、統一された管理を提供
  */
-export function useDependencyBase(config: DependencyConfig) {
-  const { hookName, groups, logLevel = 'info' } = config;
+export function useDependencyBase(config: DependencyBaseConfig = {}) {
+  const { 
+    hookName = 'useDependencyBase', 
+    enableAutoCleanup = true,
+    logLevel = 'info' 
+  } = config;
 
+  const dependencyCache = useRef<Map<string, DependencyEntry>>(new Map());
+  const stableReferenceCache = useRef<Map<string, any>>(new Map());
+  const isMountedRef = useRef(true);
+  const cacheLimit = 100; // Prevent memory leaks
+
+  // Safe logging function
   const safeLog = useCallback((level: string, message: string, data?: any) => {
     const shouldLog = 
       (level === 'error') ||
@@ -31,189 +48,235 @@ export function useDependencyBase(config: DependencyConfig) {
       (level === 'info' && ['debug', 'info'].includes(logLevel)) ||
       (level === 'debug' && logLevel === 'debug');
 
-    if (shouldLog) {
+    if (shouldLog && typeof console !== 'undefined') {
       switch (level) {
         case 'error':
-          console.error(`[${hookName}] ${message}`, data || '');
+          if (console.error) console.error(`[${hookName}] ${message}`, data || '');
           break;
         case 'warn':
-          console.warn(`[${hookName}] ${message}`, data || '');
+          if (console.warn) console.warn(`[${hookName}] ${message}`, data || '');
           break;
         case 'info':
-          console.info(`[${hookName}] ${message}`, data || '');
+          if (console.info) console.info(`[${hookName}] ${message}`, data || '');
           break;
         case 'debug':
-          console.log(`[${hookName}] ${message}`, data || '');
+          if (console.log) console.log(`[${hookName}] ${message}`, data || '');
           break;
       }
     }
   }, [hookName, logLevel]);
 
-  /**
-   * 依存配列グループを統合
-   */
-  const mergedDependencies = useMemo(() => {
-    const allDeps: any[] = [];
-    const groupInfo: string[] = [];
-
-    groups.forEach(group => {
-      allDeps.push(...group.dependencies);
-      groupInfo.push(group.id);
-    });
-
-    safeLog('debug', `Merged dependencies from groups: ${groupInfo.join(', ')}`, {
-      totalDependencies: allDeps.length,
-      groups: groupInfo
-    });
-
-    return allDeps;
-  }, [groups, safeLog]);
-
-  /**
-   * 依存配列の変化を検出
-   */
-  const dependencyChangeDetector = useMemo(() => {
-    return {
-      current: mergedDependencies,
-      hasChanged: (prev: any[]) => {
-        if (prev.length !== mergedDependencies.length) return true;
-        return prev.some((dep, index) => dep !== mergedDependencies[index]);
+  // Deep equality comparison
+  const isDeepEqual = useCallback((a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (a === null || b === null) return false;
+    if (a === undefined || b === undefined) return false;
+    if (typeof a !== typeof b) return false;
+    
+    if (typeof a === 'object') {
+      if (Array.isArray(a) !== Array.isArray(b)) return false;
+      if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        return a.every((item, index) => isDeepEqual(item, b[index]));
+      } else {
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
+        if (keysA.length !== keysB.length) return false;
+        return keysA.every(key => isDeepEqual(a[key], b[key]));
       }
-    };
-  }, [mergedDependencies]);
-
-  /**
-   * 特定のグループの依存配列を取得
-   */
-  const getDependencyGroup = useCallback((groupId: string) => {
-    const group = groups.find(g => g.id === groupId);
-    if (!group) {
-      safeLog('warn', `Dependency group not found: ${groupId}`);
-      return [];
     }
-    return group.dependencies;
-  }, [groups, safeLog]);
-
-  /**
-   * 依存配列付きuseCallbackの生成
-   */
-  const createStableCallback = useCallback(<T extends (...args: any[]) => any>(
-    fn: T,
-    dependencyGroupId?: string
-  ): T => {
-    const deps = dependencyGroupId 
-      ? getDependencyGroup(dependencyGroupId)
-      : mergedDependencies;
-
-    return useCallback(fn, deps) as T;
-  }, [getDependencyGroup, mergedDependencies]);
-
-  /**
-   * 依存配列付きuseMemoの生成
-   */
-  const createStableMemo = useCallback(<T>(
-    factory: () => T,
-    dependencyGroupId?: string
-  ): T => {
-    const deps = dependencyGroupId 
-      ? getDependencyGroup(dependencyGroupId)
-      : mergedDependencies;
-
-    return useMemo(factory, deps);
-  }, [getDependencyGroup, mergedDependencies]);
-
-  /**
-   * 条件付き依存配列の生成
-   */
-  const createConditionalDeps = useCallback((
-    condition: boolean,
-    trueDeps: DependencyList,
-    falseDeps: DependencyList = []
-  ) => {
-    return useMemo(() => 
-      condition ? trueDeps : falseDeps, 
-      [condition, trueDeps, falseDeps]
-    );
+    
+    return false;
   }, []);
 
-  /**
-   * 依存配列の統計情報
-   */
-  const getDependencyStats = useCallback(() => {
-    const stats = {
-      totalGroups: groups.length,
-      totalDependencies: mergedDependencies.length,
-      groupDetails: groups.map(group => ({
-        id: group.id,
-        count: group.dependencies.length,
-        description: group.description
-      }))
-    };
+  // Default comparison function
+  const defaultCompare = useCallback((prev: any[], current: any[]): boolean => {
+    if (prev.length !== current.length) return false;
+    return prev.every((item, index) => isDeepEqual(item, current[index]));
+  }, [isDeepEqual]);
 
-    safeLog('debug', 'Dependency statistics', stats);
+  // Detect dependency changes
+  const detectDependencyChange = useCallback((
+    key: string,
+    dependencies: any[],
+    customCompare?: (prev: any[], current: any[]) => boolean
+  ): boolean => {
+    try {
+      // Handle null/undefined dependencies
+      const safeDependencies = dependencies == null ? [] : Array.isArray(dependencies) ? dependencies : [dependencies];
+      
+      const cache = dependencyCache.current;
+      const entry = cache.get(key);
+      
+      if (!entry) {
+        cache.set(key, {
+          dependencies: [...safeDependencies],
+          accessCount: 1,
+          lastChangeIndex: 0,
+          hasChanged: true
+        });
+        
+        // Limit cache size
+        if (cache.size > cacheLimit) {
+          const firstKey = cache.keys().next().value;
+          if (firstKey) {
+            cache.delete(firstKey);
+          }
+        }
+        
+        safeLog('debug', `Dependency change detected for ${key}`);
+        return true;
+      }
+
+      entry.accessCount++;
+      
+      const compare = customCompare || defaultCompare;
+      const areEqual = compare(entry.dependencies, safeDependencies);
+      
+      if (!areEqual) {
+        entry.dependencies = [...safeDependencies];
+        entry.lastChangeIndex = entry.accessCount - 1;
+        entry.hasChanged = true;
+        safeLog('debug', `Dependency change detected for ${key}`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      safeLog('error', `Error in custom dependency comparison for ${key}`, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return true; // Fallback to true on error
+    }
+  }, [defaultCompare, safeLog]);
+
+  // Create stable reference
+  const createStableReference = useCallback((key: string, value: any): any => {
+    const cache = stableReferenceCache.current;
+    const cached = cache.get(key);
+    
+    if (cached !== undefined && isDeepEqual(cached, value)) {
+      return cached;
+    }
+    
+    cache.set(key, value);
+    
+    // Limit cache size
+    if (cache.size > cacheLimit) {
+      const firstKey = cache.keys().next().value;
+      if (firstKey) {
+        cache.delete(firstKey);
+      }
+    }
+    
+    return value;
+  }, [isDeepEqual]);
+
+  // Get dependency count
+  const getDependencyCount = useCallback((): number => {
+    return dependencyCache.current.size;
+  }, []);
+
+  // Get dependency access count
+  const getDependencyAccessCount = useCallback((key: string): number => {
+    const entry = dependencyCache.current.get(key);
+    return entry ? entry.accessCount : 0;
+  }, []);
+
+  // Get dependency statistics
+  const getDependencyStats = useCallback((): DependencyStats => {
+    const cache = dependencyCache.current;
+    const stats = {
+      totalKeys: cache.size,
+      totalAccess: 0,
+      keysWithChanges: 0
+    };
+    
+    for (const entry of cache.values()) {
+      stats.totalAccess += entry.accessCount;
+      if (entry.lastChangeIndex >= 0) {
+        stats.keysWithChanges++;
+      }
+    }
+    
     return stats;
-  }, [groups, mergedDependencies, safeLog]);
+  }, []);
+
+  // Get dependency keys
+  const getDependencyKeys = useCallback((): string[] => {
+    return Array.from(dependencyCache.current.keys());
+  }, []);
+
+  // Get dependency info
+  const getDependencyInfo = useCallback((key: string) => {
+    const entry = dependencyCache.current.get(key);
+    
+    if (!entry) {
+      return {
+        key,
+        accessCount: 0,
+        lastChangeIndex: -1,
+        hasChanged: false
+      };
+    }
+    
+    return {
+      key,
+      accessCount: entry.accessCount,
+      lastChangeIndex: entry.lastChangeIndex,
+      hasChanged: entry.hasChanged
+    };
+  }, []);
+
+  // Reset dependency tracking
+  const resetDependencyTracking = useCallback(() => {
+    dependencyCache.current.clear();
+    stableReferenceCache.current.clear();
+  }, []);
+
+  // Log dependency stats
+  const logDependencyStats = useCallback(() => {
+    const stats = getDependencyStats();
+    safeLog('info', 'Dependency stats', stats);
+  }, [getDependencyStats, safeLog]);
+
+  // Check if mounted
+  const isMounted = useCallback((): boolean => {
+    return isMountedRef.current;
+  }, []);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (enableAutoCleanup) {
+        dependencyCache.current.clear();
+        stableReferenceCache.current.clear();
+      }
+    };
+  }, [enableAutoCleanup]);
 
   return {
-    // 基本機能
-    mergedDependencies,
-    dependencyChangeDetector,
-    getDependencyGroup,
+    // Core functionality
+    detectDependencyChange,
+    createStableReference,
     
-    // 高次機能
-    createStableCallback,
-    createStableMemo,
-    createConditionalDeps,
-    
-    // ユーティリティ
+    // Statistics and monitoring
+    getDependencyCount,
+    getDependencyAccessCount,
     getDependencyStats,
-    safeLog,
+    getDependencyKeys,
+    getDependencyInfo,
     
-    // 設定情報
+    // Utilities
+    resetDependencyTracking,
+    logDependencyStats,
+    isMounted,
+    
+    // Configuration
     hookName,
-    groups: groups.map(g => ({ id: g.id, description: g.description }))
+    logLevel
   };
 }
-
-/**
- * 一般的な依存配列パターンのヘルパー
- */
-export const createCommonDependencyGroups = {
-  /**
-   * イベントハンドラー系の依存配列
-   */
-  eventHandlers: (callbacks: any[]): DependencyGroup => ({
-    id: 'event-handlers',
-    dependencies: callbacks,
-    description: 'Event handler callbacks'
-  }),
-
-  /**
-   * 設定オプション系の依存配列
-   */
-  options: (options: any[]): DependencyGroup => ({
-    id: 'options',
-    dependencies: options,
-    description: 'Configuration options'
-  }),
-
-  /**
-   * 状態管理系の依存配列
-   */
-  stateManagement: (state: any[]): DependencyGroup => ({
-    id: 'state-management',
-    dependencies: state,
-    description: 'State management values'
-  }),
-
-  /**
-   * 外部リソース系の依存配列
-   */
-  externalResources: (resources: any[]): DependencyGroup => ({
-    id: 'external-resources',
-    dependencies: resources,
-    description: 'External resources and refs'
-  })
-};
 
 export type DependencyBase = ReturnType<typeof useDependencyBase>;
