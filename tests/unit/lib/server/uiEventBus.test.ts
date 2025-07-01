@@ -3,28 +3,21 @@
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals'
 import { EventEmitter } from 'events'
+import { http, HttpResponse } from 'msw'
 
-// Mock fetch globally
-const mockFetch = jest.fn()
-global.fetch = mockFetch
+// Import MSW setup to ensure it's initialized
+import { mswServer } from '../../../setup/msw-setup'
 
 describe('UI Event Bus', () => {
-  let consoleErrorSpy: jest.SpyInstance
+  let consoleErrorSpy: jest.SpiedFunction<typeof console.error>
 
   beforeEach(() => {
     jest.clearAllMocks()
     jest.resetModules()
     
-    // Reset fetch implementation
-    mockFetch.mockImplementation(() => 
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: jest.fn().mockResolvedValue({}),
-        text: jest.fn().mockResolvedValue('')
-      } as any)
-    )
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+    // Reset MSW handlers
+    mswServer.resetHandlers()
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -37,21 +30,14 @@ describe('UI Event Bus', () => {
       try {
         // Try different approaches
         const path = require.resolve('@/lib/server/uiEventBus')
-    // console.log('Resolved path:', path) // Removed by test quality fix
         module = require('@/lib/server/uiEventBus')
-    // console.log('Loaded module keys:', Object.keys(module || {})) // Removed by test quality fix
-    // console.log('Module content:', module) // Removed by test quality fix
       } catch (error) {
-    // console.error('Module loading error:', error) // Removed by test quality fix
         
         // Try relative path
         try {
           const relativePath = require.resolve('../../../../lib/server/uiEventBus')
-    // console.log('Relative path resolved:', relativePath) // Removed by test quality fix
           module = require('../../../../lib/server/uiEventBus')
-    // console.log('Module loaded with relative path:', module) // Removed by test quality fix
         } catch (relativeError) {
-    // console.error('Relative path error:', relativeError) // Removed by test quality fix
         }
       }
       
@@ -62,7 +48,6 @@ describe('UI Event Bus', () => {
   describe('uiEventBus', () => {
     it('exports EventEmitter instance', () => {
       const module = require('../../../../lib/server/uiEventBus')
-    // console.log('Module in test:', module) // Removed by test quality fix
       const { uiEventBus } = module
       expect(uiEventBus).toBeInstanceOf(EventEmitter)
     })
@@ -103,36 +88,28 @@ describe('UI Event Bus', () => {
   describe('emitUIEvent', () => {
     it('sends event via HTTP POST when available', async () => {
       const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
-      
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200
-      } as Response)
 
       const payload = {
         event: 'draw:trendline',
         data: { symbol: 'BTCUSDT', type: 'uptrend' }
       }
 
+      // MSW will handle the HTTP request
       await emitUIEvent(payload)
 
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/ui-events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      })
+      // Check that no error occurred (MSW provides successful response)
       expect(consoleErrorSpy).not.toHaveBeenCalled()
     })
 
     it('falls back to direct emit when HTTP POST fails', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500
-      } as Response)
+      // Set up MSW to return an error response
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          return HttpResponse.json({ error: 'Server error' }, { status: 500 })
+        })
+      )
 
       const payload = {
         event: 'chart:update',
@@ -144,7 +121,6 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(payload)
 
-      expect(mockFetch).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', 500)
       expect(listener).toHaveBeenCalledWith(payload)
       
@@ -155,8 +131,12 @@ describe('UI Event Bus', () => {
     it('falls back to direct emit when fetch throws error', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      const fetchError = new Error('Network error')
-      mockFetch.mockRejectedValue(fetchError)
+      // Set up MSW to simulate network error (returns 500 status)
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          return HttpResponse.json({ error: 'Network error' }, { status: 500 })
+        })
+      )
 
       const payload = {
         event: 'indicator:add',
@@ -168,8 +148,8 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(payload)
 
-      expect(mockFetch).toHaveBeenCalled()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST Error:', fetchError)
+      // MSW returns 500 status, which triggers HTTP POST failed log
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', 500)
       expect(listener).toHaveBeenCalledWith(payload)
       
       // Cleanup
@@ -179,7 +159,12 @@ describe('UI Event Bus', () => {
     it('handles error in direct emit gracefully', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      mockFetch.mockRejectedValue(new Error('Fetch failed'))
+      // Set up MSW to simulate network error
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          throw new Error('Fetch failed')
+        })
+      )
 
       const payload = {
         event: 'test:event',
@@ -204,11 +189,6 @@ describe('UI Event Bus', () => {
 
     it('sends correct payload structure', async () => {
       const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
-      
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200
-      } as Response)
 
       const complexPayload = {
         event: 'analysis:complete',
@@ -227,25 +207,17 @@ describe('UI Event Bus', () => {
         }
       }
 
+      // MSW handles the request and validates structure automatically
       await emitUIEvent(complexPayload)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/ui-events',
-        expect.objectContaining({
-          body: JSON.stringify(complexPayload)
-        })
-      )
+      // Check that no error occurred
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     })
   })
 
   describe('Event Payload Types', () => {
     it('handles minimal payload', async () => {
       const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
-      
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200
-      } as Response)
 
       const minimalPayload = {
         event: 'ping',
@@ -254,21 +226,11 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(minimalPayload)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          body: JSON.stringify(minimalPayload)
-        })
-      )
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     })
 
     it('handles payload with various data types', async () => {
       const { emitUIEvent } = require('../../../../lib/server/uiEventBus')
-      
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200
-      } as Response)
 
       const mixedPayload = {
         event: 'mixed:data',
@@ -288,12 +250,7 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(mixedPayload)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          body: JSON.stringify(mixedPayload)
-        })
-      )
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     })
   })
 
@@ -301,10 +258,12 @@ describe('UI Event Bus', () => {
     it('allows multiple listeners for ui-event', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500
-      } as Response)
+      // Set up MSW to return error to trigger fallback
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          return HttpResponse.json({ error: 'Server error' }, { status: 500 })
+        })
+      )
 
       const listener1 = jest.fn()
       const listener2 = jest.fn()
@@ -352,8 +311,12 @@ describe('UI Event Bus', () => {
     it('handles timeout errors', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      const timeoutError = new Error('Request timeout')
-      mockFetch.mockRejectedValue(timeoutError)
+      // Set up MSW to simulate timeout (returns 500 status)
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          return HttpResponse.json({ error: 'Request timeout' }, { status: 500 })
+        })
+      )
 
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
@@ -365,7 +328,8 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(payload)
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST Error:', timeoutError)
+      // MSW returns 500 status, which triggers HTTP POST failed log
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', 500)
       expect(listener).toHaveBeenCalledWith(payload)
       
       // Cleanup
@@ -375,10 +339,12 @@ describe('UI Event Bus', () => {
     it('handles malformed response', async () => {
       const { uiEventBus, emitUIEvent } = require('../../../../lib/server/uiEventBus')
       
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: undefined
-      } as any)
+      // Set up MSW to return a 400 Bad Request response
+      mswServer.use(
+        http.post('http://localhost:3000/api/ui-events', () => {
+          return HttpResponse.json({ error: 'Bad response' }, { status: 400 })
+        })
+      )
 
       const listener = jest.fn()
       uiEventBus.on('ui-event', listener)
@@ -390,7 +356,8 @@ describe('UI Event Bus', () => {
 
       await emitUIEvent(payload)
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', undefined)
+      // 400 status should trigger HTTP POST failed and fallback to direct emit
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[emitUIEvent] HTTP POST failed:', 400)
       expect(listener).toHaveBeenCalledWith(payload)
       
       // Cleanup

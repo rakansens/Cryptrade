@@ -182,7 +182,7 @@ describe('useDependencyBase', () => {
       
       expect(stats.totalKeys).toBe(2);
       expect(stats.totalAccess).toBe(3);
-      expect(stats.keysWithChanges).toBe(1); // Only stats1 had a change
+      expect(stats.keysWithChanges).toBe(2); // Both stats1 and stats2 had changes (first access always counts as change)
     });
 
     it('should reset dependency tracking', () => {
@@ -377,6 +377,7 @@ describe('useDependencyBase', () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         '[useDependencyBase-test] Dependency change detected for logged-deps'
       );
+      expect(consoleSpy).toHaveBeenCalledTimes(1); // Only the second call (actual change) should be logged
       
       consoleSpy.mockRestore();
     });

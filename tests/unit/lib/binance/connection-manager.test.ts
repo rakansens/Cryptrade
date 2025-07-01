@@ -4,6 +4,38 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { logger } from '@/lib/utils/logger';
 
+// MSW完全無効化 - WebSocketテスト専用
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+    listHandlers: jest.fn(() => [])
+  }
+}));
+
+jest.mock('../../../setup/polyfills', () => ({}));
+
+// MSWインターセプター無効化
+jest.mock('msw', () => ({
+  setupWorker: jest.fn(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn()
+  })),
+  rest: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    patch: jest.fn()
+  }
+}));
+
+jest.mock('@mswjs/interceptors', () => ({}));
+
 // Mock dependencies
 jest.mock('@/lib/utils/logger', () => ({
   logger: {

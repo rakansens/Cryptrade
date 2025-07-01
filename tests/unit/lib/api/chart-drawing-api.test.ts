@@ -11,9 +11,21 @@ jest.mock('@/config/env', () => ({
   env: mockEnv
 }));
 
-// Mock global fetch with proper Jest mock
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Disable MSW for unit tests
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+  }
+}));
+
+// Disable MSW polyfills and interceptors
+jest.mock('../../../setup/polyfills', () => ({}));
+
+// Import unified fetch mock
+import { resetFetchMock, globalFetchMock } from '../../../setup/fetch-mock';
 
 import { ChartDrawingAPI, TimeframeState } from '@/lib/api/chart-drawing-api';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
@@ -24,8 +36,10 @@ import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.s
 describe('ChartDrawingAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset fetch mock properly
-    mockFetch.mockReset();
+    // Reset unified fetch mock
+    resetFetchMock();
+    // Ensure our fetch mock takes precedence over any interceptors
+    global.fetch = globalFetchMock;
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
   });
 
@@ -50,14 +64,14 @@ describe('ChartDrawingAPI', () => {
         },
       ];
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.saveDrawings('session-1', drawings);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +81,7 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Internal Server Error',
       });
@@ -82,7 +96,7 @@ describe('ChartDrawingAPI', () => {
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network error');
-      (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+      globalFetchMock.mockRejectedValueOnce(networkError);
 
       await expect(ChartDrawingAPI.saveDrawings('session-1', [])).rejects.toThrow('Network error');
       expect(logger.error).toHaveBeenCalled();
@@ -113,7 +127,7 @@ describe('ChartDrawingAPI', () => {
       const result = await ChartDrawingAPI.loadDrawings('session-1');
 
       expect(result).toEqual(cachedDrawings);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
       expect(logger.debug).toHaveBeenCalledWith('[ChartDrawingAPI] Returning cached drawings', {
         sessionId: 'session-1',
       });
@@ -132,14 +146,14 @@ describe('ChartDrawingAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ drawings }),
       });
 
       const result = await ChartDrawingAPI.loadDrawings('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings');
       expect(mockApiCache.set).toHaveBeenCalledWith('chart_drawings_session-1', drawings, {
         useLocalStorage: true,
       });
@@ -160,7 +174,7 @@ describe('ChartDrawingAPI', () => {
         }
       });
 
-      (global.fetch as jest.Mock)
+      globalFetchMock
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce({
           ok: true,
@@ -242,14 +256,14 @@ describe('ChartDrawingAPI', () => {
         },
       ];
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.savePatterns('session-1', patterns);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/patterns', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/patterns', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +273,7 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Bad Request',
       });
@@ -290,7 +304,7 @@ describe('ChartDrawingAPI', () => {
       const result = await ChartDrawingAPI.loadPatterns('session-1');
 
       expect(result).toEqual(cachedPatterns);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
     });
 
     it('should fetch patterns from API when cache is empty', async () => {
@@ -305,7 +319,7 @@ describe('ChartDrawingAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ patterns }),
       });
@@ -343,7 +357,7 @@ describe('ChartDrawingAPI', () => {
       });
 
       let callCount = 0;
-      (global.fetch as jest.Mock).mockImplementation(() => {
+      globalFetchMock.mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
           return Promise.reject(new Error('Network error'));
@@ -351,7 +365,19 @@ describe('ChartDrawingAPI', () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ patterns: [] }),
-        });
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          redirected: false,
+          url: '',
+          clone: () => ({} as Response),
+          body: null,
+          bodyUsed: false,
+          arrayBuffer: async () => new ArrayBuffer(0),
+          blob: async () => new Blob(),
+          formData: async () => new FormData(),
+          text: async () => '',
+        } as Response);
       });
 
       const result = await ChartDrawingAPI.loadPatterns('session-1');
@@ -373,14 +399,14 @@ describe('ChartDrawingAPI', () => {
         timestamp: Date.now(),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.saveTimeframeState('session-1', state);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/timeframe', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/timeframe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -396,7 +422,7 @@ describe('ChartDrawingAPI', () => {
         timestamp: Date.now(),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Forbidden',
       });
@@ -416,7 +442,7 @@ describe('ChartDrawingAPI', () => {
         timestamp: Date.now(),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ state }),
       });
@@ -424,11 +450,11 @@ describe('ChartDrawingAPI', () => {
       const result = await ChartDrawingAPI.loadTimeframeState('session-1');
 
       expect(result).toEqual(state);
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/timeframe');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/timeframe');
     });
 
     it('should return null for 404 response', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         status: 404,
         statusText: 'Not Found',
@@ -440,7 +466,7 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should throw error for other HTTP errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
@@ -461,7 +487,7 @@ describe('ChartDrawingAPI', () => {
       const { ChartDrawingAPI: DevChartDrawingAPI } = await import('@/lib/api/chart-drawing-api');
       const { logger: devLogger } = await import('@/lib/utils/logger');
 
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      globalFetchMock.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await DevChartDrawingAPI.loadTimeframeState('session-1');
 
@@ -478,7 +504,7 @@ describe('ChartDrawingAPI', () => {
       jest.resetModules();
       const { ChartDrawingAPI: ProdChartDrawingAPI } = await import('@/lib/api/chart-drawing-api');
 
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      globalFetchMock.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(ProdChartDrawingAPI.loadTimeframeState('session-1')).rejects.toThrow(
         'Failed to load timeframe state: Network error'
@@ -488,20 +514,20 @@ describe('ChartDrawingAPI', () => {
 
   describe('deleteDrawing', () => {
     it('should delete drawing successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.deleteDrawing('session-1', 'drawing-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings/drawing-1', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/drawings/drawing-1', {
         method: 'DELETE',
       });
     });
 
     it('should handle delete errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Not Found',
       });
@@ -514,20 +540,20 @@ describe('ChartDrawingAPI', () => {
 
   describe('deletePattern', () => {
     it('should delete pattern successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.deletePattern('session-1', 'pattern-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1/patterns/pattern-1', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1/patterns/pattern-1', {
         method: 'DELETE',
       });
     });
 
     it('should handle delete errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Unauthorized',
       });
@@ -564,14 +590,14 @@ describe('ChartDrawingAPI', () => {
         sessionId: 'session-1',
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.migrateFromLocalStorage(migrationData);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/migrate', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/migrate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -581,7 +607,7 @@ describe('ChartDrawingAPI', () => {
     });
 
     it('should handle migration errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Service Unavailable',
       });
@@ -600,20 +626,20 @@ describe('ChartDrawingAPI', () => {
 
   describe('clearSession', () => {
     it('should clear session successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChartDrawingAPI.clearSession('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chart/sessions/session-1', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chart/sessions/session-1', {
         method: 'DELETE',
       });
     });
 
     it('should handle clear session errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Conflict',
       });
@@ -626,7 +652,7 @@ describe('ChartDrawingAPI', () => {
 
     it('should handle network errors', async () => {
       const networkError = new Error('Connection refused');
-      (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+      globalFetchMock.mockRejectedValueOnce(networkError);
 
       await expect(ChartDrawingAPI.clearSession('session-1')).rejects.toThrow('Connection refused');
     });

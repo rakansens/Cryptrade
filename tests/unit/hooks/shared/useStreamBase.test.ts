@@ -1,3 +1,43 @@
+// WebSocket専用テスト - MSW完全無効化
+// Safely mock window if it doesn't exist
+if (typeof window === 'undefined') {
+  (global as any).window = {
+    location: { hostname: 'localhost' },
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn()
+  };
+}
+
+// MSWインターセプター完全無効化
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+    listHandlers: jest.fn(() => [])
+  }
+}));
+
+jest.mock('../../../setup/polyfills', () => ({}));
+
+// MSW本体無効化 - より安全な方法
+jest.mock('msw', () => ({
+  setupWorker: jest.fn(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn()
+  })),
+  rest: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    patch: jest.fn()
+  }
+}));
+
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useStreamBase } from '@/hooks/shared/useStreamBase';
 

@@ -10,11 +10,16 @@ require('./tests/setup/test-env');
 // 3. JSDOM environment setup
 require('./tests/setup/jsdom-environment');
 
-// 4. Extend Jest matchers
+// 4. Unified Fetch Mock - BEFORE MSW to ensure proper mock setup
+require('./tests/setup/fetch-mock');
+
+// 5. Extend Jest matchers
 require('@testing-library/jest-dom');
 
-// 5. MSW setup - AFTER polyfills and JSDOM but BEFORE other mocks
-require('./tests/setup/msw-setup');
+// 6. MSW setup - CONDITIONALLY DISABLE for unit tests
+if (!process.env.DISABLE_MSW) {
+  require('./tests/setup/msw-setup');
+}
 
 // 6. Browser API mocks
 require('./tests/setup/browser-mocks');

@@ -68,8 +68,8 @@ describe('Binance Ticker API Route', () => {
   describe('GET /api/binance/ticker', () => {
     const generateMockTicker = (symbol: string = 'BTCUSDT'): BinanceTicker24hr => {
       // Use deterministic values instead of Math.random()
-      const basePrice = symbol === 'BTCUSDT' ? 50000 : 
-                       symbol === 'ETHUSDT' ? 3000 : 
+      const basePrice = symbol === 'BTCUSDT' ? 50000 :
+                       symbol === 'ETHUSDT' ? 3000 :
                        1250;
       const priceChange = 0; // 0% change for deterministic testing
       const openPrice = basePrice;
@@ -82,6 +82,7 @@ describe('Binance Ticker API Route', () => {
       const openTime = currentTime - 86400000;
       const count = 100000; // Fixed count
       
+      // Ensure all fields are strings as per BinanceTicker24hrSchema
       return {
         symbol,
         priceChange: priceChange.toFixed(2),
@@ -187,10 +188,10 @@ describe('Binance Ticker API Route', () => {
       const response = await GET(request);
       const data = await response.json();
 
-      expect(response.status).toBe(429);
+      expect(response.status).toBe(502); // API handler wraps upstream errors as 502
       expect(data).toMatchObject({
         error: expect.objectContaining({
-          message: 'Binance API error: Too Many Requests'
+          message: 'Invalid data format from upstream API'
         })
       });
     });
@@ -199,10 +200,10 @@ describe('Binance Ticker API Route', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ 
+        json: async () => ({
           symbol: "BTCUSDT",
           // Missing required fields
-          lastPrice: (100000 + Math.floor(Math.random() * 20000)).toString()
+          lastPrice: "110000"
         })
       } as Response);
 

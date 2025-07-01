@@ -1,6 +1,42 @@
 /**
  * @jest-environment jsdom
  */
+
+// MSW完全無効化 - WebSocketテスト専用
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+    listHandlers: jest.fn(() => [])
+  }
+}));
+
+jest.mock('../../../setup/polyfills', () => ({}));
+
+// MSWインターセプター無効化
+jest.mock('msw', () => ({
+  setupWorker: jest.fn(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn()
+  })),
+  rest: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    patch: jest.fn()
+  }
+}));
+
+jest.mock('@mswjs/interceptors', () => ({}));
+
+// Disable MSW WebSocket interceptor for this test
+const originalWebSocket = global.WebSocket;
+
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { BinanceWebSocketManager, PriceUpdateCallback } from '@/lib/binance/websocket-manager';
 import { logger } from '@/lib/utils/logger';
@@ -91,6 +127,9 @@ describe('BinanceWebSocketManager', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     MockWebSocket.clearInstances();
+    
+    // Force override global WebSocket to prevent MSW interference
+    global.WebSocket = MockWebSocket as any;
     
     // Simplified timer handling with jest.useFakeTimers()
     // Create a fresh manager instance for each test

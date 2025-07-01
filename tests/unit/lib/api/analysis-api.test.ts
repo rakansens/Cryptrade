@@ -14,9 +14,21 @@ jest.mock('@/config/env', () => ({
   }
 }));
 
-// Mock global fetch with proper Jest mock
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Disable MSW for unit tests
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+  }
+}));
+
+// Disable MSW polyfills and interceptors
+jest.mock('../../../setup/polyfills', () => ({}));
+
+// Import unified fetch mock
+import { resetFetchMock, globalFetchMock } from '../../../setup/fetch-mock';
 
 import { AnalysisAPI } from '@/lib/api/analysis-api';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
@@ -33,8 +45,10 @@ describe('AnalysisAPI', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2025-01-01T00:00:00.000Z'));
     (process.env as any).NODE_ENV = 'test';
-    // Reset fetch mock properly
-    mockFetch.mockReset();
+    // Reset unified fetch mock
+    resetFetchMock();
+    // Ensure our fetch mock takes precedence over any interceptors
+    global.fetch = globalFetchMock;
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
     jest.mocked(createKey).mockImplementation((prefix, params) => {
@@ -72,14 +86,14 @@ describe('AnalysisAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ recordId: 'record-123' }),
       });
 
       const result = await AnalysisAPI.saveAnalysis(analysisData);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/records', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/records', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,14 +110,14 @@ describe('AnalysisAPI', () => {
         type: 'resistance' as const,
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ recordId: 'record-456' }),
       });
 
       await AnalysisAPI.saveAnalysis(analysisData);
 
-      const sentBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const sentBody = JSON.parse(globalFetchMock.mock.calls[0][1].body);
       expect(sentBody).toEqual(analysisData);
       expect(sentBody.sessionId).toBeUndefined();
       expect(sentBody.proposalData).toBeUndefined();
@@ -123,14 +137,14 @@ describe('AnalysisAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ recordId: 'record-789' }),
       });
 
       await AnalysisAPI.saveAnalysis(analysisData);
 
-      const sentBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const sentBody = JSON.parse(globalFetchMock.mock.calls[0][1].body);
       expect(sentBody.sentimentData).toEqual(analysisData.sentimentData);
     });
 
@@ -148,19 +162,19 @@ describe('AnalysisAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ recordId: 'record-abc' }),
       });
 
       await AnalysisAPI.saveAnalysis(analysisData);
 
-      const sentBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const sentBody = JSON.parse(globalFetchMock.mock.calls[0][1].body);
       expect(sentBody.trackingData).toEqual(analysisData.trackingData);
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Bad Request',
       });
@@ -177,7 +191,7 @@ describe('AnalysisAPI', () => {
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network error');
-      (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+      globalFetchMock.mockRejectedValueOnce(networkError);
 
       await expect(
         AnalysisAPI.saveAnalysis({
@@ -198,14 +212,14 @@ describe('AnalysisAPI', () => {
         strength: 0.95
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await AnalysisAPI.recordTouchEvent('record-123', touchEvent);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/records/record-123/touch', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/records/record-123/touch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +229,7 @@ describe('AnalysisAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Not Found',
       });
@@ -271,7 +285,7 @@ describe('AnalysisAPI', () => {
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
 
       expect(result).toEqual(cachedRecords);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
       expect(logger.debug).toHaveBeenCalledWith('[AnalysisAPI] Returning cached session analyses', {
         sessionId: 'session-1',
       });
@@ -305,14 +319,14 @@ describe('AnalysisAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ records }),
       });
 
       const result = await AnalysisAPI.getSessionAnalyses('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/sessions/session-1/records');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/sessions/session-1/records');
       expect(mockApiCache.set).toHaveBeenCalledWith('analysis_session_session-1', records, {
         useLocalStorage: true,
       });
@@ -333,7 +347,7 @@ describe('AnalysisAPI', () => {
         }
       });
 
-      (global.fetch as jest.Mock)
+      globalFetchMock
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce({
           ok: true,
@@ -464,14 +478,14 @@ describe('AnalysisAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ records }),
       });
 
       const result = await AnalysisAPI.getActiveAnalyses();
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/active');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/active');
       expect(createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'all' });
       expect(result).toEqual(records);
     });
@@ -500,28 +514,28 @@ describe('AnalysisAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ records }),
       });
 
       const result = await AnalysisAPI.getActiveAnalyses('BTCUSDT');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/active?symbol=BTCUSDT');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/active?symbol=BTCUSDT');
       expect(createKey).toHaveBeenCalledWith('analysis_active', { symbol: 'BTCUSDT' });
       expect(result).toEqual(records);
     });
 
     it('should handle special characters in symbol', async () => {
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ records: [] }),
       });
 
       await AnalysisAPI.getActiveAnalyses('BTC/USDT');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/analysis/active?symbol=BTC%2FUSDT');
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/analysis/active?symbol=BTC%2FUSDT');
     });
 
     it('should use cache when available', async () => {
@@ -553,7 +567,7 @@ describe('AnalysisAPI', () => {
       const result = await AnalysisAPI.getActiveAnalyses('BTCUSDT');
 
       expect(result).toEqual(cachedRecords);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
     });
 
     it('should handle API failure with retry', async () => {
@@ -575,7 +589,7 @@ describe('AnalysisAPI', () => {
         return fn();
       });
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ records: [] }),
       });

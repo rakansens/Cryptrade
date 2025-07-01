@@ -22,8 +22,21 @@ jest.mock('@/config/env', () => {
   };
 });
 
-// Mock global fetch
-global.fetch = jest.fn();
+// Import unified fetch mock
+import { resetFetchMock, globalFetchMock } from '../../../setup/fetch-mock';
+
+// Disable MSW for unit tests
+jest.mock('../../../setup/msw-setup', () => ({
+  mswServer: {
+    close: jest.fn(),
+    listen: jest.fn(),
+    resetHandlers: jest.fn(),
+    use: jest.fn(),
+  }
+}));
+
+// Disable MSW polyfills and interceptors
+jest.mock('../../../setup/polyfills', () => ({}));
 
 import { ChatAPI, ChatMessage, ChatSession } from '@/lib/api/chat-api';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
@@ -33,12 +46,13 @@ import type { CreateSessionResponse, AddMessageResponse } from '@/types/api.type
 import type { ProposalGroup, EntryProposalGroup } from '@/types/proposals';
 
 describe('ChatAPI', () => {
+
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset fetch mock
-    if (typeof (global.fetch as any).mockReset === 'function') {
-      (global.fetch as jest.Mock).mockReset();
-    }
+    // Reset unified fetch mock
+    resetFetchMock();
+    // Ensure our fetch mock takes precedence over any interceptors
+    global.fetch = globalFetchMock;
     // Mock withRetry to execute function immediately
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
@@ -243,14 +257,14 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
       });
 
       const result = await ChatAPI.createSession('user-1', 'New Session');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -276,14 +290,14 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
       });
 
       await ChatAPI.createSession();
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -293,7 +307,7 @@ describe('ChatAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Internal Server Error',
       });
@@ -304,7 +318,7 @@ describe('ChatAPI', () => {
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network error');
-      (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+      globalFetchMock.mockRejectedValueOnce(networkError);
 
       await expect(ChatAPI.createSession()).rejects.toThrow('Network error');
       expect(logger.error).toHaveBeenCalledWith('[ChatAPI] Failed to create session', { error: networkError });
@@ -330,7 +344,7 @@ describe('ChatAPI', () => {
       const result = await ChatAPI.getUserSessions('user-1');
 
       expect(result).toEqual(cachedSessions);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
       expect(logger.debug).toHaveBeenCalledWith('[ChatAPI] Returning cached sessions', { userId: 'user-1' });
     });
 
@@ -345,14 +359,14 @@ describe('ChatAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ sessions }),
       });
 
       const result = await ChatAPI.getUserSessions('user-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'GET',
         headers: { 'x-user-id': 'user-1' },
       });
@@ -362,14 +376,14 @@ describe('ChatAPI', () => {
 
     it('should handle default user when userId is not provided', async () => {
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ sessions: [] }),
       });
 
       await ChatAPI.getUserSessions();
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions', {
         method: 'GET',
         headers: {},
       });
@@ -417,7 +431,9 @@ describe('ChatAPI', () => {
         throw new Error('API Error');
       });
 
-      await expect(ChatAPI.getUserSessions()).rejects.toThrow('Failed to get sessions: API Error');
+      const result = await ChatAPI.getUserSessions();
+      expect(result).toEqual([]);
+      expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning empty array in development mode');
 
       // Restore
       envModule.env = originalEnv;
@@ -460,7 +476,7 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
       });
@@ -473,7 +489,7 @@ describe('ChatAPI', () => {
 
       const result = await ChatAPI.addMessage('session-1', message);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions/session-1/messages', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions/session-1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -525,7 +541,7 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
       });
@@ -552,7 +568,7 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
       });
@@ -564,7 +580,7 @@ describe('ChatAPI', () => {
 
       await ChatAPI.addMessage('session-1', message);
 
-      const sentBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const sentBody = JSON.parse(globalFetchMock.mock.calls[0][1].body);
       expect(sentBody).toEqual({
         content: 'Test',
         role: 'user',
@@ -574,7 +590,7 @@ describe('ChatAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Bad Request',
       });
@@ -611,7 +627,7 @@ describe('ChatAPI', () => {
       const result = await ChatAPI.getMessages('session-1');
 
       expect(result).toEqual(cachedMessages);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalFetchMock).not.toHaveBeenCalled();
     });
 
     it('should fetch messages from API when cache is empty', async () => {
@@ -625,14 +641,14 @@ describe('ChatAPI', () => {
       ];
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ messages }),
       });
 
       const result = await ChatAPI.getMessages('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions/session-1/messages', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions/session-1/messages', {
         method: 'GET',
       });
       expect(mockApiCache.set).toHaveBeenCalledWith('chat_messages_session-1', messages, { useLocalStorage: true });
@@ -659,7 +675,7 @@ describe('ChatAPI', () => {
         }
       });
 
-      (global.fetch as jest.Mock)
+      globalFetchMock
         .mockRejectedValueOnce(new Error('First attempt failed'))
         .mockResolvedValueOnce({
           ok: true,
@@ -698,14 +714,14 @@ describe('ChatAPI', () => {
       };
 
       mockApiCache.get.mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => sessionData,
       });
 
       const result = await ChatAPI.getSessionWithMessages('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions/session-1?include=messages', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions/session-1?include=messages', {
         method: 'GET',
       });
       expect(result).toEqual(sessionData);
@@ -729,7 +745,9 @@ describe('ChatAPI', () => {
         throw new Error('API Error');
       });
 
-      await expect(ChatAPI.getSessionWithMessages('session-1')).rejects.toThrow('Failed to get session session-1: API Error');
+      const result = await ChatAPI.getSessionWithMessages('session-1');
+      expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith('[ChatAPI] Returning null in development mode');
 
       // Restore
       envModule.env = originalEnv;
@@ -738,14 +756,14 @@ describe('ChatAPI', () => {
 
   describe('updateSessionTitle', () => {
     it('should update session title successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChatAPI.updateSessionTitle('session-1', 'New Title');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions/session-1', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions/session-1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -755,7 +773,7 @@ describe('ChatAPI', () => {
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Not Found',
       });
@@ -768,20 +786,20 @@ describe('ChatAPI', () => {
 
   describe('deleteSession', () => {
     it('should delete session successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChatAPI.deleteSession('session-1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/sessions/session-1', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/sessions/session-1', {
         method: 'DELETE',
       });
     });
 
     it('should handle API errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Forbidden',
       });
@@ -817,14 +835,14 @@ describe('ChatAPI', () => {
         },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       });
 
       await ChatAPI.migrateFromLocalStorage(migrationData);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/chat/migrate', {
+      expect(globalFetchMock).toHaveBeenCalledWith('/api/chat/migrate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -834,7 +852,7 @@ describe('ChatAPI', () => {
     });
 
     it('should handle migration errors', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      globalFetchMock.mockResolvedValueOnce({
         ok: false,
         statusText: 'Internal Server Error',
       });

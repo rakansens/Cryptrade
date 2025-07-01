@@ -1,3 +1,6 @@
+// Disable MSW for this unit test
+process.env.DISABLE_MSW = 'true';
+
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { useStreaming } from '@/hooks/base/use-streaming';
@@ -6,17 +9,16 @@ import { logger } from '@/lib/utils/logger';
 // Mock logger
 jest.mock('@/lib/utils/logger');
 
-// Mock fetch with proper Jest mock
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
-
 // Mock EventSource
 global.EventSource = jest.fn() as any;
+
+// Create a proper Jest mock for fetch
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch;
 
 describe('useStreaming', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset fetch mock properly
     mockFetch.mockReset();
   });
 
@@ -43,13 +45,13 @@ describe('useStreaming', () => {
         }),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
 
       renderHook(() =>
         useStreaming({ endpoint: '/api/stream', autoConnect: true })
       );
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         '/api/stream',
         expect.objectContaining({
           method: 'POST',
@@ -77,7 +79,7 @@ describe('useStreaming', () => {
         }),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -101,7 +103,7 @@ describe('useStreaming', () => {
     it('should handle connection errors', async () => {
       const onError = jest.fn();
 
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
+      mockFetch.mockRejectedValueOnce(new Error('Connection failed'));
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -122,11 +124,11 @@ describe('useStreaming', () => {
     it('should handle HTTP errors', async () => {
       const onError = jest.fn();
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      });
+      } as any);
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -206,7 +208,7 @@ describe('useStreaming', () => {
         }),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -239,7 +241,7 @@ describe('useStreaming', () => {
         }),
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -264,7 +266,7 @@ describe('useStreaming', () => {
       const onError = jest.fn();
 
       // First attempt fails
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
+      mockFetch.mockRejectedValueOnce(new Error('Connection failed'));
       
       // Second attempt succeeds
       const mockResponse = {
@@ -275,7 +277,7 @@ describe('useStreaming', () => {
           },
         }),
       };
-      (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
 
       const { result } = renderHook(() =>
         useStreaming({
@@ -309,7 +311,7 @@ describe('useStreaming', () => {
     it('should use exponential backoff for reconnection', async () => {
       jest.useFakeTimers();
 
-      (global.fetch as jest.Mock).mockRejectedValue(new Error('Connection failed'));
+      mockFetch.mockRejectedValue(new Error('Connection failed'));
 
       renderHook(() =>
         useStreaming({
@@ -350,7 +352,7 @@ describe('useStreaming', () => {
       const customHeaders = { Authorization: 'Bearer token' };
       const customBody = { filter: 'important' };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         body: new ReadableStream({
           start(controller) {
@@ -387,7 +389,7 @@ describe('useStreaming', () => {
     });
 
     it('should support GET method without body', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         body: new ReadableStream({
           start(controller) {
@@ -415,7 +417,7 @@ describe('useStreaming', () => {
           headers: { 'Content-Type': 'application/json' },
         })
       );
-      expect((global.fetch as jest.Mock).mock.calls[0][1]).not.toHaveProperty('body');
+      expect(mockFetch.mock.calls[0][1]).not.toHaveProperty('body');
     });
   });
 });
