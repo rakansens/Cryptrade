@@ -21,8 +21,30 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 describe('useEventHandlerBase', () => {
+  let mockHandleAgentError: jest.Mock;
+  let mockShowAgentSuccess: jest.Mock;
+  let mockHandleValidationError: jest.Mock;
+  let mockLogger: { info: jest.Mock; error: jest.Mock; warn: jest.Mock; debug: jest.Mock };
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Get references to mocked modules
+    const agentUtils = require('@/lib/mastra/agents/utils/agent-utils');
+    const chartUtils = require('@/lib/chart/agent-utils');
+    const loggerModule = require('@/lib/utils/logger');
+    
+    mockHandleAgentError = agentUtils.handleAgentError;
+    mockShowAgentSuccess = chartUtils.showAgentSuccess;
+    mockHandleValidationError = chartUtils.handleValidationError;
+    mockLogger = loggerModule.logger;
+    
+    // Clear call history for each test
+    mockHandleAgentError.mockClear();
+    mockShowAgentSuccess.mockClear();
+    mockHandleValidationError.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.error.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.debug.mockClear();
   });
 
   describe('basic functionality', () => {
@@ -41,12 +63,11 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-      const { logger } = require('@/lib/utils/logger');
 
       renderHook(() => useEventHandlerBase(config, eventListeners));
 
       expect(addEventListenerSpy).toHaveBeenCalledWith('test:event', expect.any(Function));
-      expect(logger.info).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         '[Event Handler Base] Registered event listeners',
         expect.objectContaining({
           eventCount: 1,
@@ -72,14 +93,13 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
-      const { logger } = require('@/lib/utils/logger');
 
       const { unmount } = renderHook(() => useEventHandlerBase(config, eventListeners));
 
       unmount();
 
       expect(removeEventListenerSpy).toHaveBeenCalledWith('test:event', expect.any(Function));
-      expect(logger.info).toHaveBeenCalledWith('[Event Handler Base] Cleaned up event listeners');
+      expect(mockLogger.info).toHaveBeenCalledWith('[Event Handler Base] Cleaned up event listeners');
 
       removeEventListenerSpy.mockRestore();
     });
@@ -90,7 +110,7 @@ describe('useEventHandlerBase', () => {
       const mockProcessor = jest.fn().mockResolvedValue(undefined);
       const mockValidator = jest.fn().mockReturnValue({
         success: true,
-        data: { data: { test: 'data' } }
+        data: { data: { test: 'data' } }  // ネストした構造で統一
       });
       
       const config = createEventHandlerConfig(
@@ -104,8 +124,6 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
-      const { logger } = require('@/lib/utils/logger');
-      const { showAgentSuccess } = require('@/lib/chart/agent-utils');
 
       // Create and dispatch a custom event
       const testEvent = new CustomEvent('test:event', {
@@ -117,12 +135,12 @@ describe('useEventHandlerBase', () => {
       await handler(testEvent);
 
       expect(mockValidator).toHaveBeenCalledWith('test:event', { test: 'data' });
-      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });
-      expect(showAgentSuccess).toHaveBeenCalledWith(
+      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });  // validation.data.data の値
+      expect(mockShowAgentSuccess).toHaveBeenCalledWith(
         { eventType: 'test:event', operation: 'Test Operation' },
         'Test completed: {"test":"data"}'
       );
-      expect(logger.info).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         '[Event] Handling test:event',
         expect.objectContaining({
           eventType: 'test:event',
@@ -150,7 +168,6 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
-      const { handleValidationError } = require('@/lib/chart/agent-utils');
 
       const testEvent = new CustomEvent('test:event', {
         detail: { test: 'invalid' }
@@ -161,7 +178,7 @@ describe('useEventHandlerBase', () => {
 
       expect(mockValidator).toHaveBeenCalledWith('test:event', { test: 'invalid' });
       expect(mockProcessor).not.toHaveBeenCalled();
-      expect(handleValidationError).toHaveBeenCalledWith(
+      expect(mockHandleValidationError).toHaveBeenCalledWith(
         { success: false, error: 'Validation failed' },
         {
           eventType: 'test:event',
@@ -176,7 +193,7 @@ describe('useEventHandlerBase', () => {
       const mockProcessor = jest.fn().mockRejectedValue(processingError);
       const mockValidator = jest.fn().mockReturnValue({
         success: true,
-        data: { data: { test: 'data' } }
+        data: { data: { test: 'data' } }  // ネストした構造
       });
       
       const config = createEventHandlerConfig(
@@ -190,7 +207,6 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
-      const { handleAgentError } = require('@/lib/mastra/agents/utils/agent-utils');
 
       const testEvent = new CustomEvent('test:event', {
         detail: { test: 'data' }
@@ -199,13 +215,13 @@ describe('useEventHandlerBase', () => {
       const handler = result.current.createHandler('test:event', mockProcessor);
       await handler(testEvent);
 
-      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });
-      expect(handleAgentError).toHaveBeenCalledWith(
+      expect(mockProcessor).toHaveBeenCalledWith({ test: 'data' });  // validation.data.data の値
+      expect(mockHandleAgentError).toHaveBeenCalledWith(
         processingError,
         {
           eventType: 'test:event',
           operation: 'Test Operation',
-          payload: { test: 'data' }
+          payload: { test: 'data' }  // data として渡される値
         }
       );
     });
@@ -249,7 +265,7 @@ describe('useEventHandlerBase', () => {
       const mockProcessor = jest.fn().mockRejectedValue(processingError);
       const mockValidator = jest.fn().mockReturnValue({
         success: true,
-        data: { data: { test: 'data' } }
+        data: { data: { test: 'data' } }  // ネストした構造
       });
 
       const errorContextProvider = jest.fn().mockReturnValue({
@@ -268,7 +284,6 @@ describe('useEventHandlerBase', () => {
       ]);
 
       const { result } = renderHook(() => useEventHandlerBase(config, eventListeners));
-      const { handleAgentError } = require('@/lib/mastra/agents/utils/agent-utils');
 
       const testEvent = new CustomEvent('test:event', {
         detail: { test: 'data' }
@@ -277,13 +292,13 @@ describe('useEventHandlerBase', () => {
       const handler = result.current.createHandler('test:event', mockProcessor);
       await handler(testEvent);
 
-      expect(errorContextProvider).toHaveBeenCalledWith('test:event', { test: 'data' });
-      expect(handleAgentError).toHaveBeenCalledWith(
+      expect(errorContextProvider).toHaveBeenCalledWith('test:event', { test: 'data' });  // dataの値
+      expect(mockHandleAgentError).toHaveBeenCalledWith(
         processingError,
         {
           eventType: 'test:event',
           operation: 'Test Operation',
-          payload: { test: 'data' },
+          payload: { test: 'data' },  // dataの値
           context: 'additional info'
         }
       );

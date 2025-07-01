@@ -32,7 +32,12 @@ jest.mock('@/lib/notifications/toast', () => ({
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
-  logger: { error: jest.fn() }
+  logger: { 
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
 }));
 
 // Import after mocking

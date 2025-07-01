@@ -172,9 +172,6 @@ afterEach(() => {
     // Ignore errors if stores are not available
   }
   
-  // Clear all mocks
-  jest.clearAllMocks();
-  
   // Clear all timers if fake timers were used
   if (jest.isMockFunction(global.setTimeout)) {
     jest.clearAllTimers();
@@ -182,8 +179,11 @@ afterEach(() => {
     jest.useRealTimers();
   }
   
-  // Reset module cache to ensure clean state
-  jest.resetModules();
+  // Note: jest.clearAllMocks() and jest.resetModules() are commented out
+  // to prevent interference with module-level mocks in some tests.
+  // Tests that need mock clearing should handle it individually.
+  // jest.clearAllMocks();
+  // jest.resetModules();
 });
 
 // Error handling for Jest workers

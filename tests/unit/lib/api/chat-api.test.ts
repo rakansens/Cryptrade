@@ -36,7 +36,9 @@ describe('ChatAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset fetch mock
-    (global.fetch as jest.Mock).mockReset();
+    if (typeof (global.fetch as any).mockReset === 'function') {
+      (global.fetch as jest.Mock).mockReset();
+    }
     // Mock withRetry to execute function immediately
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys

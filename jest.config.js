@@ -30,6 +30,8 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add Prisma client mock
+        '^@prisma/client$': '<rootDir>/__mocks__/@prisma/client.ts',
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
         // Add auth server mock
@@ -86,6 +88,8 @@ module.exports = {
       transform: preset.transform,
       moduleNameMapper: {
         ...preset.moduleNameMapper,
+        // Add Prisma client mock
+        '^@prisma/client$': '<rootDir>/__mocks__/@prisma/client.ts',
         // Add specific mocks for agent tools
         '^@/lib/mastra/tools/agent-selection\\.tool$': '<rootDir>/__mocks__/@/lib/mastra/tools/agent-selection.tool.ts',
         // Add auth server mock

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { act } from 'react';
 import { useChartInstance } from '@/components/chart/hooks/useChartInstance';
 import { createChart } from 'lightweight-charts';
 import { ChartDrawingManager } from '@/lib/chart/drawing-primitives';

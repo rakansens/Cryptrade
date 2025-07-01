@@ -173,9 +173,9 @@ describe('Environment Configuration', () => {
 
         // Assert
         // Note: Optional transforms handle undefined values differently
-        expect(env.FORCE_VALIDATION).toBe(false); // undefined transforms to false
+        expect(env.FORCE_VALIDATION).toBe(true); // 'true' string transforms to boolean true
         expect(env.DISABLE_CONSOLE_LOGS).toBe(false); // 'false' string transforms to boolean false
-        expect(env.USE_NEW_WS_MANAGER).toBe(false); // undefined transforms to false (not set in this test)
+        expect(env.USE_NEW_WS_MANAGER).toBe(true); // 'true' string transforms to boolean true
       } finally {
         if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
@@ -190,16 +190,12 @@ describe('Environment Configuration', () => {
     it('should fail when required OPENAI_API_KEY is missing', async () => {
       // Arrange - Override jest.setup.js defaults
       restoreEnv();
-      // Delete all environment variables to ensure clean state
-      Object.keys(process.env).forEach(key => {
-        if (key.startsWith('OPENAI') || key.startsWith('TEST')) {
-          delete process.env[key];
-        }
-      });
       restoreEnv = mockEnv({
         NODE_ENV: 'test',
         // Explicitly not setting OPENAI_API_KEY to trigger validation failure
       });
+      // Force delete OPENAI_API_KEY after mockEnv
+      delete process.env.OPENAI_API_KEY;
 
       // Reset modules and mock window
       jest.resetModules();
@@ -211,9 +207,9 @@ describe('Environment Configuration', () => {
 
       try {
         // Act & Assert - The module will throw during import
-        await expect(async () => {
-          await import('@/config/env');
-        }).rejects.toThrow('Environment validation failed in test environment');
+        await expect(
+          import('@/config/env')
+        ).rejects.toThrow('Environment validation failed in test environment');
         
         expect(mockConsole.error).toHaveBeenCalledWith('🚨 [Environment] Validation failed!');
       } finally {
@@ -245,9 +241,9 @@ describe('Environment Configuration', () => {
 
       try {
         // Act & Assert - The module will throw during import
-        await expect(async () => {
-          await import('@/config/env');
-        }).rejects.toThrow('Environment validation failed in test environment');
+        await expect(
+          import('@/config/env')
+        ).rejects.toThrow('Environment validation failed in test environment');
       } finally {
         if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;
@@ -276,9 +272,9 @@ describe('Environment Configuration', () => {
 
       try {
         // Act & Assert - The module will throw during import
-        await expect(async () => {
-          await import('@/config/env');
-        }).rejects.toThrow('Environment validation failed in test environment');
+        await expect(
+          import('@/config/env')
+        ).rejects.toThrow('Environment validation failed in test environment');
       } finally {
         if (hasWindow && originalWindow) {
           (global as any).window = originalWindow;

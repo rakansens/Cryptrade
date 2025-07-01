@@ -294,7 +294,8 @@ export function createEventDefinition<T = any>(
  */
 export const commonValidators = {
   hasId: (data: any): boolean => {
-    return data && typeof data.id === 'string' && data.id.length > 0;
+    if (!data) return false;
+    return typeof data.id === 'string' && data.id.length > 0;
   },
   
   hasType: (data: any): boolean => {
