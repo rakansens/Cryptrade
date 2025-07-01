@@ -1,13 +1,14 @@
 import { renderHook } from '@testing-library/react';
-import { act } from 'react';;
+import { act } from 'react';
 import { useStreaming } from '@/hooks/base/use-streaming';
 import { logger } from '@/lib/utils/logger';
 
 // Mock logger
 jest.mock('@/lib/utils/logger');
 
-// Mock fetch
-global.fetch = jest.fn();
+// Mock fetch with proper Jest mock
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
 // Mock EventSource
 global.EventSource = jest.fn() as any;
@@ -15,7 +16,8 @@ global.EventSource = jest.fn() as any;
 describe('useStreaming', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockReset();
+    // Reset fetch mock properly
+    mockFetch.mockReset();
   });
 
   describe('Initial state', () => {

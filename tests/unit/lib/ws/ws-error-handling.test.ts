@@ -4,6 +4,7 @@
 
 import { WSManager } from '@/lib/ws/WSManager';
 import { MockWebSocket, setupWebSocketMocking } from '@/lib/ws/websocket-mock';
+import { mswServer } from '@/tests/setup/msw-setup';
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
@@ -18,6 +19,16 @@ jest.mock('@/lib/utils/logger', () => ({
 describe('WSManager Error Handling', () => {
   const cleanupMock = setupWebSocketMocking();
   let managers: WSManager[] = [];
+
+  beforeAll(() => {
+    // Temporarily disable MSW for WebSocket tests
+    mswServer.close();
+  });
+
+  afterAll(() => {
+    // Re-enable MSW for other tests
+    mswServer.listen();
+  });
   
   beforeEach(() => {
     jest.clearAllMocks();

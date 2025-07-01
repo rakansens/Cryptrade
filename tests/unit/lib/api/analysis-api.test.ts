@@ -14,8 +14,9 @@ jest.mock('@/config/env', () => ({
   }
 }));
 
-// Mock global fetch
-global.fetch = jest.fn();
+// Mock global fetch with proper Jest mock
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
 import { AnalysisAPI } from '@/lib/api/analysis-api';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
@@ -32,7 +33,8 @@ describe('AnalysisAPI', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2025-01-01T00:00:00.000Z'));
     (process.env as any).NODE_ENV = 'test';
-    (global.fetch as jest.Mock).mockReset();
+    // Reset fetch mock properly
+    mockFetch.mockReset();
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
     // Mock createKey to return expected cache keys
     jest.mocked(createKey).mockImplementation((prefix, params) => {

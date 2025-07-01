@@ -383,8 +383,32 @@ export function setupWebSocketMocking(): (() => void) {
   // Store original WebSocket
   const originalWebSocket = (global as { WebSocket?: typeof WebSocket }).WebSocket;
   
-  // Replace global WebSocket with mock immediately
-  (global as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket as any;
+  // Ensure MockWebSocket implements the full WebSocket interface for RxJS compatibility
+  const EnhancedMockWebSocket = class extends MockWebSocket {
+    static readonly CONNECTING = 0;
+    static readonly OPEN = 1;
+    static readonly CLOSING = 2;
+    static readonly CLOSED = 3;
+
+    readonly CONNECTING = 0;
+    readonly OPEN = 1;
+    readonly CLOSING = 2;
+    readonly CLOSED = 3;
+
+    // Protocol property required by WebSocket interface
+    get protocol(): string { return ''; }
+    
+    // Extensions property required by WebSocket interface
+    get extensions(): string { return ''; }
+    
+    // Additional properties for RxJS compatibility
+    get bufferedAmount(): number { return 0; }
+    get binaryType(): BinaryType { return 'blob'; }
+    set binaryType(_value: BinaryType) { /* no-op */ }
+  } as any;
+  
+  // Replace global WebSocket with enhanced mock
+  (global as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = EnhancedMockWebSocket;
   
   // Return cleanup function
   return () => {

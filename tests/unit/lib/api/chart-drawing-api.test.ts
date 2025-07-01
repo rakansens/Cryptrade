@@ -11,8 +11,9 @@ jest.mock('@/config/env', () => ({
   env: mockEnv
 }));
 
-// Mock global fetch
-global.fetch = jest.fn();
+// Mock global fetch with proper Jest mock
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
 import { ChartDrawingAPI, TimeframeState } from '@/lib/api/chart-drawing-api';
 import { apiCache, createKey } from '@/lib/utils/api-cache';
@@ -23,7 +24,8 @@ import type { ChartDrawing, PatternData } from '@/lib/validation/chart-drawing.s
 describe('ChartDrawingAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockReset();
+    // Reset fetch mock properly
+    mockFetch.mockReset();
     jest.mocked(withRetry).mockImplementation(async (fn) => fn());
   });
 
