@@ -558,6 +558,9 @@ describe('Logger', () => {
   
   describe('ConsoleTransport', () => {
     it('should log to console when enabled', () => {
+      // Create a fresh spy for this test to avoid beforeEach clearing
+      const consoleLogSpy = jest.spyOn(console, 'log');
+      
       const transport = new ConsoleTransport(true);
       const entry: LogEntry = {
         level: 'info',
@@ -568,7 +571,10 @@ describe('Logger', () => {
       
       transport.log(entry);
       
-      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalled();
+      
+      // Clean up this specific spy
+      consoleLogSpy.mockRestore();
     });
     
     it('should serialize errors properly', () => {

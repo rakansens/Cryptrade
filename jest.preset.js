@@ -25,7 +25,7 @@ module.exports = {
 
   // ESM modules that need to be transformed
   transformIgnorePatterns: [
-    'node_modules/(?!(.*\\.mjs$|@.*/|msw|@supabase.*|@bundled-es-modules))'
+    'node_modules/(?!(.*\\.mjs$|@.*/|msw|@mswjs/.*|@supabase.*|@bundled-es-modules))'
   ],
 
   // パスエイリアス + 静的モック

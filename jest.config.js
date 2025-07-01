@@ -17,6 +17,9 @@ module.exports = {
       displayName: 'unit',
       preset: 'ts-jest',
       testEnvironment: 'jsdom',
+      testEnvironmentOptions: {
+        customExportConditions: [''],
+      },
       testMatch: [
         '<rootDir>/tests/unit/**/*.test.[jt]s?(x)',
         '<rootDir>/lib/**/__tests__/**/*.test.[jt]s?(x)',
@@ -74,6 +77,9 @@ module.exports = {
       displayName: 'integration',
       preset: 'ts-jest',
       testEnvironment: 'jsdom',
+      testEnvironmentOptions: {
+        customExportConditions: [''],
+      },
       testMatch: [
         '<rootDir>/tests/integration/**/*.test.[jt]s?(x)',
       ],
